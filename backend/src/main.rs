@@ -58,13 +58,24 @@ async fn generate_pdf(Json(payload): Json<GenerateRequest>) -> Response {
         }
     };
 
-    // Step 2: Compile LaTeX → PDF via tectonic
-    let pdf_bytes = match tectonic::latex_to_pdf(&rendered) {
-        Ok(bytes) => bytes,
-        Err(e) => {
+    // Step 2: Compile LaTeX → PDF via tectonic in a blocking context
+    let pdf_bytes = match tokio::task::spawn_blocking(move || {
+        tectonic::latex_to_pdf(&rendered)
+    })
+    .await
+    {
+        Ok(Ok(bytes)) => bytes,
+        Ok(Err(e)) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("LaTeX compilation error: {e}"),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Task join error: {e}"),
             )
                 .into_response()
         }
@@ -113,3 +124,4 @@ async fn main() {
         .await
         .expect("Server error");
 }
+
