@@ -5,7 +5,7 @@ import TextStyle from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import { VariableNode } from './extensions/VariableNode'
 import { SubreportNode, SubreportRowNode } from './extensions/SubreportNode'
-import { tiptapToLatex } from './lib/tiptapToLatex'
+import { tiptapToTypst } from './lib/tiptapToTypst'
 import './App.css'
 
 const VARIABLES = [
@@ -30,6 +30,9 @@ const SAMPLE_DATA = {
     { artikel: 'Hosting', menge: '1', preis: '108,00' },
   ],
 }
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ??
+  'http://localhost:3000'
 
 const DEFAULT_CONTENT = {
   type: 'doc',
@@ -141,10 +144,10 @@ export default function App() {
   const generatePDF = useCallback(async () => {
     if (!editor) return
     const json = editor.getJSON()
-    const template = tiptapToLatex(json)
+    const template = tiptapToTypst(json)
 
     try {
-      const response = await fetch('http://localhost:3000/generate-pdf', {
+      const response = await fetch(`${API_BASE_URL}/generate-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ template, data: SAMPLE_DATA }),
@@ -174,7 +177,7 @@ export default function App() {
         <h1 className="app-title">
           <span className="logo">📄</span> PDFCraft
         </h1>
-        <p className="app-subtitle">Visual LaTeX Template Builder</p>
+        <p className="app-subtitle">Visual Typst Template Builder</p>
         <button className="btn btn-primary btn-generate" onClick={generatePDF}>
           ⬇ Export &amp; Generate PDF
         </button>
@@ -282,11 +285,11 @@ export default function App() {
           </div>
         </main>
 
-        {/* LaTeX Preview */}
-        <aside className="latex-preview">
-          <h3 className="sidebar-heading">📝 LaTeX Preview</h3>
-          <pre className="latex-code">
-            {editor ? tiptapToLatex(editor.getJSON()) : ''}
+        {/* Typst Preview */}
+        <aside className="typst-preview">
+          <h3 className="sidebar-heading">📝 Typst Preview</h3>
+          <pre className="typst-code">
+            {editor ? tiptapToTypst(editor.getJSON()) : ''}
           </pre>
         </aside>
       </div>

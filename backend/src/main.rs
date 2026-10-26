@@ -1,14 +1,30 @@
 use axum::{
-    extract::Json,
-    http::{header, StatusCode},
-    response::{IntoResponse, Response},
-    routing::{get, post},
+    extract::{
+        rejection::JsonRejection,
+        DefaultBodyLimit,
+        Json,
+    },
+    http::{
+        header,
+        StatusCode,
+    },
+    response::{
+        IntoResponse,
+        Response,
+    },
+    routing::{
+        get,
+        post,
+    },
     Router,
 };
 use minijinja::{Environment, Value};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tower_http::cors::{Any, CorsLayer};
+use typst_as_lib::TypstEngine;
+
+const MAX_REQUEST_BODY_BYTES: usize = 512 * 1024;
 
 #[derive(Deserialize)]
 struct GenerateRequest {
@@ -21,63 +37,92 @@ struct HealthResponse {
     status: &'static str,
 }
 
-async fn generate_pdf(Json(payload): Json<GenerateRequest>) -> Response {
+#[derive(Serialize)]
+struct ErrorResponse {
+    error: &'static str,
+    details: String,
+}
+
+fn json_error(status: StatusCode, error: &'static str, details: String) -> Response {
+    (status, Json(ErrorResponse { error, details })).into_response()
+}
+
+async fn generate_pdf(payload: Result<Json<GenerateRequest>, JsonRejection>) -> Response {
+    let payload = match payload {
+        Ok(Json(body)) => body,
+        Err(e) => {
+            let status = e.status();
+            return json_error(status, "invalid_request", e.body_text());
+        }
+    };
+
     // Step 1: Render the template with minijinja
     let rendered = {
         let mut env = Environment::new();
+
         if let Err(e) = env.add_template("doc", &payload.template) {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Template parse error: {e}"),
-            )
-                .into_response();
+            return json_error(
+                StatusCode::BAD_REQUEST,
+                "template_parse_error",
+                e.to_string(),
+            );
         }
 
         let tmpl = match env.get_template("doc") {
             Ok(t) => t,
             Err(e) => {
-                return (
+                return json_error(
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Template load error: {e}"),
-                )
-                    .into_response()
+                    "template_load_error",
+                    e.to_string(),
+                );
             }
         };
 
-        // Convert the JSON data to a minijinja Value via serde serialization
         let ctx = Value::from_serialize(&payload.data);
         match tmpl.render(ctx) {
             Ok(s) => s,
             Err(e) => {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Template render error: {e}"),
-                )
-                    .into_response()
+                return json_error(
+                    StatusCode::BAD_REQUEST,
+                    "template_render_error",
+                    e.to_string(),
+                );
             }
         }
     };
 
-    // Step 2: Compile LaTeX → PDF via tectonic in a blocking context
+    // Step 2: Compile Typst → PDF via typst-as-lib in a blocking context
     let pdf_bytes = match tokio::task::spawn_blocking(move || {
-        tectonic::latex_to_pdf(&rendered)
+        let engine = TypstEngine::builder().main_file(rendered).build();
+
+        let pdf_result = engine.with_world(|world| {
+            let compile_result = typst::compile(world);
+            let doc = compile_result
+                .output
+                .map_err(|e| format!("Typst compilation error: {e:?}"))?;
+
+            typst_pdf::pdf(&doc, &Default::default())
+                .map_err(|e| format!("Typst PDF generation error: {e:?}"))
+        });
+
+        match pdf_result {
+            Ok(result) => result,
+            Err(e) => Err(format!("Typst world setup error: {e}")),
+        }
     })
     .await
     {
         Ok(Ok(bytes)) => bytes,
         Ok(Err(e)) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("LaTeX compilation error: {e}"),
-            )
-                .into_response()
+            return json_error(StatusCode::UNPROCESSABLE_ENTITY, "typst_compile_error", e);
         }
         Err(e) => {
-            return (
+            return json_error(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Task join error: {e}"),
-            )
-                .into_response()
+                "task_join_error",
+                e.to_string(),
+            );
         }
     };
 
@@ -110,6 +155,7 @@ async fn main() {
     let app = Router::new()
         .route("/generate-pdf", post(generate_pdf))
         .route("/health", get(health))
+        .layer(DefaultBodyLimit::max(MAX_REQUEST_BODY_BYTES))
         .layer(cors);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
@@ -117,11 +163,9 @@ async fn main() {
         .expect("Failed to bind to port 3000");
 
     println!("🚀 PDFCraft backend listening on http://0.0.0.0:3000");
-    println!("   POST /generate-pdf  — compile LaTeX template to PDF");
+    println!("   POST /generate-pdf  — compile Typst template to PDF");
     println!("   GET  /health        — health check");
 
-    axum::serve(listener, app)
-        .await
-        .expect("Server error");
+    axum::serve(listener, app).await.expect("Server error");
 }
 
