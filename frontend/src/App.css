@@ -415,3 +415,20 @@ body {
   font-size: 0.9rem;
 }
 
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-actions .btn:not(.btn-primary) {
+  background: rgba(255, 255, 255, 0.14);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.header-actions .btn:not(.btn-primary):hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+

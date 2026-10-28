@@ -94,7 +94,10 @@ async fn generate_pdf(payload: Result<Json<GenerateRequest>, JsonRejection>) -> 
 
     // Step 2: Compile Typst → PDF via typst-as-lib in a blocking context
     let pdf_bytes = match tokio::task::spawn_blocking(move || {
-        let engine = TypstEngine::builder().main_file(rendered).build();
+        let engine = TypstEngine::builder()
+            .main_file(rendered)
+            .with_package_file_resolver()
+            .build();
 
         let pdf_result = engine.with_world(|world| {
             let compile_result = typst::compile(world);

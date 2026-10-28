@@ -79,6 +79,46 @@ npm run build
 - Re-validated project health after the above updates.
   - Confirmed backend with `cd backend && cargo check`
   - Confirmed frontend with `cd frontend && npm run build`
+- Added a dedicated Invoice-Pro Typst example flow in the frontend.
+  - Added `INVOICE_PRO_TEMPLATE` based on `@preview/invoice-pro:0.3.2` with minijinja placeholders
+  - Added `INVOICE_PRO_SAMPLE_DATA` to demonstrate the expected invoice data structure
+  - Added a separate header action to generate and download `invoice-pro-example.pdf`
+  - Refactored frontend PDF request logic into a shared helper used by both editor and invoice example flows
+- Re-validated project health after adding the Invoice-Pro example flow.
+  - Confirmed frontend with `cd frontend && npm run build`
+  - Confirmed backend with `cd backend && cargo check`
+- Expanded the Invoice-Pro example integration to better support troubleshooting empty PDF exports.
+  - Added a richer `INVOICE_PRO_TEMPLATE` in `frontend/src/App.tsx` using `@preview/invoice-pro:0.3.2`
+  - Added `INVOICE_PRO_SAMPLE_DATA` with sender/recipient, invoice meta, line items, payment goal, and bank details
+  - Unified PDF request handling via a shared `requestPdf(...)` helper for both editor export and Invoice-Pro export
+  - Added a dedicated Invoice-Pro header action and sample-data panel in the sidebar for clearer structure visibility
+- Re-validated project health after the expanded Invoice-Pro integration.
+  - Confirmed frontend with `cd frontend && npm run build`
+  - Confirmed backend with `cd backend && cargo check`
+- Fixed Typst package resolution for Invoice-Pro imports in backend PDF generation.
+  - Enabled `typst-as-lib` features `packages` and `ureq` in `backend/Cargo.toml`
+  - Added `.with_package_file_resolver()` to backend Typst engine construction in `backend/src/main.rs`
+  - Resolved `@preview/invoice-pro` compile failures like `file not found (searched at typst.toml)`
+- Re-validated project health after package resolver integration.
+  - Confirmed backend with `cd backend && cargo check`
+  - Confirmed frontend with `cd frontend && npm run build`
+- Improved Invoice-Pro template resilience for minimal mapping deltas.
+  - Added fallback for sender tax number in `frontend/src/App.tsx`: `sender.taxNr or sender.tax_nr`
+  - Added fallback for line item title in `frontend/src/App.tsx`: `item.label or item.name`
+- Verified Todo 5 (sample-data mapping delta) in `frontend/src/App.tsx`.
+  - Confirmed `INVOICE_PRO_SAMPLE_DATA.sender.tax_nr` is present.
+  - Confirmed `INVOICE_PRO_SAMPLE_DATA.lineItems[*].name` is present.
+  - No further sample-data changes required for the identified delta.
+- Executed Todo 6 with an end-to-end backend export check for Invoice-Pro.
+  - Sent `POST /generate-pdf` using data with fallback-only fields (`sender.tax_nr` and `lineItems[*].name`).
+  - Confirmed response status `200`, `Content-Type: application/pdf`, and non-empty payload (`19002` bytes).
+  - Extracted PDF strings confirmed rendered invoice identifier `Invoice 2026-01` in output metadata.
+- Unified frontend UI flow to Invoice-Pro-only and removed stale mapping helper state.
+  - Removed unused `INVOICE_PRO_MAPPING_DELTA` constant from `frontend/src/App.tsx`.
+  - Aligned default subreport row placeholder with fallback mapping: `{{item.label or item.name}}`.
+  - Restored `escapeForTypstStrings(...)` helper in `frontend/src/App.tsx` to keep PDF request data escaping intact.
+- Re-validated frontend health after Todo 7 updates.
+  - Confirmed frontend with `cd frontend && npm run build`.
 
 ## Notes for Next Work
 - Frontend serializer and backend template language should stay aligned.
