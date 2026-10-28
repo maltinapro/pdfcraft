@@ -21,8 +21,8 @@ const SubreportView: React.FC<NodeViewProps> = ({ node, updateAttributes }) => {
         </div>
         <div className="subreport-footer">
           <span className="subreport-hint">
-            Available: <code>{'{{item.artikel}}'}</code>, <code>{'{{item.menge}}'}</code>,{' '}
-            <code>{'{{item.preis}}'}</code>
+            Available: <code>{'{{item.label}}'}</code>, <code>{'{{item.quantity}}'}</code>,{' '}
+            <code>{'{{item.unit}}'}</code>, <code>{'{{item.price}}'}</code>
           </span>
         </div>
       </div>

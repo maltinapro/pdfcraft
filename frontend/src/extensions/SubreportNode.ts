@@ -43,12 +43,12 @@ export const SubreportNode = Node.create<SubreportOptions>({
   addAttributes() {
     return {
       dataSource: {
-        default: 'items',
+        default: 'lineItems',
         parseHTML: (element) => element.getAttribute('data-source'),
         renderHTML: (attributes) => ({ 'data-source': attributes['dataSource'] }),
       },
       label: {
-        default: 'Items',
+        default: 'Line Items',
         parseHTML: (element) => element.getAttribute('data-label'),
         renderHTML: (attributes) => ({ 'data-label': attributes['label'] }),
       },
@@ -83,11 +83,11 @@ export const SubreportNode = Node.create<SubreportOptions>({
               {
                 type: 'subreportRow',
                 content: [
-                  { type: 'text', text: '{{item.artikel}}' },
-                  { type: 'text', text: '\t' },
-                  { type: 'text', text: '{{item.menge}}' },
-                  { type: 'text', text: '\t' },
-                  { type: 'text', text: '{{item.preis}} €' },
+                  { type: 'text', text: '{{item.label}}' },
+                  { type: 'text', text: ' · ' },
+                  { type: 'text', text: '{{item.quantity}} {{item.unit}}' },
+                  { type: 'text', text: ' · ' },
+                  { type: 'text', text: '{{item.price}}' },
                 ],
               },
             ],

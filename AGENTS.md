@@ -1,0 +1,128 @@
+# AGENTS.md
+
+## Project
+PDFCraft is a full-stack PDF template builder:
+- Frontend: React + Vite + Tiptap
+- Backend: Rust + Axum
+- Templating: minijinja
+- PDF generation path (current backend): Typst via `typst-as-lib`
+
+## Repository Structure
+- `frontend/` — UI editor and template serialization
+- `backend/` — API server (`/generate-pdf`, `/health`)
+- `README.md` — product overview and setup
+
+## Local Development
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Backend
+```bash
+cd backend
+cargo run
+```
+
+## Validation Commands
+Backend checks used in this project:
+```bash
+cd backend
+cargo check
+```
+
+Frontend checks used in this project:
+```bash
+cd frontend
+npm run build
+```
+
+## Backend PDF Pipeline (Current)
+1. Receive `{ template, data }` in `POST /generate-pdf`
+2. Render template with minijinja (`template` + `data`)
+3. Compile rendered Typst content to document using `typst-as-lib` + Typst
+4. Convert document to PDF bytes with `typst-pdf`
+5. Return PDF with content headers
+
+## Recent Changes Applied
+- Replaced old Tectonic/LaTeX compilation path in backend handler with Typst-based flow.
+- Updated backend dependencies to Typst ecosystem:
+  - `typst = "0.15.1"`
+  - `typst-pdf = "0.15.1"`
+  - `typst-as-lib = "0.17.0"`
+- Confirmed build health with `cargo check`.
+- Migrated frontend template serializer from LaTeX output to Typst output.
+  - Renamed serializer file from `frontend/src/lib/tiptapToLatex.ts` to `frontend/src/lib/tiptapToTypst.ts`
+  - Renamed exported function to `tiptapToTypst`
+  - Updated `frontend/src/App.tsx` imports and calls to use the Typst serializer
+  - Updated UI labels from LaTeX preview/builder wording to Typst wording
+- Confirmed frontend build health with `npm run build`.
+- Refreshed `README.md` to consistently document the Typst-based pipeline.
+  - Replaced remaining LaTeX/Tectonic references in flow descriptions and API docs
+  - Updated serializer and extension guidance to `tiptapToTypst`
+  - Updated examples and tech stack wording to match current implementation
+- Performed a migration audit for Typst alignment across backend and frontend.
+  - Verified backend compile path uses `typst-as-lib` + `typst-pdf` and no active LaTeX/Tectonic pipeline
+  - Verified frontend uses `tiptapToTypst` serializer and Typst preview/generation flow
+  - Confirmed project health with `cd backend && cargo check` and `cd frontend && npm run build`
+  - Collected version update signals (`npm outdated`, `cargo search`) for future dependency planning
+- Hardened backend request handling and error responses.
+  - Added request body limit via `DefaultBodyLimit::max(512 * 1024)`
+  - Added structured JSON error responses with explicit error codes/details
+  - Mapped invalid payload/template/render errors to client-oriented status codes
+- Improved frontend runtime configuration and naming consistency.
+  - Kept PDF API base URL configurable via `VITE_API_BASE_URL` with localhost fallback
+  - Added `frontend/src/vite-env.d.ts` for `import.meta.env` typing
+  - Renamed remaining preview classes from `latex-*` to `typst-*` in `App.tsx` and `App.css`
+- Re-validated project health after the above updates.
+  - Confirmed backend with `cd backend && cargo check`
+  - Confirmed frontend with `cd frontend && npm run build`
+- Added a dedicated Invoice-Pro Typst example flow in the frontend.
+  - Added `INVOICE_PRO_TEMPLATE` based on `@preview/invoice-pro:0.3.2` with minijinja placeholders
+  - Added `INVOICE_PRO_SAMPLE_DATA` to demonstrate the expected invoice data structure
+  - Added a separate header action to generate and download `invoice-pro-example.pdf`
+  - Refactored frontend PDF request logic into a shared helper used by both editor and invoice example flows
+- Re-validated project health after adding the Invoice-Pro example flow.
+  - Confirmed frontend with `cd frontend && npm run build`
+  - Confirmed backend with `cd backend && cargo check`
+- Expanded the Invoice-Pro example integration to better support troubleshooting empty PDF exports.
+  - Added a richer `INVOICE_PRO_TEMPLATE` in `frontend/src/App.tsx` using `@preview/invoice-pro:0.3.2`
+  - Added `INVOICE_PRO_SAMPLE_DATA` with sender/recipient, invoice meta, line items, payment goal, and bank details
+  - Unified PDF request handling via a shared `requestPdf(...)` helper for both editor export and Invoice-Pro export
+  - Added a dedicated Invoice-Pro header action and sample-data panel in the sidebar for clearer structure visibility
+- Re-validated project health after the expanded Invoice-Pro integration.
+  - Confirmed frontend with `cd frontend && npm run build`
+  - Confirmed backend with `cd backend && cargo check`
+- Fixed Typst package resolution for Invoice-Pro imports in backend PDF generation.
+  - Enabled `typst-as-lib` features `packages` and `ureq` in `backend/Cargo.toml`
+  - Added `.with_package_file_resolver()` to backend Typst engine construction in `backend/src/main.rs`
+  - Resolved `@preview/invoice-pro` compile failures like `file not found (searched at typst.toml)`
+- Re-validated project health after package resolver integration.
+  - Confirmed backend with `cd backend && cargo check`
+  - Confirmed frontend with `cd frontend && npm run build`
+- Improved Invoice-Pro template resilience for minimal mapping deltas.
+  - Added fallback for sender tax number in `frontend/src/App.tsx`: `sender.taxNr or sender.tax_nr`
+  - Added fallback for line item title in `frontend/src/App.tsx`: `item.label or item.name`
+- Verified Todo 5 (sample-data mapping delta) in `frontend/src/App.tsx`.
+  - Confirmed `INVOICE_PRO_SAMPLE_DATA.sender.tax_nr` is present.
+  - Confirmed `INVOICE_PRO_SAMPLE_DATA.lineItems[*].name` is present.
+  - No further sample-data changes required for the identified delta.
+- Executed Todo 6 with an end-to-end backend export check for Invoice-Pro.
+  - Sent `POST /generate-pdf` using data with fallback-only fields (`sender.tax_nr` and `lineItems[*].name`).
+  - Confirmed response status `200`, `Content-Type: application/pdf`, and non-empty payload (`19002` bytes).
+  - Extracted PDF strings confirmed rendered invoice identifier `Invoice 2026-01` in output metadata.
+- Unified frontend UI flow to Invoice-Pro-only and removed stale mapping helper state.
+  - Removed unused `INVOICE_PRO_MAPPING_DELTA` constant from `frontend/src/App.tsx`.
+  - Aligned default subreport row placeholder with fallback mapping: `{{item.label or item.name}}`.
+  - Restored `escapeForTypstStrings(...)` helper in `frontend/src/App.tsx` to keep PDF request data escaping intact.
+- Re-validated frontend health after Todo 7 updates.
+  - Confirmed frontend with `cd frontend && npm run build`.
+
+## Notes for Next Work
+- Frontend serializer and backend template language should stay aligned.
+- Extend Typst serializer coverage if additional Tiptap nodes or advanced layout features are introduced.
+- Keep `cargo check` green after any backend change.
+- Keep `npm run build` green after any frontend change.
+
