@@ -5,7 +5,7 @@ import TextStyle from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import { VariableNode } from './extensions/VariableNode'
 import { SubreportNode, SubreportRowNode } from './extensions/SubreportNode'
-import { tiptapToTypst, DEFAULT_PREAMBLE } from './lib/tiptapToTypst'
+import { tiptapToTypst, DEFAULT_PREAMBLE, NO_TEMPLATE_PREAMBLE, CUSTOM_PREAMBLE } from './lib/tiptapToTypst'
 import './App.css'
 
 const INVOICE_PRO_VARIABLES = [
@@ -206,6 +206,14 @@ const DEFAULT_CONTENT = {
 
 export default function App() {
   const [preamble, setPreamble] = useState(DEFAULT_PREAMBLE)
+  const [templateMode, setTemplateMode] = useState<'invoice-pro' | 'none' | 'custom'>('invoice-pro')
+
+  const changeTemplateMode = (mode: 'invoice-pro' | 'none' | 'custom') => {
+    setTemplateMode(mode)
+    if (mode === 'invoice-pro') setPreamble(DEFAULT_PREAMBLE)
+    if (mode === 'none') setPreamble(NO_TEMPLATE_PREAMBLE)
+    if (mode === 'custom') setPreamble(CUSTOM_PREAMBLE)
+  }
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -381,14 +389,25 @@ export default function App() {
             </button>
           </div>
           <details className="preamble-config" open>
-            <summary>⚙ Basic Config (Typst Preamble)</summary>
-            <textarea
-              className="preamble-input"
-              value={preamble}
-              onChange={(e) => setPreamble(e.target.value)}
-              spellCheck={false}
-              rows={12}
-            />
+            <summary>⚙ Template / Basic Config</summary>
+            <select
+              className="template-select"
+              value={templateMode}
+              onChange={(e) => changeTemplateMode(e.target.value as 'invoice-pro' | 'none' | 'custom')}
+            >
+              <option value="invoice-pro">Invoice-Pro (@preview/invoice-pro:0.3.2)</option>
+              <option value="none">No template (editor only)</option>
+              <option value="custom">Custom template / Typst preamble</option>
+            </select>
+            {templateMode !== 'none' && (
+              <textarea
+                className="preamble-input"
+                value={preamble}
+                onChange={(e) => setPreamble(e.target.value)}
+                spellCheck={false}
+                rows={12}
+              />
+            )}
           </details>
           <div className="editor-container">
             <EditorContent editor={editor} className="editor-content" />

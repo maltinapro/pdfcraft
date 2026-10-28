@@ -435,3 +435,4 @@ body {
 
 .preamble-config { border-bottom: 1px solid #ddd; padding: 6px 12px; font-size: 13px; }
 .preamble-input { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 12px; margin-top: 6px; }
+.template-select { display: block; margin-top: 6px; }

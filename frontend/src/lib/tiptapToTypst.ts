@@ -1,5 +1,7 @@
 import { JSONContent } from '@tiptap/core'
 
+let currentContext = { invoicePro: false }
+
 const JINJA_TOKEN_REGEX = /(\{\{[\s\S]*?\}\}|\{%[\s\S]*?%\})/g
 
 function escapeTypstText(text: string): string {
@@ -75,11 +77,11 @@ function serializeListItems(items: JSONContent[] | undefined, marker: '-' | '+')
   )
 }
 
-function serializeSubreport(node: JSONContent): string {
+function serializeSubreport(node: JSONContent, invoicePro: boolean): string {
   const dataSource = (node.attrs?.dataSource as string | undefined) ?? 'items'
   const rows = node.content ?? []
 
-  const isLineItems = dataSource === 'lineItems'
+  const isLineItems = invoicePro && dataSource === 'lineItems'
   const renderedRows = rows
     .map((row) => serializeContent(row.content).trim())
     .filter((row) => row.length > 0)
@@ -100,6 +102,7 @@ function serializeSubreport(node: JSONContent): string {
 }
 
 function serializeNode(node: JSONContent): string {
+  const ctx = currentContext
   switch (node.type) {
     case 'doc':
       return serializeContent(node.content)
@@ -156,7 +159,7 @@ function serializeNode(node: JSONContent): string {
     }
 
     case 'subreport':
-      return serializeSubreport(node)
+      return serializeSubreport(node, ctx.invoicePro)
 
     case 'subreportRow':
       return serializeContent(node.content)
@@ -186,7 +189,16 @@ export const DEFAULT_PREAMBLE = `#import "@preview/invoice-pro:0.3.2": *
 )
 #set text(10pt)`
 
+export const NO_TEMPLATE_PREAMBLE = `#set page(margin: 2.5cm)
+#set par(justify: true)`
+
+export const CUSTOM_PREAMBLE = `#import "@preview/your-template:0.1.0": *
+
+#show: your-template.with()`
+
 export function tiptapToTypst(doc: JSONContent, preamble: string = DEFAULT_PREAMBLE): string {
+  // line-items/#item output is only valid when the invoice-pro package is imported
+  currentContext = { invoicePro: /@preview\/invoice-pro/.test(preamble) }
   const body = serializeContent(doc.content).trim()
   return `${preamble.trim()}\n\n${body}\n`
 }
