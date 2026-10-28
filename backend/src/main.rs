@@ -22,7 +22,7 @@ use minijinja::{Environment, Value};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tower_http::cors::{Any, CorsLayer};
-use typst_as_lib::TypstEngine;
+use typst_as_lib::{typst_kit_options::TypstKitFontOptions, TypstEngine};
 
 const MAX_REQUEST_BODY_BYTES: usize = 512 * 1024;
 
@@ -96,6 +96,7 @@ async fn generate_pdf(payload: Result<Json<GenerateRequest>, JsonRejection>) -> 
     let pdf_bytes = match tokio::task::spawn_blocking(move || {
         let engine = TypstEngine::builder()
             .main_file(rendered)
+            .search_fonts_with(TypstKitFontOptions::default())
             .with_package_file_resolver()
             .build();
 

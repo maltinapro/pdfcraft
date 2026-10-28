@@ -79,7 +79,7 @@ const INVOICE_PRO_SAMPLE_DATA = {
   },
 }
 
-const INVOICE_PRO_TEMPLATE = String.raw`#import "@preview/invoice-pro:0.5.0": *
+const INVOICE_PRO_TEMPLATE = String.raw`#import "@preview/invoice-pro:0.3.2": *
 
 #show: invoice.with(
   theme: themes.DIN-5008(form: "A"),
@@ -88,7 +88,6 @@ const INVOICE_PRO_TEMPLATE = String.raw`#import "@preview/invoice-pro:0.5.0": *
     name: "{{ sender.name }}",
     address: "{{ sender.address }}",
     city: "{{ sender.city }}",
-    tax-nr: "{{ sender.taxNr or sender.tax_nr }}",
   ),
   recipient: (
     name: "{{ recipient.name }}",
@@ -96,7 +95,9 @@ const INVOICE_PRO_TEMPLATE = String.raw`#import "@preview/invoice-pro:0.5.0": *
     city: "{{ recipient.city }}",
   ),
   invoice-nr: "{{ invoiceNr }}",
+  tax-nr: "{{ sender.taxNr or sender.tax_nr }}",
 )
+#set text(10pt)
 
 #line-items[
 {% for item in lineItems %}
