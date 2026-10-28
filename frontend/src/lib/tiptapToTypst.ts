@@ -79,10 +79,20 @@ function serializeSubreport(node: JSONContent): string {
   const dataSource = (node.attrs?.dataSource as string | undefined) ?? 'items'
   const rows = node.content ?? []
 
+  const isLineItems = dataSource === 'lineItems'
   const renderedRows = rows
     .map((row) => serializeContent(row.content).trim())
     .filter((row) => row.length > 0)
+    .map((row) =>
+      isLineItems
+        ? `#item([${row}], price: {{ item.price }}, quantity: {{ item.quantity }}, unit: "{{ item.unit }}")`
+        : row,
+    )
     .join('\n')
+
+  if (isLineItems) {
+    return `#line-items[\n{% for item in ${dataSource} %}\n${renderedRows}\n{% endfor %}\n]\n\n`
+  }
 
   return [`{% for item in ${dataSource} %}`, renderedRows, '{% endfor %}', '']
     .filter(Boolean)
@@ -156,10 +166,27 @@ function serializeNode(node: JSONContent): string {
   }
 }
 
-export function tiptapToTypst(doc: JSONContent): string {
-  const body = serializeContent(doc.content).trim()
+export const DEFAULT_PREAMBLE = `#import "@preview/invoice-pro:0.3.2": *
 
-  return ['#set page(margin: 2.5cm)', '#set par(justify: true)', '', body, '']
-    .filter((line, index, arr) => !(line === '' && arr[index - 1] === ''))
-    .join('\n')
+#show: invoice.with(
+  theme: themes.DIN-5008(form: "A"),
+  locale: locale.en-de,
+  sender: (
+    name: "{{ sender.name }}",
+    address: "{{ sender.address }}",
+    city: "{{ sender.city }}",
+  ),
+  recipient: (
+    name: "{{ recipient.name }}",
+    address: "{{ recipient.address }}",
+    city: "{{ recipient.city }}",
+  ),
+  invoice-nr: "{{ invoiceNr }}",
+  tax-nr: "{{ sender.taxNr or sender.tax_nr }}",
+)
+#set text(10pt)`
+
+export function tiptapToTypst(doc: JSONContent, preamble: string = DEFAULT_PREAMBLE): string {
+  const body = serializeContent(doc.content).trim()
+  return `${preamble.trim()}\n\n${body}\n`
 }

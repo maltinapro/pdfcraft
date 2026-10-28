@@ -1,11 +1,11 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import TextStyle from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import { VariableNode } from './extensions/VariableNode'
 import { SubreportNode, SubreportRowNode } from './extensions/SubreportNode'
-import { tiptapToTypst } from './lib/tiptapToTypst'
+import { tiptapToTypst, DEFAULT_PREAMBLE } from './lib/tiptapToTypst'
 import './App.css'
 
 const INVOICE_PRO_VARIABLES = [
@@ -79,55 +79,12 @@ const INVOICE_PRO_SAMPLE_DATA = {
   },
 }
 
-const INVOICE_PRO_TEMPLATE = String.raw`#import "@preview/invoice-pro:0.3.2": *
-
-#show: invoice.with(
-  theme: themes.DIN-5008(form: "A"),
-  locale: locale.en-de,
-  sender: (
-    name: "{{ sender.name }}",
-    address: "{{ sender.address }}",
-    city: "{{ sender.city }}",
-  ),
-  recipient: (
-    name: "{{ recipient.name }}",
-    address: "{{ recipient.address }}",
-    city: "{{ recipient.city }}",
-  ),
-  invoice-nr: "{{ invoiceNr }}",
-  tax-nr: "{{ sender.taxNr or sender.tax_nr }}",
-)
-#set text(10pt)
-
-#line-items[
-{% for item in lineItems %}
-  #item(
-    [#"{{ item.label or item.name }}"],
-    price: {{ item.price }},
-    quantity: {{ item.quantity }},
-    unit: "{{ item.unit }}",
-  )
-{% endfor %}
-]
-
-#payment-goal(days: {{ paymentGoalDays }})
-
-#bank-details(
-  bank: "{{ bank.name }}",
-  iban: "{{ bank.iban }}",
-  bic: "{{ bank.bic }}",
-)
-
-#v(-.5em)
-#signature()
-`
-
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ??
   'http://localhost:3000'
 
 function escapeForTypstStrings<T>(value: T): T {
   if (typeof value === 'string') {
-    return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"') as T
+    return value.replace(/[\\#{}[\]$*_`<>@~/"'=+-]/g, '\\$&') as T
   }
 
   if (Array.isArray(value)) {
@@ -212,7 +169,7 @@ const DEFAULT_CONTENT = {
           content: [
             {
               type: 'text',
-              text: '{{item.label or item.name}} · {{item.quantity}} {{item.unit}} · {{item.price}}',
+              text: '{{item.label or item.name}}',
             },
           ],
         },
@@ -248,6 +205,7 @@ const DEFAULT_CONTENT = {
 }
 
 export default function App() {
+  const [preamble, setPreamble] = useState(DEFAULT_PREAMBLE)
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -302,12 +260,13 @@ export default function App() {
   }, [])
 
   const generatePDF = useCallback(async () => {
+    if (!editor) return
     await requestPdf(
-      INVOICE_PRO_TEMPLATE,
+      tiptapToTypst(editor.getJSON(), preamble),
       escapeForTypstStrings(INVOICE_PRO_SAMPLE_DATA),
-      'invoice-pro.pdf',
+      'document.pdf',
     )
-  }, [requestPdf])
+  }, [editor, preamble, requestPdf])
 
   return (
     <div className="app">
@@ -318,7 +277,7 @@ export default function App() {
         <p className="app-subtitle">Visual Typst Template Builder</p>
         <div className="header-actions">
           <button className="btn btn-primary btn-generate" onClick={generatePDF}>
-            ⬇ Export &amp; Generate Invoice-Pro PDF
+            ⬇ Export &amp; Generate PDF
           </button>
         </div>
       </header>
@@ -421,6 +380,16 @@ export default function App() {
               1. List
             </button>
           </div>
+          <details className="preamble-config" open>
+            <summary>⚙ Basic Config (Typst Preamble)</summary>
+            <textarea
+              className="preamble-input"
+              value={preamble}
+              onChange={(e) => setPreamble(e.target.value)}
+              spellCheck={false}
+              rows={12}
+            />
+          </details>
           <div className="editor-container">
             <EditorContent editor={editor} className="editor-content" />
           </div>
@@ -430,7 +399,7 @@ export default function App() {
         <aside className="typst-preview">
           <h3 className="sidebar-heading">📝 Typst Preview</h3>
           <pre className="typst-code">
-            {editor ? tiptapToTypst(editor.getJSON()) : ''}
+            {editor ? tiptapToTypst(editor.getJSON(), preamble) : ''}
           </pre>
         </aside>
       </div>
