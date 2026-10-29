@@ -67,6 +67,16 @@ export default function App() {
 
   const request = useMemo(() => buildRequest(settings, invoice), [settings, invoice])
 
+  const exportRequest = useCallback(() => {
+    const blob = new Blob([JSON.stringify(request, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'pdfcraft-request.json'
+    link.click()
+    URL.revokeObjectURL(url)
+  }, [request])
+
   useEffect(() => {
     const controller = new AbortController()
     const timer = window.setTimeout(async () => {
@@ -130,6 +140,9 @@ export default function App() {
             }}
           />
           <button className="btn" onClick={exportJson}>Exportieren</button>
+          <button className="btn" onClick={exportRequest} title="Fertiger Request-Body für POST /generate-pdf">
+            API-Request
+          </button>
           <button className="btn" onClick={reset}>Zurücksetzen</button>
           <button className="btn btn-primary" onClick={download} disabled={!pdfBlob || loading}>
             ⬇ PDF herunterladen

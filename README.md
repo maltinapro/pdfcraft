@@ -137,6 +137,46 @@ The backend image bundles `vendor/typst-packages` and sets `TYPST_PACKAGE_PATH=/
 
 ---
 
+## Using the backend directly (REST)
+
+### Where does the template come from?
+
+The template is **not** created by the backend. It is the static file `frontend/src/template/invoice.typ` (Typst + minijinja placeholders such as `{{ settings.sender.name }}`). The frontend bundles it (`?raw` import) and `buildRequest()` in `frontend/src/lib/buildRequest.ts` puts it into every request as the `template` field, together with `data` (validated and escaped form values) and `assets` (logo as base64). The backend only renders and compiles what it receives.
+
+### Two different JSON files
+
+| File | Button | Content | Use |
+| --- | --- | --- | --- |
+| `pdfcraft-config.json` | **Exportieren** | App configuration `{ schemaVersion, settings, invoice }` (raw form values) | Backup / re-import in the UI. **Not** accepted by the API |
+| `pdfcraft-request.json` | **API-Request** | Complete request body `{ template, data, assets }` | Send as-is to `POST /generate-pdf` |
+
+### Generate a PDF from the exported request
+
+```bash
+cd backend && cargo run            # or: docker compose up --build
+curl -X POST http://localhost:3000/generate-pdf \
+  -H 'content-type: application/json' \
+  --data @pdfcraft-request.json -o invoice.pdf
+```
+
+### Many invoices (bulk)
+
+Export one request, keep `template` and `assets`, and replace `data.invoice` (number, date, recipient, items) per invoice, e.g. with `jq`:
+
+```bash
+for n in 1 2 3; do
+  jq --arg n "2026-00$n" '.data.invoice.number = $n' pdfcraft-request.json \
+    | curl -s -X POST http://localhost:3000/generate-pdf \
+        -H 'content-type: application/json' --data @- -o "invoice-$n.pdf"
+done
+```
+
+Rules for `data`: every text value is inserted into a Typst string literal, so `\` and `"` must be escaped as `\\` and `\"`. Units, tax rates, locale, font and color must be one of the whitelisted values in `frontend/src/lib/types.ts` (the backend does not validate them). Errors come back as JSON (e.g. `typst_compile_error`, status 422).
+
+> The API has no authentication or rate limiting. Do not expose it publicly without a reverse proxy or API key.
+
+---
+
 ## API Reference
 
 ### `POST /generate-pdf`
