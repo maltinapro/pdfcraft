@@ -15,6 +15,8 @@ A full-stack **PDF Template Builder** that combines a rich visual editor in the 
 - 🔁 **Subreports** — repeating data blocks (e.g. invoice line items) rendered as structured template sections
 - 📐 **Typst-quality PDF output** via `typst-as-lib` + `typst-pdf` — no local Typst installation needed
 - 💉 **Data injection** via [minijinja](https://docs.rs/minijinja/) templating at render time
+- 📦 **Vendored Typst packages** — [invoice-pro](https://typst.app/universe/package/invoice-pro/) 0.5.0 and its dependencies ship in the repo; no network access at runtime
+- 🧾 **ZUGFeRD / Factur-X ready** — PDFs are exported as PDF/A-3b so invoice-pro can embed the e-invoice XML (`zugferd: "en16931"`, experimental)
 - 🔴 **Live template preview** panel shows the generated source as you type
 
 ---
@@ -68,8 +70,10 @@ pdfcraft/
 │
 └── backend/                          # Rust (Axum + typst-as-lib + typst-pdf + minijinja)
     ├── Cargo.toml
-    └── src/
-        └── main.rs
+    ├── src/
+    │   └── main.rs
+    └── vendor/
+        └── typst-packages/           # Vendored @preview packages (invoice-pro 0.5.0, ...)
 ```
 
 ---
@@ -113,6 +117,8 @@ The first build compiles Typst-related dependencies — this can take a few minu
 
 The API server starts at **http://localhost:3000**.
 
+Typst packages (`@preview/...`) are loaded from `backend/vendor/typst-packages` — no internet connection is needed at runtime. Set the environment variable `TYPST_PACKAGE_PATH` to use a different directory. When deploying, copy `vendor/typst-packages` along with the binary. See `backend/vendor/typst-packages/README.md` for how to add or update packages.
+
 ### 4. Generate a PDF
 
 1. Open **http://localhost:5173** in your browser
@@ -131,7 +137,7 @@ The API server starts at **http://localhost:3000**.
 
 4. **Render** — The Rust handler uses **minijinja** to fill the template placeholders with the supplied JSON data object.
 
-5. **Compile** — The rendered Typst source is compiled to a Typst document via **typst-as-lib** and converted to PDF bytes via **typst-pdf**.
+5. **Compile** — The rendered Typst source is compiled to a Typst document via **typst-as-lib** and converted to PDF/A-3b bytes via **typst-pdf** (PDF/A-3b is required to embed ZUGFeRD / Factur-X XML).
 
 6. **Download** — The PDF bytes are returned with `Content-Type: application/pdf`, and the browser triggers a file download.
 
@@ -213,6 +219,7 @@ Install `@tiptap/extension-mathematics` and add it to the extensions array in `A
 | Async runtime | [Tokio](https://tokio.rs/) |
 | Templating | [minijinja 2](https://docs.rs/minijinja/) |
 | PDF backend | [typst-as-lib](https://crates.io/crates/typst-as-lib) + [typst-pdf](https://crates.io/crates/typst-pdf) |
+| Invoice template | [invoice-pro 0.5.0](https://typst.app/universe/package/invoice-pro/) (vendored) |
 | CORS | [tower-http](https://docs.rs/tower-http/) |
 
 ---

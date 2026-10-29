@@ -36,7 +36,9 @@ use typst::{
     syntax::{FileId, Source},
 };
 use typst_as_lib::{
-    conversions::IntoFileId, file_resolver::FileResolver,
+    conversions::IntoFileId,
+    file_resolver::{FileResolver, FileSystemResolver},
+    cached_file_resolver::IntoCachedFileResolver,
     typst_kit_options::TypstKitFontOptions, TypstEngine, TypstTemplateCollection,
 };
 
@@ -70,14 +72,29 @@ static REQUEST_COUNTER: AtomicU64 = AtomicU64::new(0);
 fn compiler() -> &'static Compiler {
     COMPILER.get_or_init(|| {
         let sources: Sources = Arc::default();
+        // Packages are vendored; no network access at runtime.
+        let package_root = std::env::var_os("TYPST_PACKAGE_PATH")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("vendor/typst-packages")
+            });
         let engine = TypstEngine::builder()
             .search_fonts_with(TypstKitFontOptions::default())
             .add_file_resolver(RequestSources(sources.clone()))
-            .with_package_file_resolver()
+            .add_file_resolver(FileSystemResolver::new(package_root.clone()).local_package_root(package_root).into_cached())
             .comemo_evict_max_age(Some(10))
             .build();
         Compiler { engine, sources }
     })
+}
+
+// PDF/A-3b is required to embed the ZUGFeRD/Factur-X XML (invoice-pro `zugferd:`).
+fn pdf_options() -> typst_pdf::PdfOptions {
+    typst_pdf::PdfOptions {
+        standards: typst_pdf::PdfStandards::new(&[typst_pdf::PdfStandard::A_3b])
+            .expect("valid PDF standard"),
+        ..Default::default()
+    }
 }
 
 fn compile_pdf(rendered: String) -> Result<Vec<u8>, String> {
@@ -95,7 +112,7 @@ fn compile_pdf(rendered: String) -> Result<Vec<u8>, String> {
             .output
             .map_err(|e| format!("Typst compilation error: {e:?}"))?;
         let compiled = started.elapsed();
-        let pdf = typst_pdf::pdf(&doc, &Default::default())
+        let pdf = typst_pdf::pdf(&doc, &pdf_options())
             .map_err(|e| format!("Typst PDF generation error: {e:?}"))?;
         println!(
             "typst layout: {compiled:?}, pdf export: {:?}",
@@ -229,7 +246,7 @@ async fn main() {
 
     // Warm up fonts and package cache so the first request is fast
     tokio::task::spawn_blocking(|| {
-        let _ = compile_pdf(String::from("#import \"@preview/invoice-pro:0.3.2\": *\n"));
+        let _ = compile_pdf(String::from("#import \"@preview/invoice-pro:0.5.0\": *\n"));
     });
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
