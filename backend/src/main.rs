@@ -94,8 +94,14 @@ fn compile_pdf(rendered: String) -> Result<Vec<u8>, String> {
         let doc = typst::compile(world)
             .output
             .map_err(|e| format!("Typst compilation error: {e:?}"))?;
-        typst_pdf::pdf(&doc, &Default::default())
-            .map_err(|e| format!("Typst PDF generation error: {e:?}"))
+        let compiled = started.elapsed();
+        let pdf = typst_pdf::pdf(&doc, &Default::default())
+            .map_err(|e| format!("Typst PDF generation error: {e:?}"))?;
+        println!(
+            "typst layout: {compiled:?}, pdf export: {:?}",
+            started.elapsed() - compiled
+        );
+        Ok(pdf)
     });
 
     c.sources.lock().unwrap().remove(&id);
