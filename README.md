@@ -119,6 +119,14 @@ Typst packages (`@preview/...`) are loaded from `backend/vendor/typst-packages` 
 
 ---
 
+### Docker
+
+```bash
+docker compose up --build   # frontend: http://localhost:8080, backend: http://localhost:3000
+```
+
+The backend image bundles `vendor/typst-packages` and sets `TYPST_PACKAGE_PATH=/app/typst-packages`. The frontend image is built with `VITE_API_BASE_URL` (build arg in `docker-compose.yml`, default `http://localhost:3000`) — set it to the public backend URL when deploying.
+
 ## How It Works
 
 1. **Configure** — The forms edit a typed model (`InvoiceSettings`, `Invoice`).
