@@ -99,6 +99,12 @@ export function SettingsForm({ settings, onChange }: Props) {
             onChange={(e) => set('paymentDays', Number(e.target.value))}
           />
         </Field>
+        <TextField
+          label="Grund der Steuerbefreiung"
+          value={settings.exemptionReason}
+          onChange={(v) => set('exemptionReason', v)}
+          hint="Wird für Positionen mit 0 % (steuerbefreit) ausgewiesen."
+        />
       </section>
 
       <section className="form-section">

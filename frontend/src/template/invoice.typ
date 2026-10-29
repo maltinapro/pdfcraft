@@ -50,7 +50,7 @@
     price: {{ item.price }},
     quantity: {{ item.quantity }},
     unit: unit.{{ item.unit }},
-    tax: {{ item.taxRate }}%,
+    tax: {% if item.taxRate == 0 %}tax.exempt(grounds: "{{ settings.exemptionReason }}"){% else %}{{ item.taxRate }}%{% endif %},
   )
 {% endfor %}]
 

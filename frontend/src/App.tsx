@@ -4,6 +4,7 @@ import { SettingsForm } from './components/SettingsForm'
 import { requestPdf } from './lib/api'
 import { buildRequest } from './lib/buildRequest'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
+import { validateInvoice } from './lib/validate'
 import { DEFAULT_SETTINGS, defaultInvoice, type Invoice, type Settings } from './lib/types'
 import './App.css'
 
@@ -61,6 +62,8 @@ export default function App() {
     setInvoice(defaultInvoice())
     setNotice('Zurückgesetzt.')
   }, [])
+
+  const issues = useMemo(() => validateInvoice(settings, invoice), [settings, invoice])
 
   const request = useMemo(() => buildRequest(settings, invoice), [settings, invoice])
 
@@ -150,6 +153,15 @@ export default function App() {
               Einstellungen
             </button>
           </div>
+          {issues.length > 0 && (
+            <ul className="issues" aria-label="E-Rechnung Hinweise">
+              {issues.map((issue) => (
+                <li key={issue.message} className={`issue issue-${issue.level}`}>
+                  {issue.message}
+                </li>
+              ))}
+            </ul>
+          )}
           {tab === 'invoice' ? (
             <InvoiceForm invoice={invoice} onChange={setInvoice} />
           ) : (
