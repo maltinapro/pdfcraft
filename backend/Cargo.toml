@@ -14,6 +14,7 @@ typst-pdf = "0.15.1"
 typst-as-lib = { version = "0.17.0", features = ["typst-kit-fonts", "typst-kit-embed-fonts"] }
 tower-http = { version = "0.5", features = ["cors"] }
 base64 = "0.23.1"
+lopdf = "0.46.0"
 
 # Typst is extremely slow unoptimized; keep `cargo run` fast too.
 [profile.dev]

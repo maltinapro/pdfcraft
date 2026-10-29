@@ -133,6 +133,9 @@ npm run build
   - Measured: remaining time is Typst layout of Invoice-Pro (single-threaded, CPU-clock bound); PDF export is ~2 ms.
   - Deliberately NO PDF/result cache: customer data must not be retained between requests. comemo may still hold intermediates for up to 10 compilations; use `comemo_evict_max_age(Some(0))` if that is not acceptable.
 
+## Factur-X XMP post-processing
+Typst/krilla writes its own XMP and cannot be extended (not fixable in the invoice-pro fork). `backend/src/facturx.rs` (lopdf) adds the `fx:` extension schema + `DocumentFileName/DocumentType/Version/ConformanceLevel` to the PDF's XMP when `factur-x.xml`/`xrechnung.xml` is attached (not for `invoice-draft.xml`); on any failure the unmodified PDF is returned. Verified with Mustang 2.26.0: `Parsed PDF:valid XML:valid`.
+
 ## Notes for Next Work
 - Do not add caches of rendered templates or generated PDFs (customer data).
 - Frontend serializer and backend template language should stay aligned.
@@ -161,5 +164,5 @@ Vision: simple form-based invoice configurator (logo, company address, minimal c
 - [x] 4. ZUGFeRD/Factur-X (PR `feat/zugferd-mapping`): invoice-pro 0.5.0 creates/embeds the XML (EN16931); no own XML generation
   - Form data is mapped (sender tax-nr/vat-id/email, recipient vat-id/email/buyer-reference, unit codes, IBAN/BIC, `#payment-goal`); `frontend/src/lib/validate.ts` shows e-invoice issues (errors/warnings, IBAN checksum) in the sidebar; invoice-pro's own `zugferd-errors: "report"` prints remaining problems into the PDF (then only `invoice-draft.xml` is attached)
   - 0% items must use an explicit category: template emits `tax.exempt(grounds: ...)` from `settings.exemptionReason` (raw `0%` makes Typst panic)
-  - Validated with Mustang 2.26.0: embedded XML valid (EN16931), PDF/A-3b compliant. Remaining known limitation: missing Factur-X XMP metadata (PDF-level ZUGFeRD validators report it); XRechnung-only rules (BR-DE-5/6/21/27, seller contact) are notices, not errors. Optional future: Mustang post-processing for XMP
+  - Validated with Mustang 2.26.0: embedded XML valid (EN16931), PDF/A-3b compliant. Remaining known limitation: missing Factur-X XMP metadata (PDF-level ZUGFeRD validators report it); XRechnung-only rules (BR-DE-5/6/21/27, seller contact) are notices, not errors. XMP gap is now fixed in the backend (see below)
 - [x] 5. invoice-pro fork (PR `feat/invoice-pro-fork`): https://github.com/maltinapro/invoice-pro (fork of leonieziechmann/invoice-pro, MIT). Branch `pdfcraft` based on upstream tag `v0.5.0` (NOT upstream `main`, which has unreleased API changes), tag `v0.5.0-pdfcraft.1`; `FORK.md` documents source/changes, upstream `LICENSE` stays unchanged. Vendored copy in `backend/vendor/typst-packages/preview/invoice-pro/0.5.0` (+ `FORK.md`). Workflow for template changes: commit in fork, tag `v0.5.0-pdfcraft.<n>`, re-copy into vendor, list the change in `FORK.md`. Fork must be created manually (session token cannot fork/create repos)
