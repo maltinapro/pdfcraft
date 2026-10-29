@@ -6,6 +6,7 @@ export interface Sender {
   vatId: string
   email: string
   phone: string
+  contactName: string
 }
 
 export interface Bank {
@@ -34,6 +35,8 @@ export interface Settings {
   exemptionReason: string
   bank: Bank
   zugferd: boolean
+  /** `en16931` for businesses, `xrechnung` for German public buyers. */
+  einvoiceProfile: string
 }
 
 export interface Recipient {
@@ -89,6 +92,11 @@ export const UNITS = [
   { value: 'l', label: 'Liter' },
 ] as const
 
+export const EINVOICE_PROFILES = [
+  { value: 'en16931', label: 'ZUGFeRD / Factur-X (EN 16931, Unternehmen)' },
+  { value: 'xrechnung', label: 'XRechnung (Behörden)' },
+] as const
+
 export const TAX_RATES = [19, 7, 0] as const
 
 export const MAX_LOGO_BYTES = 300 * 1024
@@ -103,6 +111,7 @@ export const DEFAULT_SETTINGS: Settings = {
     vatId: 'DE123456789',
     email: 'info@muster.example',
     phone: '',
+    contactName: '',
   },
   accentColor: '#1d4ed8',
   font: 'Liberation Sans',
@@ -114,6 +123,7 @@ export const DEFAULT_SETTINGS: Settings = {
   exemptionReason: 'Steuerfrei nach § 4 UStG',
   bank: { name: 'Musterbank', iban: 'DE07100202005821158846', bic: 'EXAMPLEBICX' },
   zugferd: true,
+  einvoiceProfile: 'en16931',
 }
 
 let itemCounter = 0
