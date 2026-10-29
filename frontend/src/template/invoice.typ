@@ -14,6 +14,10 @@
       font: ("{{ settings.font }}", "Libertinus Serif"),
       {% if assets and assets.logo %}logo: image("{{ assets.logo }}", alt: "Logo"),{% endif %}
     ),
+    theme.custom.items-table(zebra: (none, accent.lighten(85%))),
+    {% if settings.footer %}theme.custom.area("footer", arrange: (columns: (1fr,)), parts: (
+      align(center, text(8pt, fill: luma(90), lines("{{ settings.footer }}"))),
+    )),{% endif %}
   ),
   locale: locale.{{ settings.locale }},
   {% if settings.zugferd %}zugferd: "{{ settings.einvoiceProfile }}",
@@ -31,7 +35,6 @@
       {% if settings.sender.email %}email: "{{ settings.sender.email }}",{% endif %}
     ),{% endif %}
     {% if settings.sender.phone %}extra: ("Tel": "{{ settings.sender.phone }}"),{% endif %}
-    {% if settings.footer %}register: lines("{{ settings.footer }}"),{% endif %}
   ),
   recipient: (
     name: "{{ invoice.recipient.name }}",
