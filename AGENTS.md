@@ -9,6 +9,7 @@ PDFCraft is a full-stack PDF template builder:
 
 ## Language Conventions
 - Write pull request titles/descriptions and commit messages in English.
+- Keep `README.md` up to date: whenever a change affects setup, architecture, project structure, features, API or the tech stack, update the README in the same PR.
 
 ## Repository Structure
 - `frontend/` — UI editor and template serialization
