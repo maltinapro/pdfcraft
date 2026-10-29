@@ -2,7 +2,7 @@
 
 ## Project
 PDFCraft is a full-stack PDF template builder:
-- Frontend: React + Vite + Tiptap
+- Frontend: React + Vite (form-based invoice configurator)
 - Backend: Rust + Axum
 - Templating: minijinja
 - PDF generation path (current backend): Typst via `typst-as-lib`
@@ -10,9 +10,11 @@ PDFCraft is a full-stack PDF template builder:
 ## Language Conventions
 - Write pull request titles/descriptions and commit messages in English.
 - Keep `README.md` up to date: whenever a change affects setup, architecture, project structure, features, API or the tech stack, update the README in the same PR.
+- Work in one PR per roadmap step, branched from the latest `main`, so each step can be tested locally.
+- PR titles must follow Conventional Commits (e.g. `feat: ...`), because PRs are squash-merged and the title becomes the commit message.
 
 ## Repository Structure
-- `frontend/` — UI editor and template serialization
+- `frontend/` — configurator UI, request building, static template `src/template/invoice.typ`
 - `backend/` — API server (`/generate-pdf`, `/health`)
 - `README.md` — product overview and setup
 
@@ -134,7 +136,7 @@ npm run build
 ## Notes for Next Work
 - Do not add caches of rendered templates or generated PDFs (customer data).
 - Frontend serializer and backend template language should stay aligned.
-- Extend Typst serializer coverage if additional Tiptap nodes or advanced layout features are introduced.
+- Add new form fields in `types.ts` + `buildRequest.ts` (escape/validate) + the form + `invoice.typ`. User data goes only into Typst string literals (escape `\` and `"`).
 - Keep `cargo check` green after any backend change.
 - Keep `npm run build` green after any frontend change.
 
@@ -149,7 +151,10 @@ Vision: simple form-based invoice configurator (logo, company address, minimal c
   - invoice-pro upgraded 0.3.2 → 0.5.0 (has built-in ZUGFeRD/Factur-X via `zugferd: "en16931"`); frontend preamble + warm-up updated to 0.5.0 and verified (200 PDF)
   - Backend now exports PDF/A-3b (`pdf_options()` in `main.rs`), required to embed the XML. Verified: 0.5.0 template → 200, `factur-x.xml` embedded, `pdfaid:part=3`, conformance B
   - Note: Docker/deploy must copy `vendor/typst-packages` or set `TYPST_PACKAGE_PATH`
-- [ ] 2. Replace Tiptap editor with form-based configurator (settings JSON: logo, sender, color, font, footer, texts; invoice JSON: recipient, items, dates, tax); static Typst template with minijinja placeholders; escape user input for Typst; debounced backend preview
+- [x] 2. Form-based configurator replaces Tiptap (PR `feat/invoice-configurator`)
+  - Static template `frontend/src/template/invoice.typ`; `lib/buildRequest.ts` validates/escapes; debounced (600 ms) iframe preview; PDF download
+  - Backend `assets` field (base64, e.g. logo): per-request virtual files, exposed as `{{ assets.<key> }}`; body limit 2 MB
+  - Tiptap/katex and `tiptapToTypst` removed; ZUGFeRD enabled via `zugferd: "en16931"`
 - [ ] 3. Persistence: versioned (`schemaVersion`) config in localStorage/IndexedDB (logo as binary), JSON export/import, PDF download
 - [ ] 4. ZUGFeRD/Factur-X: NO own XML generation needed; invoice-pro 0.5.0 creates and embeds it (experimental). Map form data to its fields (sender vat-id/tax-nr, recipient buyer-reference, units with codes, bank details, payment goal) and surface its `zugferd-errors` report; validate output with Mustang/veraPDF. Known limitation: missing Factur-X XMP metadata (PDF-level validators reject it) -> optional Mustang post-processing
   - Validated with Mustang CLI 2.26.0 (`java -jar Mustang-CLI-2.26.0.jar --action validate --source x.pdf`): PDF/A-3b compliant, embedded XML valid (EN16931); only XMP errors remain. The current frontend `DEFAULT_PREAMBLE` sets no `zugferd:` (no XML embedded). Required for a valid e-invoice: `zugferd: "en16931"`, `tax-nr`/`vat-id` inside `sender` (top-level `tax-nr` is rejected), `#payment-goal(days: ..)` (BR-CO-25), sender/recipient `email` or `vat-id` (Peppol address, warning). Frontend `escapeForTypstStrings` over-escapes values placed in string literals (`2026\-01`) - fix in step 2

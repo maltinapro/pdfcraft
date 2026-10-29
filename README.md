@@ -4,20 +4,19 @@
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org/)
 
-A full-stack **PDF Template Builder** that combines a rich visual editor in the browser with a blazing-fast Rust backend. Design templates with variable placeholders and repeating data blocks, then compile them to publication-quality PDFs via Typst — with no local Typst installation required.
+A full-stack **PDF Template Builder** that combines a simple form-based invoice configurator in the browser with a blazing-fast Rust backend. Fill in your invoice data and compile it on a fixed invoice template to publication-quality PDFs via Typst — with no local Typst installation required.
 
 ---
 
 ## Features
 
-- 🎨 **Visual template designer** powered by [Tiptap](https://tiptap.dev/) — headings, lists, bold/italic/underline, and more
-- 🔵 **Variable placeholders** — click to insert `{{kundenname}}`, `{{datum}}`, etc. as styled chips
-- 🔁 **Subreports** — repeating data blocks (e.g. invoice line items) rendered as structured template sections
+- 🧾 **Form-based invoice configurator** — fill in invoice, recipient and line items; settings cover logo, company address, bank details, accent color, font, footer and texts
+- 🖼️ **Logo upload** (PNG/JPG/SVG, ≤ 300 KB) sent to the backend as a base64 asset
+- 👀 **Live PDF preview** — debounced re-render via the backend, shown in an iframe
 - 📐 **Typst-quality PDF output** via `typst-as-lib` + `typst-pdf` — no local Typst installation needed
 - 💉 **Data injection** via [minijinja](https://docs.rs/minijinja/) templating at render time
 - 📦 **Vendored Typst packages** — [invoice-pro](https://typst.app/universe/package/invoice-pro/) 0.5.0 and its dependencies ship in the repo; no network access at runtime
 - 🧾 **ZUGFeRD / Factur-X ready** — PDFs are exported as PDF/A-3b so invoice-pro can embed the e-invoice XML (`zugferd: "en16931"`, experimental)
-- 🔴 **Live template preview** panel shows the generated source as you type
 
 ---
 
@@ -25,24 +24,19 @@ A full-stack **PDF Template Builder** that combines a rich visual editor in the 
 
 ```
 Browser
-  └─ Tiptap Editor
-       │  user designs template with variable chips & subreport blocks
+  └─ Form (Invoice / Settings tabs)
+       │  buildRequest() validates + escapes input for Typst string literals
        │
-       ▼  editor.getJSON()
-  template serializer      (frontend/src/lib/tiptapToTypst.ts)
-       │  Tiptap JSON → Typst template source with {{ minijinja }} placeholders
-       │
-       ▼  POST /generate-pdf  { template, data }
+       ▼  POST /generate-pdf  { template, data, assets }
   Rust / Axum              (backend/src/main.rs)
-       │
-       ├─ minijinja → renders template with actual data
-       │
-       ├─ typst-as-lib + Typst compile rendered source to document
-       │
-       └─ typst-pdf → PDF bytes
+       │  template = static frontend/src/template/invoice.typ
+       ├─ minijinja → renders template with data (+ assets.<key> paths)
+       ├─ typst-as-lib + Typst compile rendered source
+       └─ typst-pdf → PDF/A-3b bytes (embedded ZUGFeRD XML)
               │
               ▼
-          browser download  output.pdf
+          iframe preview / download
+
 ```
 
 ---
@@ -52,28 +46,21 @@ Browser
 ```
 pdfcraft/
 ├── README.md
-├── frontend/                         # React + Vite + Tiptap
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── tsconfig.json
-│   ├── index.html
+├── frontend/                         # React + Vite
 │   └── src/
-│       ├── main.tsx                  # React entry point
-│       ├── App.tsx                   # Main application UI
-│       ├── App.css                   # Styles
-│       ├── extensions/
-│       │   ├── VariableNode.ts       # Inline variable placeholder node {{name}}
-│       │   ├── SubreportNode.ts      # Block node for repeating data rows
-│       │   └── SubreportView.tsx     # React NodeView for subreport visual
-│       └── lib/
-│           └── tiptapToTypst.ts      # Serializer: Tiptap JSON → Typst string
+│       ├── App.tsx                   # Shell: tabs, debounced preview, download
+│       ├── App.css
+│       ├── components/               # Field, SettingsForm, InvoiceForm
+│       ├── lib/
+│       │   ├── types.ts              # Model, defaults, whitelists (fonts, units, tax rates)
+│       │   ├── buildRequest.ts       # Validation + Typst escaping → request body
+│       │   └── api.ts                # requestPdf()
+│       └── template/invoice.typ      # Static invoice-pro template with minijinja placeholders
 │
 └── backend/                          # Rust (Axum + typst-as-lib + typst-pdf + minijinja)
     ├── Cargo.toml
-    ├── src/
-    │   └── main.rs
-    └── vendor/
-        └── typst-packages/           # Vendored @preview packages (invoice-pro 0.5.0, ...)
+    ├── src/main.rs
+    └── vendor/typst-packages/        # Vendored @preview packages (invoice-pro 0.5.0, ...)
 ```
 
 ---
@@ -121,25 +108,19 @@ Typst packages (`@preview/...`) are loaded from `backend/vendor/typst-packages` 
 
 ### 4. Generate a PDF
 
-1. Open **http://localhost:5173** in your browser
-2. Edit the invoice template in the editor
-3. Click **"Export & Generate PDF"** — the PDF is downloaded automatically
+1. Open **http://localhost:5173**
+2. Fill in the **Settings** tab (company, logo, bank details, design) and the **Invoice** tab (recipient, items)
+3. The preview updates automatically; click **"PDF herunterladen"** to download
 
 ---
 
 ## How It Works
 
-1. **Design** — The Tiptap editor renders a rich document. Variable chips (`VariableNode`) and subreport blocks (`SubreportNode`) are custom Tiptap extensions rendered as React components.
-
-2. **Serialize** — When the user clicks "Generate PDF", `tiptapToTypst()` walks the Tiptap JSON AST and produces Typst template source. Variable chips become `{{ id }}` minijinja placeholders; subreport blocks become `{% for item in dataSource %}...{% endfor %}` loops for repeated sections.
-
-3. **Send** — The frontend POSTs `{ template, data }` to `POST /generate-pdf` on the Rust backend.
-
-4. **Render** — The Rust handler uses **minijinja** to fill the template placeholders with the supplied JSON data object.
-
-5. **Compile** — The rendered Typst source is compiled to a Typst document via **typst-as-lib** and converted to PDF/A-3b bytes via **typst-pdf** (PDF/A-3b is required to embed ZUGFeRD / Factur-X XML).
-
-6. **Download** — The PDF bytes are returned with `Content-Type: application/pdf`, and the browser triggers a file download.
+1. **Configure** — The forms edit a typed model (`InvoiceSettings`, `Invoice`).
+2. **Build request** — `buildRequest()` whitelists fonts, locales, units, tax rates, colors, numbers and dates, and escapes `\` and `"` (all user data is placed into Typst string literals). The static template is imported with `?raw`.
+3. **Render** — The backend renders the template with minijinja, using `data` and, for binary files, `assets.<key>` paths.
+4. **Compile** — Typst compiles the result; typst-pdf exports PDF/A-3b so invoice-pro can embed the Factur-X XML.
+5. **Preview / download** — The PDF is shown via blob URL in an iframe, or downloaded.
 
 ---
 
@@ -153,16 +134,13 @@ Compiles a minijinja+Typst template with the supplied data and returns a PDF.
 
 ```json
 {
-  "template": "#set page(margin: 2.5cm)\n\nHello {{ kundenname }}!",
-  "data": {
-    "kundenname": "Max Mustermann",
-    "datum": "20.03.2026",
-    "positionen": [
-      { "artikel": "Webentwicklung", "menge": "8h", "preis": "960,00" }
-    ]
-  }
+  "template": "#set page(margin: 2.5cm)\n\nHello {{ name }}!",
+  "data": { "name": "Max Mustermann" },
+  "assets": { "logo": "<base64 image bytes>" }
 }
 ```
+
+`assets` is optional (max 8 entries, 1 MB each, keys alphanumeric). Each asset is available in the template as `{{ assets.<key> }}`, a virtual file path usable in `image(...)`; `data` must then be a JSON object. The request body is limited to 2 MB.
 
 **Response** (`200 OK`):
 
@@ -170,9 +148,7 @@ Compiles a minijinja+Typst template with the supplied data and returns a PDF.
 - `Content-Disposition: attachment; filename="output.pdf"`
 - Body: raw PDF bytes
 
-**Error response** (`500 Internal Server Error`):
-
-- Body: plain-text error message describing Typst compilation or template render failure
+**Error response**: JSON with an error code and details (4xx for invalid payloads/templates, 5xx for compile failures).
 
 ---
 
@@ -188,23 +164,8 @@ Returns server status.
 
 ## Extending
 
-### Add a new variable
-
-1. Add an entry to the `VARIABLES` array in `frontend/src/App.tsx`:
-   ```ts
-   { id: 'lieferadresse', label: 'Lieferadresse' }
-   ```
-2. The variable is now available in the sidebar. The backend data object must include the matching key.
-
-### Add a new subreport style
-
-1. Edit `frontend/src/lib/tiptapToTypst.ts` in the `subreport` case.
-2. Adjust how row content is emitted inside the `{% for item in dataSource %}` loop.
-3. Edit `SubreportView.tsx` to reflect the new structure visually in the editor.
-
-### Add math support
-
-Install `@tiptap/extension-mathematics` and add it to the extensions array in `App.tsx`. The Typst serializer already handles `inlineMath` and `blockMath` nodes and emits Typst math blocks.
+- **New setting / field**: add it to `frontend/src/lib/types.ts`, validate it in `buildRequest.ts`, add an input in the matching form, and use it in `frontend/src/template/invoice.typ`.
+- **New unit or tax rate**: extend `UNITS` / `TAX_RATES` in `types.ts` (units must be invoice-pro `unit.<id>` identifiers).
 
 ---
 
@@ -213,8 +174,7 @@ Install `@tiptap/extension-mathematics` and add it to the extensions array in `A
 | Layer | Technology |
 |-------|-----------|
 | Frontend framework | [React 18](https://react.dev/) + [Vite](https://vitejs.dev/) |
-| Rich text editor | [Tiptap 2](https://tiptap.dev/) (ProseMirror-based) |
-| Typst serializer | Custom `tiptapToTypst.ts` |
+| Invoice template | Static `invoice.typ` (minijinja + Typst) |
 | HTTP server | [Axum 0.7](https://docs.rs/axum/) |
 | Async runtime | [Tokio](https://tokio.rs/) |
 | Templating | [minijinja 2](https://docs.rs/minijinja/) |
