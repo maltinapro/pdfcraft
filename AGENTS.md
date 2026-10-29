@@ -119,8 +119,16 @@ npm run build
   - Restored `escapeForTypstStrings(...)` helper in `frontend/src/App.tsx` to keep PDF request data escaping intact.
 - Re-validated frontend health after Todo 7 updates.
   - Confirmed frontend with `cd frontend && npm run build`.
+- Optimized backend PDF generation performance (Invoice-Pro: ~2 s → ~50–100 ms depending on CPU clock).
+  - `backend/src/main.rs` uses one shared `TypstEngine` (`OnceLock`) with fonts and package resolver; each request's rendered template is registered as a unique virtual file (`/req-N.typ`) via a custom `FileResolver` and removed afterwards.
+  - comemo eviction max age is `Some(10)`; a warm-up compile runs at startup.
+  - Per-request timing logs: `typst layout`, `pdf export`, `typst compile+pdf`.
+  - `backend/Cargo.toml` dev profile is optimized (`opt-level = 1`, dependencies `opt-level = 3`, no debug assertions/overflow checks/debug info for dependencies).
+  - Measured: remaining time is Typst layout of Invoice-Pro (single-threaded, CPU-clock bound); PDF export is ~2 ms.
+  - Deliberately NO PDF/result cache: customer data must not be retained between requests. comemo may still hold intermediates for up to 10 compilations; use `comemo_evict_max_age(Some(0))` if that is not acceptable.
 
 ## Notes for Next Work
+- Do not add caches of rendered templates or generated PDFs (customer data).
 - Frontend serializer and backend template language should stay aligned.
 - Extend Typst serializer coverage if additional Tiptap nodes or advanced layout features are introduced.
 - Keep `cargo check` green after any backend change.
