@@ -13,3 +13,10 @@ typst = "0.15.1"
 typst-pdf = "0.15.1"
 typst-as-lib = { version = "0.17.0", features = ["packages", "ureq", "typst-kit-fonts", "typst-kit-embed-fonts"] }
 tower-http = { version = "0.5", features = ["cors"] }
+
+# Typst is extremely slow unoptimized; keep `cargo run` fast too.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3

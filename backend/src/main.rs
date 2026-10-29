@@ -81,6 +81,7 @@ fn compiler() -> &'static Compiler {
 }
 
 fn compile_pdf(rendered: String) -> Result<Vec<u8>, String> {
+    let started = std::time::Instant::now();
     let c = compiler();
     let name = format!("/req-{}.typ", REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed));
     let id = name.as_str().into_file_id();
@@ -98,6 +99,7 @@ fn compile_pdf(rendered: String) -> Result<Vec<u8>, String> {
     });
 
     c.sources.lock().unwrap().remove(&id);
+    println!("typst compile+pdf: {:?}", started.elapsed());
     match result {
         Ok(r) => r,
         Err(e) => Err(format!("Typst world setup error: {e}")),
