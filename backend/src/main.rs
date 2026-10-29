@@ -80,26 +80,6 @@ fn compiler() -> &'static Compiler {
     })
 }
 
-const PDF_CACHE_ENTRIES: usize = 32;
-
-type PdfCache = Mutex<std::collections::VecDeque<(String, Arc<Vec<u8>>)>>;
-static PDF_CACHE: OnceLock<PdfCache> = OnceLock::new();
-
-// Identical rendered Typst source yields the same PDF, so skip compilation.
-fn compile_pdf_cached(rendered: String) -> Result<Arc<Vec<u8>>, String> {
-    let cache = PDF_CACHE.get_or_init(Default::default);
-    if let Some((_, pdf)) = cache.lock().unwrap().iter().find(|(k, _)| *k == rendered) {
-        return Ok(pdf.clone());
-    }
-    let pdf = Arc::new(compile_pdf(rendered.clone())?);
-    let mut guard = cache.lock().unwrap();
-    if guard.len() >= PDF_CACHE_ENTRIES {
-        guard.pop_front();
-    }
-    guard.push_back((rendered, pdf.clone()));
-    Ok(pdf)
-}
-
 fn compile_pdf(rendered: String) -> Result<Vec<u8>, String> {
     let started = std::time::Instant::now();
     let c = compiler();
@@ -199,7 +179,7 @@ async fn generate_pdf(payload: Result<Json<GenerateRequest>, JsonRejection>) -> 
     };
 
     // Step 2: Compile Typst → PDF using the shared engine (fonts/packages cached)
-    let pdf_bytes = match tokio::task::spawn_blocking(move || compile_pdf_cached(rendered))
+    let pdf_bytes = match tokio::task::spawn_blocking(move || compile_pdf(rendered))
     .await
     {
         Ok(Ok(bytes)) => bytes,
@@ -225,7 +205,7 @@ async fn generate_pdf(payload: Result<Json<GenerateRequest>, JsonRejection>) -> 
                 "attachment; filename=\"output.pdf\"",
             ),
         ],
-        pdf_bytes.as_ref().clone(),
+        pdf_bytes,
     )
         .into_response()
 }
