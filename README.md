@@ -182,11 +182,13 @@ Returns server status.
 | Async runtime | [Tokio](https://tokio.rs/) |
 | Templating | [minijinja 2](https://docs.rs/minijinja/) |
 | PDF backend | [typst-as-lib](https://crates.io/crates/typst-as-lib) + [typst-pdf](https://crates.io/crates/typst-pdf) |
-| Invoice template | [invoice-pro 0.5.0](https://typst.app/universe/package/invoice-pro/) (vendored) |
+| Invoice template | [invoice-pro 0.5.0](https://typst.app/universe/package/invoice-pro/) (vendored from our fork [maltinapro/invoice-pro](https://github.com/maltinapro/invoice-pro), upstream [leonieziechmann/invoice-pro](https://github.com/leonieziechmann/invoice-pro), MIT) |
 | CORS | [tower-http](https://docs.rs/tower-http/) |
 
 ---
 
 ## License
+
+PDFCraft is MIT-licensed. The vendored Typst packages keep their own licenses (see `backend/vendor/typst-packages/**/LICENSE`); invoice-pro is MIT © Leonie Ziechmann.
 
 MIT © 2026 PDFCraft contributors
