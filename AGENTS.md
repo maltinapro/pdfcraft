@@ -7,6 +7,9 @@ PDFCraft is a full-stack PDF template builder:
 - Templating: minijinja
 - PDF generation path (current backend): Typst via `typst-as-lib`
 
+## Language Conventions
+- Write pull request titles/descriptions and commit messages in English.
+
 ## Repository Structure
 - `frontend/` — UI editor and template serialization
 - `backend/` — API server (`/generate-pdf`, `/health`)
