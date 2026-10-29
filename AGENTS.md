@@ -134,3 +134,18 @@ npm run build
 - Keep `cargo check` green after any backend change.
 - Keep `npm run build` green after any frontend change.
 
+## Roadmap / TODOs (resume here)
+Vision: simple form-based invoice configurator (logo, company address, minimal customizing, ZUGFeRD) on a fixed Typst template (invoice-pro); config saved as versioned JSON in browser storage, downloadable/importable.
+
+- [x] 1. Vendor Typst packages (no runtime network)
+  - `backend/vendor/typst-packages/preview/{invoice-pro/0.5.0,ibanator,letter-pro,loom,sepay,rustycure}` (see its README.md)
+  - `backend/src/main.rs`: `FileSystemResolver::local_package_root` (cached); path from env `TYPST_PACKAGE_PATH`, default `<manifest>/vendor/typst-packages`
+  - Removed `packages`/`ureq` features from `typst-as-lib`
+  - Verified: `cargo check` green; `POST /generate-pdf` with invoice-pro template returned 200 PDF (~97 ms)
+  - invoice-pro upgraded 0.3.2 → 0.5.0 (has built-in ZUGFeRD/Factur-X via `zugferd: "en16931"`); frontend preamble + warm-up updated to 0.5.0 and verified (200 PDF)
+  - Backend now exports PDF/A-3b (`pdf_options()` in `main.rs`), required to embed the XML. Verified: 0.5.0 template → 200, `factur-x.xml` embedded, `pdfaid:part=3`, conformance B
+  - Note: Docker/deploy must copy `vendor/typst-packages` or set `TYPST_PACKAGE_PATH`
+- [ ] 2. Replace Tiptap editor with form-based configurator (settings JSON: logo, sender, color, font, footer, texts; invoice JSON: recipient, items, dates, tax); static Typst template with minijinja placeholders; escape user input for Typst; debounced backend preview
+- [ ] 3. Persistence: versioned (`schemaVersion`) config in localStorage/IndexedDB (logo as binary), JSON export/import, PDF download
+- [ ] 4. ZUGFeRD/Factur-X: NO own XML generation needed; invoice-pro 0.5.0 creates and embeds it (experimental). Map form data to its fields (sender vat-id/tax-nr, recipient buyer-reference, units with codes, bank details, payment goal) and surface its `zugferd-errors` report; validate output with Mustang/veraPDF. Known limitation: missing Factur-X XMP metadata (PDF-level validators reject it) -> optional Mustang post-processing
+- [ ] 5. Optional: fork invoice-pro into own template to be independent of upstream

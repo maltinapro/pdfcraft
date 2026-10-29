@@ -169,7 +169,7 @@ function serializeNode(node: JSONContent): string {
   }
 }
 
-export const DEFAULT_PREAMBLE = `#import "@preview/invoice-pro:0.3.2": *
+export const DEFAULT_PREAMBLE = `#import "@preview/invoice-pro:0.5.0": *
 
 #show: invoice.with(
   theme: themes.DIN-5008(form: "A"),

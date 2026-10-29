@@ -395,7 +395,7 @@ export default function App() {
               value={templateMode}
               onChange={(e) => changeTemplateMode(e.target.value as 'invoice-pro' | 'none' | 'custom')}
             >
-              <option value="invoice-pro">Invoice-Pro (@preview/invoice-pro:0.3.2)</option>
+              <option value="invoice-pro">Invoice-Pro (@preview/invoice-pro:0.5.0)</option>
               <option value="none">No template (editor only)</option>
               <option value="custom">Custom template / Typst preamble</option>
             </select>

@@ -11,7 +11,7 @@ serde_json = "1"
 minijinja = "2"
 typst = "0.15.1"
 typst-pdf = "0.15.1"
-typst-as-lib = { version = "0.17.0", features = ["packages", "ureq", "typst-kit-fonts", "typst-kit-embed-fonts"] }
+typst-as-lib = { version = "0.17.0", features = ["typst-kit-fonts", "typst-kit-embed-fonts"] }
 tower-http = { version = "0.5", features = ["cors"] }
 
 # Typst is extremely slow unoptimized; keep `cargo run` fast too.
