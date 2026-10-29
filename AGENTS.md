@@ -155,7 +155,9 @@ Vision: simple form-based invoice configurator (logo, company address, minimal c
   - Static template `frontend/src/template/invoice.typ`; `lib/buildRequest.ts` validates/escapes; debounced (600 ms) iframe preview; PDF download
   - Backend `assets` field (base64, e.g. logo): per-request virtual files, exposed as `{{ assets.<key> }}`; body limit 2 MB
   - Tiptap/katex and `tiptapToTypst` removed; ZUGFeRD enabled via `zugferd: "en16931"`
-- [ ] 3. Persistence: versioned (`schemaVersion`) config in localStorage/IndexedDB (logo as binary), JSON export/import, PDF download
+- [x] 3. Persistence (PR `feat/config-persistence`)
+  - `frontend/src/lib/storage.ts`: versioned (`schemaVersion` = 1) config `{settings, invoice}` in localStorage key `pdfcraft.config` (logo stays base64 inside, ≤ 300 KB), auto-save (400 ms debounce)
+  - JSON export/import/reset in the header; `parseConfig` validates/merges with defaults and rejects newer versions; add migrations there when bumping `SCHEMA_VERSION`
 - [ ] 4. ZUGFeRD/Factur-X: NO own XML generation needed; invoice-pro 0.5.0 creates and embeds it (experimental). Map form data to its fields (sender vat-id/tax-nr, recipient buyer-reference, units with codes, bank details, payment goal) and surface its `zugferd-errors` report; validate output with Mustang/veraPDF. Known limitation: missing Factur-X XMP metadata (PDF-level validators reject it) -> optional Mustang post-processing
   - Validated with Mustang CLI 2.26.0 (`java -jar Mustang-CLI-2.26.0.jar --action validate --source x.pdf`): PDF/A-3b compliant, embedded XML valid (EN16931); only XMP errors remain. The current frontend `DEFAULT_PREAMBLE` sets no `zugferd:` (no XML embedded). Required for a valid e-invoice: `zugferd: "en16931"`, `tax-nr`/`vat-id` inside `sender` (top-level `tax-nr` is rejected), `#payment-goal(days: ..)` (BR-CO-25), sender/recipient `email` or `vat-id` (Peppol address, warning). Frontend `escapeForTypstStrings` over-escapes values placed in string literals (`2026\-01`) - fix in step 2
 - [ ] 5. Optional: fork invoice-pro into own template to be independent of upstream
