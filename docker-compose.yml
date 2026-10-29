@@ -1,0 +1,15 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # URL of the backend as seen from the browser
+        VITE_API_BASE_URL: http://localhost:3000
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
