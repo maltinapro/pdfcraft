@@ -187,8 +187,10 @@ All settings are environment variables of the backend:
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `BIND_ADDR` | `0.0.0.0:3000` | Listen address |
-| `API_KEYS` | – | Comma-separated API keys. `/v1/*` answers `503` while unset |
-| `RATE_LIMIT_PER_MINUTE` | `120` | Invoices per minute **per API key** (token bucket; a bulk request costs one per invoice) |
+| `API_KEYS` | – | Static comma-separated API keys (simple setups; optional when `DATABASE_URL` is set) |
+| `DATABASE_URL` | – | Postgres connection string; API keys are stored there as SHA-256 hashes (table `api_keys` is created automatically). `/v1/*` answers `503` while neither this nor `API_KEYS` is set |
+| `REDIS_URL` | – | Redis for a rate limit shared by all instances. Unset or unreachable: per-instance in-memory limit |
+| `RATE_LIMIT_PER_MINUTE` | `120` | Default invoices per minute **per API key** (DB keys can override it individually) (token bucket; a bulk request costs one per invoice) |
 | `BULK_MAX_INVOICES` | `100` | Maximum invoices per bulk request (must not exceed the rate limit) |
 | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations (all endpoints) |
 | `CORS_ALLOWED_ORIGINS` | any | Comma-separated browser origins, e.g. `https://app.example.com`; `*` or unset = any |
@@ -218,6 +220,21 @@ curl -X POST http://localhost:3000/v1/invoices/bulk \
 ```
 
 `bulk.json` is `{ "settings": { ... }, "invoices": [ { "number": "...", "date": "2026-10-29", "recipient": { ... }, "items": [ ... ] }, ... ] }`. The ZIP contains `invoice-<number>.pdf` per invoice; if one invoice fails nothing is returned and the error names it (`invoices[3]: ...`).
+
+### API keys for customers
+
+Keys live in Postgres (`DATABASE_URL`); only a SHA-256 hash is stored, so a database leak does not reveal keys. Manage them with the backend binary:
+
+```bash
+export DATABASE_URL=postgres://user:pass@host/pdfcraft
+pdfcraft-backend keys create --customer "ACME GmbH" --limit 300   # prints the key ONCE: pk_...
+pdfcraft-backend keys list
+pdfcraft-backend keys revoke 3        # or: keys activate 3
+```
+
+Give the printed key to the customer (`Authorization: Bearer pk_...`). Lookups are cached for ~30 s, so revocation takes effect within that time. In Docker: `docker compose run --rm backend /app/pdfcraft-backend keys create --customer ACME`.
+
+With `REDIS_URL` set, every instance uses the same token bucket per key (atomic Lua script), so the limit holds no matter which instance a request hits. If Redis is unreachable the instance falls back to its own in-memory limit and logs a warning.
 
 Run the server: `API_KEYS=secret RATE_LIMIT_PER_MINUTE=300 cargo run` (in `backend/`). In production put it behind TLS (reverse proxy), set `CORS_ALLOWED_ORIGINS` and `ENABLE_GENERATE_PDF=false`.
 

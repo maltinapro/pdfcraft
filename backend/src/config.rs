@@ -3,7 +3,9 @@
 //! | Variable | Default | Meaning |
 //! | --- | --- | --- |
 //! | `BIND_ADDR` | `0.0.0.0:3000` | Listen address |
-//! | `API_KEYS` | – | Comma-separated API keys; `/v1/*` answers 503 while unset |
+//! | `API_KEYS` | – | Comma-separated static API keys (optional when `DATABASE_URL` is set) |
+//! | `DATABASE_URL` | – | Postgres with the `api_keys` table (manage via `keys` subcommand) |
+//! | `REDIS_URL` | – | Shared rate limit across instances; in-memory without it |
 //! | `RATE_LIMIT_PER_MINUTE` | `120` | Invoices per minute per API key (a bulk request costs one per invoice) |
 //! | `BULK_MAX_INVOICES` | `100` | Maximum invoices per bulk request |
 //! | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations |
@@ -16,6 +18,8 @@ use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 pub struct Config {
     pub bind_addr: String,
     pub api_keys: Vec<String>,
+    pub database_url: Option<String>,
+    pub redis_url: Option<String>,
     pub rate_limit_per_minute: u32,
     pub bulk_max_invoices: usize,
     pub max_concurrent_compiles: usize,
@@ -54,6 +58,8 @@ impl Config {
         Self {
             bind_addr: std::env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into()),
             api_keys: env_list("API_KEYS"),
+            database_url: std::env::var("DATABASE_URL").ok().filter(|v| !v.trim().is_empty()),
+            redis_url: std::env::var("REDIS_URL").ok().filter(|v| !v.trim().is_empty()),
             rate_limit_per_minute: env_parse("RATE_LIMIT_PER_MINUTE", 120u32).max(1),
             bulk_max_invoices: env_parse("BULK_MAX_INVOICES", 100usize).max(1),
             max_concurrent_compiles: env_parse("MAX_CONCURRENT_COMPILES", cpus).max(1),

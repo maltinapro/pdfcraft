@@ -3,6 +3,7 @@
 
 use crate::config;
 use crate::invoice::{check_invoice, check_settings, file_stem, Errors, Invoice, Settings};
+use crate::store::{self, Client};
 use crate::{decode_assets, render_pdf, ApiError};
 use axum::{
     extract::{rejection::JsonRejection, Extension, Json, Request},
@@ -23,9 +24,6 @@ use std::{
 
 /// The same template the frontend ships; compiled into the binary.
 const INVOICE_TEMPLATE: &str = include_str!("../../frontend/src/template/invoice.typ");
-
-#[derive(Clone, Copy)]
-struct ClientId(usize);
 
 pub fn router() -> Router {
     Router::new()
@@ -57,26 +55,32 @@ fn presented_key(req: &Request) -> Option<String> {
 }
 
 async fn auth(mut req: Request, next: Next) -> Response {
-    let keys = &config::get().api_keys;
-    if keys.is_empty() {
+    let cfg = config::get();
+    if cfg.api_keys.is_empty() && !store::has_database() {
         return ApiError::new(
             StatusCode::SERVICE_UNAVAILABLE,
             "api_keys_not_configured",
-            "the /v1 API is disabled: set API_KEYS on the server",
+            "the /v1 API is disabled: set API_KEYS or DATABASE_URL on the server",
         )
         .into_response();
     }
     let presented = presented_key(&req).unwrap_or_default();
-    // Compare against every key without early exit.
-    let mut matched = None;
-    for (i, key) in keys.iter().enumerate() {
+    // Compare against every static key without early exit.
+    let mut client = None;
+    for (i, key) in cfg.api_keys.iter().enumerate() {
         if ct_eq(key.as_bytes(), presented.as_bytes()) {
-            matched = Some(i);
+            client = Some(Client {
+                id: format!("env:{i}"),
+                limit: cfg.rate_limit_per_minute,
+            });
         }
     }
-    match matched {
-        Some(i) => {
-            req.extensions_mut().insert(ClientId(i));
+    if client.is_none() && !presented.is_empty() {
+        client = store::lookup_key(&presented).await;
+    }
+    match client {
+        Some(c) => {
+            req.extensions_mut().insert(c);
             next.run(req).await
         }
         None => {
@@ -98,24 +102,37 @@ struct Bucket {
     last: Instant,
 }
 
-static BUCKETS: OnceLock<Mutex<HashMap<usize, Bucket>>> = OnceLock::new();
+static BUCKETS: OnceLock<Mutex<HashMap<String, Bucket>>> = OnceLock::new();
 
-/// Token bucket per API key: `RATE_LIMIT_PER_MINUTE` tokens, refilled continuously;
-/// every invoice costs one token.
-fn take_tokens(client: ClientId, cost: usize) -> Result<(), ApiError> {
-    let capacity = config::get().rate_limit_per_minute as f64;
-    let cost = cost as f64;
-    if cost > capacity {
+fn limited(capacity: f64, wait: Option<u64>) -> ApiError {
+    let mut err = ApiError::new(
+        StatusCode::TOO_MANY_REQUESTS,
+        "rate_limited",
+        format!("rate limit of {capacity} invoices per minute reached"),
+    );
+    err.retry_after = wait;
+    err
+}
+
+/// Token bucket per API key (`limit` tokens per minute, refilled continuously; every
+/// invoice costs one token). Shared via Redis when available, otherwise per process.
+async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiError> {
+    let capacity = client.limit as f64;
+    if cost as f64 > capacity {
         return Err(ApiError::new(
             StatusCode::TOO_MANY_REQUESTS,
             "rate_limited",
             format!("{cost} invoices exceed the limit of {capacity} per minute"),
         ));
     }
+    if let Some(decision) = store::redis_take(client, cost as u32).await {
+        return decision.map_err(|wait| limited(capacity, Some(wait)));
+    }
+    let cost = cost as f64;
     let per_sec = capacity / 60.0;
     let mut map = BUCKETS.get_or_init(Default::default).lock().unwrap();
     let now = Instant::now();
-    let bucket = map.entry(client.0).or_insert(Bucket {
+    let bucket = map.entry(client.id.clone()).or_insert(Bucket {
         tokens: capacity,
         last: now,
     });
@@ -126,13 +143,7 @@ fn take_tokens(client: ClientId, cost: usize) -> Result<(), ApiError> {
         return Ok(());
     }
     let wait = ((cost - bucket.tokens) / per_sec).ceil().max(1.0) as u64;
-    let mut err = ApiError::new(
-        StatusCode::TOO_MANY_REQUESTS,
-        "rate_limited",
-        format!("rate limit of {capacity} invoices per minute reached"),
-    );
-    err.retry_after = Some(wait);
-    Err(err)
+    Err(limited(capacity, Some(wait)))
 }
 
 fn validation_error(errors: Errors) -> ApiError {
@@ -166,11 +177,11 @@ fn logo_assets(logo: Option<String>) -> Result<Vec<(String, Vec<u8>)>, ApiError>
 }
 
 async fn single(
-    Extension(client): Extension<ClientId>,
+    Extension(client): Extension<Client>,
     payload: Result<Json<SingleRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let Json(req) = payload.map_err(bad_json)?;
-    take_tokens(client, 1)?;
+    take_tokens(&client, 1).await?;
 
     let mut errors = Errors::default();
     let settings = check_settings(&req.settings, &mut errors);
@@ -194,7 +205,7 @@ async fn single(
 }
 
 async fn bulk(
-    Extension(client): Extension<ClientId>,
+    Extension(client): Extension<Client>,
     payload: Result<Json<BulkRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let Json(req) = payload.map_err(bad_json)?;
@@ -206,7 +217,7 @@ async fn bulk(
             format!("`invoices` needs 1 to {max} entries"),
         ));
     }
-    take_tokens(client, req.invoices.len())?;
+    take_tokens(&client, req.invoices.len()).await?;
 
     let mut errors = Errors::default();
     let settings = check_settings(&req.settings, &mut errors);
