@@ -1,5 +1,6 @@
 import invoiceTemplate from '../template/invoice.typ?raw'
 import {
+  EINVOICE_PROFILES,
   FONTS,
   LOCALES,
   TAX_RATES,
@@ -70,6 +71,11 @@ export function buildRequest(settings: Settings, invoice: Invoice): PdfRequest {
         LOCALES[0].value,
       ),
       zugferd: settings.zugferd,
+      einvoiceProfile: oneOf(
+        settings.einvoiceProfile,
+        EINVOICE_PROFILES.map((p) => p.value),
+        EINVOICE_PROFILES[0].value,
+      ),
       footer: escapeTypstString(settings.footer),
       intro: escapeTypstString(settings.intro),
       closing: escapeTypstString(settings.closing),

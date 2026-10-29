@@ -40,6 +40,15 @@ export function validateInvoice(settings: Settings, invoice: Invoice): Issue[] {
     err('Steuerbefreiung: Grund fehlt (Einstellungen → Bankverbindung).')
   }
 
+  const xr = settings.einvoiceProfile === 'xrechnung'
+  if (xr) {
+    if (blank(s.contactName)) err('XRechnung: Ansprechpartner des Absenders fehlt (BR-DE-5).')
+    if ((s.phone.match(/\d/g) ?? []).length < 3) err('XRechnung: Telefon des Absenders mit mindestens 3 Ziffern fehlt (BR-DE-6).')
+    if (blank(s.email)) err('XRechnung: E-Mail des Absenders fehlt.')
+    if (blank(invoice.recipient.buyerReference)) err('XRechnung: Leitweg-ID / Käuferreferenz fehlt (BR-DE-15).')
+    if (blank(invoice.recipient.email)) err('XRechnung: E-Mail des Empfängers fehlt (elektronische Adresse).')
+  }
+
   const r = invoice.recipient
   if (blank(r.name) || blank(r.address) || blank(r.city)) err('Empfänger: Name, Straße und PLZ/Ort sind Pflicht.')
   if (blank(r.email) && blank(r.vatId)) warn('Empfänger: E-Mail oder USt-IdNr. fehlt (Peppol-Adresse).')

@@ -8,14 +8,15 @@
 #let accent = rgb("{{ settings.accentColor }}")
 
 #show: invoice.with(
-  theme: themes.DIN-5008(
-    form: "A",
-    font: "{{ settings.font }}",
-    color-row-even: accent.lighten(85%),
-    {% if settings.footer %}footer: align(center, text(8pt, fill: luma(90), lines("{{ settings.footer }}"))),{% endif %}
+  theme: theme.classic.with(
+    theme.custom.brand(
+      color: accent,
+      font: ("{{ settings.font }}", "Libertinus Serif"),
+      {% if assets and assets.logo %}logo: image("{{ assets.logo }}", alt: "Logo"),{% endif %}
+    ),
   ),
   locale: locale.{{ settings.locale }},
-  {% if settings.zugferd %}zugferd: "en16931",
+  {% if settings.zugferd %}zugferd: "{{ settings.einvoiceProfile }}",
   zugferd-errors: "report",{% endif %}
   sender: (
     name: "{{ settings.sender.name }}",
@@ -24,7 +25,13 @@
     {% if settings.sender.taxNr %}tax-nr: "{{ settings.sender.taxNr }}",{% endif %}
     {% if settings.sender.vatId %}vat-id: "{{ settings.sender.vatId }}",{% endif %}
     {% if settings.sender.email %}email: "{{ settings.sender.email }}",{% endif %}
+    {% if settings.sender.contactName or settings.sender.phone %}contact: (
+      {% if settings.sender.contactName %}name: "{{ settings.sender.contactName }}",{% endif %}
+      {% if settings.sender.phone %}phone: "{{ settings.sender.phone }}",{% endif %}
+      {% if settings.sender.email %}email: "{{ settings.sender.email }}",{% endif %}
+    ),{% endif %}
     {% if settings.sender.phone %}extra: ("Tel": "{{ settings.sender.phone }}"),{% endif %}
+    {% if settings.footer %}register: lines("{{ settings.footer }}"),{% endif %}
   ),
   recipient: (
     name: "{{ invoice.recipient.name }}",
@@ -38,8 +45,6 @@
   date: datetime(year: {{ invoice.date.year }}, month: {{ invoice.date.month }}, day: {{ invoice.date.day }}),
 )
 #set text(10pt)
-// `place` is relative to the page content area (DIN-5008 margins: 25mm left, 20mm top).
-{% if assets and assets.logo %}#place(top + left, dx: 0mm, dy: -8mm, image("{{ assets.logo }}", height: 20mm)){% endif %}
 
 {% if settings.intro %}#lines("{{ settings.intro }}")
 #v(1em){% endif %}
@@ -54,7 +59,7 @@
   )
 {% endfor %}]
 
-#payment-goal(days: {{ settings.paymentDays }})
+#payment-terms(days: {{ settings.paymentDays }})
 {% if settings.bank.iban %}
 #bank-details(
   bank: "{{ settings.bank.name }}",

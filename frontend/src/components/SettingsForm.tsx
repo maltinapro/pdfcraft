@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Field, TextAreaField, TextField } from './Field'
 import {
   FONTS,
+  EINVOICE_PROFILES,
   LOCALES,
   MAX_LOGO_BYTES,
   type Bank,
@@ -81,6 +82,12 @@ export function SettingsForm({ settings, onChange }: Props) {
         <TextField label="Straße / Hausnummer" value={settings.sender.address} onChange={(v) => setSender('address', v)} />
         <TextField label="PLZ / Ort" value={settings.sender.city} onChange={(v) => setSender('city', v)} />
         <TextField label="E-Mail" type="email" value={settings.sender.email} onChange={(v) => setSender('email', v)} />
+        <TextField
+          label="Ansprechpartner"
+          value={settings.sender.contactName}
+          onChange={(v) => setSender('contactName', v)}
+          hint="Für XRechnung Pflicht (zusammen mit Telefon)."
+        />
         <TextField label="Telefon" value={settings.sender.phone} onChange={(v) => setSender('phone', v)} />
         <TextField label="Steuernummer" value={settings.sender.taxNr} onChange={(v) => setSender('taxNr', v)} />
         <TextField label="USt-IdNr." value={settings.sender.vatId} onChange={(v) => setSender('vatId', v)} />
@@ -153,6 +160,17 @@ export function SettingsForm({ settings, onChange }: Props) {
           />
           ZUGFeRD / Factur-X einbetten (experimentell)
         </label>
+        {settings.zugferd && (
+          <Field label="Profil">
+            <select value={settings.einvoiceProfile} onChange={(e) => set('einvoiceProfile', e.target.value)}>
+              {EINVOICE_PROFILES.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
       </section>
     </div>
   )
