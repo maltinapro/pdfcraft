@@ -9,7 +9,7 @@ Keep each package's LICENSE. To update: copy the new version dir plus all transi
 ## invoice-pro fork
 
 `preview/invoice-pro/0.5.0` is vendored from our fork https://github.com/maltinapro/invoice-pro
-(branch `pdfcraft-main`, tag `v0.5.0-pdfcraft.2`), which is a fork of https://github.com/leonieziechmann/invoice-pro
+(branch `pdfcraft`, tag `v0.5.0-pdfcraft.2`), which is a fork of https://github.com/leonieziechmann/invoice-pro
 (MIT, © Leonie Ziechmann). `LICENSE` and the copyright notice are kept unchanged; `FORK.md` documents the source and all
 changes. Currently the contents are upstream `main` at commit `794f21d` (unreleased, new theming API, XRechnung profile; `typst.toml` still says 0.5.0) plus `FORK.md`. To change the template, commit to the fork,
 tag a new `v0.5.0-pdfcraft.<n>`, and re-copy `src/`, `template/`, `typst.toml`, `LICENSE`, `README.md`, `FORK.md` here.
