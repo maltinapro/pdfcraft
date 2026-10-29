@@ -31,6 +31,7 @@ export interface Settings {
   intro: string
   closing: string
   paymentDays: number
+  exemptionReason: string
   bank: Bank
   zugferd: boolean
 }
@@ -110,6 +111,7 @@ export const DEFAULT_SETTINGS: Settings = {
   intro: '',
   closing: 'Vielen Dank für Ihren Auftrag.',
   paymentDays: 14,
+  exemptionReason: 'Steuerfrei nach § 4 UStG',
   bank: { name: 'Musterbank', iban: 'DE07100202005821158846', bic: 'EXAMPLEBICX' },
   zugferd: true,
 }

@@ -96,7 +96,7 @@ export function InvoiceForm({ invoice, onChange }: Props) {
                 >
                   {TAX_RATES.map((rate) => (
                     <option key={rate} value={rate}>
-                      {rate} %
+                      {rate === 0 ? '0 % (steuerbefreit)' : `${rate} %`}
                     </option>
                   ))}
                 </select>

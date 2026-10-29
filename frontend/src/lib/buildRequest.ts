@@ -73,6 +73,7 @@ export function buildRequest(settings: Settings, invoice: Invoice): PdfRequest {
       footer: escapeTypstString(settings.footer),
       intro: escapeTypstString(settings.intro),
       closing: escapeTypstString(settings.closing),
+      exemptionReason: escapeTypstString(settings.exemptionReason),
       paymentDays: Math.max(0, Math.round(num(settings.paymentDays, 14))),
       sender: escapeAll({ ...settings.sender }),
       bank: escapeAll({ ...settings.bank }),

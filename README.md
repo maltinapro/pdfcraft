@@ -17,7 +17,7 @@ A full-stack **PDF Template Builder** that combines a simple form-based invoice 
 - 📐 **Typst-quality PDF output** via `typst-as-lib` + `typst-pdf` — no local Typst installation needed
 - 💉 **Data injection** via [minijinja](https://docs.rs/minijinja/) templating at render time
 - 📦 **Vendored Typst packages** — [invoice-pro](https://typst.app/universe/package/invoice-pro/) 0.5.0 and its dependencies ship in the repo; no network access at runtime
-- 🧾 **ZUGFeRD / Factur-X ready** — PDFs are exported as PDF/A-3b so invoice-pro can embed the e-invoice XML (`zugferd: "en16931"`, experimental)
+- 🧾 **ZUGFeRD / Factur-X ready** — PDFs are exported as PDF/A-3b so invoice-pro can embed the e-invoice XML (`zugferd: "en16931"`, experimental). The sidebar flags missing mandatory e-invoice data; 0 % items use an explicit tax-exempt category with a configurable reason. Validated with Mustang: embedded XML is EN 16931-valid; the Factur-X XMP metadata is not written yet (known limitation)
 
 ---
 
