@@ -139,7 +139,7 @@ Typst/krilla writes its own XMP and cannot be extended (not fixable in the invoi
 ## Notes for Next Work
 - Do not add caches of rendered templates or generated PDFs (customer data).
 - Frontend serializer and backend template language should stay aligned.
-- Add new form fields in `types.ts` + `buildRequest.ts` (escape/validate) + the form + `invoice.typ`. User data goes only into Typst string literals (escape `\` and `"`).
+- Add new form fields in `types.ts` + `buildRequest.ts` (escape/validate) + `backend/src/invoice.rs` (same validation for `/v1`) + the form + `invoice.typ`. User data goes only into Typst string literals (escape `\` and `"`).
 - Keep `cargo check` green after any backend change.
 - Keep `npm run build` green after any frontend change.
 
@@ -170,3 +170,4 @@ Vision: simple form-based invoice configurator (logo, company address, minimal c
 - [x] 8. Layout parity (PR `feat/layout-parity`): template on `theme.classic` now restores the old look: zebra rows via `theme.custom.items-table(zebra: (none, accent.lighten(85%)))`, custom `settings.footer` replaces the footer area (`theme.custom.area("footer", ...)`, every page), removed bogus `register:` sender key. Logo is `brand(logo:)`. Verified: 200 PDF, visual check, Mustang valid
 - [x] 7. Docker (PR `feat/docker`): `backend/Dockerfile` (release build, bundles `vendor/typst-packages`, `TYPST_PACKAGE_PATH`), `frontend/Dockerfile` (nginx, build arg `VITE_API_BASE_URL`), `docker-compose.yml` (frontend :8080, backend :3000). Verified: both images build, container returns a 200 PDF; `docker compose` itself not run (plugin missing in the dev env)
 - [x] 9. Backend usage docs (PR `docs/backend-usage`): README section "Using the backend directly (REST)"; header button "API-Request" exports the exact `{template, data, assets}` body (`pdfcraft-request.json`). The config export (`pdfcraft-config.json`) is NOT an API payload. Idea, not done: `/v1/invoices` endpoint, API key, rate limit, ZIP bulk
+- [x] 10. Production API (PR `feat/v1-api`): `POST /v1/invoices` (PDF) and `/v1/invoices/bulk` (ZIP) with server-side template (`include_str!` of `frontend/src/template/invoice.typ`), input = config-export JSON validated/escaped in `backend/src/invoice.rs` (must mirror `buildRequest.ts`), API keys (`API_KEYS`, Bearer or X-API-Key), per-key token-bucket rate limit, global compile semaphore, `CORS_ALLOWED_ORIGINS`, `ENABLE_GENERATE_PDF`. Env table in README "Configuration". Backend Docker build context is now the repo root. Verified: auth/401/503, validation 400, bulk ZIP, 429 + Retry-After, CORS list, Mustang valid, container smoke test. Not done: persistent/shared rate limit across instances, key rotation, request logging

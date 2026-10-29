@@ -1,4 +1,7 @@
+mod config;
 mod facturx;
+mod invoice;
+mod v1;
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use axum::{
@@ -24,7 +27,6 @@ use axum::{
 use minijinja::{Environment, Value};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
-use tower_http::cors::{Any, CorsLayer};
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -191,61 +193,80 @@ struct ErrorResponse {
     details: String,
 }
 
-fn json_error(status: StatusCode, error: &'static str, details: String) -> Response {
-    (status, Json(ErrorResponse { error, details })).into_response()
+pub(crate) struct ApiError {
+    pub status: StatusCode,
+    pub code: &'static str,
+    pub details: String,
+    pub retry_after: Option<u64>,
 }
 
-async fn generate_pdf(payload: Result<Json<GenerateRequest>, JsonRejection>) -> Response {
-    let payload = match payload {
-        Ok(Json(body)) => body,
-        Err(e) => {
-            let status = e.status();
-            return json_error(status, "invalid_request", e.body_text());
+impl ApiError {
+    pub fn new(status: StatusCode, code: &'static str, details: impl Into<String>) -> Self {
+        Self {
+            status,
+            code,
+            details: details.into(),
+            retry_after: None,
         }
-    };
-
-    let request_id = REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed);
-
-    if payload.assets.len() > MAX_ASSETS {
-        return json_error(
-            StatusCode::BAD_REQUEST,
-            "invalid_asset",
-            format!("at most {MAX_ASSETS} assets are allowed"),
-        );
     }
-    let mut decoded_assets: Vec<(String, Vec<u8>)> = Vec::new();
-    for (key, encoded) in &payload.assets {
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        let mut response = (
+            self.status,
+            Json(ErrorResponse {
+                error: self.code,
+                details: self.details,
+            }),
+        )
+            .into_response();
+        if let Some(secs) = self.retry_after {
+            response.headers_mut().insert(header::RETRY_AFTER, secs.into());
+        }
+        response
+    }
+}
+
+/// Decodes base64 assets (e.g. a logo) after checking count, key and size limits.
+pub(crate) fn decode_assets(
+    assets: &HashMap<String, String>,
+) -> Result<Vec<(String, Vec<u8>)>, ApiError> {
+    let bad = |details: String| ApiError::new(StatusCode::BAD_REQUEST, "invalid_asset", details);
+    if assets.len() > MAX_ASSETS {
+        return Err(bad(format!("at most {MAX_ASSETS} assets are allowed")));
+    }
+    let mut decoded = Vec::new();
+    for (key, encoded) in assets {
         if key.is_empty() || !key.chars().all(|c| c.is_ascii_alphanumeric()) {
-            return json_error(
-                StatusCode::BAD_REQUEST,
-                "invalid_asset",
-                format!("asset key `{key}` must be alphanumeric"),
-            );
+            return Err(bad(format!("asset key `{key}` must be alphanumeric")));
         }
         match BASE64.decode(encoded) {
-            Ok(bytes) if bytes.len() <= MAX_ASSET_BYTES => {
-                decoded_assets.push((key.clone(), bytes))
-            }
-            Ok(_) => {
-                return json_error(
-                    StatusCode::BAD_REQUEST,
-                    "invalid_asset",
-                    format!("asset `{key}` exceeds {MAX_ASSET_BYTES} bytes"),
-                );
-            }
-            Err(e) => {
-                return json_error(
-                    StatusCode::BAD_REQUEST,
-                    "invalid_asset",
-                    format!("asset `{key}` is not valid base64: {e}"),
-                );
-            }
+            Ok(bytes) if bytes.len() <= MAX_ASSET_BYTES => decoded.push((key.clone(), bytes)),
+            Ok(_) => return Err(bad(format!("asset `{key}` exceeds {MAX_ASSET_BYTES} bytes"))),
+            Err(e) => return Err(bad(format!("asset `{key}` is not valid base64: {e}"))),
         }
     }
+    Ok(decoded)
+}
 
-    let mut data = payload.data;
-    if !decoded_assets.is_empty() {
-        let paths: serde_json::Map<String, JsonValue> = decoded_assets
+static COMPILE_SLOTS: OnceLock<tokio::sync::Semaphore> = OnceLock::new();
+
+fn compile_slots() -> &'static tokio::sync::Semaphore {
+    COMPILE_SLOTS.get_or_init(|| tokio::sync::Semaphore::new(config::get().max_concurrent_compiles))
+}
+
+/// Renders the minijinja template and compiles it to a PDF. At most
+/// `MAX_CONCURRENT_COMPILES` compilations run at the same time.
+pub(crate) async fn render_pdf(
+    template: &str,
+    mut data: JsonValue,
+    assets: Vec<(String, Vec<u8>)>,
+) -> Result<Vec<u8>, ApiError> {
+    let request_id = REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+
+    if !assets.is_empty() {
+        let paths: serde_json::Map<String, JsonValue> = assets
             .iter()
             .map(|(key, _)| (key.clone(), JsonValue::String(asset_path(request_id, key))))
             .collect();
@@ -254,70 +275,62 @@ async fn generate_pdf(payload: Result<Json<GenerateRequest>, JsonRejection>) -> 
                 obj.insert("assets".into(), JsonValue::Object(paths));
             }
             None => {
-                return json_error(
+                return Err(ApiError::new(
                     StatusCode::BAD_REQUEST,
                     "invalid_request",
-                    "`data` must be an object when assets are used".into(),
-                );
+                    "`data` must be an object when assets are used",
+                ));
             }
         }
     }
 
-    // Step 1: Render the template with minijinja
-    let rendered = {
-        let mut env = Environment::new();
+    let mut env = Environment::new();
+    env.add_template("doc", template).map_err(|e| {
+        ApiError::new(StatusCode::BAD_REQUEST, "template_parse_error", e.to_string())
+    })?;
+    let tmpl = env.get_template("doc").map_err(|e| {
+        ApiError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "template_load_error",
+            e.to_string(),
+        )
+    })?;
+    let rendered = tmpl.render(Value::from_serialize(&data)).map_err(|e| {
+        ApiError::new(StatusCode::BAD_REQUEST, "template_render_error", e.to_string())
+    })?;
 
-        if let Err(e) = env.add_template("doc", &payload.template) {
-            return json_error(
-                StatusCode::BAD_REQUEST,
-                "template_parse_error",
-                e.to_string(),
-            );
-        }
+    let _slot = compile_slots().acquire().await.map_err(|e| {
+        ApiError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "task_join_error",
+            e.to_string(),
+        )
+    })?;
+    match tokio::task::spawn_blocking(move || compile_pdf(rendered, request_id, assets)).await {
+        Ok(Ok(bytes)) => Ok(bytes),
+        Ok(Err(e)) => Err(ApiError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "typst_compile_error",
+            e,
+        )),
+        Err(e) => Err(ApiError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "task_join_error",
+            e.to_string(),
+        )),
+    }
+}
 
-        let tmpl = match env.get_template("doc") {
-            Ok(t) => t,
-            Err(e) => {
-                return json_error(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "template_load_error",
-                    e.to_string(),
-                );
-            }
-        };
-
-        let ctx = Value::from_serialize(&data);
-        match tmpl.render(ctx) {
-            Ok(s) => s,
-            Err(e) => {
-                return json_error(
-                    StatusCode::BAD_REQUEST,
-                    "template_render_error",
-                    e.to_string(),
-                );
-            }
-        }
+async fn generate_pdf(
+    payload: Result<Json<GenerateRequest>, JsonRejection>,
+) -> Result<Response, ApiError> {
+    let payload = match payload {
+        Ok(Json(body)) => body,
+        Err(e) => return Err(ApiError::new(e.status(), "invalid_request", e.body_text())),
     };
-
-    // Step 2: Compile Typst → PDF using the shared engine (fonts/packages cached)
-    let pdf_bytes = match tokio::task::spawn_blocking(move || compile_pdf(rendered, request_id, decoded_assets))
-    .await
-    {
-        Ok(Ok(bytes)) => bytes,
-        Ok(Err(e)) => {
-            return json_error(StatusCode::UNPROCESSABLE_ENTITY, "typst_compile_error", e);
-        }
-        Err(e) => {
-            return json_error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "task_join_error",
-                e.to_string(),
-            );
-        }
-    };
-
-    // Step 3: Return PDF with appropriate headers
-    (
+    let assets = decode_assets(&payload.assets)?;
+    let pdf_bytes = render_pdf(&payload.template, payload.data, assets).await?;
+    Ok((
         StatusCode::OK,
         [
             (header::CONTENT_TYPE, "application/pdf"),
@@ -328,7 +341,7 @@ async fn generate_pdf(payload: Result<Json<GenerateRequest>, JsonRejection>) -> 
         ],
         pdf_bytes,
     )
-        .into_response()
+        .into_response())
 }
 
 async fn health() -> Json<HealthResponse> {
@@ -337,16 +350,16 @@ async fn health() -> Json<HealthResponse> {
 
 #[tokio::main]
 async fn main() {
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let cfg = config::get();
 
-    let app = Router::new()
-        .route("/generate-pdf", post(generate_pdf))
-        .route("/health", get(health))
+    let mut app = Router::new().route("/health", get(health));
+    if cfg.enable_generate_pdf {
+        app = app.route("/generate-pdf", post(generate_pdf));
+    }
+    let app = app
+        .nest("/v1", v1::router())
         .layer(DefaultBodyLimit::max(MAX_REQUEST_BODY_BYTES))
-        .layer(cors);
+        .layer(config::cors_layer());
 
     // Warm up fonts and package cache so the first request is fast
     tokio::task::spawn_blocking(|| {
@@ -357,14 +370,23 @@ async fn main() {
         );
     });
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
+    let listener = tokio::net::TcpListener::bind(&cfg.bind_addr)
         .await
-        .expect("Failed to bind to port 3000");
+        .unwrap_or_else(|e| panic!("Failed to bind to {}: {e}", cfg.bind_addr));
 
-    println!("🚀 PDFCraft backend listening on http://0.0.0.0:3000");
-    println!("   POST /generate-pdf  — compile Typst template to PDF");
-    println!("   GET  /health        — health check");
+    println!("🚀 PDFCraft backend listening on http://{}", cfg.bind_addr);
+    println!("   GET  /health               — health check");
+    if cfg.enable_generate_pdf {
+        println!("   POST /generate-pdf         — compile a Typst template to PDF");
+    } else {
+        println!("   POST /generate-pdf         — disabled (ENABLE_GENERATE_PDF=false)");
+    }
+    if cfg.api_keys.is_empty() {
+        println!("   POST /v1/invoices[/bulk]   — disabled (set API_KEYS to enable)");
+    } else {
+        println!("   POST /v1/invoices          — one invoice -> PDF (API key required)");
+        println!("   POST /v1/invoices/bulk     — many invoices -> ZIP (API key required)");
+    }
 
     axum::serve(listener, app).await.expect("Server error");
 }
-
