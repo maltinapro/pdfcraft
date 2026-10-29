@@ -12,6 +12,7 @@ A full-stack **PDF Template Builder** that combines a simple form-based invoice 
 
 - 🧾 **Form-based invoice configurator** — fill in invoice, recipient and line items; settings cover logo, company address, bank details, accent color, font, footer and texts
 - 🖼️ **Logo upload** (PNG/JPG/SVG, ≤ 300 KB) sent to the backend as a base64 asset
+- 💾 **Persistence** — settings and invoice draft are auto-saved in the browser (`localStorage`, versioned `schemaVersion`); export/import as JSON, reset to defaults
 - 👀 **Live PDF preview** — debounced re-render via the backend, shown in an iframe
 - 📐 **Typst-quality PDF output** via `typst-as-lib` + `typst-pdf` — no local Typst installation needed
 - 💉 **Data injection** via [minijinja](https://docs.rs/minijinja/) templating at render time
@@ -53,6 +54,7 @@ pdfcraft/
 │       ├── components/               # Field, SettingsForm, InvoiceForm
 │       ├── lib/
 │       │   ├── types.ts              # Model, defaults, whitelists (fonts, units, tax rates)
+│       │   ├── storage.ts            # Versioned localStorage + JSON export/import
 │       │   ├── buildRequest.ts       # Validation + Typst escaping → request body
 │       │   └── api.ts                # requestPdf()
 │       └── template/invoice.typ      # Static invoice-pro template with minijinja placeholders
@@ -110,7 +112,8 @@ Typst packages (`@preview/...`) are loaded from `backend/vendor/typst-packages` 
 
 1. Open **http://localhost:5173**
 2. Fill in the **Settings** tab (company, logo, bank details, design) and the **Invoice** tab (recipient, items)
-3. The preview updates automatically; click **"PDF herunterladen"** to download
+3. Your input is saved automatically in the browser; use **Exportieren / Importieren** for a JSON backup
+4. The preview updates automatically; click **"PDF herunterladen"** to download
 
 ---
 

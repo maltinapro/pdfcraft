@@ -266,3 +266,17 @@ input[type='color'] {
 .preview-error + .preview-loading {
   top: 56px;
 }
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.notice {
+  padding: 6px 16px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
