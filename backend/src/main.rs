@@ -1,3 +1,5 @@
+mod facturx;
+
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use axum::{
     extract::{
@@ -149,6 +151,7 @@ fn compile_pdf(
         let compiled = started.elapsed();
         let pdf = typst_pdf::pdf(&doc, &pdf_options())
             .map_err(|e| format!("Typst PDF generation error: {e:?}"))?;
+        let pdf = facturx::add_facturx_xmp(pdf);
         println!(
             "typst layout: {compiled:?}, pdf export: {:?}",
             started.elapsed() - compiled
