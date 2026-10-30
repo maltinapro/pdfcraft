@@ -1,13 +1,100 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PDFCraft — Invoice Configurator</title>
+    <title>PDFCraft — Rechnungen als ZUGFeRD &amp; XRechnung erzeugen (Demo)</title>
+    <meta
+      name="description"
+      content="PDFCraft ist ein Open-Source-Projekt zum Erzeugen von ZUGFeRD-Rechnungen, einzeln oder als Bulk. Dies ist ein Demo-System."
+    />
+    <link rel="stylesheet" href="/src/landing.css" />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div class="banner">Demo-System – bitte keine echten Kundendaten eingeben.</div>
+
+    <header class="hero">
+      <h1>PDFCraft</h1>
+      <p class="lead">
+        Rechnungen als <strong>ZUGFeRD</strong>/<strong>XRechnung</strong>-PDF erzeugen –
+        einzeln im Browser oder per API automatisiert als Bulk.
+      </p>
+      <a class="button" href="/app/">Demo ausprobieren</a>
+      <a class="button secondary" href="https://github.com/maltinapro/pdfcraft">Quellcode auf GitHub</a>
+    </header>
+
+    <main>
+      <section>
+        <h2>Was ist das hier?</h2>
+        <p>
+          Diese Seite ist ein <strong>Demo-System</strong>. Du kannst hier ausprobieren, wie sich
+          Rechnungen per Formular zusammenklicken lassen: Logo, Firmenanschrift, Positionen und
+          ein paar Gestaltungsoptionen – die Vorschau aktualisiert sich live. Deine Eingaben
+          bleiben im Browser gespeichert und lassen sich als JSON sichern und wieder einlesen.
+        </p>
+      </section>
+
+      <section>
+        <h2>Funktionen</h2>
+        <div class="cards">
+          <article>
+            <h3>ZUGFeRD &amp; XRechnung</h3>
+            <p>
+              PDF/A-3 mit eingebettetem XML (EN 16931 bzw. XRechnung), geprüft mit dem
+              Mustang-Validator. Fehlende Pflichtangaben werden direkt angezeigt.
+            </p>
+          </article>
+          <article>
+            <h3>Bulk-Rechnungen</h3>
+            <p>
+              Über die REST-API lassen sich viele Rechnungen in einem Request erzeugen und als
+              ZIP abholen – mit API-Key und Rate-Limit pro Kunde.
+            </p>
+          </article>
+          <article>
+            <h3>Open Source</h3>
+            <p>
+              Das Projekt ist quelloffen (MIT-Lizenz). Du kannst es selbst betreiben, prüfen und
+              erweitern.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <h2>Wie geht es weiter?</h2>
+        <ul>
+          <li>
+            Aktuell sind <strong>Rechnungen</strong> umgesetzt. <strong>Weitere PDF-Dokumente</strong>
+            (etwa Angebote, Lieferscheine oder Berichte) sollen folgen.
+          </li>
+          <li>
+            Bei Bedarf können <strong>individuelle PDF-Vorlagen</strong> für dich erstellt werden.
+          </li>
+          <li>
+            Ich plane die Gründung der <strong>maltina.pro UG (haftungsbeschränkt)</strong>. Sie soll
+            das <strong>Hosting und den Betrieb</strong> des Services anbieten und ihn
+            <strong>weiterentwickeln</strong>. Die Gesellschaft ist noch nicht gegründet.
+          </li>
+        </ul>
+      </section>
+
+      <section class="contact">
+        <h2>Interesse?</h2>
+        <p>
+          Probiere die Demo aus. Wenn du Fragen hast, eine eigene Vorlage brauchst oder den
+          Service nutzen möchtest, melde dich über die Kontaktmöglichkeiten im
+          <a href="/impressum.html">Impressum</a> oder eröffne ein Issue auf
+          <a href="https://github.com/maltinapro/pdfcraft/issues">GitHub</a>.
+        </p>
+        <a class="button" href="/app/">Zur Demo</a>
+      </section>
+    </main>
+
+    <footer>
+      <a href="/impressum.html">Impressum</a> ·
+      <a href="/datenschutz.html">Datenschutz</a> ·
+      <a href="https://github.com/maltinapro/pdfcraft">GitHub</a>
+    </footer>
   </body>
 </html>

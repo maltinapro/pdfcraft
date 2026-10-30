@@ -25,7 +25,7 @@ The URL is the one the **browser** uses, not an internal container name.
 docker compose up --build
 ```
 
-- Frontend: `http://localhost:8080`
+- Frontend: `http://localhost:8080` (landing page), app at `http://localhost:8080/app/`
 - Backend: `http://localhost:3000`
 
 Only `/generate-pdf` works (no keys configured), which is all the UI needs.

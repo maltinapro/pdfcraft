@@ -9,6 +9,10 @@ Goal: let prospective customers try the configurator in the browser (form, live 
 - `POST /generate-pdf` accepts an arbitrary Typst template and has no per-user rate limit. The Typst engine only sees the request's own files and the vendored packages (no network, no host files), so the main risk is **resource abuse** (expensive layouts, many requests). Mitigate it as described below.
 - Use a **separate backend instance** for the demo. Never enable `/generate-pdf` on the production API that customers use.
 
+## Landing page
+
+The frontend serves a German landing page at `/` (`frontend/index.html`, no JavaScript) with a link to the app at `/app/` (`frontend/app/index.html`). It also contains `impressum.html` and `datenschutz.html`. Fill in the placeholders in these two files before publishing: in Germany a publicly reachable service needs an Impressum (§ 5 DDG) with name, a summonable postal address and an e-mail address. A c/o or virtual-office address is possible only if mail is really received there. This is not legal advice.
+
 ## Recommended setup
 
 ```
