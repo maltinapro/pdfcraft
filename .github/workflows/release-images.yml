@@ -1,7 +1,10 @@
 name: Release images
 
-# Manual only: Actions -> "Release images" -> Run workflow
+# Triggered by publishing a GitHub release (tag vX.Y.Z) or manually:
+# Actions -> "Release images" -> Run workflow
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag:
@@ -17,9 +20,51 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      chart_version: ${{ steps.v.outputs.chart_version }}
+      tags: ${{ steps.v.outputs.tags }}
+    steps:
+      - id: v
+        env:
+          EVENT: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_CHART: ${{ inputs.chart_version }}
+        run: |
+          if [ "$EVENT" = "release" ]; then
+            version="${RELEASE_TAG#v}"
+            if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+              echo "Release tag '$RELEASE_TAG' must look like v1.2.3 (or v1.2.3-rc.1)"; exit 1
+            fi
+            tag="$version"; chart="$version"
+            tags="type=raw,value=$version"
+            if [[ "$version" != *-* ]]; then
+              tags="$tags"$'\n'"type=raw,value=${version%.*}"
+            fi
+            if [ "$PRERELEASE" != "true" ]; then
+              tags="$tags"$'\n'"type=raw,value=latest"
+            fi
+          else
+            tag="$INPUT_TAG"; chart="$INPUT_CHART"
+            tags="type=raw,value=$tag"
+          fi
+          tags="$tags"$'\n'"type=sha,format=short"
+          {
+            echo "tag=$tag"
+            echo "chart_version=$chart"
+            echo "tags<<EOF"
+            echo "$tags"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
   # The backend is compiled natively per architecture (Rust under QEMU would take hours),
   # pushed by digest and merged into one multi-arch tag afterwards.
   backend:
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -76,7 +121,7 @@ jobs:
 
   backend-manifest:
     runs-on: ubuntu-latest
-    needs: backend
+    needs: [prepare, backend]
     permissions:
       contents: read
       packages: write
@@ -98,9 +143,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE }}
-          tags: |
-            type=raw,value=${{ inputs.tag }}
-            type=sha,format=short
+          tags: ${{ needs.prepare.outputs.tags }}
       - name: Create multi-arch manifest
         working-directory: /tmp/digests
         run: |
@@ -108,11 +151,12 @@ jobs:
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf "${IMAGE}@sha256:%s " *)
       - name: Inspect
-        run: docker buildx imagetools inspect "${IMAGE}:${{ inputs.tag }}"
+        run: docker buildx imagetools inspect "${IMAGE}:${{ needs.prepare.outputs.tag }}"
 
   # The frontend build stage runs on the build platform (static files are
   # architecture independent); only the nginx base image differs per platform.
   frontend:
+    needs: prepare
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -130,9 +174,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/pdfcraft-frontend
-          tags: |
-            type=raw,value=${{ inputs.tag }}
-            type=sha,format=short
+          tags: ${{ needs.prepare.outputs.tags }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
       - uses: docker/build-push-action@v6
@@ -150,7 +192,7 @@ jobs:
 
   chart:
     runs-on: ubuntu-latest
-    needs: [backend-manifest, frontend]
+    needs: [prepare, backend-manifest, frontend]
     permissions:
       contents: read
       packages: write
@@ -159,8 +201,8 @@ jobs:
       - uses: azure/setup-helm@v4
       - name: Package and push chart to GHCR (OCI)
         env:
-          TAG: ${{ inputs.tag }}
-          CHART_VERSION: ${{ inputs.chart_version }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          CHART_VERSION: ${{ needs.prepare.outputs.chart_version }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           OWNER="${GITHUB_REPOSITORY_OWNER,,}"

@@ -9,25 +9,38 @@ Routing on one host (same origin, no CORS):
 | `/generate-pdf` | backend |
 | `/` (landing page, `/app/`) | frontend |
 
-## Images
+## Releasing (images and chart)
 
-The workflow `.github/workflows/release-images.yml` is **manual**: in GitHub go to Actions → "Release images" → Run workflow, enter a tag (default `latest`) and start it. It builds and pushes:
+The workflow `.github/workflows/release-images.yml` builds and publishes both images and the chart. It runs in two ways.
+
+### 1. GitHub release (recommended)
+
+1. On GitHub: Releases → **Draft a new release** → create a tag like `v0.1.0` on `main` → *Generate release notes* → **Publish release**. (Tags must look like `vX.Y.Z` or `vX.Y.Z-rc.1`, otherwise the workflow fails.)
+2. The workflow builds the tagged commit and publishes:
+
+| Artifact | Tags / version |
+| --- | --- |
+| `ghcr.io/maltinapro/pdfcraft-backend` and `-frontend` | `0.1.0`, `0.1` and the short commit SHA; `latest` as well unless the release is marked *pre-release* (`0.1` is not set for `-rc` versions) |
+| `oci://ghcr.io/maltinapro/charts/pdfcraft` | chart `version` and `appVersion` = `0.1.0` |
+
+Chart and images share one version, so `--version 0.1.0` installs exactly the images of release `v0.1.0`. The `version` in `Chart.yaml` in the repository is only a placeholder; the workflow overwrites it.
+
+### 2. Manual run (tests, intermediate builds)
+
+Actions → "Release images" → Run workflow, with `tag` (for example `dev`) and `chart_version` (SemVer). It builds the selected branch; chart `appVersion` becomes the tag.
+
+### Images
 
 - `ghcr.io/maltinapro/pdfcraft-backend`
 - `ghcr.io/maltinapro/pdfcraft-frontend` (built with an empty `VITE_API_BASE_URL`, so it calls `/generate-pdf` on its own host)
 
-Both images are **multi-arch** (`linux/amd64` and `linux/arm64`) under a single tag, so the same chart runs on x86 and ARM nodes. The backend is compiled natively on a GitHub-hosted ARM runner (`ubuntu-24.04-arm`, free for public repositories) instead of QEMU, which would take hours for Rust/Typst; the frontend build stage always runs on the build machine because its output is architecture independent.
+Both images are **multi-arch** (`linux/amd64` and `linux/arm64`) under a single tag. The backend is compiled natively on a GitHub-hosted ARM runner (`ubuntu-24.04-arm`) instead of QEMU, which would take hours for Rust/Typst; the frontend build stage always runs on the build machine because its output is architecture independent. `helm-lint.yml` lints the chart on pull requests that touch `deploy/`.
 
-Tags: the tag you entered and the short commit SHA of the selected branch. A separate workflow (`helm-lint.yml`) runs `helm lint` and `helm template` on pull requests that touch `deploy/`. Nothing is built automatically on push; to deploy, run the workflow and then restart the pods (see Install).
-
-**One-time step:** new GHCR packages are private. Make both public so the cluster can pull without credentials: GitHub → your profile → Packages → the package → Package settings → Change visibility → Public. If you keep them private instead, create an image pull secret and add `imagePullSecrets` to the chart (not supported yet).
+**One-time step:** new GHCR packages are private. Make both images public so the cluster can pull without credentials: GitHub → your profile → Packages → the package → Package settings → Change visibility → Public. If you keep them private, create an image pull secret and add `imagePullSecrets` to the chart (not supported yet).
 
 ## Chart in GHCR (OCI)
 
-The same manual workflow also publishes the chart as an OCI artifact after the images were built. Inputs of "Run workflow":
-
-- `tag`: image tag (default `latest`); it becomes the chart's `appVersion`, so the chart installs exactly these images.
-- `chart_version`: chart version, SemVer (default `0.1.0`). Re-using a version overwrites it; use a new version for each release you want to pin.
+The workflow publishes the chart after the images were built (see above).
 
 Result: `oci://ghcr.io/maltinapro/charts/pdfcraft`. **One-time step:** set the package `charts/pdfcraft` to *Public* (Packages → Package settings → Change visibility), like the images; otherwise `helm` needs a login.
 
