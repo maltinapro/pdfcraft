@@ -1,6 +1,7 @@
 mod config;
 mod facturx;
 mod invoice;
+mod store;
 mod v1;
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
@@ -350,7 +351,12 @@ async fn health() -> Json<HealthResponse> {
 
 #[tokio::main]
 async fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if store::run_cli(&args).await {
+        return;
+    }
     let cfg = config::get();
+    store::init().await;
 
     let mut app = Router::new().route("/health", get(health));
     if cfg.enable_generate_pdf {
@@ -381,11 +387,16 @@ async fn main() {
     } else {
         println!("   POST /generate-pdf         — disabled (ENABLE_GENERATE_PDF=false)");
     }
-    if cfg.api_keys.is_empty() {
-        println!("   POST /v1/invoices[/bulk]   — disabled (set API_KEYS to enable)");
+    if cfg.api_keys.is_empty() && !store::has_database() {
+        println!("   POST /v1/invoices[/bulk]   — disabled (set API_KEYS or DATABASE_URL to enable)");
     } else {
         println!("   POST /v1/invoices          — one invoice -> PDF (API key required)");
         println!("   POST /v1/invoices/bulk     — many invoices -> ZIP (API key required)");
+        println!(
+            "   API keys: {}; rate limit: {}",
+            if store::has_database() { "Postgres" } else { "API_KEYS" },
+            if store::has_redis() { "Redis (shared)" } else { "in-memory (per instance)" }
+        );
     }
 
     axum::serve(listener, app).await.expect("Server error");
