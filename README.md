@@ -130,6 +130,8 @@ docker compose up --build   # frontend: http://localhost:8080, backend: http://l
 
 The backend image is built from the repository root (it embeds `frontend/src/template/invoice.typ`), bundles `vendor/typst-packages` and sets `TYPST_PACKAGE_PATH=/app/typst-packages`. Pass `API_KEYS`, `CORS_ALLOWED_ORIGINS` and `ENABLE_GENERATE_PDF` through the environment (see [Configuration](#configuration)), e.g. `API_KEYS=secret docker compose up --build`. The frontend image is built with `VITE_API_BASE_URL` (build arg in `docker-compose.yml`, default `http://localhost:3000`) — set it to the public backend URL when deploying.
 
+> **More guides:** see [`docs/`](docs/README.md) for run modes, Docker, configuration, API keys, production, demo setup and a Helm outlook.
+
 ## How It Works
 
 1. **Configure** — The forms edit a typed model (`InvoiceSettings`, `Invoice`).
