@@ -17,58 +17,140 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+  # The backend is compiled natively per architecture (Rust under QEMU would take hours),
+  # pushed by digest and merged into one multi-arch tag afterwards.
+  backend:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: pdfcraft-backend
-            context: .
-            file: backend/Dockerfile
-          - name: pdfcraft-frontend
-            context: frontend
-            file: frontend/Dockerfile
-            # empty = same origin: the browser calls /generate-pdf on the page's own host
-            build_args: VITE_API_BASE_URL=
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-
       - uses: docker/setup-buildx-action@v3
-
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
+      - name: Image name
+        run: |
+          echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/pdfcraft-backend" >> "$GITHUB_ENV"
+          echo "ARCH=${PLATFORM##*/}" >> "$GITHUB_ENV"
+        env:
+          PLATFORM: ${{ matrix.platform }}
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.name }}
+          images: ${{ env.IMAGE }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=pdfcraft-backend-${{ env.ARCH }}
+          cache-to: type=gha,mode=max,scope=pdfcraft-backend-${{ env.ARCH }}
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ env.ARCH }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  backend-manifest:
+    runs-on: ubuntu-latest
+    needs: backend
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image name
+        run: echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/pdfcraft-backend" >> "$GITHUB_ENV"
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=${{ inputs.tag }}
+            type=sha,format=short
+      - name: Create multi-arch manifest
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf "${IMAGE}@sha256:%s " *)
+      - name: Inspect
+        run: docker buildx imagetools inspect "${IMAGE}:${{ inputs.tag }}"
+
+  # The frontend build stage runs on the build platform (static files are
+  # architecture independent); only the nginx base image differs per platform.
+  frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/pdfcraft-frontend
           tags: |
             type=raw,value=${{ inputs.tag }}
             type=sha,format=short
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-
       - uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.file }}
+          context: frontend
+          file: frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: ${{ matrix.build_args }}
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          # empty = same origin: the browser calls /generate-pdf on the page's own host
+          build-args: VITE_API_BASE_URL=
+          cache-from: type=gha,scope=pdfcraft-frontend
+          cache-to: type=gha,mode=max,scope=pdfcraft-frontend
 
   chart:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [backend-manifest, frontend]
     permissions:
       contents: read
       packages: write
