@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: {{ .Values.image.registry }}/pdfcraft-frontend:{{ .Values.image.tag }}
+          image: {{ .Values.image.registry }}/pdfcraft-frontend:{{ .Values.image.tag | default .Chart.AppVersion }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: 80

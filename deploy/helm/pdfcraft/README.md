@@ -20,9 +20,39 @@ Tags: the tag you entered and the short commit SHA of the selected branch. A sep
 
 **One-time step:** new GHCR packages are private. Make both public so the cluster can pull without credentials: GitHub → your profile → Packages → the package → Package settings → Change visibility → Public. If you keep them private instead, create an image pull secret and add `imagePullSecrets` to the chart (not supported yet).
 
+## Chart in GHCR (OCI)
+
+The same manual workflow also publishes the chart as an OCI artifact after the images were built. Inputs of "Run workflow":
+
+- `tag`: image tag (default `latest`); it becomes the chart's `appVersion`, so the chart installs exactly these images.
+- `chart_version`: chart version, SemVer (default `0.1.0`). Re-using a version overwrites it; use a new version for each release you want to pin.
+
+Result: `oci://ghcr.io/maltinapro/charts/pdfcraft`. **One-time step:** set the package `charts/pdfcraft` to *Public* (Packages → Package settings → Change visibility), like the images; otherwise `helm` needs a login.
+
 ## Install
 
-Prerequisites: k3s with Traefik (default), cert-manager with a `ClusterIssuer`, and a DNS record `pdfcraft.vorneweg.org` pointing at the cluster.
+Prerequisites: k3s with Traefik (default), cert-manager with a `ClusterIssuer`, a DNS record `pdfcraft.vorneweg.org` pointing at the cluster, and the Helm CLI.
+
+### From GHCR (recommended)
+
+OCI charts need no `helm repo add`. Pass the full `oci://` URL and a version. Create a values file once (`demo.yaml`):
+
+```yaml
+ingress:
+  host: pdfcraft.vorneweg.org
+  clusterIssuer: <your-cluster-issuer>   # kubectl get clusterissuer
+```
+
+```bash
+helm upgrade --install pdfcraft oci://ghcr.io/maltinapro/charts/pdfcraft \
+  --version 0.1.0 -n pdfcraft --create-namespace -f demo.yaml
+```
+
+Inspect first (optional): `helm show values oci://ghcr.io/maltinapro/charts/pdfcraft --version 0.1.0`. If the package is private: `helm registry login ghcr.io -u <github-user>` with a personal access token that has `read:packages`.
+
+Upgrade to a new release: run the workflow with a new `chart_version`, then repeat the command with the new `--version`.
+
+### From a local checkout
 
 ```bash
 helm upgrade --install pdfcraft deploy/helm/pdfcraft \
@@ -31,7 +61,30 @@ helm upgrade --install pdfcraft deploy/helm/pdfcraft \
   --set ingress.clusterIssuer=<your-cluster-issuer>
 ```
 
-`ingress.clusterIssuer` defaults to `letsencrypt-prod`; check yours with `kubectl get clusterissuer`. Because the images use the `latest` tag with `pullPolicy: Always`, roll out a new version with:
+### Directly from k3s (no Helm CLI; Untested)
+
+k3s ships a Helm controller. Apply this manifest on the cluster; it installs and keeps the release:
+
+```yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: pdfcraft
+  namespace: kube-system
+spec:
+  chart: oci://ghcr.io/maltinapro/charts/pdfcraft
+  version: 0.1.0
+  targetNamespace: pdfcraft
+  createNamespace: true
+  valuesContent: |-
+    ingress:
+      host: pdfcraft.vorneweg.org
+      clusterIssuer: <your-cluster-issuer>
+```
+
+Argo CD and Flux can use the same OCI URL as a Helm source.
+
+`ingress.clusterIssuer` defaults to `letsencrypt-prod`. When the images use a moving tag such as `latest` (`pullPolicy: Always`), roll out new images with:
 
 ```bash
 kubectl -n pdfcraft rollout restart deploy/pdfcraft-backend deploy/pdfcraft-frontend
@@ -48,7 +101,7 @@ Then open `https://pdfcraft.vorneweg.org/` (landing page) and `/app/` and check 
 
 ## Values
 
-See `values.yaml`: image registry/tag, replicas and resources, `backend.env` (defaults `ENABLE_GENERATE_PDF=true`, `MAX_CONCURRENT_COMPILES=2`), ingress host, class, TLS secret and ClusterIssuer.
+See `values.yaml`: image registry/tag (empty tag = the chart's `appVersion`), replicas and resources, `backend.env` (defaults `ENABLE_GENERATE_PDF=true`, `MAX_CONCURRENT_COMPILES=2`), ingress host, class, TLS secret and ClusterIssuer.
 
 ## Not included yet
 
