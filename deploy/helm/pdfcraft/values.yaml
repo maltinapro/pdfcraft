@@ -1,6 +1,7 @@
 image:
   registry: ghcr.io/maltinapro
-  tag: latest
+  # Empty = the chart's appVersion (set to the image tag when the chart is released)
+  tag: ""
   pullPolicy: Always
 
 backend:
