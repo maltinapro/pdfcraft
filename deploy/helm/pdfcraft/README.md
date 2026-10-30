@@ -16,6 +16,8 @@ The workflow `.github/workflows/release-images.yml` is **manual**: in GitHub go 
 - `ghcr.io/maltinapro/pdfcraft-backend`
 - `ghcr.io/maltinapro/pdfcraft-frontend` (built with an empty `VITE_API_BASE_URL`, so it calls `/generate-pdf` on its own host)
 
+Both images are **multi-arch** (`linux/amd64` and `linux/arm64`) under a single tag, so the same chart runs on x86 and ARM nodes. The backend is compiled natively on a GitHub-hosted ARM runner (`ubuntu-24.04-arm`, free for public repositories) instead of QEMU, which would take hours for Rust/Typst; the frontend build stage always runs on the build machine because its output is architecture independent.
+
 Tags: the tag you entered and the short commit SHA of the selected branch. A separate workflow (`helm-lint.yml`) runs `helm lint` and `helm template` on pull requests that touch `deploy/`. Nothing is built automatically on push; to deploy, run the workflow and then restart the pods (see Install).
 
 **One-time step:** new GHCR packages are private. Make both public so the cluster can pull without credentials: GitHub → your profile → Packages → the package → Package settings → Change visibility → Public. If you keep them private instead, create an image pull secret and add `imagePullSecrets` to the chart (not supported yet).
