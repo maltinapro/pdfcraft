@@ -27,11 +27,11 @@ git clone https://github.com/maltinapro/pdfcraft.git && cd pdfcraft
 # Terminal 1: backend on http://localhost:3000 (first build takes a few minutes)
 cd backend && cargo run
 
-# Terminal 2: frontend on http://localhost:5173
+# Terminal 2: frontend on http://localhost:5173 (landing page; the app is at /app/)
 cd frontend && npm install && npm run dev
 ```
 
-Or with Docker: `docker compose up --build` (frontend http://localhost:8080, backend http://localhost:3000).
+Or with Docker: `docker compose up --build` (landing page http://localhost:8080, app http://localhost:8080/app/, backend http://localhost:3000).
 
 Open the frontend, fill in **Settings** and **Invoice**, and download the PDF. Input is saved in the browser; use **Exportieren / Importieren** for a JSON backup. The UI needs no API key.
 
