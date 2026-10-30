@@ -1,6 +1,6 @@
 # PDFCraft Documentation
 
-Detailed guides for running, testing and deploying PDFCraft. The top-level [README](../README.md) gives the product overview and API reference; these documents go deeper into operations.
+Detailed guides for running, testing and deploying PDFCraft. The top-level [README](../README.md) is a short overview; these documents hold the details.
 
 | # | Document | Read it when you want to… |
 | --- | --- | --- |
@@ -12,6 +12,8 @@ Detailed guides for running, testing and deploying PDFCraft. The top-level [READ
 | 6 | [Production Deployment](06-production.md) | run the customer-facing `/v1` API reliably and safely |
 | 7 | [Demo System](07-demo-system.md) | show the configurator to prospective customers |
 | 8 | [Kubernetes / Helm (Outlook)](08-kubernetes-helm-outlook.md) | plan a Helm chart (not implemented yet) |
+| 9 | [API Reference](09-api-reference.md) | look up endpoints, request bodies and examples |
+| 10 | [Architecture and Extending](10-architecture-and-extending.md) | understand the structure or add a field |
 
 ## Status legend
 
