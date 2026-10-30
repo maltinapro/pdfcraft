@@ -23,7 +23,10 @@ export default function App() {
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null)
   const previewUrlRef = useRef<string | null>(null)
+  const pendingUrlRef = useRef<string | null>(null)
+  const lastKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -77,17 +80,30 @@ export default function App() {
     URL.revokeObjectURL(url)
   }, [request])
 
+  const promotePending = useCallback(() => {
+    const next = pendingUrlRef.current
+    if (!next) return
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    previewUrlRef.current = next
+    pendingUrlRef.current = null
+    setPreviewUrl(next)
+    setPendingUrl(null)
+  }, [])
+
   useEffect(() => {
+    const key = JSON.stringify(request)
+    if (key === lastKeyRef.current) return
     const controller = new AbortController()
     const timer = window.setTimeout(async () => {
       setLoading(true)
       try {
         const blob = await requestPdf(request, controller.signal)
         const url = URL.createObjectURL(blob)
-        if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
-        previewUrlRef.current = url
+        if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current)
+        pendingUrlRef.current = url
+        lastKeyRef.current = key
         setPdfBlob(blob)
-        setPreviewUrl(url)
+        setPendingUrl(url)
         setError(null)
         setLoading(false)
       } catch (e) {
@@ -103,9 +119,17 @@ export default function App() {
     }
   }, [request])
 
+  // Fallback in case the browser never fires `load` for the hidden PDF frame
+  useEffect(() => {
+    if (!pendingUrl) return
+    const timer = window.setTimeout(promotePending, 2500)
+    return () => window.clearTimeout(timer)
+  }, [pendingUrl, promotePending])
+
   useEffect(
     () => () => {
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+      if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current)
     },
     [],
   )
@@ -185,10 +209,18 @@ export default function App() {
         <main className="preview">
           {error && <div className="preview-error">Vorschau fehlgeschlagen: {error}</div>}
           {loading && <div className="preview-loading">Aktualisiere Vorschau …</div>}
-          {previewUrl ? (
-            <iframe className="preview-frame" title="PDF-Vorschau" src={previewUrl} />
-          ) : (
-            !error && <div className="preview-empty">Vorschau wird erstellt …</div>
+          {previewUrl && <iframe className="preview-frame" title="PDF-Vorschau" src={previewUrl} />}
+          {pendingUrl && (
+            <iframe
+              key={pendingUrl}
+              className="preview-frame pending"
+              title="PDF-Vorschau (wird geladen)"
+              src={pendingUrl}
+              onLoad={promotePending}
+            />
+          )}
+          {!previewUrl && !pendingUrl && !error && (
+            <div className="preview-empty">Vorschau wird erstellt …</div>
           )}
         </main>
       </div>
