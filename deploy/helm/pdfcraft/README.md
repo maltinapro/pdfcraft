@@ -11,12 +11,12 @@ Routing on one host (same origin, no CORS):
 
 ## Images
 
-The workflow `.github/workflows/images.yml` builds and pushes on every push to `main` (and `v*` tags):
+The workflow `.github/workflows/release-images.yml` is **manual**: in GitHub go to Actions → "Release images" → Run workflow, enter a tag (default `latest`) and start it. It builds and pushes:
 
 - `ghcr.io/maltinapro/pdfcraft-backend`
 - `ghcr.io/maltinapro/pdfcraft-frontend` (built with an empty `VITE_API_BASE_URL`, so it calls `/generate-pdf` on its own host)
 
-Tags: `latest` (main), the short commit SHA, and the version for `vX.Y.Z` tags. The workflow also runs `helm lint` and `helm template`.
+Tags: the tag you entered and the short commit SHA of the selected branch. A separate workflow (`helm-lint.yml`) runs `helm lint` and `helm template` on pull requests that touch `deploy/`. Nothing is built automatically on push; to deploy, run the workflow and then restart the pods (see Install).
 
 **One-time step:** new GHCR packages are private. Make both public so the cluster can pull without credentials: GitHub → your profile → Packages → the package → Package settings → Change visibility → Public. If you keep them private instead, create an image pull secret and add `imagePullSecrets` to the chart (not supported yet).
 
