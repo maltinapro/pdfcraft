@@ -1,6 +1,6 @@
 # 8. Kubernetes / Helm (Outlook)
 
-> **Status: planned, not implemented.** This page sketches how a Helm chart could look so the work can be picked up later. Nothing here has been built or tested.
+> **Status:** a first, minimal chart for the **demo system** exists in [`deploy/helm/pdfcraft`](../deploy/helm/pdfcraft/README.md) (see [Demo System](07-demo-system.md)). Everything below describes the fuller **production** chart, which is **planned, not implemented**.
 
 ## Goals
 
