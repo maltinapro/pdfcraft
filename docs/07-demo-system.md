@@ -17,6 +17,36 @@ The frontend serves a German landing page at `/` (`frontend/index.html`, no Java
 
 A minimal Helm chart and a GitHub Actions workflow that publishes the container images are included: see [`deploy/helm/pdfcraft/README.md`](../deploy/helm/pdfcraft/README.md).
 
+## Where to rate-limit: application vs. edge
+
+| Layer | Responsibility |
+| --- | --- |
+| Edge (Cloudflare, WAF, CDN) | Per-IP limit for `/generate-pdf`, bot protection, DDoS, TLS. Abusive traffic never reaches the cluster and costs no CPU |
+| Ingress (Traefik / nginx) | Optional second per-IP limit as a safety net (see below) |
+| Application | Per-API-key limit (token bucket, bulk costs N), compile semaphore, input validation |
+
+Why not per-IP in the backend: behind proxies the backend only sees the proxy address, and trusting `X-Forwarded-For` safely needs extra configuration. The edge does this reliably. The per-key limit stays in the application because only it knows the key, the customer quota and the cost of a request.
+
+### Cloudflare (recommended for the demo)
+
+Put the demo domain behind Cloudflare (proxied DNS record) and add a rate-limiting rule (Security → WAF → Rate limiting rules). Example (Untested):
+
+- If: URI Path equals `/generate-pdf` and Method equals `POST`
+- Characteristics: IP
+- Rate: 30 requests per minute (the preview sends a few per minute while typing)
+- Action: Block for 1 minute
+
+Also enable Bot Fight Mode. Set SSL/TLS mode to "Full (strict)" so Cloudflare talks HTTPS to the origin (the cert-manager certificate on the cluster works for this). Because the origin sees Cloudflare's addresses, use the `CF-Connecting-IP` header if you ever need the client IP.
+
+### Frontend on a CDN
+
+The frontend is static and fits a CDN well (Cloudflare Pages, Netlify, S3 + CDN). Two ways:
+
+1. **Same origin through Cloudflare (preferred):** one hostname; route `/` to the CDN origin and `/generate-pdf` to the cluster (Cloudflare Workers routes or Load Balancing path rules). Build the frontend with an empty `VITE_API_BASE_URL`; no CORS needed and the images stay environment-independent.
+2. **Separate API hostname:** build the frontend with `VITE_API_BASE_URL=https://api.example.com` and set `CORS_ALLOWED_ORIGINS=https://demo.example.com` on the backend. Needs a new frontend build per environment, and the rate-limit rule applies to the API hostname.
+
+In both cases the landing page, `/app/`, `impressum.html` and `datenschutz.html` are plain static files, so they work on any static host.
+
 ## Recommended setup
 
 ```

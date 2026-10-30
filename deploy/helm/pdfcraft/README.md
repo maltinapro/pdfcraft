@@ -53,7 +53,7 @@ See `values.yaml`: image registry/tag, replicas and resources, `backend.env` (de
 ## Not included yet
 
 - **Secrets / Postgres / Redis**: not needed for the demo. For the production API, Postgres and Redis will be created with Kubernetes operators (for example CloudNativePG and a Redis operator) and their connection strings passed as `DATABASE_URL` / `REDIS_URL` from a Secret. See [Production](../../../docs/06-production.md).
-- **Per-IP rate limit** for `/generate-pdf` (for example a Traefik `Middleware`); currently only the compile limit and pod resource limits protect the demo.
+- **Per-IP rate limit** for `/generate-pdf`: recommended at the edge (Cloudflare rate-limiting rule), see [Demo System](../../../docs/07-demo-system.md#where-to-rate-limit-application-vs-edge); optionally a Traefik `Middleware` as a second layer. Currently only the compile limit and pod resource limits protect the demo.
 - Pinned image tags and automatic deployment from GitHub Actions (would need a kubeconfig secret).
 - Non-root images, NetworkPolicy, autoscaling, monitoring.
 - Image pull secrets for private registries.
