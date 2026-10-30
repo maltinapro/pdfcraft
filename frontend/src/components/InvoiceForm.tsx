@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Field, TextField } from './Field'
 import {
   TAX_RATES,
@@ -22,6 +23,22 @@ export function InvoiceForm({ invoice, onChange }: Props) {
       ...invoice,
       items: invoice.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
     })
+
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [overIndex, setOverIndex] = useState<number | null>(null)
+
+  const moveItem = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= invoice.items.length) return
+    const items = [...invoice.items]
+    const [moved] = items.splice(from, 1)
+    items.splice(to, 0, moved)
+    onChange({ ...invoice, items })
+  }
+
+  const endDrag = () => {
+    setDragIndex(null)
+    setOverIndex(null)
+  }
 
   const removeItem = (id: string) =>
     onChange({ ...invoice, items: invoice.items.filter((item) => item.id !== id) })
@@ -52,12 +69,62 @@ export function InvoiceForm({ invoice, onChange }: Props) {
       <section className="form-section">
         <h3>Positionen</h3>
         {invoice.items.map((item, index) => (
-          <div className="item-card" key={item.id}>
+          <div
+            className={`item-card${dragIndex === index ? ' dragging' : ''}${
+              overIndex === index && dragIndex !== null && dragIndex !== index ? ' drop-target' : ''
+            }`}
+            key={item.id}
+            onDragOver={(e) => {
+              if (dragIndex === null) return
+              e.preventDefault()
+              setOverIndex(index)
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              if (dragIndex !== null) moveItem(dragIndex, index)
+              endDrag()
+            }}
+          >
             <div className="item-card-header">
+              <span
+                className="drag-handle"
+                draggable
+                title="Zum Sortieren ziehen"
+                aria-label="Position verschieben"
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = 'move'
+                  setDragIndex(index)
+                }}
+                onDragEnd={endDrag}
+              >
+                ⠿
+              </span>
               <strong>Position {index + 1}</strong>
-              <button type="button" className="btn btn-small" onClick={() => removeItem(item.id)}>
-                Entfernen
-              </button>
+              <span className="item-actions">
+                <button
+                  type="button"
+                  className="btn btn-small"
+                  title="Nach oben"
+                  aria-label="Position nach oben"
+                  disabled={index === 0}
+                  onClick={() => moveItem(index, index - 1)}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-small"
+                  title="Nach unten"
+                  aria-label="Position nach unten"
+                  disabled={index === invoice.items.length - 1}
+                  onClick={() => moveItem(index, index + 1)}
+                >
+                  ↓
+                </button>
+                <button type="button" className="btn btn-small" onClick={() => removeItem(item.id)}>
+                  Entfernen
+                </button>
+              </span>
             </div>
             <TextField label="Beschreibung" value={item.description} onChange={(v) => setItem(item.id, { description: v })} />
             <div className="item-row">
