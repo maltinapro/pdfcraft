@@ -1,0 +1,16 @@
+name: Helm lint
+
+on:
+  pull_request:
+    paths:
+      - "deploy/**"
+      - ".github/workflows/helm-lint.yml"
+
+jobs:
+  helm-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: helm lint deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-demo.yaml
+      - run: helm template pdfcraft deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-demo.yaml
