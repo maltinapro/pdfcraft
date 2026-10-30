@@ -62,7 +62,10 @@ pdfcraft/
 │
 └── backend/                          # Rust (Axum + typst-as-lib + typst-pdf + minijinja)
     ├── Cargo.toml
-    ├── src/main.rs
+    ├── src/main.rs                   # Router, Typst engine, POST /generate-pdf
+    ├── src/v1.rs                     # POST /v1/invoices[/bulk]: API key, rate limit, ZIP
+    ├── src/invoice.rs                # Validation/escaping of the /v1 input (mirrors buildRequest.ts)
+    ├── src/config.rs                 # Environment configuration
     ├── src/facturx.rs                # Factur-X XMP post-processing (lopdf)
     └── vendor/typst-packages/        # Vendored @preview packages (invoice-pro 0.5.0, ...)
 ```
@@ -125,7 +128,7 @@ Typst packages (`@preview/...`) are loaded from `backend/vendor/typst-packages` 
 docker compose up --build   # frontend: http://localhost:8080, backend: http://localhost:3000
 ```
 
-The backend image bundles `vendor/typst-packages` and sets `TYPST_PACKAGE_PATH=/app/typst-packages`. The frontend image is built with `VITE_API_BASE_URL` (build arg in `docker-compose.yml`, default `http://localhost:3000`) — set it to the public backend URL when deploying.
+The backend image is built from the repository root (it embeds `frontend/src/template/invoice.typ`), bundles `vendor/typst-packages` and sets `TYPST_PACKAGE_PATH=/app/typst-packages`. Pass `API_KEYS`, `CORS_ALLOWED_ORIGINS` and `ENABLE_GENERATE_PDF` through the environment (see [Configuration](#configuration)), e.g. `API_KEYS=secret docker compose up --build`. The frontend image is built with `VITE_API_BASE_URL` (build arg in `docker-compose.yml`, default `http://localhost:3000`) — set it to the public backend URL when deploying.
 
 ## How It Works
 
@@ -173,7 +176,50 @@ done
 
 Rules for `data`: every text value is inserted into a Typst string literal, so `\` and `"` must be escaped as `\\` and `\"`. Units, tax rates, locale, font and color must be one of the whitelisted values in `frontend/src/lib/types.ts` (the backend does not validate them). Errors come back as JSON (e.g. `typst_compile_error`, status 422).
 
-> The API has no authentication or rate limiting. Do not expose it publicly without a reverse proxy or API key.
+> `POST /generate-pdf` accepts arbitrary templates and has no authentication. For external customers use the [`/v1` API](#production-api-v1) and set `ENABLE_GENERATE_PDF=false`.
+
+---
+
+## Configuration
+
+All settings are environment variables of the backend:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `BIND_ADDR` | `0.0.0.0:3000` | Listen address |
+| `API_KEYS` | – | Comma-separated API keys. `/v1/*` answers `503` while unset |
+| `RATE_LIMIT_PER_MINUTE` | `120` | Invoices per minute **per API key** (token bucket; a bulk request costs one per invoice) |
+| `BULK_MAX_INVOICES` | `100` | Maximum invoices per bulk request (must not exceed the rate limit) |
+| `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations (all endpoints) |
+| `CORS_ALLOWED_ORIGINS` | any | Comma-separated browser origins, e.g. `https://app.example.com`; `*` or unset = any |
+| `ENABLE_GENERATE_PDF` | `true` | `false` removes `POST /generate-pdf` (arbitrary templates) |
+| `TYPST_PACKAGE_PATH` | `<backend>/vendor/typst-packages` | Vendored Typst packages |
+
+---
+
+## Production API (`/v1`)
+
+For external customers. The template lives on the server (it is the same `frontend/src/template/invoice.typ`, compiled into the binary), so clients only send invoice data. Input is validated strictly and escaped by the server (`backend/src/invoice.rs`); problems are returned together as `400 validation_error`.
+
+**Authentication:** `Authorization: Bearer <key>` or `X-API-Key: <key>` with one of `API_KEYS`. Missing/invalid: `401`. Over the limit: `429` with `Retry-After` (seconds).
+
+**Body:** the same JSON as the app's config export (`pdfcraft-config.json`: `settings` + `invoice`; extra fields such as `schemaVersion` and item `id` are ignored). Required: `settings.sender.{name,address,city}`, `invoice.{number,date,recipient.{name,address,city},items}`. Allowed values: see `frontend/src/lib/types.ts` (fonts, locales, units, tax rates `19/7/0`, profiles `en16931`/`xrechnung`). Do **not** escape text yourself. The logo is `settings.logo.base64` (max 1 MB decoded).
+
+```bash
+# one invoice -> PDF
+curl -X POST http://localhost:3000/v1/invoices \
+  -H 'Authorization: Bearer secret' -H 'content-type: application/json' \
+  --data @pdfcraft-config.json -o invoice.pdf
+
+# many invoices with shared settings -> ZIP of PDFs
+curl -X POST http://localhost:3000/v1/invoices/bulk \
+  -H 'Authorization: Bearer secret' -H 'content-type: application/json' \
+  --data @bulk.json -o invoices.zip
+```
+
+`bulk.json` is `{ "settings": { ... }, "invoices": [ { "number": "...", "date": "2026-10-29", "recipient": { ... }, "items": [ ... ] }, ... ] }`. The ZIP contains `invoice-<number>.pdf` per invoice; if one invoice fails nothing is returned and the error names it (`invoices[3]: ...`).
+
+Run the server: `API_KEYS=secret RATE_LIMIT_PER_MINUTE=300 cargo run` (in `backend/`). In production put it behind TLS (reverse proxy), set `CORS_ALLOWED_ORIGINS` and `ENABLE_GENERATE_PDF=false`.
 
 ---
 
@@ -217,7 +263,7 @@ Returns server status.
 
 ## Extending
 
-- **New setting / field**: add it to `frontend/src/lib/types.ts`, validate it in `buildRequest.ts`, add an input in the matching form, and use it in `frontend/src/template/invoice.typ`.
+- **New setting / field**: add it to `frontend/src/lib/types.ts`, validate it in `buildRequest.ts` and `backend/src/invoice.rs` (the `/v1` API), add an input in the matching form, and use it in `frontend/src/template/invoice.typ`.
 - **New unit or tax rate**: extend `UNITS` / `TAX_RATES` in `types.ts` (units must be invoice-pro `unit.<id>` identifiers).
 
 ---

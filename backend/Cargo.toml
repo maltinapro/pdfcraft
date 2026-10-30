@@ -15,6 +15,7 @@ typst-as-lib = { version = "0.17.0", features = ["typst-kit-fonts", "typst-kit-e
 tower-http = { version = "0.5", features = ["cors"] }
 base64 = "0.23.1"
 lopdf = "0.46.0"
+zip = { version = "2", default-features = false }
 
 # Typst is extremely slow unoptimized; keep `cargo run` fast too.
 [profile.dev]
