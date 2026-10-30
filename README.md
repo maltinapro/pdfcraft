@@ -72,7 +72,7 @@ Full reference: [API Reference](docs/09-api-reference.md).
 | [API Keys and Rate Limiting](docs/05-api-keys-and-rate-limiting.md) | Issue and manage customer keys |
 | [Production](docs/06-production.md) | Deploying the `/v1` API |
 | [Demo System](docs/07-demo-system.md) | Showing the configurator to prospects |
-| [Kubernetes / Helm (Outlook)](docs/08-kubernetes-helm-outlook.md) | Planned |
+| [Kubernetes / Helm](docs/08-kubernetes-helm-outlook.md) | Demo chart in `deploy/helm/pdfcraft`; production chart planned |
 | [API Reference](docs/09-api-reference.md) | Endpoints, bodies, examples |
 | [Architecture and Extending](docs/10-architecture-and-extending.md) | Structure, how it works, adding fields |
 
