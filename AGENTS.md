@@ -9,7 +9,7 @@ PDFCraft is a full-stack PDF template builder:
 
 ## Language Conventions
 - Write pull request titles/descriptions and commit messages in English.
-- Keep `README.md` up to date: whenever a change affects setup, architecture, project structure, features, API or the tech stack, update the README in the same PR.
+- Keep `README.md` (short overview) and `docs/` (details) up to date: whenever a change affects setup, architecture, project structure, features, API, configuration or the tech stack, update the affected file in the same PR. Keep the README short; put details in `docs/`.
 - Work in one PR per roadmap step, branched from the latest `main`, so each step can be tested locally.
 - PR titles must follow Conventional Commits (e.g. `feat: ...`), because PRs are squash-merged and the title becomes the commit message.
 
@@ -173,3 +173,4 @@ Vision: simple form-based invoice configurator (logo, company address, minimal c
 - [x] 10. Production API (PR `feat/v1-api`): `POST /v1/invoices` (PDF) and `/v1/invoices/bulk` (ZIP) with server-side template (`include_str!` of `frontend/src/template/invoice.typ`), input = config-export JSON validated/escaped in `backend/src/invoice.rs` (must mirror `buildRequest.ts`), API keys (`API_KEYS`, Bearer or X-API-Key), per-key token-bucket rate limit, global compile semaphore, `CORS_ALLOWED_ORIGINS`, `ENABLE_GENERATE_PDF`. Env table in README "Configuration". Backend Docker build context is now the repo root. Verified: auth/401/503, validation 400, bulk ZIP, 429 + Retry-After, CORS list, Mustang valid, container smoke test. Not done: persistent/shared rate limit across instances, key rotation, request logging
 - [x] 11. Shared API keys + rate limit (PR `feat/db-keys-redis`, stacked on `feat/v1-api`): `backend/src/store.rs`; keys in Postgres (`DATABASE_URL`, table `api_keys`, SHA-256 hashes, per-key limit, 30 s lookup cache), CLI `pdfcraft-backend keys create|list|revoke|activate`; Redis token bucket via Lua (`REDIS_URL`), falls back to in-memory on outage; `API_KEYS` env still works. Verified with 2 instances: shared limit, 401 after revoke, fallback with Redis down. Not done: Admin API/UI, key expiry, usage stats, TLS options for Postgres beyond sqlx defaults, `docker compose` itself
 - [x] 12. Docs (PR `docs/deployment-guides`): `docs/` folder with index + 8 guides (overview/modes, local dev, Docker, configuration, API keys/rate limit, production, demo, Helm outlook, not implemented); README links to it. Keep docs in sync with config changes
+- [x] 13. Slim README (PR `docs/slim-readme`): README shortened to overview/quick start/links; API reference and architecture moved to `docs/09-api-reference.md` and `docs/10-architecture-and-extending.md`
