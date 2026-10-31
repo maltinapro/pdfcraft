@@ -6,6 +6,8 @@
 
 A full-stack **PDF Template Builder** that combines a simple form-based invoice configurator in the browser with a blazing-fast Rust backend. Fill in your invoice data and compile it on a fixed invoice template to publication-quality PDFs via Typst — with no local Typst installation required.
 
+**Live demo:** [digitalrechnung.jetzt](https://digitalrechnung.jetzt) — try the [invoice configurator](https://digitalrechnung.jetzt/app/) without a local installation. Please use sample data only.
+
 ## Features
 
 - 🧾 **Form-based invoice configurator** — fill in invoice, recipient and line items; settings cover logo, company address, bank details, accent color, font, footer and texts
