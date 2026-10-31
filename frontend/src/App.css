@@ -330,3 +330,79 @@ input[type='color'] {
 .issue-warning {
   color: #b45309;
 }
+
+.mobile-switch {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .app {
+    height: 100dvh;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .app-subtitle {
+    display: none;
+  }
+
+  .app-title {
+    flex: 1;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .header-actions .btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .mobile-switch {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #dde1e7;
+  }
+
+  .workspace {
+    position: relative;
+    flex-direction: column;
+  }
+
+  .sidebar,
+  .preview {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    border-right: none;
+  }
+
+  /* Hidden pane stays laid out off-screen so the preview iframe keeps loading */
+  .workspace.view-form .preview,
+  .workspace.view-preview .sidebar {
+    position: absolute;
+    left: -200vw;
+    top: 0;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .item-row {
+    flex-wrap: wrap;
+  }
+
+  input[type='text'],
+  input[type='email'],
+  input[type='date'],
+  input[type='number'],
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
