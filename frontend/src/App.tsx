@@ -14,6 +14,7 @@ type Tab = 'invoice' | 'settings'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('invoice')
+  const [mobileView, setMobileView] = useState<'form' | 'preview'>('form')
   const [initial] = useState(loadConfig)
   const [settings, setSettings] = useState<Settings>(initial?.settings ?? DEFAULT_SETTINGS)
   const [invoice, setInvoice] = useState<Invoice>(initial?.invoice ?? defaultInvoice)
@@ -180,7 +181,26 @@ export default function App() {
         </div>
       )}
 
-      <div className="workspace">
+      <div className="mobile-switch" role="tablist">
+        <button
+          role="tab"
+          aria-selected={mobileView === 'form'}
+          className={mobileView === 'form' ? 'tab active' : 'tab'}
+          onClick={() => setMobileView('form')}
+        >
+          Formular
+        </button>
+        <button
+          role="tab"
+          aria-selected={mobileView === 'preview'}
+          className={mobileView === 'preview' ? 'tab active' : 'tab'}
+          onClick={() => setMobileView('preview')}
+        >
+          Vorschau
+        </button>
+      </div>
+
+      <div className={`workspace view-${mobileView}`}>
         <aside className="sidebar">
           <div className="tabs">
             <button className={tab === 'invoice' ? 'tab active' : 'tab'} onClick={() => setTab('invoice')}>
