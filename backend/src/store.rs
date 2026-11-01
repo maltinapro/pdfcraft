@@ -209,6 +209,20 @@ pub async fn extend_paid_token(id: &str, add_secs: u64) -> Result<Option<u64>, U
     Ok(Some(new_until))
 }
 
+/// `SET key NX EX ttl`: true if the marker was newly set, false if it already existed.
+pub async fn mark_once(key: &str, ttl_secs: u64) -> Result<bool, Unavailable> {
+    let set: Option<String> = redis::cmd("SET")
+        .arg(key)
+        .arg(1)
+        .arg("NX")
+        .arg("EX")
+        .arg(ttl_secs.max(1))
+        .query_async(&mut conn()?)
+        .await
+        .map_err(unavailable)?;
+    Ok(set.is_some())
+}
+
 pub async fn delete_token(id: &str) -> Result<bool, Unavailable> {
     let n: i64 = redis::cmd("DEL")
         .arg(format!("{TOKEN_PREFIX}{id}"))

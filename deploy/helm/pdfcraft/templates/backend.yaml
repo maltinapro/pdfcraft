@@ -26,6 +26,10 @@ spec:
             - name: VALKEY_URL
               value: redis://{{ .Release.Name }}-valkey:6379
             {{- end }}
+            {{- if .Values.anubis.enabled }}
+            - name: ANUBIS_PUBLIC_KEY_HEX
+              value: {{ required "anubis.publicKeyHex is required (pdfcraft-backend anubis-keygen)" .Values.anubis.publicKeyHex | quote }}
+            {{- end }}
             {{- range $k, $v := .Values.backend.env }}
             - name: {{ $k }}
               value: {{ $v | quote }}

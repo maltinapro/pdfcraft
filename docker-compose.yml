@@ -12,6 +12,10 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       # Set to false in production if only /v1 is needed
       ENABLE_GENERATE_PDF: ${ENABLE_GENERATE_PDF:-true}
+      # Public key of the Anubis instance below (local defaults; generate your own with
+      # `pdfcraft-backend anubis-keygen` and never reuse these)
+      ANUBIS_PUBLIC_KEY_HEX: ${ANUBIS_PUBLIC_KEY_HEX:-03cadd7f9e7ce61b77ce911666f5186dc5b45b9a72e1d3d423bed269033a7e38}
+      ANUBIS_COOKIE_NAME: techaro.lol-anubis-auth
       # Feature flag for purchased tokens (off by default)
       PAID_TOKENS_ENABLED: ${PAID_TOKENS_ENABLED:-false}
     depends_on:
@@ -20,12 +24,41 @@ services:
     build:
       context: ./frontend
       args:
-        # URL of the backend as seen from the browser
-        VITE_API_BASE_URL: http://localhost:3000
-    ports:
-      - "8080:80"
+        # Same origin: the edge proxy routes /v1 to the backend
+        VITE_API_BASE_URL: ""
     depends_on:
       - backend
+
+  # Proof-of-work challenge in front of the configurator (/app). Solving it yields a signed
+  # cookie, which the backend requires before it issues a free token.
+  anubis:
+    image: ghcr.io/techarohq/anubis:latest
+    environment:
+      BIND: ":8923"
+      TARGET: http://frontend:80
+      DIFFICULTY: "4"
+      POLICY_FNAME: /etc/anubis/botPolicy.yaml
+      # Local defaults, see ANUBIS_PUBLIC_KEY_HEX above
+      ED25519_PRIVATE_KEY_HEX: ${ANUBIS_PRIVATE_KEY_HEX:-ae8b4a3f41d401839428b53c984f84e27ca9ecacbb1e60fc43181db5082d21fd}
+      # A pass is valid as long as a free token (12 h): one free token per solved challenge
+      COOKIE_EXPIRATION_TIME: 12h
+      DYNAMIC_COOKIE_SUFFIX: "false"
+      # Plain HTTP on localhost
+      COOKIE_SECURE: "false"
+      COOKIE_PARTITIONED: "false"
+    volumes:
+      - ./deploy/anubis/botPolicy.yaml:/etc/anubis/botPolicy.yaml:ro
+
+  # Local stand-in for the ingress
+  edge:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./deploy/compose/edge.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - anubis
 
   valkey:
     image: valkey/valkey:8-alpine

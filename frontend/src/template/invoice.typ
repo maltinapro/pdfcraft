@@ -15,6 +15,9 @@
       {% if assets and assets.logo %}logo: image("{{ assets.logo }}", alt: "Logo"),{% endif %}
     ),
     theme.custom.items-table(zebra: (none, accent.lighten(85%))),
+    {% if settings.watermark %}theme.custom.area("watermark", place: "background", pages: "all", left: 0mm, top: 0mm, width: 100%, height: 100%, align: center + horizon, parts: (
+      rotate(-35deg, text(100pt, weight: "bold", fill: luma(85%), "{{ settings.watermark }}")),
+    )),{% endif %}
     {% if settings.footer %}theme.custom.area("footer", arrange: (columns: (1fr,)), parts: (
       align(center, text(8pt, fill: luma(90), lines("{{ settings.footer }}"))),
     )),{% endif %}

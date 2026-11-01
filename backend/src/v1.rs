@@ -24,10 +24,12 @@ use std::{
 const INVOICE_TEMPLATE: &str = include_str!("../../frontend/src/template/invoice.typ");
 
 pub fn router() -> Router {
-    Router::new()
+    let protected = Router::new()
         .route("/invoices", post(single))
         .route("/invoices/bulk", post(bulk))
-        .layer(middleware::from_fn(auth))
+        .layer(middleware::from_fn(auth));
+    // Free tokens are issued against an Anubis pass instead of a token
+    Router::new().route("/free-token", post(crate::free::issue)).merge(protected)
 }
 
 fn presented_key(req: &Request) -> Option<String> {
@@ -106,6 +108,16 @@ async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiError> {
     }
 }
 
+/// PDFs created with a free token get a diagonal "Entwurf" (draft) watermark.
+fn with_watermark(client: &Client, mut settings: serde_json::Value) -> serde_json::Value {
+    if client.kind == store::Kind::Free {
+        if let Some(obj) = settings.as_object_mut() {
+            obj.insert("watermark".into(), "Entwurf".into());
+        }
+    }
+    settings
+}
+
 fn validation_error(errors: Errors) -> ApiError {
     let total = errors.0.len();
     let mut shown: Vec<String> = errors.0.into_iter().take(50).collect();
@@ -150,7 +162,7 @@ async fn single(
         return Err(validation_error(errors));
     }
     let assets = logo_assets(settings.logo)?;
-    let data = json!({ "settings": settings.data, "invoice": invoice });
+    let data = json!({ "settings": with_watermark(&client, settings.data), "invoice": invoice });
     let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await?;
     let disposition = format!("attachment; filename=\"invoice-{}.pdf\"", file_stem(&req.invoice.number));
     Ok((
@@ -194,7 +206,7 @@ async fn bulk(
 
     let mut tasks = tokio::task::JoinSet::new();
     for (i, invoice) in checked.into_iter().enumerate() {
-        let data = json!({ "settings": settings.data.clone(), "invoice": invoice });
+        let data = json!({ "settings": with_watermark(&client, settings.data.clone()), "invoice": invoice });
         let assets = assets.clone();
         tasks.spawn(async move { (i, render_pdf(INVOICE_TEMPLATE, data, assets).await) });
     }

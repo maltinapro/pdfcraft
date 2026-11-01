@@ -8,6 +8,8 @@
 | `VALKEY_URL` | – | Valkey connection (`redis://host:6379`). Holds tokens and rate limits. Unset or unreachable: `/v1` answers `503` |
 | `FREE_RATE_LIMIT_PER_MINUTE` | `20` | Invoices per minute for every free token (static) |
 | `FREE_TOKEN_TTL_SECONDS` | `43200` | Lifetime of a free token (12 h) |
+| `ANUBIS_PUBLIC_KEY_HEX` | empty | Public key of the Anubis instance; free tokens are disabled without it ([guide](11-free-token-and-anubis.md)) |
+| `ANUBIS_COOKIE_NAME` | `techaro.lol-anubis-auth` | Anubis cookie to read |
 | `PAID_TOKENS_ENABLED` | `false` | Feature flag for purchased tokens; off = they are rejected |
 | `PAID_PLANS` | `starter=60,business=300,pro=1000` | Paid plans as `name=invoices_per_minute` |
 | `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey so it can be renewed by id |

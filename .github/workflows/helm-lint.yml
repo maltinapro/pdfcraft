@@ -9,8 +9,11 @@ on:
 jobs:
   helm-lint:
     runs-on: ubuntu-latest
+    env:
+      # Dummy values: the chart requires the Anubis key pair
+      KEYS: --set anubis.privateKeyHex=00 --set anubis.publicKeyHex=00
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4
-      - run: helm lint deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-demo.yaml
-      - run: helm template pdfcraft deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-demo.yaml
+      - run: helm lint deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-demo.yaml $KEYS
+      - run: helm template pdfcraft deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-demo.yaml $KEYS

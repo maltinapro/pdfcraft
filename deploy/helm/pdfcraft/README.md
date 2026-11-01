@@ -6,8 +6,10 @@ Routing on one host (same origin, no CORS):
 
 | Path | Service |
 | --- | --- |
-| `/generate-pdf` | backend |
-| `/` (landing page, `/app/`) | frontend |
+| `/v1/*` (and `/generate-pdf` until it is removed) | backend (no Anubis, token protected) |
+| `/` (landing page, `/app/`) | Anubis → frontend |
+
+Anubis (`templates/anubis.yaml`, policy in `files/botPolicy.yaml`) needs an Ed25519 key pair: run `pdfcraft-backend anubis-keygen` (e.g. `docker run --rm ghcr.io/maltinapro/pdfcraft-backend:<tag> anubis-keygen`) and set `anubis.privateKeyHex` (or `anubis.existingSecret` with key `ED25519_PRIVATE_KEY_HEX`) and `anubis.publicKeyHex`. See [Free token and Anubis](../../../docs/11-free-token-and-anubis.md).
 
 ## Releasing (images and chart)
 
@@ -56,6 +58,9 @@ OCI charts need no `helm repo add`. Pass the full `oci://` URL and a version. Cr
 ingress:
   host: pdfcraft.vorneweg.org
   clusterIssuer: <your-cluster-issuer>   # kubectl get clusterissuer
+anubis:
+  privateKeyHex: <from anubis-keygen>
+  publicKeyHex: <from anubis-keygen>
 ```
 
 ```bash

@@ -1,0 +1,85 @@
+{{- if .Values.anubis.enabled }}
+{{- if not .Values.anubis.existingSecret }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-anubis
+  labels: {{- include "pdfcraft.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  ED25519_PRIVATE_KEY_HEX: {{ required "anubis.privateKeyHex is required (pdfcraft-backend anubis-keygen)" .Values.anubis.privateKeyHex | quote }}
+---
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-anubis-policy
+  labels: {{- include "pdfcraft.labels" . | nindent 4 }}
+data:
+  botPolicy.yaml: |
+{{ .Files.Get "files/botPolicy.yaml" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-anubis
+  labels: {{- include "pdfcraft.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.anubis.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "pdfcraft.labels" . | nindent 6 }}
+      app.kubernetes.io/component: anubis
+  template:
+    metadata:
+      labels:
+        {{- include "pdfcraft.labels" . | nindent 8 }}
+        app.kubernetes.io/component: anubis
+    spec:
+      containers:
+        - name: anubis
+          image: {{ .Values.anubis.image }}
+          ports:
+            - containerPort: 8923
+          env:
+            - name: BIND
+              value: ":8923"
+            - name: TARGET
+              value: http://{{ .Release.Name }}-frontend:80
+            - name: DIFFICULTY
+              value: {{ .Values.anubis.difficulty | quote }}
+            - name: POLICY_FNAME
+              value: /etc/anubis/botPolicy.yaml
+            # One free token per pass: pass lifetime equals the free token lifetime
+            - name: COOKIE_EXPIRATION_TIME
+              value: {{ .Values.anubis.cookieExpiration | quote }}
+            - name: DYNAMIC_COOKIE_SUFFIX
+              value: "false"
+            - name: COOKIE_SECURE
+              value: "true"
+            - name: ED25519_PRIVATE_KEY_HEX
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.anubis.existingSecret | default (printf "%s-anubis" .Release.Name) }}
+                  key: ED25519_PRIVATE_KEY_HEX
+          volumeMounts:
+            - { name: policy, mountPath: /etc/anubis, readOnly: true }
+          resources: {{- toYaml .Values.anubis.resources | nindent 12 }}
+      volumes:
+        - name: policy
+          configMap:
+            name: {{ .Release.Name }}-anubis-policy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-anubis
+  labels: {{- include "pdfcraft.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "pdfcraft.labels" . | nindent 4 }}
+    app.kubernetes.io/component: anubis
+  ports:
+    - port: 8923
+      targetPort: 8923
+{{- end }}

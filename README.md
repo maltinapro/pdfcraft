@@ -77,6 +77,7 @@ Full reference: [API Reference](docs/09-api-reference.md).
 | [Kubernetes / Helm](docs/08-kubernetes-helm-outlook.md) | Demo chart in `deploy/helm/pdfcraft`; production chart planned |
 | [API Reference](docs/09-api-reference.md) | Endpoints, bodies, examples |
 | [Architecture and Extending](docs/10-architecture-and-extending.md) | Structure, how it works, adding fields |
+| [Free Token and Anubis](docs/11-free-token-and-anubis.md) | Free tokens, Anubis, watermark |
 
 ## Tech Stack
 
