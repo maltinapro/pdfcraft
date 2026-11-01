@@ -67,11 +67,18 @@ metrics:
     enabled: false
     labels: {}
 
-# Grafana dashboards (dashboards/*.json in this chart) as GrafanaDashboard resources of the
-# Grafana Operator (grafana.integreatly.org/v1beta1). Optional; needs the operator's CRDs.
+# Grafana dashboards (dashboards/*.json in this chart). Optional.
+# mode "operator": GrafanaDashboard resources (grafana.integreatly.org/v1beta1, needs the operator's CRDs)
+# mode "sidecar":   labelled ConfigMaps picked up by the Grafana dashboard sidecar (k8s-sidecar)
 grafana:
   dashboards:
     enabled: false
+    mode: operator
+    # Only for mode "sidecar": must match the sidecar's label/labelValue/folderAnnotation settings
+    sidecar:
+      label: grafana_dashboard
+      labelValue: "1"
+      folderAnnotation: grafana_folder
     folder: PDFCraft
     resyncPeriod: 10m
     # Needed if the Grafana instance lives in another namespace than this release

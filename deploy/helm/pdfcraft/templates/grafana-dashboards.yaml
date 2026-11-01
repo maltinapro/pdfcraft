@@ -1,6 +1,28 @@
 {{- if .Values.grafana.dashboards.enabled }}
+{{- $mode := .Values.grafana.dashboards.mode }}
+{{- if not (or (eq $mode "operator") (eq $mode "sidecar")) }}
+{{- fail "grafana.dashboards.mode must be 'operator' or 'sidecar'" }}
+{{- end }}
 {{- range $path, $_ := .Files.Glob "dashboards/*.json" }}
 ---
+{{- if eq $mode "sidecar" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $.Release.Name }}-dashboard-{{ base $path | trimSuffix ".json" | trimPrefix "pdfcraft-" }}
+  labels:
+    {{- include "pdfcraft.labels" $ | nindent 4 }}
+    {{ $.Values.grafana.dashboards.sidecar.label }}: {{ $.Values.grafana.dashboards.sidecar.labelValue | quote }}
+    {{- with $.Values.grafana.dashboards.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    # Read by the Grafana sidecar (folderAnnotation / provider foldersFromFilesStructure)
+    {{ $.Values.grafana.dashboards.sidecar.folderAnnotation }}: {{ $.Values.grafana.dashboards.folder | quote }}
+data:
+  {{ base $path }}: |
+    {{- $.Files.Get $path | nindent 4 }}
+{{- else }}
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
@@ -18,5 +40,6 @@ spec:
     {{- toYaml $.Values.grafana.dashboards.instanceSelector | nindent 4 }}
   json: |
     {{- $.Files.Get $path | nindent 4 }}
+{{- end }}
 {{- end }}
 {{- end }}

@@ -136,7 +136,7 @@ Both resources need the Prometheus Operator CRDs and are **off by default**:
 
 | `grafana.dashboards.enabled` | one `GrafanaDashboard` (Grafana Operator, `grafana.integreatly.org/v1beta1`) per file in `dashboards/*.json`: Business, Technical, Logs |
 
-Set `grafana.dashboards.instanceSelector` to the labels of your `Grafana` resource and `folder` as desired. Set `metrics.podMonitor.labels` / `metrics.prometheusRule.labels` (for example `release: kube-prometheus-stack`) if your Prometheus selects resources by label. The metrics ports are container ports only: they are in no Service and no Ingress, so they are not reachable from outside the cluster. See [Observability](../../../docs/13-observability.md).
+`grafana.dashboards.mode: sidecar` creates labelled `ConfigMap`s (`grafana_dashboard: "1"`, folder via annotation `grafana_folder`) for the Grafana dashboard sidecar instead; no Grafana Operator needed (`grafana.dashboards.sidecar.*` to match your sidecar). With the operator mode, set `grafana.dashboards.instanceSelector` to the labels of your `Grafana` resource and `folder` as desired. Set `metrics.podMonitor.labels` / `metrics.prometheusRule.labels` (for example `release: kube-prometheus-stack`) if your Prometheus selects resources by label. The metrics ports are container ports only: they are in no Service and no Ingress, so they are not reachable from outside the cluster. See [Observability](../../../docs/13-observability.md).
 
 ## Not included yet
 
