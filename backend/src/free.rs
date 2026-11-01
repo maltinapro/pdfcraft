@@ -97,9 +97,16 @@ async fn issue_token(req: Request) -> Result<Response, ApiError> {
             "free tokens are not enabled on this server (ANUBIS_PUBLIC_KEY_HEX)",
         ));
     };
-    let jwt = cookie_value(&req, &cfg.anubis_cookie_name).ok_or_else(challenge_required)?;
+    let Some(jwt) = cookie_value(&req, &cfg.anubis_cookie_name) else {
+        let has_cookie_header = req.headers().contains_key(header::COOKIE);
+        tracing::warn!(event = "free_token_denied", reason = "cookie_missing", expected_cookie = %cfg.anubis_cookie_name, has_cookie_header);
+        return Err(challenge_required());
+    };
     let now = store::now();
-    let exp = verify_jwt(jwt, &key, now).ok_or_else(challenge_required)?;
+    let Some(exp) = verify_jwt(jwt, &key, now) else {
+        tracing::warn!(event = "free_token_denied", reason = "jwt_invalid", "Anubis cookie present but signature/algorithm/expiry check failed (key pair mismatch?)");
+        return Err(challenge_required());
+    };
 
     let unavailable = |_| ApiError::new(StatusCode::SERVICE_UNAVAILABLE, "store_unavailable", "the token store (Valkey) is not configured or not reachable");
     // One free token per Anubis pass; the marker lives as long as the pass is valid.
