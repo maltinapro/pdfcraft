@@ -1,6 +1,6 @@
 # Observability
 
-Logs, metrics and dashboards for the Grafana/Prometheus/Loki stack. This guide grows with each step; the sections below describe what is implemented.
+Logs, metrics and dashboards for the Grafana/Prometheus/Loki stack.
 
 ## Logging
 
@@ -46,3 +46,53 @@ sum by (token_id) (count_over_time({app_kubernetes_io_component="backend"} | jso
 # configurator page views (frontend access log)
 sum(count_over_time({app_kubernetes_io_component="frontend"} | json | path="/app/index.html" | status="200" [1d]))
 ```
+
+## Metrics
+
+The backend exposes Prometheus metrics in the **OpenMetrics text format** (`application/openmetrics-text; version=1.0.0`) on `GET /metrics` of a **separate listener** (`METRICS_ADDR`, default `0.0.0.0:9090`). It is not part of the public API port (`/metrics` on port 3000 is a 404) and the chart's Service and Ingress do not expose it; Prometheus scrapes the pod directly (see the Helm section once enabled). For local runs: `curl localhost:9090/metrics`. Docker Compose does not publish the port.
+
+### Cardinality policy
+
+Labels are bounded: `kind` (`free`/`paid`), `plan` (`free` + the configured `PAID_PLANS`), route *templates*, status codes and error codes. `token_id` is only used for **paid** tokens (one series per customer, see `pdfcraft_paid_token_invoices_total`); free tokens (one per browser visit) are aggregated. Per-token details of free tokens are available in the logs (`token_id` field).
+
+### Metric reference
+
+| Metric | Type | Labels | Meaning |
+| --- | --- | --- | --- |
+| `pdfcraft_http_requests_total` | counter | `method`, `route`, `status` | requests of the public API |
+| `pdfcraft_http_request_duration_seconds` | histogram | `method`, `route` | request latency |
+| `pdfcraft_api_errors_total` | counter | `code` | error responses by API error code (`validation_error`, `rate_limited`, `typst_compile_error`, ...) |
+| `pdfcraft_auth_failures_total` | counter | `reason` | `invalid_token`, `paid_disabled`, `store_unavailable` |
+| `pdfcraft_tokens_created_total` | counter | `kind`, `plan` | tokens created (free tokens via Anubis, paid via Stripe/CLI) |
+| `pdfcraft_free_token_requests_total` | counter | `result` | `issued`, `challenge_required`, `already_issued`, `free_token_disabled`, `store_unavailable` |
+| `pdfcraft_tokens_active` | gauge | `kind`, `plan` | currently valid tokens (scanned from Valkey every minute; every replica reports the same value, use `max`) |
+| `pdfcraft_invoices_total` | counter | `kind`, `plan`, `endpoint` | generated PDFs (`single`/`bulk`) |
+| `pdfcraft_paid_token_invoices_total` | counter | `token_id`, `plan` | PDFs per paid token |
+| `pdfcraft_pdf_generation_seconds` | histogram | `kind`, `plan` | time per PDF incl. waiting for a compile slot |
+| `pdfcraft_pdf_size_bytes` | histogram | `kind` | PDF size |
+| `pdfcraft_bulk_invoices` | histogram | – | invoices per bulk request |
+| `pdfcraft_token_age_at_use_seconds` | histogram | `kind`, `plan` | token age (since creation) at each generated PDF, i.e. usage over the token's lifetime |
+| `pdfcraft_rate_limited_total` | counter | `kind`, `plan` | requests rejected by the rate limit |
+| `pdfcraft_compile_queue_wait_seconds` | histogram | – | wait for a free compile slot |
+| `pdfcraft_typst_compile_seconds` | histogram | – | Typst compile + PDF export (without queueing) |
+| `pdfcraft_compile_slots`, `pdfcraft_compile_slots_in_use` | gauge | – | `MAX_CONCURRENT_COMPILES` and slots in use |
+| `pdfcraft_store_errors_total` | counter | – | failed Valkey operations |
+| `pdfcraft_stripe_events_total` | counter | `event`, `result` | Stripe webhook events (`ok`/`error`) |
+| `pdfcraft_build_info` | gauge | `version` | always 1 |
+
+Counters reset when a pod restarts; always use `rate()`/`increase()`.
+
+### Questions and queries
+
+| Question | PromQL |
+| --- | --- |
+| How many tokens were created per day? | `sum by (kind) (increase(pdfcraft_tokens_created_total[1d]))` |
+| How many customers (paid tokens) do we have? | `max(pdfcraft_tokens_active{kind="paid"})` |
+| PDFs per token (free) | `sum(increase(pdfcraft_invoices_total{kind="free"}[1d])) / sum(increase(pdfcraft_tokens_created_total{kind="free"}[1d]))` |
+| PDFs per customer token | `sum by (token_id) (increase(pdfcraft_paid_token_invoices_total[30d]))` |
+| How is usage spread over a token's lifetime? | `sum by (le) (increase(pdfcraft_token_age_at_use_seconds_bucket{kind="free"}[1d]))` |
+| p95 generation time per plan | `histogram_quantile(0.95, sum by (le, plan) (rate(pdfcraft_pdf_generation_seconds_bucket[5m])))` |
+| Is generation time sensible / do we need more CPU? | `rate(pdfcraft_compile_queue_wait_seconds_sum[5m]) / rate(pdfcraft_compile_queue_wait_seconds_count[5m])` and `pdfcraft_compile_slots_in_use / pdfcraft_compile_slots` |
+| How many visitors turn into token users? | `sum(increase(pdfcraft_free_token_requests_total{result="issued"}[1d]))` vs. `sum(increase(pdfcraft_invoices_total{kind="free"}[1d]))` |
+| Are we successful (conversion free → paid)? | `sum(increase(pdfcraft_tokens_created_total{kind="paid"}[30d]))` vs. `sum(increase(pdfcraft_tokens_created_total{kind="free"}[30d]))` |
+| Error rate | `sum(rate(pdfcraft_http_requests_total{status=~"5.."}[5m])) / sum(rate(pdfcraft_http_requests_total[5m]))` |

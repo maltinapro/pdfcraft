@@ -72,14 +72,19 @@ async fn auth(mut req: Request, next: Next) -> Response {
     }
     let presented = presented_key(&req).unwrap_or_default();
     match store::lookup(&presented).await {
-        Err(_) => store_unavailable().into_response(),
+        Err(_) => {
+            crate::metrics::auth_failure("store_unavailable");
+            store_unavailable().into_response()
+        }
         Ok(None) => {
+            crate::metrics::auth_failure("invalid_token");
             tracing::warn!(event = "auth_failed", reason = "invalid_token");
             unauthorized(
             "missing, invalid or expired token (use `Authorization: Bearer <token>` or `X-API-Key`)",
         )
         }
         Ok(Some(client)) if client.kind == store::Kind::Paid && !config::get().paid_tokens_enabled => {
+            crate::metrics::auth_failure("paid_disabled");
             unauthorized("purchased tokens are not enabled on this server yet")
         }
         Ok(Some(client)) => {
@@ -115,6 +120,7 @@ async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiError> {
     match store::take(client, cost as u32).await {
         Ok(Ok(())) => Ok(()),
         Ok(Err(wait)) => {
+            crate::metrics::rate_limited(client);
             tracing::warn!(event = "rate_limited", token_id = %client.id, token_kind = client.kind.label(), token_plan = %client.plan, wait_secs = wait);
             Err(limited(client.limit, Some(wait)))
         }
@@ -179,6 +185,8 @@ async fn single(
     let data = json!({ "settings": with_watermark(&client, settings.data), "invoice": invoice });
     let started = std::time::Instant::now();
     let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await?;
+    crate::metrics::observe_pdf(&client, started.elapsed().as_secs_f64(), pdf.len());
+    crate::metrics::invoices_generated(&client, "single", 1);
     tracing::info!(
         event = "invoice_generated",
         endpoint = "single",
@@ -234,15 +242,22 @@ async fn bulk(
     for (i, invoice) in checked.into_iter().enumerate() {
         let data = json!({ "settings": with_watermark(&client, settings.data.clone()), "invoice": invoice });
         let assets = assets.clone();
-        tasks.spawn(async move { (i, render_pdf(INVOICE_TEMPLATE, data, assets).await) });
+        tasks.spawn(async move {
+            let started = std::time::Instant::now();
+            let result = render_pdf(INVOICE_TEMPLATE, data, assets).await;
+            (i, result, started.elapsed().as_secs_f64())
+        });
     }
     let mut pdfs: Vec<Option<Vec<u8>>> = vec![None; req.invoices.len()];
     while let Some(joined) = tasks.join_next().await {
-        let (i, result) = joined.map_err(|e| {
+        let (i, result, seconds) = joined.map_err(|e| {
             ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "task_join_error", e.to_string())
         })?;
         match result {
-            Ok(pdf) => pdfs[i] = Some(pdf),
+            Ok(pdf) => {
+                crate::metrics::observe_pdf(&client, seconds, pdf.len());
+                pdfs[i] = Some(pdf);
+            }
             Err(mut e) => {
                 e.details = format!("invoices[{i}]: {}", e.details);
                 return Err(e);
@@ -250,6 +265,8 @@ async fn bulk(
         }
     }
 
+    crate::metrics::invoices_generated(&client, "bulk", pdfs.len());
+    crate::metrics::get().bulk_size.observe(pdfs.len() as f64);
     tracing::info!(
         event = "invoice_generated",
         endpoint = "bulk",

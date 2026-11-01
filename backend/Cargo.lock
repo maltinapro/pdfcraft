@@ -779,6 +779,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dtoa"
+version = "1.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c3cf4824e2d5f025c7b531afcb2325364084a16806f6d47fbc1f5fbd9960590"
+
+[[package]]
 name = "ecb"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2198,6 +2204,7 @@ dependencies = [
  "ed25519-dalek",
  "lopdf",
  "minijinja",
+ "prometheus-client",
  "rand 0.8.5",
  "redis",
  "serde",
@@ -2403,6 +2410,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "prometheus-client"
+version = "0.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d150ad7bf80e60f45769d18a0a8c01028ab8f56355f33ed7bfce3a31f82e696"
+dependencies = [
+ "dtoa",
+ "itoa",
+ "parking_lot",
+ "prometheus-client-derive-encode",
+]
+
+[[package]]
+name = "prometheus-client-derive-encode"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01e34894696ff94f64a20c2c373a6440903e9c2789a303d68ec6e6f953f890e4"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.9",
 ]
 
 [[package]]

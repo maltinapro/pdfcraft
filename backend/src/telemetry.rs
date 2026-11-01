@@ -39,7 +39,9 @@ pub async fn access_log(req: Request, next: Next) -> Response {
     let route = route_of(&req);
     let response = next.run(req).await;
     let status = response.status().as_u16();
-    let duration_ms = started.elapsed().as_secs_f64() * 1000.0;
+    let elapsed = started.elapsed();
+    let duration_ms = elapsed.as_secs_f64() * 1000.0;
+    crate::metrics::http_request(&method, &route, status, elapsed.as_secs_f64());
     let client = response.extensions().get::<Client>();
     let (token_id, token_kind, token_plan) = match client {
         Some(c) => (Some(c.id.as_str()), Some(c.kind.label()), Some(c.plan.as_str())),
