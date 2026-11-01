@@ -11,7 +11,7 @@ Goal: let prospective customers try the configurator in the browser (form, live 
 
 ## Landing page
 
-The frontend serves a German landing page at `/` (`frontend/index.html`, no JavaScript) with a link to the app at `/app/` (`frontend/app/index.html`). It also contains `impressum.html` and `datenschutz.html`. Fill in the placeholders in these two files before publishing: in Germany a publicly reachable service needs an Impressum (§ 5 DDG) with name, a summonable postal address and an e-mail address. A c/o or virtual-office address is possible only if mail is really received there. This is not legal advice.
+The frontend serves a German landing page at `/` (`frontend/index.html`, no JavaScript) with a link to the app at `/app/` (`frontend/app/index.html`). It also contains `impressum.html` and `datenschutz.html`. Fill in the placeholders in these two files before publishing: in Germany a publicly reachable service needs an Impressum (§ 5 DDG) with name, a summonable postal address and an e-mail address. A c/o or virtual-office address is possible only if mail is really received there. The privacy policy describes the Anubis cookie, the free token in `localStorage` and the Valkey data (token hash, limit, expiry, hash of the Anubis pass, rate-limit counters); update it together with any change to what is stored, and before enabling purchased tokens (Stripe) add the payment processing. The landing page names maltina.pro (UG in formation, hello@maltina.pro) and Vorneweg (infrastructure, operation, resources). This is not legal advice.
 
 ## Kubernetes (k3s) deployment
 
