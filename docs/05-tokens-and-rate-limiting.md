@@ -19,6 +19,7 @@ Nothing else is stored: no company names, no invoice data, no e-mail addresses.
 | Key | Content | Expiry |
 | --- | --- | --- |
 | `pdfcraft:token:<id>` | hash: `h` (SHA-256 of the secret), `kind`, `plan`, `limit`, `until` (unix seconds) | free: at `until`. Paid: `until` + `PAID_TOKEN_RETENTION_DAYS` (default 365) |
+| `pdfcraft:tokens` | set of token ids (index for `tokens list` and the `tokens_active` metric; stale ids are removed lazily) | – |
 | `pdfcraft:rl:<id>` | rate-limit bucket (`tokens`, `ts`) | 120 s of inactivity |
 
 A token looks like `pk_<id>_<secret>`. The `id` (12 hex characters) is **not secret**; it identifies the token, for example for renewal. The secret is shown once and only its hash is stored.

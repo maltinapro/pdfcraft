@@ -14,7 +14,7 @@
 
 use crate::config;
 use rand::RngCore;
-use redis::aio::ConnectionManager;
+use redis::{aio::ConnectionManager, cluster_async::ClusterConnection, RedisFuture, Value};
 use sha2::{Digest, Sha256};
 use std::{
     sync::OnceLock,
@@ -22,6 +22,9 @@ use std::{
 };
 
 const TOKEN_PREFIX: &str = "pdfcraft:token:";
+/// Set of all token ids. Replaces `SCAN` (which only covers one node in cluster mode); ids of
+/// expired tokens are removed lazily when they are counted.
+const TOKEN_INDEX: &str = "pdfcraft:tokens";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Kind {
@@ -72,7 +75,37 @@ pub struct Created {
 #[derive(Debug)]
 pub struct Unavailable;
 
-static VALKEY: OnceLock<ConnectionManager> = OnceLock::new();
+/// A connection to a standalone/replicated Valkey or to a sharded Valkey cluster.
+#[derive(Clone)]
+pub enum Conn {
+    Single(ConnectionManager),
+    Cluster(ClusterConnection),
+}
+
+impl redis::aio::ConnectionLike for Conn {
+    fn req_packed_command<'a>(&'a mut self, cmd: &'a redis::Cmd) -> RedisFuture<'a, Value> {
+        match self {
+            Conn::Single(c) => c.req_packed_command(cmd),
+            Conn::Cluster(c) => c.req_packed_command(cmd),
+        }
+    }
+
+    fn req_packed_commands<'a>(&'a mut self, cmd: &'a redis::Pipeline, offset: usize, count: usize) -> RedisFuture<'a, Vec<Value>> {
+        match self {
+            Conn::Single(c) => c.req_packed_commands(cmd, offset, count),
+            Conn::Cluster(c) => c.req_packed_commands(cmd, offset, count),
+        }
+    }
+
+    fn get_db(&self) -> i64 {
+        match self {
+            Conn::Single(c) => c.get_db(),
+            Conn::Cluster(c) => c.get_db(),
+        }
+    }
+}
+
+static VALKEY: OnceLock<Conn> = OnceLock::new();
 
 pub fn now() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
@@ -100,8 +133,23 @@ fn ct_eq(a: &[u8], b: &[u8]) -> bool {
     diff == 0
 }
 
-async fn connect(url: &str) -> redis::RedisResult<ConnectionManager> {
-    ConnectionManager::new(redis::Client::open(url)?).await
+/// `VALKEY_MODE`: `auto` (default) asks the server whether cluster mode is enabled.
+async fn connect(url: &str) -> redis::RedisResult<Conn> {
+    let mode = config::get().valkey_mode.as_str();
+    let mut single = ConnectionManager::new(redis::Client::open(url)?).await?;
+    let cluster = match mode {
+        "cluster" => true,
+        "standalone" => false,
+        _ => {
+            let info: String = redis::cmd("INFO").arg("cluster").query_async(&mut single).await?;
+            info.lines().any(|l| l.trim() == "cluster_enabled:1")
+        }
+    };
+    if !cluster {
+        return Ok(Conn::Single(single));
+    }
+    let client = redis::cluster::ClusterClient::new(vec![url])?;
+    Ok(Conn::Cluster(client.get_async_connection().await?))
 }
 
 /// Connects to Valkey when `VALKEY_URL` is set. Without it `/v1` answers 503. If Valkey is not
@@ -111,7 +159,9 @@ pub async fn init() {
     let Some(url) = config::get().valkey_url.clone() else { return };
     match connect(&url).await {
         Ok(m) => {
+            let mut c = m.clone();
             let _ = VALKEY.set(m);
+            backfill_index(&mut c).await;
         }
         Err(e) => {
             tracing::warn!(event = "valkey_connect_failed", error = %e, "cannot connect to VALKEY_URL; retrying in the background, /v1 answers 503 until then");
@@ -120,7 +170,9 @@ pub async fn init() {
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     match connect(&url).await {
                         Ok(m) => {
+                            let mut c = m.clone();
                             let _ = VALKEY.set(m);
+                            backfill_index(&mut c).await;
                             tracing::info!(event = "valkey_connected");
                             break;
                         }
@@ -136,7 +188,7 @@ pub fn is_configured() -> bool {
     VALKEY.get().is_some()
 }
 
-fn conn() -> Result<ConnectionManager, Unavailable> {
+fn conn() -> Result<Conn, Unavailable> {
     VALKEY.get().cloned().ok_or(Unavailable)
 }
 
@@ -201,7 +253,9 @@ pub async fn create_token(kind: Kind, plan: &str, limit: u32, ttl_secs: u64) -> 
         )
         .ignore();
     pipe.cmd("EXPIREAT").arg(&key).arg(expire_at(kind, until)).ignore();
-    pipe.query_async::<()>(&mut conn()?).await.map_err(unavailable)?;
+    let mut c = conn()?;
+    pipe.query_async::<()>(&mut c).await.map_err(unavailable)?;
+    index_add(&mut c, &id).await;
     crate::metrics::token_created(kind, plan);
     Ok(Created { token: format!("{}_{id}_{secret}", kind.prefix()), id, valid_until: until })
 }
@@ -302,48 +356,89 @@ pub async fn mark_once(key: &str, ttl_secs: u64) -> Result<bool, Unavailable> {
 }
 
 pub async fn delete_token(id: &str) -> Result<bool, Unavailable> {
+    let mut c = conn()?;
     let n: i64 = redis::cmd("DEL")
         .arg(format!("{TOKEN_PREFIX}{id}"))
-        .query_async(&mut conn()?)
+        .query_async(&mut c)
         .await
         .map_err(unavailable)?;
+    let _ = redis::cmd("SREM").arg(TOKEN_INDEX).arg(id).query_async::<()>(&mut c).await;
     Ok(n > 0)
+}
+
+async fn index_add(c: &mut Conn, id: &str) {
+    if let Err(e) = redis::cmd("SADD").arg(TOKEN_INDEX).arg(id).query_async::<()>(c).await {
+        tracing::warn!(event = "valkey_index_failed", error = %e);
+    }
+}
+
+/// Calls `f(id, row)` for every indexed token, where `row` is `(kind, plan, limit, until)`.
+/// Ids whose token no longer exists are dropped from the index.
+pub async fn for_each_token(mut f: impl FnMut(String, (String, String, String, String))) -> Result<(), Unavailable> {
+    let mut c = conn()?;
+    let mut cursor: u64 = 0;
+    loop {
+        let (next, ids): (u64, Vec<String>) = redis::cmd("SSCAN")
+            .arg(TOKEN_INDEX)
+            .arg(cursor)
+            .arg("COUNT")
+            .arg(200)
+            .query_async(&mut c)
+            .await
+            .map_err(unavailable)?;
+        for id in ids {
+            let row: Vec<Option<String>> = redis::cmd("HMGET")
+                .arg(format!("{TOKEN_PREFIX}{id}"))
+                .arg(&["kind", "plan", "limit", "until"])
+                .query_async(&mut c)
+                .await
+                .map_err(unavailable)?;
+            let f_ = |i: usize| row.get(i).cloned().flatten().unwrap_or_default();
+            if row.iter().all(Option::is_none) {
+                let _ = redis::cmd("SREM").arg(TOKEN_INDEX).arg(&id).query_async::<()>(&mut c).await;
+            } else {
+                f(id, (f_(0), f_(1), f_(2), f_(3)));
+            }
+        }
+        if next == 0 {
+            return Ok(());
+        }
+        cursor = next;
+    }
 }
 
 /// Number of currently valid tokens per (kind, plan); used for the `tokens_active` gauge.
 pub async fn count_active_tokens() -> Result<std::collections::HashMap<(String, String), u64>, Unavailable> {
-    let mut c = conn()?;
     let mut counts = std::collections::HashMap::new();
-    let mut cursor: u64 = 0;
     let now = now();
+    for_each_token(|_, (kind, plan, _, until)| {
+        if until.parse::<u64>().is_ok_and(|u| u > now) && !kind.is_empty() {
+            let plan = if plan.is_empty() { kind.clone() } else { plan };
+            *counts.entry((kind, plan)).or_insert(0u64) += 1;
+        }
+    })
+    .await?;
+    Ok(counts)
+}
+
+/// Standalone Valkey only: adds tokens created before the index existed (`SCAN` covers a
+/// single node, so this is skipped in cluster mode where the index has always been present).
+async fn backfill_index(c: &mut Conn) {
+    if !matches!(c, Conn::Single(_)) {
+        return;
+    }
+    let mut cursor: u64 = 0;
     loop {
-        let (next, keys): (u64, Vec<String>) = redis::cmd("SCAN")
-            .arg(cursor)
-            .arg("MATCH")
-            .arg(format!("{TOKEN_PREFIX}*"))
-            .arg("COUNT")
-            .arg(500)
-            .query_async(&mut c)
-            .await
-            .map_err(unavailable)?;
-        if !keys.is_empty() {
-            let mut pipe = redis::pipe();
-            for key in &keys {
-                pipe.cmd("HMGET").arg(key).arg(&["kind", "plan", "until"]);
-            }
-            let rows: Vec<(Option<String>, Option<String>, Option<u64>)> =
-                pipe.query_async(&mut c).await.map_err(unavailable)?;
-            for (kind, plan, until) in rows {
-                if let (Some(kind), Some(until)) = (kind, until) {
-                    if until > now {
-                        let plan = plan.unwrap_or_else(|| kind.clone());
-                        *counts.entry((kind, plan)).or_insert(0) += 1;
-                    }
-                }
-            }
+        let Ok((next, keys)): Result<(u64, Vec<String>), _> =
+            redis::cmd("SCAN").arg(cursor).arg("MATCH").arg(format!("{TOKEN_PREFIX}*")).arg("COUNT").arg(500).query_async(c).await
+        else {
+            return;
+        };
+        for key in keys {
+            index_add(c, &key[TOKEN_PREFIX.len()..]).await;
         }
         if next == 0 {
-            return Ok(counts);
+            return;
         }
         cursor = next;
     }
@@ -432,34 +527,12 @@ pub async fn run_cli(args: &[String]) -> bool {
             println!("Created free token `{}` ({limit} invoices/minute), valid until unix time {}.\n{}", created.id, created.valid_until, created.token);
         }
         Some("list") => {
-            let mut c = conn().unwrap_or_else(|_| die("no Valkey", 1));
-            let mut cursor = 0u64;
             println!("{:<14} {:<6} {:<12} {:<7} valid until (unix)", "id", "kind", "plan", "limit");
-            loop {
-                let (next, keys): (u64, Vec<String>) = redis::cmd("SCAN")
-                    .arg(cursor)
-                    .arg("MATCH")
-                    .arg(format!("{TOKEN_PREFIX}*"))
-                    .arg("COUNT")
-                    .arg(200)
-                    .query_async(&mut c)
-                    .await
-                    .unwrap_or_else(|e| die(format!("scan failed: {e}"), 1));
-                for key in keys {
-                    let row: Vec<Option<String>> = redis::cmd("HMGET")
-                        .arg(&key)
-                        .arg(&["kind", "plan", "limit", "until"])
-                        .query_async(&mut c)
-                        .await
-                        .unwrap_or_default();
-                    let f = |i: usize| row.get(i).cloned().flatten().unwrap_or_default();
-                    println!("{:<14} {:<6} {:<12} {:<7} {}", &key[TOKEN_PREFIX.len()..], f(0), f(1), f(2), f(3));
-                }
-                cursor = next;
-                if cursor == 0 {
-                    break;
-                }
-            }
+            let mut backfill = conn().unwrap_or_else(|_| die("no Valkey", 1));
+            backfill_index(&mut backfill).await;
+            for_each_token(|id, (kind, plan, limit, until)| println!("{id:<14} {kind:<6} {plan:<12} {limit:<7} {until}"))
+                .await
+                .unwrap_or_else(|_| die("could not read from Valkey", 1));
         }
         Some("extend") => {
             let Some(id) = args.get(2) else { die(USAGE, 2) };
