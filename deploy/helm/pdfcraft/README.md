@@ -9,7 +9,7 @@ Routing on one host (same origin, no CORS):
 | `/v1/*` | backend (no Anubis, token protected) |
 | `/` (landing page, `/app/`) | Anubis → frontend |
 
-Anubis (`templates/anubis.yaml`, policy in `files/botPolicy.yaml`) needs an Ed25519 key pair: run `pdfcraft-backend anubis-keygen` (e.g. `docker run --rm ghcr.io/maltinapro/pdfcraft-backend:<tag> anubis-keygen`) and set `anubis.privateKeyHex` (or `anubis.existingSecret` with key `ED25519_PRIVATE_KEY_HEX`) and `anubis.publicKeyHex`. See [Free token and Anubis](../../../docs/11-free-token-and-anubis.md).
+Anubis (`templates/anubis.yaml`, policy in `files/botPolicy.yaml`) needs an Ed25519 key pair: run `pdfcraft-backend anubis-keygen` (e.g. `docker run --rm ghcr.io/maltinapro/pdfcraft-backend:<tag> anubis-keygen`) and set `anubis.privateKeyHex` and `anubis.publicKeyHex` (or `anubis.existingSecret`: one Secret with the keys `ED25519_PRIVATE_KEY_HEX` and `ANUBIS_PUBLIC_KEY_HEX`). See [Free token and Anubis](../../../docs/11-free-token-and-anubis.md).
 
 Purchased tokens stay off until you set `backend.env.PAID_TOKENS_ENABLED: "true"` and `backend.stripeSecret` (a Secret with the key `STRIPE_WEBHOOK_SECRET`); see [Purchased Tokens (Stripe)](../../../docs/12-paid-tokens-stripe.md).
 

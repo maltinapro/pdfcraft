@@ -32,7 +32,7 @@ valkey:
 
 # Proof-of-work in front of the configurator; the backend only issues a free token to
 # browsers holding a pass signed by this instance. Generate the key pair with
-# `pdfcraft-backend anubis-keygen` (private key: Secret, public key: backend).
+# `pdfcraft-backend anubis-keygen` (both end up in one Secret).
 anubis:
   enabled: true
   image: ghcr.io/techarohq/anubis:v1.28.2
@@ -40,9 +40,10 @@ anubis:
   difficulty: 4
   cookieExpiration: 12h
   privateKeyHex: ""
-  # Alternatively an existing Secret with the key ED25519_PRIVATE_KEY_HEX
-  existingSecret: ""
   publicKeyHex: ""
+  # Alternatively one existing Secret with the keys ED25519_PRIVATE_KEY_HEX and
+  # ANUBIS_PUBLIC_KEY_HEX (then privateKeyHex/publicKeyHex stay empty)
+  existingSecret: ""
   resources:
     requests: { cpu: 20m, memory: 32Mi }
     limits: { cpu: 200m, memory: 128Mi }

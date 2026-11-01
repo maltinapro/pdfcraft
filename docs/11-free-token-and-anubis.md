@@ -28,7 +28,15 @@ docker run --rm ghcr.io/maltinapro/pdfcraft-backend:<tag> anubis-keygen
 # or locally: cd backend && cargo run -- anubis-keygen
 ```
 
-Prints `ED25519_PRIVATE_KEY_HEX` (Anubis, secret) and `ANUBIS_PUBLIC_KEY_HEX` (backend). Docker Compose ships a **local-only** key pair as default; never use it in production. Kubernetes: `anubis.privateKeyHex` (or `anubis.existingSecret`) and `anubis.publicKeyHex` in the Helm values.
+Prints `ED25519_PRIVATE_KEY_HEX` (Anubis, secret) and `ANUBIS_PUBLIC_KEY_HEX` (backend). Docker Compose ships a **local-only** key pair as default; never use it in production. Kubernetes: `anubis.privateKeyHex` and `anubis.publicKeyHex` in the Helm values, or one existing Secret (`anubis.existingSecret`) with the two keys:
+
+```bash
+kubectl create secret generic pdfcraft-anubis \
+  --from-literal=ED25519_PRIVATE_KEY_HEX=<private> \
+  --from-literal=ANUBIS_PUBLIC_KEY_HEX=<public>
+```
+
+Both Anubis and the backend read their value from this Secret. A single combined value is not used: Anubis only reads plain env vars and the backend must never see the private key.
 
 ## Settings
 
