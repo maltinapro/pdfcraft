@@ -105,6 +105,7 @@ pub async fn issue(req: Request) -> Result<Response, ApiError> {
     let created = store::create_token(Kind::Free, "free", cfg.free_rate_limit_per_minute, cfg.free_token_ttl_secs)
         .await
         .map_err(unavailable)?;
+    tracing::info!(event = "token_created", token_id = %created.id, token_kind = "free", token_plan = "free");
     Ok((
         StatusCode::OK,
         [(header::CACHE_CONTROL, "no-store")],

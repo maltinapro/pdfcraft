@@ -121,7 +121,10 @@ async fn apply_checkout(session: &Value, session_id: &str, days: u64) -> Result<
     if let Some(token_id) = str_at(session, &["metadata", "token_id"]) {
         // Renewal of an existing token by its id; the transaction was successful
         return match store::extend_paid_token(token_id, days * DAY).await {
-            Ok(Some(_)) => Ok(()),
+            Ok(Some(until)) => {
+                tracing::info!(event = "token_extended", token_id, token_kind = "paid", reason = "checkout", until);
+                Ok(())
+            }
             Ok(None) => Err(bad("token_id is unknown or past its retention period")),
             Err(_) => Err(store_unavailable()),
         };
@@ -132,6 +135,7 @@ async fn apply_checkout(session: &Value, session_id: &str, days: u64) -> Result<
     let created = store::create_token(Kind::Paid, plan, limit, days * DAY)
         .await
         .map_err(|_| store_unavailable())?;
+    tracing::info!(event = "token_created", token_id = %created.id, token_kind = "paid", token_plan = plan);
 
     let claim = json!({ "token": created.token, "expiresAt": created.valid_until, "plan": plan, "limitPerMinute": limit });
     store::put(&format!("{CLAIM_PREFIX}{session_id}"), &claim.to_string(), 3600)
@@ -166,7 +170,10 @@ async fn invoice_paid(invoice: &Value) -> Result<(), ApiError> {
     };
     let until = period_end + config::get().paid_grace_days * DAY;
     match store::extend_paid_token_to(&token_id, until).await {
-        Ok(Some(_)) => Ok(()),
+        Ok(Some(until)) => {
+            tracing::info!(event = "token_extended", token_id = %token_id, token_kind = "paid", reason = "subscription_renewal", until);
+            Ok(())
+        }
         Ok(None) => Err(bad("token of the subscription no longer exists")),
         Err(_) => Err(store_unavailable()),
     }

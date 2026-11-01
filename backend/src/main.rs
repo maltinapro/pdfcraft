@@ -4,6 +4,7 @@ mod free;
 mod invoice;
 mod stripe;
 mod store;
+mod telemetry;
 mod v1;
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
@@ -155,9 +156,10 @@ fn compile_pdf(
         let pdf = typst_pdf::pdf(&doc, &pdf_options())
             .map_err(|e| format!("Typst PDF generation error: {e:?}"))?;
         let pdf = facturx::add_facturx_xmp(pdf);
-        println!(
-            "typst layout: {compiled:?}, pdf export: {:?}",
-            started.elapsed() - compiled
+        tracing::debug!(
+            event = "typst_timing",
+            layout_ms = compiled.as_secs_f64() * 1000.0,
+            pdf_export_ms = (started.elapsed() - compiled).as_secs_f64() * 1000.0
         );
         Ok(pdf)
     });
@@ -166,7 +168,7 @@ fn compile_pdf(
     for asset_id in asset_ids {
         c.assets.lock().unwrap().remove(&asset_id);
     }
-    println!("typst compile+pdf: {:?}", started.elapsed());
+    tracing::debug!(event = "typst_compile", duration_ms = started.elapsed().as_secs_f64() * 1000.0);
     match result {
         Ok(r) => r,
         Err(e) => Err(format!("Typst world setup error: {e}")),
@@ -318,6 +320,7 @@ async fn health() -> Json<HealthResponse> {
 
 #[tokio::main]
 async fn main() {
+    telemetry::init_logging();
     let args: Vec<String> = std::env::args().skip(1).collect();
     if free::run_cli(&args) || store::run_cli(&args).await {
         return;
@@ -328,6 +331,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .nest("/v1", v1::router())
+        .layer(axum::middleware::from_fn(telemetry::access_log))
         .layer(DefaultBodyLimit::max(MAX_REQUEST_BODY_BYTES))
         .layer(config::cors_layer());
 
@@ -344,18 +348,18 @@ async fn main() {
         .await
         .unwrap_or_else(|e| panic!("Failed to bind to {}: {e}", cfg.bind_addr));
 
-    println!("🚀 PDFCraft backend listening on http://{}", cfg.bind_addr);
-    println!("   GET  /health               — health check");
-    if store::is_configured() {
-        println!("   POST /v1/invoices          — one invoice -> PDF (token required)");
-        println!("   POST /v1/invoices/bulk     — many invoices -> ZIP (token required)");
-        println!(
-            "   Tokens + rate limit: Valkey; free: {}/min, paid tokens: {}",
-            cfg.free_rate_limit_per_minute,
-            if cfg.paid_tokens_enabled { "enabled" } else { "disabled (PAID_TOKENS_ENABLED)" }
-        );
-    } else {
-        println!("   POST /v1/invoices[/bulk]   — answers 503 (set VALKEY_URL)");
+    tracing::info!(
+        event = "startup",
+        listen = %cfg.bind_addr,
+        version = env!("CARGO_PKG_VERSION"),
+        store = store::is_configured(),
+        paid_tokens_enabled = cfg.paid_tokens_enabled,
+        free_rate_limit_per_minute = cfg.free_rate_limit_per_minute,
+        max_concurrent_compiles = cfg.max_concurrent_compiles,
+        "PDFCraft backend listening"
+    );
+    if !store::is_configured() {
+        tracing::warn!(event = "store_not_configured", "POST /v1/invoices answers 503 (set VALKEY_URL)");
     }
 
     axum::serve(listener, app).await.expect("Server error");

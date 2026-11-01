@@ -31,6 +31,11 @@ pub enum Kind {
 
 impl Kind {
     fn as_str(self) -> &'static str {
+        self.label()
+    }
+
+    /// Stable name used in the store, logs and metric labels.
+    pub fn label(self) -> &'static str {
         match self {
             Kind::Free => "free",
             Kind::Paid => "paid",
@@ -49,8 +54,12 @@ impl Kind {
 pub struct Client {
     pub id: String,
     pub kind: Kind,
+    /// Plan name (`free` or a paid plan); bounded set, usable as a metric label.
+    pub plan: String,
     /// Invoices per minute for this token.
     pub limit: u32,
+    /// Unix time the token was created (`None` for tokens created before this was stored).
+    pub created: Option<u64>,
 }
 
 pub struct Created {
@@ -102,7 +111,7 @@ pub async fn init() {
         Ok(m) => {
             let _ = VALKEY.set(m);
         }
-        Err(e) => eprintln!("warning: cannot connect to VALKEY_URL ({e}); /v1 will answer 503"),
+        Err(e) => tracing::warn!(event = "valkey_connect_failed", error = %e, "cannot connect to VALKEY_URL; /v1 will answer 503"),
     }
 }
 
@@ -115,7 +124,7 @@ fn conn() -> Result<ConnectionManager, Unavailable> {
 }
 
 fn unavailable(e: redis::RedisError) -> Unavailable {
-    eprintln!("valkey error: {e}");
+    tracing::error!(event = "valkey_error", error = %e);
     Unavailable
 }
 
@@ -137,10 +146,10 @@ fn parse_token(presented: &str) -> Option<(Kind, &str, &str)> {
 pub async fn lookup(presented: &str) -> Result<Option<Client>, Unavailable> {
     let Some((kind, id, secret)) = parse_token(presented) else { return Ok(None) };
     let mut c = conn()?;
-    let (hash, stored_kind, limit, until): (Option<String>, Option<String>, Option<u32>, Option<u64>) =
+    let (hash, stored_kind, limit, until, plan, created): (Option<String>, Option<String>, Option<u32>, Option<u64>, Option<String>, Option<u64>) =
         redis::cmd("HMGET")
             .arg(format!("{TOKEN_PREFIX}{id}"))
-            .arg(&["h", "kind", "limit", "until"])
+            .arg(&["h", "kind", "limit", "until", "plan", "created"])
             .query_async(&mut c)
             .await
             .map_err(unavailable)?;
@@ -156,7 +165,8 @@ pub async fn lookup(presented: &str) -> Result<Option<Client>, Unavailable> {
         Kind::Free => config::get().free_rate_limit_per_minute,
         Kind::Paid => limit.max(1),
     };
-    Ok(valid.then(|| Client { id: id.to_string(), kind, limit }))
+    let plan = plan.unwrap_or_else(|| kind.as_str().to_string());
+    Ok(valid.then(|| Client { id: id.to_string(), kind, plan, limit, created }))
 }
 
 /// Creates a token valid for `ttl_secs`. The plain token is only returned here.
@@ -169,7 +179,7 @@ pub async fn create_token(kind: Kind, plan: &str, limit: u32, ttl_secs: u64) -> 
     pipe.atomic()
         .hset_multiple(
             &key,
-            &[("h", hash_secret(&secret)), ("kind", kind.as_str().into()), ("plan", plan.into()), ("limit", limit.to_string()), ("until", until.to_string())],
+            &[("h", hash_secret(&secret)), ("kind", kind.as_str().into()), ("plan", plan.into()), ("limit", limit.to_string()), ("until", until.to_string()), ("created", now().to_string())],
         )
         .ignore();
     pipe.cmd("EXPIREAT").arg(&key).arg(expire_at(kind, until)).ignore();
