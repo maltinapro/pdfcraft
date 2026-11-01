@@ -73,15 +73,21 @@ async fn auth(mut req: Request, next: Next) -> Response {
     let presented = presented_key(&req).unwrap_or_default();
     match store::lookup(&presented).await {
         Err(_) => store_unavailable().into_response(),
-        Ok(None) => unauthorized(
+        Ok(None) => {
+            tracing::warn!(event = "auth_failed", reason = "invalid_token");
+            unauthorized(
             "missing, invalid or expired token (use `Authorization: Bearer <token>` or `X-API-Key`)",
-        ),
+        )
+        }
         Ok(Some(client)) if client.kind == store::Kind::Paid && !config::get().paid_tokens_enabled => {
             unauthorized("purchased tokens are not enabled on this server yet")
         }
         Ok(Some(client)) => {
-            req.extensions_mut().insert(client);
-            next.run(req).await
+            req.extensions_mut().insert(client.clone());
+            let mut response = next.run(req).await;
+            // Lets the outer access-log middleware see which token made the request
+            response.extensions_mut().insert(client);
+            response
         }
     }
 }
@@ -108,7 +114,10 @@ async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiError> {
     }
     match store::take(client, cost as u32).await {
         Ok(Ok(())) => Ok(()),
-        Ok(Err(wait)) => Err(limited(client.limit, Some(wait))),
+        Ok(Err(wait)) => {
+            tracing::warn!(event = "rate_limited", token_id = %client.id, token_kind = client.kind.label(), token_plan = %client.plan, wait_secs = wait);
+            Err(limited(client.limit, Some(wait)))
+        }
         Err(_) => Err(store_unavailable()),
     }
 }
@@ -168,7 +177,18 @@ async fn single(
     }
     let assets = logo_assets(settings.logo)?;
     let data = json!({ "settings": with_watermark(&client, settings.data), "invoice": invoice });
+    let started = std::time::Instant::now();
     let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await?;
+    tracing::info!(
+        event = "invoice_generated",
+        endpoint = "single",
+        invoices = 1,
+        token_id = %client.id,
+        token_kind = client.kind.label(),
+        token_plan = %client.plan,
+        duration_ms = started.elapsed().as_secs_f64() * 1000.0,
+        size_bytes = pdf.len(),
+    );
     let disposition = format!("attachment; filename=\"invoice-{}.pdf\"", file_stem(&req.invoice.number));
     Ok((
         StatusCode::OK,
@@ -209,6 +229,7 @@ async fn bulk(
     }
     let assets = logo_assets(settings.logo)?;
 
+    let started = std::time::Instant::now();
     let mut tasks = tokio::task::JoinSet::new();
     for (i, invoice) in checked.into_iter().enumerate() {
         let data = json!({ "settings": with_watermark(&client, settings.data.clone()), "invoice": invoice });
@@ -229,6 +250,16 @@ async fn bulk(
         }
     }
 
+    tracing::info!(
+        event = "invoice_generated",
+        endpoint = "bulk",
+        invoices = pdfs.len(),
+        token_id = %client.id,
+        token_kind = client.kind.label(),
+        token_plan = %client.plan,
+        duration_ms = started.elapsed().as_secs_f64() * 1000.0,
+        size_bytes = pdfs.iter().flatten().map(Vec::len).sum::<usize>(),
+    );
     let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
     let options = zip::write::SimpleFileOptions::default()
         .compression_method(zip::CompressionMethod::Stored);

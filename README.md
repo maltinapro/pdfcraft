@@ -79,6 +79,7 @@ Full reference: [API Reference](docs/09-api-reference.md).
 | [Architecture and Extending](docs/10-architecture-and-extending.md) | Structure, how it works, adding fields |
 | [Free Token and Anubis](docs/11-free-token-and-anubis.md) | Free tokens, Anubis, watermark |
 | [Purchased Tokens (Stripe)](docs/12-paid-tokens-stripe.md) | Feature flag, Stripe webhook, renewal |
+| [Observability](docs/13-observability.md) | JSON logs for Loki |
 
 ## Tech Stack
 

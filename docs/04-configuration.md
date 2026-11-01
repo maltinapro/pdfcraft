@@ -18,6 +18,8 @@
 | `BULK_MAX_INVOICES` | `100` | Maximum invoices in one bulk request. A bulk request costs one token per invoice, so it must not exceed the token's limit |
 | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations across all endpoints; further requests wait |
 | `CORS_ALLOWED_ORIGINS` | any | Comma-separated browser origins (for example `https://demo.example.com`). `*` or unset allows any |
+| `RUST_LOG` | `info` | Log level/filter (`tracing` env filter syntax, e.g. `info,pdfcraft_backend=debug`); see [Observability](13-observability.md) |
+| `LOG_FORMAT` | `json` | `text` switches to human-readable logs for local development |
 | `TYPST_PACKAGE_PATH` | `<backend>/vendor/typst-packages` | Directory with the vendored Typst packages |
 
 Without `VALKEY_URL`, `/v1` is unavailable (`503 store_unavailable`); there is no in-memory fallback. See [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md).

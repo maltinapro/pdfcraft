@@ -115,7 +115,7 @@ pub fn add_facturx_xmp(pdf: Vec<u8>) -> Vec<u8> {
         Ok(Some(patched)) => patched,
         Ok(None) => pdf,
         Err(e) => {
-            eprintln!("Factur-X XMP post-processing skipped: {e}");
+            tracing::warn!(event = "facturx_skipped", error = %e, "Factur-X XMP post-processing skipped");
             pdf
         }
     }
