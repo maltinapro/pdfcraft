@@ -8,6 +8,7 @@ metadata:
 type: Opaque
 stringData:
   ED25519_PRIVATE_KEY_HEX: {{ required "anubis.privateKeyHex is required (pdfcraft-backend anubis-keygen)" .Values.anubis.privateKeyHex | quote }}
+  ANUBIS_PUBLIC_KEY_HEX: {{ required "anubis.publicKeyHex is required (pdfcraft-backend anubis-keygen)" .Values.anubis.publicKeyHex | quote }}
 ---
 {{- end }}
 apiVersion: v1
