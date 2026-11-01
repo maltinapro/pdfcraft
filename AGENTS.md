@@ -15,7 +15,8 @@ PDFCraft is a full-stack PDF template builder:
 
 ## Repository Structure
 - `frontend/` — configurator UI, free-token handling (`lib/api.ts`), static template `src/template/invoice.typ`
-- `backend/` — API server (`/generate-pdf`, `/health`)
+- `backend/` — API server (`/v1/invoices`, `/v1/invoices/bulk`, `/v1/free-token`, `/health`; metrics on a separate listener)
+- `deploy/helm/pdfcraft/` — Helm chart (optional PodMonitor/PrometheusRule, Grafana dashboards in `dashboards/`)
 - `README.md` — product overview and setup
 
 ## Local Development
@@ -140,6 +141,7 @@ Typst/krilla writes its own XMP and cannot be extended (not fixable in the invoi
 - Do not add caches of rendered templates or generated PDFs (customer data).
 - Frontend serializer and backend template language should stay aligned.
 - Add new form fields in `types.ts` + `backend/src/invoice.rs` (validate/escape; the frontend sends raw form values) + the form + `invoice.typ`. User data goes only into Typst string literals (escape `\` and `"`).
+- Observability: logs are JSON on stdout (`backend/src/telemetry.rs`); metrics in `backend/src/metrics.rs` (OpenMetrics on `METRICS_ADDR`, never via Ingress/Service; `token_id` label only for paid tokens). New metrics must be added to the dashboards in `deploy/helm/pdfcraft/dashboards/` and `docs/13-observability.md`.
 - Keep `cargo check` green after any backend change.
 - Keep `npm run build` green after any frontend change.
 
@@ -188,3 +190,4 @@ Vision: simple form-based invoice configurator (logo, company address, minimal c
 - [x] 25. Frontend on `/v1` (PR `feat/frontend-free-token`, stacked on `feat/free-token-anubis`): `/generate-pdf`, `ENABLE_GENERATE_PDF`, `buildRequest.ts` and the "API-Request" button are removed; `frontend/src/lib/api.ts` fetches a free token from `/v1/free-token` (token in localStorage `pdfcraft.freeToken`, re-fetched on 401/expiry; `VITE_API_TOKEN` overrides it for development) and calls `POST /v1/invoices` with `{settings, invoice}`. Landing page explains free vs. purchased tokens
 - [x] 26. Purchased tokens via Stripe (PR `feat/paid-token-stripe`, stacked on `feat/frontend-free-token`): `backend/src/stripe.rs`: `POST /v1/stripe/webhook` (HMAC signature, `checkout.session.completed` creates or extends by `metadata.token_id`, `invoice.paid` subscription renewal to period end + `PAID_GRACE_DAYS`), one-time `GET /v1/tokens/claim?session_id=`; everything `404` unless `PAID_TOKENS_ENABLED=true`, needs `STRIPE_WEBHOOK_SECRET`. Only the token hash/plan/end date is stored. Tested with signed fake events, NOT against live Stripe. Guide: `docs/12-paid-tokens-stripe.md`
 - [x] 27. Texts (PR `docs/maltina-vorneweg-privacy`): landing page section "Wer steckt dahinter?" (maltina.pro UG in formation develops; Vorneweg provides infrastructure, operation, resources), contact https://maltina.pro/ + hello@maltina.pro on landing page, imprint and privacy policy; privacy policy covers Anubis cookie, free token (localStorage + Valkey hashes, no customer data) and announces Stripe for purchased tokens. Operator must verify legal wording (controller stays Vorneweg eG i.Gr. per imprint) before go-live. vorneweg.org could not be read in the dev environment: the landing text is generic about Vorneweg's principles
+- [x] 28. Observability (PRs #40-#43): JSON logging for Loki, Prometheus metrics (technical + token-based business metrics, `METRICS_ADDR`, default `:9090`), chart options `metrics.podMonitor`/`metrics.prometheusRule`/`grafana.dashboards` (all optional, Prometheus/Grafana operators), 3 dashboards (business, technical, logs) as JSON in the chart. Guide: `docs/13-observability.md`. Verified: all dashboard queries against a real Prometheus; not yet verified on the live cluster. Not done: frontend metrics
