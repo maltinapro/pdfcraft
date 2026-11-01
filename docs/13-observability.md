@@ -114,3 +114,26 @@ metrics:
 - `PodMonitor` scrapes the backend (`metrics` port, `/metrics`) and, if enabled, Anubis (`METRICS_BIND`, funnel metrics such as challenges issued/validated). The chart adds no Service/Ingress port for metrics, so they stay cluster-internal.
 - `PrometheusRule` ships alerts: `PDFCraftBackendDown`, `PDFCraftHighErrorRate`, `PDFCraftSlowPdfGeneration`, `PDFCraftCompileSlotsSaturated`, `PDFCraftStoreErrors`.
 - Prometheus adds `namespace`, `pod` and `job` labels; queries in the dashboards/rules work across replicas via `sum`/`max`.
+
+## Grafana dashboards
+
+The dashboards are defined in this repository as JSON in `deploy/helm/pdfcraft/dashboards/` and deployed by the Helm chart as `GrafanaDashboard` resources of the Grafana Operator (optional, off by default):
+
+```yaml
+grafana:
+  dashboards:
+    enabled: true
+    folder: PDFCraft
+    instanceSelector:
+      matchLabels: { dashboards: grafana }   # labels of your Grafana resource
+```
+
+| Dashboard | Datasource | Content |
+| --- | --- | --- |
+| `PDFCraft / Business` | Prometheus | customers (valid paid tokens), tokens created, free → paid, PDFs per kind/plan, PDFs per free token and per paid token, token age at use (lifetime usage), rate limits, generation time per plan, Stripe events |
+| `PDFCraft / Technical` | Prometheus | request rate, 5xx, latency per route, API errors, compile slots/queue/Typst time, PDF size, pod CPU/memory/restarts |
+| `PDFCraft / Logs` | Loki (+ Prometheus for the namespace variable) | log volume by level, events, rate limits per token, errors, generated invoices, page views from the nginx log |
+
+Datasources are chosen with dashboard variables (`datasource`, `loki`), so no UIDs are hard-coded. The log queries assume the stream labels `namespace` and `app_kubernetes_io_component`; adjust the dashboard if your Loki shipper names them differently. Edit the JSON files (or build in Grafana and export) and commit them: the chart picks up every `dashboards/*.json`.
+
+Dashboards can also be imported manually in Grafana (Dashboards → New → Import) without the operator.

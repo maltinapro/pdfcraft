@@ -63,6 +63,21 @@ metrics:
     enabled: false
     labels: {}
 
+# Grafana dashboards (dashboards/*.json in this chart) as GrafanaDashboard resources of the
+# Grafana Operator (grafana.integreatly.org/v1beta1). Optional; needs the operator's CRDs.
+grafana:
+  dashboards:
+    enabled: false
+    folder: PDFCraft
+    resyncPeriod: 10m
+    # Needed if the Grafana instance lives in another namespace than this release
+    allowCrossNamespaceImport: true
+    # Must match the labels of your Grafana custom resource
+    instanceSelector:
+      matchLabels:
+        dashboards: grafana
+    labels: {}
+
 frontend:
   replicaCount: 1
   resources:
