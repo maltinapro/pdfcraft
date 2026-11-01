@@ -19,7 +19,7 @@ function ibanValid(raw: string): boolean {
   return rem === 1
 }
 
-/** Checks what an EN 16931 e-invoice needs (invoice-pro reports these inside the PDF otherwise). */
+/** Checks what an EN 16931 e-invoice needs (the backend otherwise attaches only `invoice-draft.xml`). */
 export function validateInvoice(settings: Settings, invoice: Invoice): Issue[] {
   const issues: Issue[] = []
   const err = (message: string) => issues.push({ level: 'error', message })

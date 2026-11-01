@@ -2,6 +2,7 @@
 //! rate limit. The client sends plain invoice data; the template never leaves the server.
 
 use crate::config;
+use crate::einvoice;
 use crate::invoice::{check_invoice, check_settings, file_stem, Errors, Invoice, Settings};
 use crate::store::{self, Client};
 use crate::{decode_assets, render_pdf, ApiError};
@@ -23,16 +24,38 @@ use std::{
 /// The same template the frontend ships; compiled into the binary.
 const INVOICE_TEMPLATE: &str = include_str!("../../frontend/src/template/invoice.typ");
 
+/// Template data and virtual files (logo, e-invoice XML) of one invoice.
+fn document(
+    raw: &Settings,
+    settings: serde_json::Value,
+    invoice: &Invoice,
+    mut checked: serde_json::Value,
+    mut assets: Vec<(String, Vec<u8>)>,
+) -> (serde_json::Value, Vec<(String, Vec<u8>)>) {
+    let prepared = einvoice::prepare(raw, &settings, invoice, &mut checked);
+    let mut data = json!({ "settings": settings, "invoice": checked });
+    if let (Some(data), Some(extra)) = (data.as_object_mut(), prepared.extra.as_object()) {
+        data.extend(extra.clone());
+    }
+    if let Some(xml) = prepared.xml {
+        if xml.draft {
+            tracing::warn!(event = "einvoice_draft", problems = ?xml.problems);
+        }
+        assets.push(("xml".to_string(), xml.bytes));
+    }
+    (data, assets)
+}
+
 /// Compiles a sample invoice once at startup so fonts, package modules and the
 /// template's constant parts are cached before the first real request.
 pub async fn warm_up() {
-    let settings: Settings = serde_json::from_value(json!({
+    let raw_settings: Settings = serde_json::from_value(json!({
         "sender": {"name": "Warm-up", "address": "Street 1", "city": "12345 City"},
         "bank": {"name": "Bank", "iban": "DE89370400440532013000", "bic": "COBADEFFXXX"},
         "zugferd": true,
     }))
     .expect("valid warm-up settings");
-    let invoice: Invoice = serde_json::from_value(json!({
+    let raw_invoice: Invoice = serde_json::from_value(json!({
         "number": "0",
         "date": "2026-01-01",
         "recipient": {"name": "Warm-up", "address": "Street 2", "city": "12345 City"},
@@ -40,15 +63,15 @@ pub async fn warm_up() {
     }))
     .expect("valid warm-up invoice");
     let mut errors = Errors::default();
-    let settings = check_settings(&settings, &mut errors);
-    let invoice = check_invoice(&invoice, "invoice", &mut errors);
+    let settings = check_settings(&raw_settings, &mut errors);
+    let invoice = check_invoice(&raw_invoice, "invoice", &mut errors);
     if !errors.0.is_empty() {
         tracing::warn!(event = "warm_up_skipped", errors = ?errors.0);
         return;
     }
-    let data = json!({ "settings": settings.data, "invoice": invoice });
+    let (data, assets) = document(&raw_settings, settings.data, &raw_invoice, invoice, Vec::new());
     let started = std::time::Instant::now();
-    match render_pdf(INVOICE_TEMPLATE, data, Vec::new()).await {
+    match render_pdf(INVOICE_TEMPLATE, data, assets).await {
         Ok(_) => tracing::info!(event = "warm_up", duration_ms = started.elapsed().as_secs_f64() * 1000.0),
         Err(e) => tracing::warn!(event = "warm_up_failed", error = ?e.details),
     }
@@ -213,7 +236,7 @@ async fn single(
         return Err(validation_error(errors));
     }
     let assets = logo_assets(settings.logo)?;
-    let data = json!({ "settings": with_watermark(&client, settings.data), "invoice": invoice });
+    let (data, assets) = document(&req.settings, with_watermark(&client, settings.data), &req.invoice, invoice, assets);
     let started = std::time::Instant::now();
     let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await?;
     crate::metrics::observe_pdf(&client, started.elapsed().as_secs_f64(), pdf.len());
@@ -271,8 +294,13 @@ async fn bulk(
     let started = std::time::Instant::now();
     let mut tasks = tokio::task::JoinSet::new();
     for (i, invoice) in checked.into_iter().enumerate() {
-        let data = json!({ "settings": with_watermark(&client, settings.data.clone()), "invoice": invoice });
-        let assets = assets.clone();
+        let (data, assets) = document(
+            &req.settings,
+            with_watermark(&client, settings.data.clone()),
+            &req.invoices[i],
+            invoice,
+            assets.clone(),
+        );
         tasks.spawn(async move {
             let started = std::time::Instant::now();
             let result = render_pdf(INVOICE_TEMPLATE, data, assets).await;
