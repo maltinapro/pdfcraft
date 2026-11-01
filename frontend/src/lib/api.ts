@@ -55,9 +55,14 @@ function fetchFreeToken(): Promise<string> {
       method: 'POST',
       credentials: 'include',
     })
-    if (response.status === 403 || response.status === 409) {
+    if (response.status === 403) {
       throw new Error(
-        'Kostenloses Token nicht verfügbar. Bitte die Seite neu laden und die Browser-Prüfung (Anubis) lösen.',
+        'Keine Anubis-Prüfung gefunden (403). Bitte die Seite neu laden und die Browser-Prüfung lösen.',
+      )
+    }
+    if (response.status === 409) {
+      throw new Error(
+        'Für diese Browser-Prüfung wurde bereits ein Token ausgegeben (409). Cookie „techaro.lol-anubis-auth“ löschen oder ein privates Fenster nutzen und neu laden.',
       )
     }
     if (!response.ok) throw new Error(await errorMessage(response))
