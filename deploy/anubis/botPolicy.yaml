@@ -8,7 +8,7 @@ bots:
 
   # Landing page, legal pages and static assets stay open (also for search engines).
   - name: public-pages
-    path_regex: ^/($|index\.html$|impressum\.html$|datenschutz\.html$|assets/|favicon|robots\.txt$)
+    path_regex: ^/($|index\.html$|impressum\.html$|datenschutz\.html$|assets/|favicon|robots\.txt$|sitemap\.xml$)
     action: ALLOW
 
   # The configurator needs a solved proof-of-work challenge. The resulting cookie is what
