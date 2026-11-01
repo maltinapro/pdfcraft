@@ -35,13 +35,13 @@ cd frontend && npm install && npm run dev
 
 Or with Docker: `docker compose up --build` (landing page http://localhost:8080, app http://localhost:8080/app/, backend http://localhost:3000).
 
-Open the frontend, fill in **Settings** and **Invoice**, and download the PDF. Input is saved in the browser; use **Exportieren / Importieren** for a JSON backup. The UI needs no API key.
+Open the frontend, fill in **Settings** and **Invoice**, and download the PDF. Input is saved in the browser; use **Exportieren / Importieren** for a JSON backup. The UI needs no token yet.
 
 ## Architecture
 
 ```
 Browser form ──POST /generate-pdf──> Rust / Axum ── minijinja ── Typst ──> PDF/A-3b (+ ZUGFeRD XML)
-Customer system ──POST /v1/invoices (API key)──> same engine, server-side template
+Customer system ──POST /v1/invoices (token)──> same engine, server-side template
 ```
 
 Details: [Architecture and Extending](docs/10-architecture-and-extending.md).
@@ -51,8 +51,8 @@ Details: [Architecture and Extending](docs/10-architecture-and-extending.md).
 | Endpoint | Auth | Purpose |
 | --- | --- | --- |
 | `POST /generate-pdf` | none | Frontend preview/download (arbitrary template; disable in production) |
-| `POST /v1/invoices` | API key | One invoice → PDF |
-| `POST /v1/invoices/bulk` | API key | Many invoices → ZIP |
+| `POST /v1/invoices` | token | One invoice → PDF |
+| `POST /v1/invoices/bulk` | token | Many invoices → ZIP |
 | `GET /health` | none | Status |
 
 ```bash
@@ -69,9 +69,9 @@ Full reference: [API Reference](docs/09-api-reference.md).
 | --- | --- |
 | [Overview and Run Modes](docs/01-overview-and-modes.md) | Components and modes (dev, demo, production) |
 | [Local Development](docs/02-local-development.md) | Run and test from source |
-| [Docker (Local)](docs/03-docker-local.md) | Compose, Postgres/Redis |
+| [Docker (Local)](docs/03-docker-local.md) | Compose, Valkey |
 | [Configuration](docs/04-configuration.md) | All environment variables |
-| [API Keys and Rate Limiting](docs/05-api-keys-and-rate-limiting.md) | Issue and manage customer keys |
+| [Tokens and Rate Limiting](docs/05-tokens-and-rate-limiting.md) | Issue and manage customer keys |
 | [Production](docs/06-production.md) | Deploying the `/v1` API |
 | [Demo System](docs/07-demo-system.md) | Showing the configurator to prospects |
 | [Kubernetes / Helm](docs/08-kubernetes-helm-outlook.md) | Demo chart in `deploy/helm/pdfcraft`; production chart planned |
@@ -80,7 +80,7 @@ Full reference: [API Reference](docs/09-api-reference.md).
 
 ## Tech Stack
 
-React + Vite, Rust + Axum, minijinja, Typst (`typst-as-lib`, `typst-pdf`), [invoice-pro](https://typst.app/universe/package/invoice-pro/) (our [fork](https://github.com/maltinapro/invoice-pro)), optional Postgres and Redis.
+React + Vite, Rust + Axum, minijinja, Typst (`typst-as-lib`, `typst-pdf`), [invoice-pro](https://typst.app/universe/package/invoice-pro/) (our [fork](https://github.com/maltinapro/invoice-pro)), Valkey.
 
 ## License
 

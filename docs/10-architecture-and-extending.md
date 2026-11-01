@@ -50,9 +50,9 @@ pdfcraft/
 └── backend/                          # Rust (Axum + typst-as-lib + typst-pdf + minijinja)
     ├── Cargo.toml
     ├── src/main.rs                   # Router, Typst engine, POST /generate-pdf
-    ├── src/v1.rs                     # POST /v1/invoices[/bulk]: API key, rate limit, ZIP
+    ├── src/v1.rs                     # POST /v1/invoices[/bulk]: token auth, rate limit, ZIP
     ├── src/invoice.rs                # Validation/escaping of the /v1 input
-    ├── src/store.rs                  # API keys (Postgres), rate limit (Redis / in-memory)
+    ├── src/store.rs                  # tokens + rate limit (Valkey), `tokens` CLI
     ├── src/config.rs                 # Environment configuration
     ├── src/facturx.rs                # Factur-X XMP post-processing (lopdf)
     └── vendor/typst-packages/        # Vendored @preview packages (invoice-pro, ...)
@@ -80,5 +80,5 @@ Packages are loaded from `backend/vendor/typst-packages`, so no network access i
 | Templating | [minijinja 2](https://docs.rs/minijinja/) |
 | PDF | [typst-as-lib](https://crates.io/crates/typst-as-lib) + [typst-pdf](https://crates.io/crates/typst-pdf) |
 | Invoice template | [invoice-pro](https://typst.app/universe/package/invoice-pro/) (fork) |
-| Keys / rate limit | Postgres (sqlx), Redis |
+| Keys / rate limit | Valkey (`redis` crate) |
 | CORS | [tower-http](https://docs.rs/tower-http/) |

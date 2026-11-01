@@ -1,5 +1,5 @@
-//! `/v1` API: fixed server-side template, API-key authentication, per-key rate
-//! limit. The client sends plain invoice data; the template never leaves the server.
+//! `/v1` API: fixed server-side template, token authentication (free or paid), per-token
+//! rate limit. The client sends plain invoice data; the template never leaves the server.
 
 use crate::config;
 use crate::invoice::{check_invoice, check_settings, file_stem, Errors, Invoice, Settings};
@@ -18,8 +18,6 @@ use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
     io::{Cursor, Write},
-    sync::{Mutex, OnceLock},
-    time::Instant,
 };
 
 /// The same template the frontend ships; compiled into the binary.
@@ -30,14 +28,6 @@ pub fn router() -> Router {
         .route("/invoices", post(single))
         .route("/invoices/bulk", post(bulk))
         .layer(middleware::from_fn(auth))
-}
-
-fn ct_eq(a: &[u8], b: &[u8]) -> bool {
-    let mut diff = (a.len() != b.len()) as u8;
-    for i in 0..a.len().max(b.len()) {
-        diff |= a.get(i).copied().unwrap_or(0) ^ b.get(i).copied().unwrap_or(0);
-    }
-    diff == 0
 }
 
 fn presented_key(req: &Request) -> Option<String> {
@@ -54,57 +44,42 @@ fn presented_key(req: &Request) -> Option<String> {
         .map(|v| v.trim().to_string())
 }
 
+fn store_unavailable() -> ApiError {
+    ApiError::new(
+        StatusCode::SERVICE_UNAVAILABLE,
+        "store_unavailable",
+        "the token store (Valkey) is not configured or not reachable",
+    )
+}
+
+fn unauthorized(details: &'static str) -> Response {
+    let mut resp = ApiError::new(StatusCode::UNAUTHORIZED, "unauthorized", details).into_response();
+    resp.headers_mut()
+        .insert(header::WWW_AUTHENTICATE, "Bearer".parse().unwrap());
+    resp
+}
+
 async fn auth(mut req: Request, next: Next) -> Response {
-    let cfg = config::get();
-    if cfg.api_keys.is_empty() && !store::has_database() {
-        return ApiError::new(
-            StatusCode::SERVICE_UNAVAILABLE,
-            "api_keys_not_configured",
-            "the /v1 API is disabled: set API_KEYS or DATABASE_URL on the server",
-        )
-        .into_response();
+    if !store::is_configured() {
+        return store_unavailable().into_response();
     }
     let presented = presented_key(&req).unwrap_or_default();
-    // Compare against every static key without early exit.
-    let mut client = None;
-    for (i, key) in cfg.api_keys.iter().enumerate() {
-        if ct_eq(key.as_bytes(), presented.as_bytes()) {
-            client = Some(Client {
-                id: format!("env:{i}"),
-                limit: cfg.rate_limit_per_minute,
-            });
+    match store::lookup(&presented).await {
+        Err(_) => store_unavailable().into_response(),
+        Ok(None) => unauthorized(
+            "missing, invalid or expired token (use `Authorization: Bearer <token>` or `X-API-Key`)",
+        ),
+        Ok(Some(client)) if client.kind == store::Kind::Paid && !config::get().paid_tokens_enabled => {
+            unauthorized("purchased tokens are not enabled on this server yet")
         }
-    }
-    if client.is_none() && !presented.is_empty() {
-        client = store::lookup_key(&presented).await;
-    }
-    match client {
-        Some(c) => {
-            req.extensions_mut().insert(c);
+        Ok(Some(client)) => {
+            req.extensions_mut().insert(client);
             next.run(req).await
         }
-        None => {
-            let mut resp = ApiError::new(
-                StatusCode::UNAUTHORIZED,
-                "unauthorized",
-                "missing or invalid API key (use `Authorization: Bearer <key>` or `X-API-Key`)",
-            )
-            .into_response();
-            resp.headers_mut()
-                .insert(header::WWW_AUTHENTICATE, "Bearer".parse().unwrap());
-            resp
-        }
     }
 }
 
-struct Bucket {
-    tokens: f64,
-    last: Instant,
-}
-
-static BUCKETS: OnceLock<Mutex<HashMap<String, Bucket>>> = OnceLock::new();
-
-fn limited(capacity: f64, wait: Option<u64>) -> ApiError {
+fn limited(capacity: u32, wait: Option<u64>) -> ApiError {
     let mut err = ApiError::new(
         StatusCode::TOO_MANY_REQUESTS,
         "rate_limited",
@@ -114,36 +89,21 @@ fn limited(capacity: f64, wait: Option<u64>) -> ApiError {
     err
 }
 
-/// Token bucket per API key (`limit` tokens per minute, refilled continuously; every
-/// invoice costs one token). Shared via Redis when available, otherwise per process.
+/// Token bucket per token (`limit` invoices per minute, refilled continuously; every
+/// invoice costs one). The state lives in Valkey, so it is shared across instances.
 async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiError> {
-    let capacity = client.limit as f64;
-    if cost as f64 > capacity {
+    if cost > client.limit as usize {
         return Err(ApiError::new(
             StatusCode::TOO_MANY_REQUESTS,
             "rate_limited",
-            format!("{cost} invoices exceed the limit of {capacity} per minute"),
+            format!("{cost} invoices exceed the limit of {} per minute", client.limit),
         ));
     }
-    if let Some(decision) = store::redis_take(client, cost as u32).await {
-        return decision.map_err(|wait| limited(capacity, Some(wait)));
+    match store::take(client, cost as u32).await {
+        Ok(Ok(())) => Ok(()),
+        Ok(Err(wait)) => Err(limited(client.limit, Some(wait))),
+        Err(_) => Err(store_unavailable()),
     }
-    let cost = cost as f64;
-    let per_sec = capacity / 60.0;
-    let mut map = BUCKETS.get_or_init(Default::default).lock().unwrap();
-    let now = Instant::now();
-    let bucket = map.entry(client.id.clone()).or_insert(Bucket {
-        tokens: capacity,
-        last: now,
-    });
-    bucket.tokens = (bucket.tokens + now.duration_since(bucket.last).as_secs_f64() * per_sec).min(capacity);
-    bucket.last = now;
-    if bucket.tokens >= cost {
-        bucket.tokens -= cost;
-        return Ok(());
-    }
-    let wait = ((cost - bucket.tokens) / per_sec).ceil().max(1.0) as u64;
-    Err(limited(capacity, Some(wait)))
 }
 
 fn validation_error(errors: Errors) -> ApiError {

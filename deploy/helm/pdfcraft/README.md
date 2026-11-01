@@ -1,6 +1,6 @@
 # PDFCraft Helm chart (demo system)
 
-Minimal chart for the **demo system** on a k3s cluster: frontend (nginx), backend, and one Ingress (Traefik) with a cert-manager certificate. It deliberately has **no Postgres/Redis and no API keys**: `/v1` stays disabled (`503`), only the configurator and `POST /generate-pdf` work. See [Demo System](../../../docs/07-demo-system.md).
+Minimal chart for the **demo system** on a k3s cluster: frontend (nginx), backend, and one Ingress (Traefik) with a cert-manager certificate. It also deploys **Valkey** (StatefulSet with a persistent volume, append-only file) for tokens and rate limits; `/v1` works with tokens created via `tokens create-free` / `tokens create` (`kubectl exec` into the backend pod). See [Demo System](../../../docs/07-demo-system.md).
 
 Routing on one host (same origin, no CORS):
 
@@ -120,7 +120,7 @@ See `values.yaml`: image registry/tag (empty tag = the chart's `appVersion`), re
 
 ## Not included yet
 
-- **Secrets / Postgres / Redis**: not needed for the demo. For the production API, Postgres and Redis will be created with Kubernetes operators (for example CloudNativePG and a Redis operator) and their connection strings passed as `DATABASE_URL` / `REDIS_URL` from a Secret. See [Production](../../../docs/06-production.md).
+- **Valkey operator / HA**: the chart runs one Valkey pod with a PVC (`valkey.persistence.size`, `valkey.persistence.storageClass`). That is enough for the demo: a few KB of tokens, restarts keep the data. For HA, snapshots and backups use an external Valkey or a Valkey operator: set `valkey.enabled=false` and `backend.env.VALKEY_URL`. See [Production](../../../docs/06-production.md).
 - **Per-IP rate limit** for `/generate-pdf`: recommended at the edge (Cloudflare rate-limiting rule), see [Demo System](../../../docs/07-demo-system.md#where-to-rate-limit-application-vs-edge); optionally a Traefik `Middleware` as a second layer. Currently only the compile limit and pod resource limits protect the demo.
 - Pinned image tags and automatic deployment from GitHub Actions (would need a kubeconfig secret).
 - Non-root images, NetworkPolicy, autoscaling, monitoring.

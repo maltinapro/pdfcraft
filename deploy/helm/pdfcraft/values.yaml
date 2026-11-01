@@ -13,6 +13,18 @@ backend:
     requests: { cpu: 250m, memory: 256Mi }
     limits: { cpu: "1", memory: 512Mi }
 
+# Tokens and rate limits. Single replica with a persistent volume (append-only file).
+# For HA use a Valkey operator instead: set enabled=false and backend.env.VALKEY_URL.
+valkey:
+  enabled: true
+  image: valkey/valkey:8-alpine
+  persistence:
+    size: 1Gi
+    storageClass: ""
+  resources:
+    requests: { cpu: 20m, memory: 32Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+
 frontend:
   replicaCount: 1
   resources:
