@@ -104,14 +104,31 @@ async fn connect(url: &str) -> redis::RedisResult<ConnectionManager> {
     ConnectionManager::new(redis::Client::open(url)?).await
 }
 
-/// Connects to Valkey when `VALKEY_URL` is set. Without it `/v1` answers 503.
+/// Connects to Valkey when `VALKEY_URL` is set. Without it `/v1` answers 503. If Valkey is not
+/// reachable yet (pods starting in parallel, DNS), the connection is retried in the background
+/// instead of leaving this pod unavailable until it is restarted.
 pub async fn init() {
-    let Some(url) = &config::get().valkey_url else { return };
-    match connect(url).await {
+    let Some(url) = config::get().valkey_url.clone() else { return };
+    match connect(&url).await {
         Ok(m) => {
             let _ = VALKEY.set(m);
         }
-        Err(e) => tracing::warn!(event = "valkey_connect_failed", error = %e, "cannot connect to VALKEY_URL; /v1 will answer 503"),
+        Err(e) => {
+            tracing::warn!(event = "valkey_connect_failed", error = %e, "cannot connect to VALKEY_URL; retrying in the background, /v1 answers 503 until then");
+            tokio::spawn(async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    match connect(&url).await {
+                        Ok(m) => {
+                            let _ = VALKEY.set(m);
+                            tracing::info!(event = "valkey_connected");
+                            break;
+                        }
+                        Err(e) => tracing::warn!(event = "valkey_connect_failed", error = %e),
+                    }
+                }
+            });
+        }
     }
 }
 
