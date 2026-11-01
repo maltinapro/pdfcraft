@@ -20,7 +20,6 @@ Customer systems ──HTTPS──> Reverse proxy / load balancer (TLS, body lim
 ### Backend settings
 
 ```bash
-ENABLE_GENERATE_PDF=false            # no arbitrary templates for external callers
 VALKEY_URL=redis://...               # tokens and shared rate limit (persistent Valkey)
 PAID_TOKENS_ENABLED=true             # feature flag, see 12-paid-tokens-stripe.md
 PAID_PLANS=starter=60,business=300,pro=1000
@@ -37,7 +36,7 @@ BIND_ADDR=0.0.0.0:3000
 - **Timeouts**: a bulk request of 100 invoices takes roughly `100 × 0.1 s ÷ parallel compiles`, so seconds to tens of seconds; use read timeouts of at least 120 s for `/v1/invoices/bulk`.
 - Optionally an extra per-IP limit as defense in depth.
 - If the proxy buffers responses, allow ZIP responses of several MB.
-- Expose only `/v1/*` (and `/health` internally). Block `/generate-pdf` at the proxy as well, even if you disabled it.
+- Expose only `/v1/*` (and `/health` internally).
 
 ### Infrastructure
 
@@ -66,7 +65,6 @@ BIND_ADDR=0.0.0.0:3000
 A Docker host with a reverse proxy such as Caddy or nginx:
 
 ```bash
-export ENABLE_GENERATE_PDF=false
 export PAID_TOKENS_ENABLED=true
 
 docker compose up -d --build valkey backend     # without the frontend service
@@ -80,9 +78,8 @@ Put the proxy in front of port 3000 and publish only 443. For real production us
 ```bash
 curl -s https://api.example.com/health
 curl -i -X POST https://api.example.com/v1/invoices                         # expect 401
-curl -i -X POST https://api.example.com/generate-pdf -d '{}'                 # expect 404
 curl -X POST https://api.example.com/v1/invoices -H "Authorization: Bearer $KEY" \
      -H 'content-type: application/json' --data @pdfcraft-config.json -o test.pdf
 ```
 
-Validate one produced PDF with Mustang (see [Local Development](02-local-development.md#7-validate-e-invoice-pdfs-optional)).
+Validate one produced PDF with Mustang (see [Local Development](02-local-development.md#6-validate-e-invoice-pdfs-optional)).

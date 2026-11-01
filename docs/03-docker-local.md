@@ -25,8 +25,9 @@ The URL is the one the **browser** uses, not an internal container name.
 docker compose up --build
 ```
 
-- Frontend: `http://localhost:8080` (landing page), app at `http://localhost:8080/app/`
-- Backend: `http://localhost:3000`
+- `http://localhost:8080` (landing page), app at `http://localhost:8080/app/`. The `edge` service (nginx) stands in for the ingress: `/v1` goes to the backend, everything else through **Anubis** to the frontend. The first visit of `/app/` shows the Anubis challenge.
+- Backend directly: `http://localhost:3000`
+- Compose ships a **local-only** Anubis key pair; for anything else set `ANUBIS_PRIVATE_KEY_HEX` and `ANUBIS_PUBLIC_KEY_HEX` ([guide](11-free-token-and-anubis.md))
 
 Compose also starts **Valkey** (`valkey` service, volume `valkeydata`, append-only persistence), where tokens and rate limits live.
 
@@ -43,14 +44,6 @@ curl -X POST http://localhost:3000/v1/invoices \
 Purchased tokens: `PAID_TOKENS_ENABLED=true docker compose up -d`, then `docker compose exec backend /app/pdfcraft-backend tokens create --plan starter --days 30`. Without the flag they are rejected.
 
 Tokens survive `docker compose down` (the volume stays); `docker compose down -v` deletes them.
-
-### Without the arbitrary-template endpoint
-
-```bash
-ENABLE_GENERATE_PDF=false docker compose up --build backend
-```
-
-The UI preview stops working in this mode (it needs `/generate-pdf`); only `/v1` is served.
 
 ## Quick container smoke test (Verified)
 

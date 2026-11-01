@@ -29,12 +29,6 @@ spec:
               service:
                 name: {{ .Release.Name }}-backend
                 port: { number: 3000 }
-          - path: /generate-pdf
-            pathType: Exact
-            backend:
-              service:
-                name: {{ .Release.Name }}-backend
-                port: { number: 3000 }
           - path: /
             pathType: Prefix
             backend:

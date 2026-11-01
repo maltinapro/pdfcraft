@@ -14,7 +14,6 @@
 //! | `BULK_MAX_INVOICES` | `100` | Maximum invoices per bulk request |
 //! | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations |
 //! | `CORS_ALLOWED_ORIGINS` | any | Comma-separated origins, or `*` |
-//! | `ENABLE_GENERATE_PDF` | `true` | Set `false` to disable `POST /generate-pdf` (arbitrary templates) |
 
 use std::sync::OnceLock;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
@@ -32,7 +31,6 @@ pub struct Config {
     pub bulk_max_invoices: usize,
     pub max_concurrent_compiles: usize,
     pub cors_origins: Option<Vec<String>>,
-    pub enable_generate_pdf: bool,
 }
 
 fn env_parse<T: std::str::FromStr>(name: &str, default: T) -> T {
@@ -94,7 +92,6 @@ impl Config {
             bulk_max_invoices: env_parse("BULK_MAX_INVOICES", 100usize).max(1),
             max_concurrent_compiles: env_parse("MAX_CONCURRENT_COMPILES", cpus).max(1),
             cors_origins,
-            enable_generate_pdf: env_parse("ENABLE_GENERATE_PDF", true),
         }
     }
 

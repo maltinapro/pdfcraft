@@ -1,9 +1,9 @@
 # Anubis policy for PDFCraft. Anubis sits in front of the frontend only; the ingress /
-# edge proxy routes /v1/* (and /generate-pdf, until it is removed) straight to the backend.
+# edge proxy routes /v1/* straight to the backend.
 bots:
   # The API is protected by tokens; the free token endpoint checks the Anubis pass itself.
   - name: api
-    path_regex: ^/(v1/|generate-pdf$)
+    path_regex: ^/v1/
     action: ALLOW
 
   # Landing page, legal pages and static assets stay open (also for search engines).

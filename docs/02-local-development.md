@@ -41,9 +41,14 @@ The frontend talks to `http://localhost:3000` by default. To use another backend
 VITE_API_BASE_URL=http://localhost:4000 npm run dev
 ```
 
-`VITE_API_BASE_URL` is read at build time. An empty value means same origin (`/generate-pdf`).
+`VITE_API_BASE_URL` is read at build time. An empty value means same origin (`/v1/...`).
 
-**No token is needed** for the UI: it uses `POST /generate-pdf`.
+The UI calls `POST /v1/invoices` with a token. In the full stack it gets a free token from `/v1/free-token` after the Anubis challenge ([Free Token and Anubis](11-free-token-and-anubis.md)). Without Anubis (`npm run dev`) create a free token and pass it at start:
+
+```bash
+cd backend && cargo run -- tokens create-free     # prints pf_... (needs VALKEY_URL, see section 5)
+cd frontend && VITE_API_TOKEN=pf_... npm run dev
+```
 
 ## 3. Test checklist
 
@@ -59,20 +64,7 @@ Manual UI checks:
 3. **Exportieren**, reload, **Importieren**; settings are restored.
 4. **PDF herunterladen** produces a PDF with an embedded `factur-x.xml` (EN 16931) or `xrechnung.xml`.
 
-## 4. Test `POST /generate-pdf` directly
-
-1. In the UI click **API-Request** to download `pdfcraft-request.json`.
-2. Send it:
-
-```bash
-curl -X POST http://localhost:3000/generate-pdf \
-  -H 'content-type: application/json' \
-  --data @pdfcraft-request.json -o invoice.pdf
-```
-
-Many invoices: change `data.invoice` per request, for example with `jq` (see the README section "Using the backend directly").
-
-## 5. Test the `/v1` API with tokens (needs Valkey)
+## 4. Test the `/v1` API with tokens (needs Valkey)
 
 ```bash
 docker run -d --name pdfcraft-valkey -p 6379:6379 valkey/valkey:8-alpine valkey-server --appendonly yes
@@ -132,7 +124,7 @@ FREE_RATE_LIMIT_PER_MINUTE=3 cargo run
 # the 4th invoice within a minute with a free token -> 429 with a Retry-After header
 ```
 
-## 6. Test tokens across instances, expiry and revocation
+## 5. Test tokens across instances, expiry and revocation
 
 Start two instances in separate terminals (same `VALKEY_URL`):
 
@@ -151,7 +143,7 @@ docker stop pdfcraft-valkey                     # /v1 answers 503 store_unavaila
 
 Cleanup: `docker rm -f pdfcraft-valkey`.
 
-## 7. Validate e-invoice PDFs (optional)
+## 6. Validate e-invoice PDFs (optional)
 
 ```bash
 java -jar Mustang-CLI-2.26.0.jar --action validate --source invoice.pdf

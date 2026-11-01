@@ -8,7 +8,6 @@ mod v1;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use axum::{
     extract::{
-        rejection::JsonRejection,
         DefaultBodyLimit,
         Json,
     },
@@ -22,12 +21,11 @@ use axum::{
     },
     routing::{
         get,
-        post,
     },
     Router,
 };
 use minijinja::{Environment, Value};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value as JsonValue;
 use std::{
     borrow::Cow,
@@ -174,16 +172,6 @@ fn compile_pdf(
     }
 }
 
-#[derive(Deserialize)]
-struct GenerateRequest {
-    template: String,
-    data: JsonValue,
-    /// Binary files (e.g. a logo) as base64, exposed to the template as
-    /// `assets.<key>` (an absolute virtual path usable in `image(...)`).
-    #[serde(default)]
-    assets: HashMap<String, String>,
-}
-
 #[derive(Serialize)]
 struct HealthResponse {
     status: &'static str,
@@ -323,29 +311,6 @@ pub(crate) async fn render_pdf(
     }
 }
 
-async fn generate_pdf(
-    payload: Result<Json<GenerateRequest>, JsonRejection>,
-) -> Result<Response, ApiError> {
-    let payload = match payload {
-        Ok(Json(body)) => body,
-        Err(e) => return Err(ApiError::new(e.status(), "invalid_request", e.body_text())),
-    };
-    let assets = decode_assets(&payload.assets)?;
-    let pdf_bytes = render_pdf(&payload.template, payload.data, assets).await?;
-    Ok((
-        StatusCode::OK,
-        [
-            (header::CONTENT_TYPE, "application/pdf"),
-            (
-                header::CONTENT_DISPOSITION,
-                "attachment; filename=\"output.pdf\"",
-            ),
-        ],
-        pdf_bytes,
-    )
-        .into_response())
-}
-
 async fn health() -> Json<HealthResponse> {
     Json(HealthResponse { status: "ok" })
 }
@@ -359,11 +324,8 @@ async fn main() {
     let cfg = config::get();
     store::init().await;
 
-    let mut app = Router::new().route("/health", get(health));
-    if cfg.enable_generate_pdf {
-        app = app.route("/generate-pdf", post(generate_pdf));
-    }
-    let app = app
+    let app = Router::new()
+        .route("/health", get(health))
         .nest("/v1", v1::router())
         .layer(DefaultBodyLimit::max(MAX_REQUEST_BODY_BYTES))
         .layer(config::cors_layer());
@@ -383,11 +345,6 @@ async fn main() {
 
     println!("🚀 PDFCraft backend listening on http://{}", cfg.bind_addr);
     println!("   GET  /health               — health check");
-    if cfg.enable_generate_pdf {
-        println!("   POST /generate-pdf         — compile a Typst template to PDF");
-    } else {
-        println!("   POST /generate-pdf         — disabled (ENABLE_GENERATE_PDF=false)");
-    }
     if store::is_configured() {
         println!("   POST /v1/invoices          — one invoice -> PDF (token required)");
         println!("   POST /v1/invoices/bulk     — many invoices -> ZIP (token required)");

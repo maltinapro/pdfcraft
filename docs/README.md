@@ -31,4 +31,4 @@ cd backend && cargo run
 cd frontend && npm install && npm run dev
 ```
 
-The live preview uses the `/generate-pdf` endpoint without a token (until the free-token PR changes this).
+The live preview uses `POST /v1/invoices`; for local development pass a free token via `VITE_API_TOKEN` (see guide 2).

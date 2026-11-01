@@ -4,10 +4,10 @@ Goal: let prospective customers try the configurator in the browser (form, live 
 
 ## Key facts
 
-- The frontend is a static site. It talks to the backend through `POST /generate-pdf`, which needs **no token** (this changes with the free token, see [Free Token](11-free-token-and-anubis.md)).
-- A key must never be embedded in the frontend: it would be visible to everyone.
-- `POST /generate-pdf` accepts an arbitrary Typst template and has no per-user rate limit. The Typst engine only sees the request's own files and the vendored packages (no network, no host files), so the main risk is **resource abuse** (expensive layouts, many requests). Mitigate it as described below.
-- Use a **separate backend instance** for the demo. Never enable `/generate-pdf` on the production API that customers use.
+- The frontend is a static site behind **Anubis**. It talks to the backend through `POST /v1/invoices` with a **free token** that it gets from `POST /v1/free-token` after the browser solved the challenge ([Free Token and Anubis](11-free-token-and-anubis.md)). PDFs carry the watermark "Entwurf".
+- A purchased token must never be embedded in the frontend: it would be visible to everyone.
+- The main risk is **resource abuse** (expensive layouts, many requests). The free token has a static rate limit and a short lifetime; add an edge limit as described below.
+- Use a **separate backend instance** (and Valkey) for the demo, not the one customers use.
 
 ## Landing page
 
@@ -21,17 +21,17 @@ A minimal Helm chart and a GitHub Actions workflow that publishes the container 
 
 | Layer | Responsibility |
 | --- | --- |
-| Edge (Cloudflare, WAF, CDN) | Per-IP limit for `/generate-pdf`, bot protection, DDoS, TLS. Abusive traffic never reaches the cluster and costs no CPU |
+| Edge (Cloudflare, WAF, CDN) | Per-IP limit for `/v1/free-token` and `/v1/invoices`, bot protection, DDoS, TLS. Abusive traffic never reaches the cluster and costs no CPU |
 | Ingress (Traefik / nginx) | Optional second per-IP limit as a safety net (see below) |
-| Application | Per-API-key limit (token bucket, bulk costs N), compile semaphore, input validation |
+| Application | Per-token limit (token bucket, bulk costs N), compile semaphore, input validation |
 
-Why not per-IP in the backend: behind proxies the backend only sees the proxy address, and trusting `X-Forwarded-For` safely needs extra configuration. The edge does this reliably. The per-key limit stays in the application because only it knows the key, the customer quota and the cost of a request.
+Why not per-IP in the backend: behind proxies the backend only sees the proxy address, and trusting `X-Forwarded-For` safely needs extra configuration. The edge does this reliably. The per-token limit stays in the application because only it knows the key, the customer quota and the cost of a request.
 
 ### Cloudflare (recommended for the demo)
 
 Put the demo domain behind Cloudflare (proxied DNS record) and add a rate-limiting rule (Security → WAF → Rate limiting rules). Example (Untested):
 
-- If: URI Path equals `/generate-pdf` and Method equals `POST`
+- If: URI Path starts with `/v1/` and Method equals `POST`
 - Characteristics: IP
 - Rate: 30 requests per minute (the preview sends a few per minute while typing)
 - Action: Block for 1 minute
@@ -42,7 +42,7 @@ Also enable Bot Fight Mode. Set SSL/TLS mode to "Full (strict)" so Cloudflare ta
 
 The frontend is static and fits a CDN well (Cloudflare Pages, Netlify, S3 + CDN). Two ways:
 
-1. **Same origin through Cloudflare (preferred):** one hostname; route `/` to the CDN origin and `/generate-pdf` to the cluster (Cloudflare Workers routes or Load Balancing path rules). Build the frontend with an empty `VITE_API_BASE_URL`; no CORS needed and the images stay environment-independent.
+1. **Same origin through Cloudflare (preferred):** one hostname; route `/` to the CDN origin (Anubis in front of it) and `/v1` to the cluster (Cloudflare Workers routes or Load Balancing path rules). Build the frontend with an empty `VITE_API_BASE_URL`; no CORS needed and the images stay environment-independent.
 2. **Separate API hostname:** build the frontend with `VITE_API_BASE_URL=https://api.example.com` and set `CORS_ALLOWED_ORIGINS=https://demo.example.com` on the backend. Needs a new frontend build per environment, and the rate-limit rule applies to the API hostname.
 
 In both cases the landing page, `/app/`, `impressum.html` and `datenschutz.html` are plain static files, so they work on any static host.
@@ -52,11 +52,11 @@ In both cases the landing page, `/app/`, `impressum.html` and `datenschutz.html`
 ```
 Browser ──HTTPS──> demo.example.com
                       │  reverse proxy (TLS, per-IP rate limit, body limit)
-                      ├── /                      -> frontend (static files)
-                      └── /generate-pdf, /health -> demo backend
+                      ├── /          -> Anubis -> frontend (static files)
+                      └── /v1, /health -> demo backend (not behind Anubis)
 ```
 
-Serving both under one domain makes the frontend same-origin, so no CORS is needed. Build the frontend with an **empty** API base URL (Verified: the bundle then calls `/generate-pdf` on the same origin):
+Serving both under one domain makes the frontend same-origin, so no CORS is needed. Build the frontend with an **empty** API base URL (Verified: the bundle then calls `/v1` on the same origin):
 
 ```bash
 docker build -t pdfcraft-frontend-demo --build-arg VITE_API_BASE_URL= frontend
@@ -74,8 +74,8 @@ CORS_ALLOWED_ORIGINS=https://demo.example.com
 ## Demo backend settings
 
 ```bash
-ENABLE_GENERATE_PDF=true            # needed by the UI
-# no VALKEY_URL  -> /v1 stays disabled (503)
+VALKEY_URL=redis://...              # tokens and rate limits
+ANUBIS_PUBLIC_KEY_HEX=...           # enables free tokens
 MAX_CONCURRENT_COMPILES=2           # keep the demo cheap and bounded
 CORS_ALLOWED_ORIGINS=https://demo.example.com   # only for the two-domain variant
 ```
@@ -94,13 +94,18 @@ server {
   server_name demo.example.com;
   client_max_body_size 2m;
 
-  location = /generate-pdf {
+  location /v1/ {
     limit_req zone=pdf burst=10 nodelay;
     proxy_read_timeout 60s;
     proxy_pass http://demo-backend:3000;
   }
   location = /health { proxy_pass http://demo-backend:3000; }
-  location / { proxy_pass http://demo-frontend:80; }
+  location / {
+    proxy_pass http://anubis:8923;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
 }
 ```
 
@@ -124,7 +129,7 @@ Do not hand out a production key. Options:
 ## Deploy checklist
 
 1. Build the frontend image with the right `VITE_API_BASE_URL`.
-2. Run the backend image with `ENABLE_GENERATE_PDF=true`, resource limits, no keys.
+2. Run the backend image with `VALKEY_URL`, `ANUBIS_PUBLIC_KEY_HEX`, resource limits, and Anubis with the matching private key.
 3. Put TLS and the rate limit in front.
 4. Open the site, change an item, check that the preview updates and the download works.
-5. Confirm `/v1/invoices` answers `503` and nothing else is exposed.
+5. Confirm `POST /v1/free-token` without the Anubis cookie answers `403` and `/v1/invoices` without a token answers `401`.

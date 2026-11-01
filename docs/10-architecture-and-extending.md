@@ -5,12 +5,12 @@
 ```
 Browser
   └─ Form (Invoice / Settings tabs)
-       │  buildRequest() validates + escapes input for Typst string literals
+       │  free token (Anubis → POST /v1/free-token), kept in localStorage
        │
-       ▼  POST /generate-pdf  { template, data, assets }
-  Rust / Axum              (backend/src/main.rs)
-       │  template = static frontend/src/template/invoice.typ
-       ├─ minijinja → renders template with data (+ assets.<key> paths)
+       ▼  POST /v1/invoices  { settings, invoice }  + Bearer token
+  Rust / Axum              (backend/src/v1.rs, invoice.rs)
+       │  validates + escapes input; template = static frontend/src/template/invoice.typ
+       ├─ minijinja → renders template with the checked data (+ watermark for free tokens)
        ├─ typst-as-lib + Typst compile rendered source
        └─ typst-pdf → PDF/A-3b bytes (embedded ZUGFeRD XML)
               │
@@ -21,12 +21,12 @@ Browser
 ## How it works
 
 1. **Configure**: the forms edit a typed model (`InvoiceSettings`, `Invoice`).
-2. **Build request**: `buildRequest()` whitelists fonts, locales, units, tax rates, colors, numbers and dates, and escapes `\` and `"` (all user data goes into Typst string literals). The static template is imported with `?raw`.
-3. **Render**: the backend renders the template with minijinja, using `data` and, for binary files, `assets.<key>` paths.
+2. **Request**: `requestPdf()` in `api.ts` sends `{settings, invoice}` with the free token. The backend (`invoice.rs`) whitelists fonts, locales, units, tax rates, colors, numbers and dates, and escapes `\` and `"` (all user data goes into Typst string literals).
+3. **Render**: the backend renders its embedded template with minijinja, using the checked data and, for the logo, an `assets.logo` path.
 4. **Compile**: Typst compiles the result; typst-pdf exports PDF/A-3b so invoice-pro can embed the Factur-X / XRechnung XML. `backend/src/facturx.rs` adds the Factur-X XMP metadata.
 5. **Preview / download**: the PDF is shown via blob URL in an iframe, or downloaded.
 
-The `/v1` API skips steps 1–2: the server holds the template and validates the input itself (`backend/src/invoice.rs`, which must mirror `buildRequest.ts`).
+Customer systems skip step 1 and send the same JSON with a purchased token.
 
 ## Project structure
 
@@ -42,14 +42,14 @@ pdfcraft/
 │       ├── lib/
 │       │   ├── types.ts              # Model, defaults, whitelists (fonts, units, tax rates)
 │       │   ├── storage.ts            # Versioned localStorage + JSON export/import
-│       │   ├── buildRequest.ts       # Validation + Typst escaping → request body
 │       │   ├── validate.ts           # E-invoice issues shown in the sidebar
-│       │   └── api.ts                # requestPdf()
+│       │   └── api.ts                # free token handling + requestPdf() (POST /v1/invoices)
 │       └── template/invoice.typ      # Static invoice-pro template with minijinja placeholders
 │
 └── backend/                          # Rust (Axum + typst-as-lib + typst-pdf + minijinja)
     ├── Cargo.toml
-    ├── src/main.rs                   # Router, Typst engine, POST /generate-pdf
+    ├── src/main.rs                   # Router, Typst engine
+    ├── src/free.rs                   # POST /v1/free-token (Anubis cookie check), anubis-keygen
     ├── src/v1.rs                     # POST /v1/invoices[/bulk]: token auth, rate limit, ZIP
     ├── src/invoice.rs                # Validation/escaping of the /v1 input
     ├── src/store.rs                  # tokens + rate limit (Valkey), `tokens` CLI
@@ -66,7 +66,7 @@ Packages are loaded from `backend/vendor/typst-packages`, so no network access i
 
 ## Extending
 
-- **New setting / field**: add it to `frontend/src/lib/types.ts`, validate it in `buildRequest.ts` and `backend/src/invoice.rs` (the `/v1` API), add an input in the matching form, and use it in `frontend/src/template/invoice.typ`.
+- **New setting / field**: add it to `frontend/src/lib/types.ts`, validate it in `backend/src/invoice.rs`, add an input in the matching form, and use it in `frontend/src/template/invoice.typ`.
 - **New unit or tax rate**: extend `UNITS` / `TAX_RATES` in `types.ts` (units must be invoice-pro `unit.<id>` identifiers).
 - **Config schema change**: bump `SCHEMA_VERSION` in `storage.ts` and add a migration in `parseConfig`.
 - **Rule**: do not add caches of rendered templates or PDFs; customer data must not be retained between requests.

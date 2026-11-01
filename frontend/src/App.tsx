@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { InvoiceForm } from './components/InvoiceForm'
 import { SettingsForm } from './components/SettingsForm'
 import { requestPdf } from './lib/api'
-import { buildRequest } from './lib/buildRequest'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
 import { validateInvoice } from './lib/validate'
 import { DEFAULT_SETTINGS, defaultInvoice, type Invoice, type Settings } from './lib/types'
@@ -69,18 +68,6 @@ export default function App() {
 
   const issues = useMemo(() => validateInvoice(settings, invoice), [settings, invoice])
 
-  const request = useMemo(() => buildRequest(settings, invoice), [settings, invoice])
-
-  const exportRequest = useCallback(() => {
-    const blob = new Blob([JSON.stringify(request, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'pdfcraft-request.json'
-    link.click()
-    URL.revokeObjectURL(url)
-  }, [request])
-
   const promotePending = useCallback(() => {
     const next = pendingUrlRef.current
     if (!next) return
@@ -92,13 +79,13 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const key = JSON.stringify(request)
+    const key = JSON.stringify({ settings, invoice })
     if (key === lastKeyRef.current) return
     const controller = new AbortController()
     const timer = window.setTimeout(async () => {
       setLoading(true)
       try {
-        const blob = await requestPdf(request, controller.signal)
+        const blob = await requestPdf(settings, invoice, controller.signal)
         const url = URL.createObjectURL(blob)
         if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current)
         pendingUrlRef.current = url
@@ -118,7 +105,7 @@ export default function App() {
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [request])
+  }, [settings, invoice])
 
   // Fallback in case the browser never fires `load` for the hidden PDF frame
   useEffect(() => {
@@ -165,9 +152,6 @@ export default function App() {
             }}
           />
           <button className="btn" onClick={exportJson}>Exportieren</button>
-          <button className="btn" onClick={exportRequest} title="Fertiger Request-Body für POST /generate-pdf">
-            API-Request
-          </button>
           <button className="btn" onClick={reset}>Zurücksetzen</button>
           <button className="btn btn-primary" onClick={download} disabled={!pdfBlob || loading}>
             ⬇ PDF herunterladen

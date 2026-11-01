@@ -14,7 +14,7 @@ PDFCraft is a full-stack PDF template builder:
 - PR titles must follow Conventional Commits (e.g. `feat: ...`), because PRs are squash-merged and the title becomes the commit message.
 
 ## Repository Structure
-- `frontend/` — configurator UI, request building, static template `src/template/invoice.typ`
+- `frontend/` — configurator UI, free-token handling (`lib/api.ts`), static template `src/template/invoice.typ`
 - `backend/` — API server (`/generate-pdf`, `/health`)
 - `README.md` — product overview and setup
 
@@ -139,7 +139,7 @@ Typst/krilla writes its own XMP and cannot be extended (not fixable in the invoi
 ## Notes for Next Work
 - Do not add caches of rendered templates or generated PDFs (customer data).
 - Frontend serializer and backend template language should stay aligned.
-- Add new form fields in `types.ts` + `buildRequest.ts` (escape/validate) + `backend/src/invoice.rs` (same validation for `/v1`) + the form + `invoice.typ`. User data goes only into Typst string literals (escape `\` and `"`).
+- Add new form fields in `types.ts` + `backend/src/invoice.rs` (validate/escape; the frontend sends raw form values) + the form + `invoice.typ`. User data goes only into Typst string literals (escape `\` and `"`).
 - Keep `cargo check` green after any backend change.
 - Keep `npm run build` green after any frontend change.
 
@@ -185,3 +185,4 @@ Vision: simple form-based invoice configurator (logo, company address, minimal c
 - [x] 22. Live demo: operator confirmed deployment on 2026-10-31 at https://digitalrechnung.jetzt (configurator: https://digitalrechnung.jetzt/app/), including the merged privacy policy and responsive layout changes. README links to the demo. Mobile PDF rendering across browsers has not been fully verified.
 - [x] 23. Valkey tokens (PR `feat/valkey-tokens`): Postgres, `API_KEYS` and the in-memory limiter are gone; `backend/src/store.rs` keeps hashed tokens (`pf_<id>_<secret>` free, `pk_<id>_<secret>` paid) and token-bucket rate limits only in Valkey (`VALKEY_URL`, persistent via append-only file; Compose service + Helm StatefulSet). Free limit is static config (`FREE_RATE_LIMIT_PER_MINUTE`), paid limit comes from the plan (`PAID_PLANS`); paid tokens are behind `PAID_TOKENS_ENABLED` (default false). CLI: `pdfcraft-backend tokens create|create-free|list|extend|revoke`. Stacked follow-ups: free token + Anubis + watermark, frontend switch to `/v1`, Stripe, landing/privacy texts
 - [x] 24. Free token + Anubis + watermark (PR `feat/free-token-anubis`, stacked on `feat/valkey-tokens`): `backend/src/free.rs` issues `POST /v1/free-token` only for browsers with a valid Anubis cookie (EdDSA JWT verified with `ANUBIS_PUBLIC_KEY_HEX`, one token per pass via Valkey `SET NX`); `anubis-keygen` CLI; free-token PDFs get `settings.watermark = "Entwurf"` (template area in `invoice.typ`). Compose: `edge` nginx + `anubis` + frontend; Helm: `templates/anubis.yaml`, ingress `/v1` -> backend, `/` -> Anubis. Anubis must never front `/v1`. Verified with a real Anubis v1.28.2 container and a browser
+- [x] 25. Frontend on `/v1` (PR `feat/frontend-free-token`, stacked on `feat/free-token-anubis`): `/generate-pdf`, `ENABLE_GENERATE_PDF`, `buildRequest.ts` and the "API-Request" button are removed; `frontend/src/lib/api.ts` fetches a free token from `/v1/free-token` (token in localStorage `pdfcraft.freeToken`, re-fetched on 401/expiry; `VITE_API_TOKEN` overrides it for development) and calls `POST /v1/invoices` with `{settings, invoice}`. Landing page explains free vs. purchased tokens

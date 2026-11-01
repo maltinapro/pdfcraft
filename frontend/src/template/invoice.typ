@@ -1,7 +1,7 @@
 // Static invoice template (invoice-pro). Rendered by the backend with minijinja.
 // All user text is passed as Typst string literals (only `\` and `"` are
-// escaped by the frontend); numbers, colors, fonts, units and locales are
-// validated/whitelisted in `src/lib/buildRequest.ts`.
+// escaped by the backend); numbers, colors, fonts, units and locales are
+// validated/whitelisted in `backend/src/invoice.rs`.
 #import "@preview/invoice-pro:0.5.0": *
 
 #let lines(text) = text.split("\n").join(linebreak())
