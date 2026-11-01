@@ -66,6 +66,25 @@ Packages are loaded from `backend/vendor/typst-packages`, so no network access i
 
 The invoice template no longer uses invoice-pro/loom (they cost ~65 ms per PDF); only `sepay` (EPC QR) is imported. Old invoice-pro forks: [maltinapro/invoice-pro](https://github.com/maltinapro/invoice-pro).
 
+## Customizing the invoice template
+
+The invoice is a single Typst file: `frontend/src/template/invoice.typ` (the backend embeds it with `include_str!` in `backend/src/v1.rs`; there is no copy in `backend/`). It is rendered with minijinja, then compiled by Typst. Rebuild the backend after editing it.
+
+**Data available in the template** (see `backend/src/einvoice.rs::prepare` and `v1.rs::document`):
+- `settings.*` (checked settings: `accentColor`, `font`, `locale`, `footer`, `intro`, `closing`, `watermark`, sender data ...) and `invoice.*` (number, recipient, items).
+- Ready-made display strings from Rust: `invoice.items[*].pos/qty/price/tax/net`, `invoice.dateText`, `invoice.totals` (`net`, `gross`, `taxes[]`, `exempt`).
+- `pay.*` (`sum`, `days`, `iban`, `bic`, `qr`, `amount`, `place`), `einvoice.*` (`file`, `relationship`, `description`) and the assets `assets.logo` / `assets.xml`.
+
+**Rules**
+- Interpolate user text only as Typst string literals (`#"{{ x }}"` in content mode, `"{{ x }}"` in code mode); never as markup/code. The backend escapes `\` and `"` only.
+- Do the math and number formatting in Rust, not in Typst. Typst layout is what costs time; keep loops, `context`, `query`, state and heavy packages out (the old invoice-pro/loom template needed ~65 ms, this one ~8 ms).
+- Keep the `#pdf.attach(...)` call: it embeds the Factur-X / XRechnung XML. The XML itself comes from `einvoice.rs`, not from the template.
+- New data: compute it in `einvoice.rs` (add to `extra` or the invoice JSON) and use it here.
+
+**Taking something from the invoice-pro fork** ([maltinapro/invoice-pro](https://github.com/maltinapro/invoice-pro), upstream [leonieziechmann/invoice-pro](https://github.com/leonieziechmann/invoice-pro), MIT; it is no longer vendored): look at the fork's `src/` for layout ideas, copy the layout code into `invoice.typ` and replace its data access (`loom` / model values) with the fields above. Keep the MIT copyright notice (© Leonie Ziechmann) if you copy substantial code, e.g. in a comment or in `README.md`. Do not re-add the package as a dependency unless you accept the performance cost.
+
+**Checking a change**: `cd backend && cargo test --release`, start the backend (`cargo run --release`; the warm-up compiles the real template and fails loudly on errors), generate a PDF via the app or `/v1/invoices`, and for e-invoice changes validate it with Mustang (`java -jar Mustang-CLI-2.26.0.jar --action validate --source invoice.pdf`).
+
 ## Extending
 
 - **New setting / field**: add it to `frontend/src/lib/types.ts`, validate it in `backend/src/invoice.rs`, add an input in the matching form, and handle it in `backend/src/einvoice.rs` (totals, XML) if it affects amounts or the e-invoice, and use it in `frontend/src/template/invoice.typ`.
