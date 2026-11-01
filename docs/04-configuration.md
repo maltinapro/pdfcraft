@@ -5,7 +5,7 @@
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `BIND_ADDR` | `0.0.0.0:3000` | Listen address |
-| `VALKEY_URL` | – | Valkey connection (`redis://host:6379`). Holds tokens and rate limits. Unset or unreachable: `/v1` answers `503` |
+| `VALKEY_URL` | – | Valkey connection (`redis://host:6379`). Holds tokens and rate limits. Unset or unreachable: `/v1` answers `503`. With authentication: `redis://:PASSWORD@host:6379` (user: `redis://user:PASSWORD@host:6379`), TLS: `rediss://` |
 | `FREE_RATE_LIMIT_PER_MINUTE` | `20` | Invoices per minute for every free token (static) |
 | `FREE_TOKEN_TTL_SECONDS` | `43200` | Lifetime of a free token (12 h) |
 | `ANUBIS_PUBLIC_KEY_HEX` | empty | Public key of the Anubis instance; free tokens are disabled without it ([guide](11-free-token-and-anubis.md)) |
@@ -51,3 +51,14 @@ Because it is a build-time value, a different backend URL means a new build (a n
 ## Valkey data
 
 See [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md#what-is-stored-valkey-only) for the keys. Valkey must persist (`--appendonly yes`, a volume); Compose and the Helm chart do this.
+
+### Valkey authentication (Helm / operator)
+
+The backend authenticates through the connection URL. In the Helm chart, put the URL into a Secret and reference it; a plain `backend.env.VALKEY_URL` would leave the password in the values:
+
+```bash
+kubectl create secret generic pdfcraft-valkey --from-literal=VALKEY_URL='redis://:PASSWORD@my-valkey:6379'
+# values: valkey.enabled=false, backend.valkeySecret=pdfcraft-valkey
+```
+
+Special characters in the password must be URL-encoded. The user needs read/write access to the keys `pdfcraft:*` (or all keys) and Lua `EVAL`.
