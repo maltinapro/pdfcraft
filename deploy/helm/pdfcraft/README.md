@@ -134,7 +134,9 @@ Both resources need the Prometheus Operator CRDs and are **off by default**:
 | `metrics.podMonitor.enabled` | `PodMonitor`s for the backend (`/metrics` on port `metrics.port`, default 9090) and Anubis (`metrics.anubisPort`) |
 | `metrics.prometheusRule.enabled` | `PrometheusRule` with alerts (backend down, 5xx rate, slow PDFs, saturated compile slots, Valkey errors) |
 
-Set `metrics.podMonitor.labels` / `metrics.prometheusRule.labels` (for example `release: kube-prometheus-stack`) if your Prometheus selects resources by label. The metrics ports are container ports only: they are in no Service and no Ingress, so they are not reachable from outside the cluster. See [Observability](../../../docs/13-observability.md).
+| `grafana.dashboards.enabled` | one `GrafanaDashboard` (Grafana Operator, `grafana.integreatly.org/v1beta1`) per file in `dashboards/*.json`: Business, Technical, Logs |
+
+Set `grafana.dashboards.instanceSelector` to the labels of your `Grafana` resource and `folder` as desired. Set `metrics.podMonitor.labels` / `metrics.prometheusRule.labels` (for example `release: kube-prometheus-stack`) if your Prometheus selects resources by label. The metrics ports are container ports only: they are in no Service and no Ingress, so they are not reachable from outside the cluster. See [Observability](../../../docs/13-observability.md).
 
 ## Not included yet
 
