@@ -4,6 +4,7 @@
 //! | --- | --- | --- |
 //! | `BIND_ADDR` | `0.0.0.0:3000` | Listen address |
 //! | `VALKEY_URL` | – | Valkey (Redis protocol) holding tokens and rate limits; required for `/v1` |
+//! | `VALKEY_MODE` | `auto` | `auto` (detects cluster mode), `standalone` or `cluster` |
 //! | `FREE_RATE_LIMIT_PER_MINUTE` | `20` | Invoices per minute for a free token (static) |
 //! | `FREE_TOKEN_TTL_SECONDS` | `43200` | Lifetime of a free token (12 h) |
 //! | `ANUBIS_PUBLIC_KEY_HEX` | – | Ed25519 public key (hex) of Anubis; enables `POST /v1/free-token` |
@@ -25,6 +26,7 @@ pub struct Config {
     pub bind_addr: String,
     pub metrics_addr: Option<String>,
     pub valkey_url: Option<String>,
+    pub valkey_mode: String,
     pub free_rate_limit_per_minute: u32,
     pub free_token_ttl_secs: u64,
     pub anubis_public_key_hex: Option<String>,
@@ -88,6 +90,10 @@ impl Config {
                 .map(|v| v.trim().to_string())
                 .filter(|v| !v.is_empty() && !v.eq_ignore_ascii_case("off")),
             valkey_url: std::env::var("VALKEY_URL").ok().filter(|v| !v.trim().is_empty()),
+            valkey_mode: match std::env::var("VALKEY_MODE").unwrap_or_default().trim().to_ascii_lowercase().as_str() {
+                m @ ("standalone" | "cluster") => m.to_string(),
+                _ => "auto".to_string(),
+            },
             free_rate_limit_per_minute: env_parse("FREE_RATE_LIMIT_PER_MINUTE", 20u32).max(1),
             free_token_ttl_secs: env_parse("FREE_TOKEN_TTL_SECONDS", 43_200u64).max(60),
             anubis_public_key_hex: std::env::var("ANUBIS_PUBLIC_KEY_HEX").ok().filter(|v| !v.trim().is_empty()),

@@ -16,7 +16,7 @@ tower-http = { version = "0.5", features = ["cors"] }
 base64 = "0.23.1"
 lopdf = "0.46.0"
 zip = { version = "2", default-features = false }
-redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager", "cluster-async"] }
 sha2 = "0.11.1"
 rand = "0.8"
 ed25519-dalek = "2"

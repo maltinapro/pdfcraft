@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | `BIND_ADDR` | `0.0.0.0:3000` | Listen address |
 | `VALKEY_URL` | – | Valkey connection (`redis://host:6379`). Holds tokens and rate limits. Unset or unreachable: `/v1` answers `503`. With authentication: `redis://:PASSWORD@host:6379` (user: `redis://user:PASSWORD@host:6379`), TLS: `rediss://` |
+| `VALKEY_MODE` | `auto` | `auto` asks the server (`INFO cluster`) and switches to the cluster client for sharded Valkey (e.g. the official Valkey operator); `standalone` / `cluster` force a mode. Standalone, primary/replica behind one address and cluster all work |
 | `FREE_RATE_LIMIT_PER_MINUTE` | `20` | Invoices per minute for every free token (static) |
 | `FREE_TOKEN_TTL_SECONDS` | `43200` | Lifetime of a free token (12 h) |
 | `ANUBIS_PUBLIC_KEY_HEX` | empty | Public key of the Anubis instance; free tokens are disabled without it ([guide](11-free-token-and-anubis.md)) |
