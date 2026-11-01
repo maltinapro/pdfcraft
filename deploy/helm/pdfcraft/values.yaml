@@ -9,6 +9,9 @@ backend:
   # Name of a Secret with the key STRIPE_WEBHOOK_SECRET (only needed for purchased tokens,
   # together with backend.env.PAID_TOKENS_ENABLED="true"; see docs/12-paid-tokens-stripe.md)
   stripeSecret: ""
+  # Name of a Secret with the key VALKEY_URL (e.g. redis://:PASSWORD@host:6379, rediss:// for TLS).
+  # Use with valkey.enabled=false when an operator-managed Valkey requires authentication.
+  valkeySecret: ""
   env:
     MAX_CONCURRENT_COMPILES: "2"
   resources:

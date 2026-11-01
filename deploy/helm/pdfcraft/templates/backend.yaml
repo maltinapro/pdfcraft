@@ -27,7 +27,13 @@ spec:
           env:
             - name: METRICS_ADDR
               value: "0.0.0.0:{{ .Values.metrics.port }}"
-            {{- if .Values.valkey.enabled }}
+            {{- if .Values.backend.valkeySecret }}
+            - name: VALKEY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.valkeySecret }}
+                  key: VALKEY_URL
+            {{- else if .Values.valkey.enabled }}
             - name: VALKEY_URL
               value: redis://{{ .Release.Name }}-valkey:6379
             {{- end }}
