@@ -38,6 +38,9 @@ anubis:
   image: ghcr.io/techarohq/anubis:v1.28.2
   replicaCount: 1
   difficulty: 4
+  # Valkey URL for Anubis' challenge store (shared between pods, survives restarts). Empty = the
+  # chart's Valkey; required when valkey.enabled=false. May contain a password (stored in a Secret).
+  storeUrl: ""
   cookieExpiration: 12h
   privateKeyHex: ""
   publicKeyHex: ""

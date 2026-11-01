@@ -64,3 +64,7 @@ docker compose up --build
 2. In the browser console: `await (await fetch('/v1/free-token', {method: 'POST'})).json()` returns `{token, expiresAt, limitPerMinute}`. Repeating it returns `409 already_issued`.
 3. `curl -X POST http://localhost:8080/v1/free-token` answers `403 challenge_required`.
 4. Use the token with `POST /v1/invoices` (see [API Reference](09-api-reference.md)): the PDF shows the "Entwurf" watermark.
+
+## Multiple Anubis pods (Kubernetes)
+
+Anubis keeps open challenges in its store. The default in-memory store is per pod, so a challenge issued by one pod fails on another (`store: key not found: "challenge:..."`) and after restarts. The Helm chart therefore points Anubis at Valkey (`anubis.storeUrl`, default: the chart's Valkey). With `valkey.enabled=false` set `anubis.storeUrl` (for example `redis://:PASSWORD@host:6379/0`); the policy is rendered into a Secret, so a password in the URL is not exposed in a ConfigMap. `anubis.replicaCount > 1` without a store fails the render. The backend and frontend are stateless and can be scaled freely.
