@@ -21,7 +21,12 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: 3000
+            # Metrics are scraped from the pod (PodMonitor); the Service and Ingress do not expose this port
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
           env:
+            - name: METRICS_ADDR
+              value: "0.0.0.0:{{ .Values.metrics.port }}"
             {{- if .Values.valkey.enabled }}
             - name: VALKEY_URL
               value: redis://{{ .Release.Name }}-valkey:6379

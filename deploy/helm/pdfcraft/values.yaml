@@ -44,6 +44,22 @@ anubis:
     requests: { cpu: 20m, memory: 32Mi }
     limits: { cpu: 200m, memory: 128Mi }
 
+# Monitoring (all optional; needs the Prometheus Operator CRDs for the resources below).
+# The metrics ports are container ports only: no Service port, no Ingress route.
+metrics:
+  port: 9090
+  anubisPort: 9091
+  podMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    # Extra labels, e.g. `release: kube-prometheus-stack` if your Prometheus selects by label
+    labels: {}
+  # Alert rules (backend down, 5xx rate, slow PDFs, Valkey errors, saturated compile slots)
+  prometheusRule:
+    enabled: false
+    labels: {}
+
 frontend:
   replicaCount: 1
   resources:

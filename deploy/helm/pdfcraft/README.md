@@ -125,10 +125,21 @@ Then open `https://pdfcraft.vorneweg.org/` (landing page) and `/app/` and check 
 
 See `values.yaml`: image registry/tag (empty tag = the chart's `appVersion`), replicas and resources, `backend.env` (default `MAX_CONCURRENT_COMPILES=2`), ingress host, class, TLS secret and ClusterIssuer.
 
+## Monitoring (optional)
+
+Both resources need the Prometheus Operator CRDs and are **off by default**:
+
+| Value | Creates |
+| --- | --- |
+| `metrics.podMonitor.enabled` | `PodMonitor`s for the backend (`/metrics` on port `metrics.port`, default 9090) and Anubis (`metrics.anubisPort`) |
+| `metrics.prometheusRule.enabled` | `PrometheusRule` with alerts (backend down, 5xx rate, slow PDFs, saturated compile slots, Valkey errors) |
+
+Set `metrics.podMonitor.labels` / `metrics.prometheusRule.labels` (for example `release: kube-prometheus-stack`) if your Prometheus selects resources by label. The metrics ports are container ports only: they are in no Service and no Ingress, so they are not reachable from outside the cluster. See [Observability](../../../docs/13-observability.md).
+
 ## Not included yet
 
 - **Valkey operator / HA**: the chart runs one Valkey pod with a PVC (`valkey.persistence.size`, `valkey.persistence.storageClass`). That is enough for the demo: a few KB of tokens, restarts keep the data. For HA, snapshots and backups use an external Valkey or a Valkey operator: set `valkey.enabled=false` and `backend.env.VALKEY_URL`. See [Production](../../../docs/06-production.md).
 - **Per-IP rate limit** for `/v1/free-token` and `/v1/invoices`: recommended at the edge (Cloudflare rate-limiting rule), see [Demo System](../../../docs/07-demo-system.md#where-to-rate-limit-application-vs-edge); optionally a Traefik `Middleware` as a second layer. Currently only the compile limit and pod resource limits protect the demo.
 - Pinned image tags and automatic deployment from GitHub Actions (would need a kubeconfig secret).
-- Non-root images, NetworkPolicy, autoscaling, monitoring.
+- Non-root images, NetworkPolicy, autoscaling.
 - Image pull secrets for private registries.
