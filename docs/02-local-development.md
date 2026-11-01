@@ -33,7 +33,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173/app/` (`/` is the German landing page, see [Demo System](07-demo-system.md)). The preview refreshes about 600 ms after you stop typing. The configuration is saved in the browser (`localStorage`, key `pdfcraft.config`).
+Open `http://localhost:5173/app/` (`/` is the German landing page, see [Demo System](07-demo-system.md)). The preview refreshes about 600 ms after you stop typing. The configuration is saved in the browser (`localStorage`, key `pdfcraft.config`). The theme follows the OS/browser (`prefers-color-scheme`) until you use the header toggle, which stores your choice in `localStorage` key `pdfcraft.theme`.
 
 The frontend talks to `http://localhost:3000` by default. To use another backend:
 

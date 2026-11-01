@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
 }
 
 * {
@@ -121,4 +121,29 @@ footer {
   background: #fff1f1;
   border-left: 4px solid #d33;
   padding: 8px 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #e5e7eb;
+    background: #0f1117;
+  }
+
+  .cards article,
+  .contact {
+    background: #1a1d27;
+    box-shadow: none;
+  }
+
+  a {
+    color: #8fa3ff;
+  }
+
+  footer {
+    color: #9aa5b8;
+  }
+
+  .todo {
+    background: #4a1d1d;
+  }
 }

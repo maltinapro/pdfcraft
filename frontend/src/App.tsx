@@ -5,6 +5,7 @@ import { requestPdf } from './lib/api'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
 import { validateInvoice } from './lib/validate'
 import { DEFAULT_SETTINGS, defaultInvoice, type Invoice, type Settings } from './lib/types'
+import { applyTheme, storedTheme, systemTheme, type Theme } from './lib/theme'
 import './App.css'
 
 const PREVIEW_DEBOUNCE_MS = 600
@@ -12,6 +13,7 @@ const PREVIEW_DEBOUNCE_MS = 600
 type Tab = 'invoice' | 'settings'
 
 export default function App() {
+  const [theme, setTheme] = useState<Theme>(() => storedTheme() ?? systemTheme())
   const [tab, setTab] = useState<Tab>('invoice')
   const [mobileView, setMobileView] = useState<'form' | 'preview'>('form')
   const [initial] = useState(loadConfig)
@@ -132,6 +134,24 @@ export default function App() {
     URL.revokeObjectURL(url)
   }, [pdfBlob, invoice.number])
 
+  useEffect(() => {
+    applyTheme(theme)
+  }, [theme])
+
+  useEffect(() => {
+    if (storedTheme()) return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = () => !storedTheme() && setTheme(systemTheme())
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  const toggleTheme = () => {
+    const next: Theme = theme === 'dark' ? 'light' : 'dark'
+    applyTheme(next, true)
+    setTheme(next)
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -153,6 +173,14 @@ export default function App() {
           />
           <button className="btn" onClick={exportJson}>Exportieren</button>
           <button className="btn" onClick={reset}>Zurücksetzen</button>
+          <button
+            className="btn"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Helles Design aktivieren' : 'Dunkles Design aktivieren'}
+            title={theme === 'dark' ? 'Helles Design' : 'Dunkles Design'}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
           <button className="btn btn-primary" onClick={download} disabled={!pdfBlob || loading}>
             ⬇ PDF herunterladen
           </button>

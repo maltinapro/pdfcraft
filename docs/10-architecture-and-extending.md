@@ -42,6 +42,7 @@ pdfcraft/
 │       ├── lib/
 │       │   ├── types.ts              # Model, defaults, whitelists (fonts, units, tax rates)
 │       │   ├── storage.ts            # Versioned localStorage + JSON export/import
+│       │   ├── theme.ts              # Light/dark theme (system default, manual override)
 │       │   ├── validate.ts           # E-invoice issues shown in the sidebar
 │       │   └── api.ts                # free token handling + requestPdf() (POST /v1/invoices)
 │       └── template/invoice.typ      # Static invoice-pro template with minijinja placeholders
