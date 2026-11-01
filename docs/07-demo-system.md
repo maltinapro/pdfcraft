@@ -13,6 +13,10 @@ Goal: let prospective customers try the configurator in the browser (form, live 
 
 The frontend serves a German landing page at `/` (`frontend/index.html`, no JavaScript) with a link to the app at `/app/` (`frontend/app/index.html`). It also contains `impressum.html` and `datenschutz.html`. Fill in the placeholders in these two files before publishing: in Germany a publicly reachable service needs an Impressum (§ 5 DDG) with name, a summonable postal address and an e-mail address. A c/o or virtual-office address is possible only if mail is really received there. The privacy policy describes the Anubis cookie, the free token in `localStorage` and the Valkey data (token hash, limit, expiry, hash of the Anubis pass, rate-limit counters); update it together with any change to what is stored, and before enabling purchased tokens (Stripe) add the payment processing. The landing page names maltina.pro (UG in formation, hello@maltina.pro) and Vorneweg (infrastructure, operation, resources). This is not legal advice.
 
+### Search engines (SEO)
+
+`frontend/index.html` carries title, description, canonical URL, Open Graph tags and JSON-LD (`SoftwareApplication`); the legal pages and `/app/` are `noindex`. `frontend/public/robots.txt` and `sitemap.xml` are copied to the site root; the Anubis policy (`deploy/anubis/botPolicy.yaml`, Helm `files/botPolicy.yaml`) lets `/`, `robots.txt` and `sitemap.xml` through without a challenge, so crawlers can index the landing page. Adjust the hostname in these files for other domains. After deployment: add the domain to Google Search Console (DNS TXT) and Bing Webmaster Tools and submit `https://<host>/sitemap.xml`. A separate GitHub Pages site is not needed (duplicate content).
+
 ## Kubernetes (k3s) deployment
 
 A minimal Helm chart and a GitHub Actions workflow that publishes the container images are included: see [`deploy/helm/pdfcraft/README.md`](../deploy/helm/pdfcraft/README.md).
