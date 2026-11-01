@@ -30,6 +30,9 @@ stringData:
       backend: valkey
       parameters:
         url: {{ $storeUrl | quote }}
+{{- if .Values.anubis.storeCluster }}
+        cluster: true
+{{- end }}
 {{- end }}
 ---
 apiVersion: apps/v1
@@ -46,7 +49,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/policy: {{ printf "%s%s" (.Files.Get "files/botPolicy.yaml") $storeUrl | sha256sum }}
+        checksum/policy: {{ printf "%s%s%v" (.Files.Get "files/botPolicy.yaml") $storeUrl .Values.anubis.storeCluster | sha256sum }}
       labels:
         {{- include "pdfcraft.labels" . | nindent 8 }}
         app.kubernetes.io/component: anubis

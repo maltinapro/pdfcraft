@@ -68,3 +68,5 @@ docker compose up --build
 ## Multiple Anubis pods (Kubernetes)
 
 Anubis keeps open challenges in its store. The default in-memory store is per pod, so a challenge issued by one pod fails on another (`store: key not found: "challenge:..."`) and after restarts. The Helm chart therefore points Anubis at Valkey (`anubis.storeUrl`, default: the chart's Valkey). With `valkey.enabled=false` set `anubis.storeUrl` (for example `redis://:PASSWORD@host:6379/0`); the policy is rendered into a Secret, so a password in the URL is not exposed in a ConfigMap. `anubis.replicaCount > 1` without a store fails the render. The backend and frontend are stateless and can be scaled freely.
+
+If Anubis logs `can't get challenge ... MOVED <slot> <host>`, the Valkey behind `anubis.storeUrl` runs in **cluster mode** (sharded, e.g. some operator defaults). Set `anubis.storeCluster=true`. The PDFCraft backend itself uses a plain (non-cluster) client with multi-key transactions and `SCAN`, so give it a standalone or replicated (primary/Sentinel) Valkey, not a sharded cluster.

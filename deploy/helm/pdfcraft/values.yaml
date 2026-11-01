@@ -41,6 +41,8 @@ anubis:
   # Valkey URL for Anubis' challenge store (shared between pods, survives restarts). Empty = the
   # chart's Valkey; required when valkey.enabled=false. May contain a password (stored in a Secret).
   storeUrl: ""
+  # true when that Valkey runs in cluster mode (sharded; Anubis logs "MOVED ..." otherwise)
+  storeCluster: false
   cookieExpiration: 12h
   privateKeyHex: ""
   publicKeyHex: ""
