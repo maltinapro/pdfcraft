@@ -1,4 +1,9 @@
 {{- if .Values.anubis.enabled }}
+{{- /* Challenges live in Valkey so that every Anubis pod (and restarts) can verify them */}}
+{{- $storeUrl := .Values.anubis.storeUrl | default (ternary (printf "redis://%s-valkey:6379/0" .Release.Name) "" .Values.valkey.enabled) }}
+{{- if and (gt (int .Values.anubis.replicaCount) 1) (not $storeUrl) }}
+{{- fail "anubis.replicaCount > 1 needs a shared store: set anubis.storeUrl (valkey.enabled=false)" }}
+{{- end }}
 {{- if not .Values.anubis.existingSecret }}
 apiVersion: v1
 kind: Secret
@@ -12,13 +17,20 @@ stringData:
 ---
 {{- end }}
 apiVersion: v1
-kind: ConfigMap
+kind: Secret
 metadata:
   name: {{ .Release.Name }}-anubis-policy
   labels: {{- include "pdfcraft.labels" . | nindent 4 }}
-data:
+type: Opaque
+stringData:
   botPolicy.yaml: |
 {{ .Files.Get "files/botPolicy.yaml" | indent 4 }}
+{{- if $storeUrl }}
+    store:
+      backend: valkey
+      parameters:
+        url: {{ $storeUrl | quote }}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -33,6 +45,8 @@ spec:
       app.kubernetes.io/component: anubis
   template:
     metadata:
+      annotations:
+        checksum/policy: {{ printf "%s%s" (.Files.Get "files/botPolicy.yaml") $storeUrl | sha256sum }}
       labels:
         {{- include "pdfcraft.labels" . | nindent 8 }}
         app.kubernetes.io/component: anubis
@@ -72,8 +86,8 @@ spec:
           resources: {{- toYaml .Values.anubis.resources | nindent 12 }}
       volumes:
         - name: policy
-          configMap:
-            name: {{ .Release.Name }}-anubis-policy
+          secret:
+            secretName: {{ .Release.Name }}-anubis-policy
 ---
 apiVersion: v1
 kind: Service
