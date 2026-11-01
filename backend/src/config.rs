@@ -40,7 +40,7 @@ pub struct Config {
 fn env_parse<T: std::str::FromStr>(name: &str, default: T) -> T {
     match std::env::var(name) {
         Ok(v) if !v.trim().is_empty() => v.trim().parse().unwrap_or_else(|_| {
-            eprintln!("warning: invalid {name}={v:?}, using the default");
+            tracing::warn!(event = "invalid_config", name, value = %v, "invalid value, using the default");
             default
         }),
         _ => default,
