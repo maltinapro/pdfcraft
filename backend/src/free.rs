@@ -80,6 +80,15 @@ fn challenge_required() -> ApiError {
 }
 
 pub async fn issue(req: Request) -> Result<Response, ApiError> {
+    let result = issue_token(req).await;
+    crate::metrics::free_token_request(match &result {
+        Ok(_) => "issued",
+        Err(e) => e.code,
+    });
+    result
+}
+
+async fn issue_token(req: Request) -> Result<Response, ApiError> {
     let cfg = config::get();
     let Some(key) = cfg.anubis_public_key_hex.as_deref().and_then(decode_hex32).and_then(|b| VerifyingKey::from_bytes(&b).ok()) else {
         return Err(ApiError::new(

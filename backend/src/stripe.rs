@@ -198,13 +198,13 @@ pub async fn webhook(headers: HeaderMap, body: Bytes) -> Result<Response, ApiErr
     }
     let event: Value = serde_json::from_slice(&body).map_err(|e| bad(&e.to_string()))?;
     let object = event.pointer("/data/object").cloned().unwrap_or(Value::Null);
-    match str_at(&event, &["type"]) {
-        Some("checkout.session.completed") | Some("checkout.session.async_payment_succeeded") => {
-            checkout_completed(&object).await?
-        }
-        Some("invoice.paid") => invoice_paid(&object).await?,
-        _ => {}
-    }
+    let (kind, result) = match str_at(&event, &["type"]) {
+        Some(t @ ("checkout.session.completed" | "checkout.session.async_payment_succeeded")) => (t, checkout_completed(&object).await),
+        Some("invoice.paid") => ("invoice.paid", invoice_paid(&object).await),
+        _ => ("other", Ok(())),
+    };
+    crate::metrics::stripe_event(kind, if result.is_ok() { "ok" } else { "error" });
+    result?;
     Ok(Json(json!({ "received": true })).into_response())
 }
 
