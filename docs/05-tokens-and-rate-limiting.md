@@ -25,6 +25,10 @@ A token looks like `pk_<id>_<secret>`. The `id` (12 hex characters) is **not sec
 
 A paid token is **invalid after `until`** but stays in Valkey for the retention time, so a customer can renew it with the token id (monthly subscription: the payment extends `until`; the long retention just cleans up abandoned tokens). Free tokens vanish right after expiry.
 
+## Plans
+
+A **plan** is only a name for a rate limit of purchased tokens. `--plan starter` gives the token the limit that `PAID_PLANS` assigns to `starter`. Default: `PAID_PLANS=starter=60,business=300,pro=1000` (`name=invoices_per_minute`, so `starter` = 60 invoices per minute). Add or change plans in that variable; the limit is stored with the token when it is created. `--days N` is the lifetime (the previous example in the PR description had a typo: it is `--days 30`). Free tokens have no plan; their limit is `FREE_RATE_LIMIT_PER_MINUTE`.
+
 ## Operator commands
 
 Run against the same `VALKEY_URL` as the server:
