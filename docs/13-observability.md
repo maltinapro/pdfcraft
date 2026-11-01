@@ -136,4 +136,20 @@ grafana:
 
 Datasources are chosen with dashboard variables (`datasource`, `loki`), so no UIDs are hard-coded. The log queries assume the stream labels `namespace` and `app_kubernetes_io_component`; adjust the dashboard if your Loki shipper names them differently. Edit the JSON files (or build in Grafana and export) and commit them: the chart picks up every `dashboards/*.json`.
 
+Without the Grafana Operator, use the Grafana dashboard sidecar (for example `grafana/grafana` or kube-prometheus-stack with `sidecar.dashboards.enabled`). With `mode: sidecar` the chart creates one `ConfigMap` per dashboard, labelled `grafana_dashboard: "1"` and annotated with `grafana_folder`:
+
+```yaml
+grafana:
+  dashboards:
+    enabled: true
+    mode: sidecar          # default: operator
+    folder: PDFCraft
+    sidecar:               # must match the sidecar settings (these are the defaults)
+      label: grafana_dashboard
+      labelValue: "1"
+      folderAnnotation: grafana_folder
+```
+
+The sidecar must watch the namespace of this release (`sidecar.dashboards.searchNamespace: ALL` or the namespace) and set `sidecar.dashboards.folderAnnotation: grafana_folder` for the folder to be applied.
+
 Dashboards can also be imported manually in Grafana (Dashboards → New → Import) without the operator.
