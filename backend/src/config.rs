@@ -15,6 +15,7 @@
 //! | `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey (renewable by its id) |
 //! | `BULK_MAX_INVOICES` | `100` | Maximum invoices per bulk request |
 //! | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations |
+//! | `METRICS_ADDR` | `0.0.0.0:9090` | Listen address of `GET /metrics` (OpenMetrics); `off` disables it |
 //! | `CORS_ALLOWED_ORIGINS` | any | Comma-separated origins, or `*` |
 
 use std::sync::OnceLock;
@@ -22,6 +23,7 @@ use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 pub struct Config {
     pub bind_addr: String,
+    pub metrics_addr: Option<String>,
     pub valkey_url: Option<String>,
     pub free_rate_limit_per_minute: u32,
     pub free_token_ttl_secs: u64,
@@ -82,6 +84,9 @@ impl Config {
             .unwrap_or_else(|| "starter=60,business=300,pro=1000".into());
         Self {
             bind_addr: std::env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into()),
+            metrics_addr: Some(std::env::var("METRICS_ADDR").unwrap_or_else(|_| "0.0.0.0:9090".into()))
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty() && !v.eq_ignore_ascii_case("off")),
             valkey_url: std::env::var("VALKEY_URL").ok().filter(|v| !v.trim().is_empty()),
             free_rate_limit_per_minute: env_parse("FREE_RATE_LIMIT_PER_MINUTE", 20u32).max(1),
             free_token_ttl_secs: env_parse("FREE_TOKEN_TTL_SECONDS", 43_200u64).max(60),

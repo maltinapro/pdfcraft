@@ -2,6 +2,7 @@ mod config;
 mod facturx;
 mod free;
 mod invoice;
+mod metrics;
 mod stripe;
 mod store;
 mod telemetry;
@@ -206,6 +207,7 @@ impl ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
+        metrics::api_error(self.code);
         let mut response = (
             self.status,
             Json(ErrorResponse {
@@ -244,6 +246,10 @@ pub(crate) fn decode_assets(
 }
 
 static COMPILE_SLOTS: OnceLock<tokio::sync::Semaphore> = OnceLock::new();
+
+pub(crate) fn compile_slots_available() -> usize {
+    compile_slots().available_permits()
+}
 
 fn compile_slots() -> &'static tokio::sync::Semaphore {
     COMPILE_SLOTS.get_or_init(|| tokio::sync::Semaphore::new(config::get().max_concurrent_compiles))
@@ -292,6 +298,7 @@ pub(crate) async fn render_pdf(
         ApiError::new(StatusCode::BAD_REQUEST, "template_render_error", e.to_string())
     })?;
 
+    let queued = std::time::Instant::now();
     let _slot = compile_slots().acquire().await.map_err(|e| {
         ApiError::new(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -299,7 +306,11 @@ pub(crate) async fn render_pdf(
             e.to_string(),
         )
     })?;
-    match tokio::task::spawn_blocking(move || compile_pdf(rendered, request_id, assets)).await {
+    metrics::get().queue_wait.observe(queued.elapsed().as_secs_f64());
+    let compiling = std::time::Instant::now();
+    let compiled = tokio::task::spawn_blocking(move || compile_pdf(rendered, request_id, assets)).await;
+    metrics::get().typst_compile.observe(compiling.elapsed().as_secs_f64());
+    match compiled {
         Ok(Ok(bytes)) => Ok(bytes),
         Ok(Err(e)) => Err(ApiError::new(
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -343,6 +354,13 @@ async fn main() {
             Vec::new(),
         );
     });
+
+    if let Some(addr) = cfg.metrics_addr.clone() {
+        tokio::spawn(metrics::serve(addr));
+        if store::is_configured() {
+            tokio::spawn(metrics::refresh_active_tokens_forever());
+        }
+    }
 
     let listener = tokio::net::TcpListener::bind(&cfg.bind_addr)
         .await

@@ -125,6 +125,7 @@ fn conn() -> Result<ConnectionManager, Unavailable> {
 
 fn unavailable(e: redis::RedisError) -> Unavailable {
     tracing::error!(event = "valkey_error", error = %e);
+    crate::metrics::store_error();
     Unavailable
 }
 
@@ -184,6 +185,7 @@ pub async fn create_token(kind: Kind, plan: &str, limit: u32, ttl_secs: u64) -> 
         .ignore();
     pipe.cmd("EXPIREAT").arg(&key).arg(expire_at(kind, until)).ignore();
     pipe.query_async::<()>(&mut conn()?).await.map_err(unavailable)?;
+    crate::metrics::token_created(kind, plan);
     Ok(Created { token: format!("{}_{id}_{secret}", kind.prefix()), id, valid_until: until })
 }
 
@@ -289,6 +291,45 @@ pub async fn delete_token(id: &str) -> Result<bool, Unavailable> {
         .await
         .map_err(unavailable)?;
     Ok(n > 0)
+}
+
+/// Number of currently valid tokens per (kind, plan); used for the `tokens_active` gauge.
+pub async fn count_active_tokens() -> Result<std::collections::HashMap<(String, String), u64>, Unavailable> {
+    let mut c = conn()?;
+    let mut counts = std::collections::HashMap::new();
+    let mut cursor: u64 = 0;
+    let now = now();
+    loop {
+        let (next, keys): (u64, Vec<String>) = redis::cmd("SCAN")
+            .arg(cursor)
+            .arg("MATCH")
+            .arg(format!("{TOKEN_PREFIX}*"))
+            .arg("COUNT")
+            .arg(500)
+            .query_async(&mut c)
+            .await
+            .map_err(unavailable)?;
+        if !keys.is_empty() {
+            let mut pipe = redis::pipe();
+            for key in &keys {
+                pipe.cmd("HMGET").arg(key).arg(&["kind", "plan", "until"]);
+            }
+            let rows: Vec<(Option<String>, Option<String>, Option<u64>)> =
+                pipe.query_async(&mut c).await.map_err(unavailable)?;
+            for (kind, plan, until) in rows {
+                if let (Some(kind), Some(until)) = (kind, until) {
+                    if until > now {
+                        let plan = plan.unwrap_or_else(|| kind.clone());
+                        *counts.entry((kind, plan)).or_insert(0) += 1;
+                    }
+                }
+            }
+        }
+        if next == 0 {
+            return Ok(counts);
+        }
+        cursor = next;
+    }
 }
 
 /// Atomic token bucket. Returns 0 if allowed, otherwise the seconds to wait.
