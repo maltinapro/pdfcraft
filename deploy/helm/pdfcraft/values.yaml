@@ -6,6 +6,9 @@ image:
 
 backend:
   replicaCount: 1
+  # Name of a Secret with the key STRIPE_WEBHOOK_SECRET (only needed for purchased tokens,
+  # together with backend.env.PAID_TOKENS_ENABLED="true"; see docs/12-paid-tokens-stripe.md)
+  stripeSecret: ""
   env:
     MAX_CONCURRENT_COMPILES: "2"
   resources:

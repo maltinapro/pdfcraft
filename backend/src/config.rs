@@ -10,6 +10,8 @@
 //! | `ANUBIS_COOKIE_NAME` | `techaro.lol-anubis-auth` | Name of the Anubis pass cookie |
 //! | `PAID_TOKENS_ENABLED` | `false` | Feature flag: accept purchased tokens |
 //! | `PAID_PLANS` | `starter=60,business=300,pro=1000` | Paid plans as `name=invoices_per_minute` |
+//! | `STRIPE_WEBHOOK_SECRET` | empty | Signing secret (`whsec_…`) of the Stripe webhook endpoint |
+//! | `PAID_GRACE_DAYS` | `3` | Extra days after a paid subscription period before the token expires |
 //! | `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey (renewable by its id) |
 //! | `BULK_MAX_INVOICES` | `100` | Maximum invoices per bulk request |
 //! | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations |
@@ -28,6 +30,8 @@ pub struct Config {
     pub paid_tokens_enabled: bool,
     pub paid_plans: Vec<(String, u32)>,
     pub paid_retention_days: u64,
+    pub stripe_webhook_secret: Option<String>,
+    pub paid_grace_days: u64,
     pub bulk_max_invoices: usize,
     pub max_concurrent_compiles: usize,
     pub cors_origins: Option<Vec<String>>,
@@ -89,6 +93,8 @@ impl Config {
             paid_tokens_enabled: env_parse("PAID_TOKENS_ENABLED", false),
             paid_plans: parse_plans(&plans_raw),
             paid_retention_days: env_parse("PAID_TOKEN_RETENTION_DAYS", 365u64),
+            stripe_webhook_secret: std::env::var("STRIPE_WEBHOOK_SECRET").ok().filter(|v| !v.trim().is_empty()),
+            paid_grace_days: env_parse("PAID_GRACE_DAYS", 3u64),
             bulk_max_invoices: env_parse("BULK_MAX_INVOICES", 100usize).max(1),
             max_concurrent_compiles: env_parse("MAX_CONCURRENT_COMPILES", cpus).max(1),
             cors_origins,

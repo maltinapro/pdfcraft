@@ -8,6 +8,8 @@ See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key man
 | --- | --- | --- |
 | `GET /health` | none | Server status |
 | `POST /v1/free-token` | Anubis pass | Issue a free token (used by the frontend), see [guide 11](11-free-token-and-anubis.md) |
+| `POST /v1/stripe/webhook` | Stripe signature | Creates/extends purchased tokens (only with `PAID_TOKENS_ENABLED`), see [guide 12](12-paid-tokens-stripe.md) |
+| `GET /v1/tokens/claim` | session id | Hands out a purchased token once after payment |
 | `POST /v1/invoices` | token | One invoice → PDF |
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP of PDFs |
 
@@ -20,6 +22,10 @@ See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key man
 ## `POST /v1/free-token`
 
 Issues a free token (`pf_…`) to a browser that solved the Anubis challenge. No body. Response `200`: `{ "token", "expiresAt" (unix seconds), "limitPerMinute" }`. `403 challenge_required` without a valid Anubis cookie, `409 already_issued` if the cookie was already exchanged, `503 free_token_disabled` if `ANUBIS_PUBLIC_KEY_HEX` is not set. Details: [Free Token and Anubis](11-free-token-and-anubis.md).
+
+## Purchased tokens
+
+`POST /v1/stripe/webhook` (called by Stripe) and `GET /v1/tokens/claim?session_id=cs_…` (called by your success page) answer `404` while `PAID_TOKENS_ENABLED=false`. Details: [Purchased Tokens (Stripe)](12-paid-tokens-stripe.md).
 
 ## `POST /v1/invoices`
 

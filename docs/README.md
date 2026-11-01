@@ -15,6 +15,7 @@ Detailed guides for running, testing and deploying PDFCraft. The top-level [READ
 | 9 | [API Reference](09-api-reference.md) | look up endpoints, request bodies and examples |
 | 10 | [Architecture and Extending](10-architecture-and-extending.md) | understand the structure or add a field |
 | 11 | [Free Token and Anubis](11-free-token-and-anubis.md) | how free tokens are issued and protected |
+| 12 | [Purchased Tokens (Stripe)](12-paid-tokens-stripe.md) | enable and operate purchased tokens |
 
 ## Status legend
 
