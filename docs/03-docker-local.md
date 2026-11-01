@@ -28,62 +28,41 @@ docker compose up --build
 - Frontend: `http://localhost:8080` (landing page), app at `http://localhost:8080/app/`
 - Backend: `http://localhost:3000`
 
-Only `/generate-pdf` works (no keys configured), which is all the UI needs.
+Compose also starts **Valkey** (`valkey` service, volume `valkeydata`, append-only persistence), where tokens and rate limits live.
 
-### With a static API key
+### Try `/v1` with a token
 
 ```bash
-API_KEYS=secret docker compose up --build
+docker compose up --build -d
+docker compose exec backend /app/pdfcraft-backend tokens create-free     # prints pf_... once
 curl -X POST http://localhost:3000/v1/invoices \
-  -H 'Authorization: Bearer secret' -H 'content-type: application/json' \
+  -H 'Authorization: Bearer <token>' -H 'content-type: application/json' \
   --data @pdfcraft-config.json -o invoice.pdf
 ```
+
+Purchased tokens: `PAID_TOKENS_ENABLED=true docker compose up -d`, then `docker compose exec backend /app/pdfcraft-backend tokens create --plan starter --days 30`. Without the flag they are rejected.
+
+Tokens survive `docker compose down` (the volume stays); `docker compose down -v` deletes them.
 
 ### Without the arbitrary-template endpoint
 
 ```bash
-ENABLE_GENERATE_PDF=false API_KEYS=secret docker compose up --build backend
+ENABLE_GENERATE_PDF=false docker compose up --build backend
 ```
 
 The UI preview stops working in this mode (it needs `/generate-pdf`); only `/v1` is served.
-
-## Compose: shared mode with Postgres and Redis (Untested)
-
-The `shared` profile adds `postgres` and `redis`. Because the backend exits if `DATABASE_URL` is set but Postgres is not ready, start the data services first:
-
-```bash
-export DATABASE_URL=postgres://postgres:pdfcraft@postgres:5432/pdfcraft
-export REDIS_URL=redis://redis:6379
-
-docker compose --profile shared up -d postgres redis
-
-# create a customer key (printed once)
-docker compose --profile shared run --rm backend \
-  /app/pdfcraft-backend keys create --customer "ACME" --limit 300
-
-# start the rest
-docker compose --profile shared up --build -d
-```
-
-Manage keys later the same way (`keys list`, `keys revoke <id>`, `keys activate <id>`).
-
-The default Postgres password is `pdfcraft`; change it with `POSTGRES_PASSWORD` (and in `DATABASE_URL`). Data lives in the `pgdata` volume. Do not use the defaults outside local testing.
-
-To test the shared limit with two backend instances, scale the service. Two containers cannot bind the same host port, so remove the fixed `3000:3000` mapping or put a load balancer in front first:
-
-```bash
-docker compose --profile shared up -d --scale backend=2
-```
 
 ## Quick container smoke test (Verified)
 
 ```bash
 docker build -f backend/Dockerfile -t pdfcraft-backend .
-docker run --rm -d --name pcbe -e API_KEYS=dockerkey -p 3002:3000 pdfcraft-backend
+docker run --rm -d --name pcvk valkey/valkey:8-alpine
+docker run --rm -d --name pcbe --link pcvk -e VALKEY_URL=redis://pcvk:6379 -p 3002:3000 pdfcraft-backend
+docker exec pcbe /app/pdfcraft-backend tokens create-free   # prints pf_...
 curl -s -X POST localhost:3002/v1/invoices \
   -H 'content-type: application/json' -H 'Authorization: Bearer dockerkey' \
   --data @pdfcraft-config.json -o out.pdf && head -c 5 out.pdf   # %PDF-
-docker stop pcbe
+docker stop pcbe pcvk
 ```
 
 ## Notes

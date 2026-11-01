@@ -1,0 +1,62 @@
+{{- if .Values.valkey.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-valkey
+  labels: {{- include "pdfcraft.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ .Release.Name }}-valkey
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "pdfcraft.labels" . | nindent 6 }}
+      app.kubernetes.io/component: valkey
+  template:
+    metadata:
+      labels:
+        {{- include "pdfcraft.labels" . | nindent 8 }}
+        app.kubernetes.io/component: valkey
+    spec:
+      containers:
+        - name: valkey
+          image: {{ .Values.valkey.image }}
+          # Append-only file on the volume: tokens survive restarts and node reboots
+          args: ["valkey-server", "--appendonly", "yes", "--appendfsync", "everysec", "--save", "60", "1"]
+          ports:
+            - containerPort: 6379
+          readinessProbe:
+            exec: { command: ["valkey-cli", "ping"] }
+            initialDelaySeconds: 3
+          livenessProbe:
+            exec: { command: ["valkey-cli", "ping"] }
+            initialDelaySeconds: 15
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources: {{- toYaml .Values.valkey.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.valkey.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.valkey.persistence.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-valkey
+  labels: {{- include "pdfcraft.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "pdfcraft.labels" . | nindent 4 }}
+    app.kubernetes.io/component: valkey
+  ports:
+    - port: 6379
+      targetPort: 6379
+{{- end }}

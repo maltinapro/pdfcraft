@@ -1,127 +1,221 @@
-//! Optional shared state for multiple instances:
-//! - API keys in Postgres (`DATABASE_URL`), stored only as SHA-256 hashes
-//! - rate limit in Redis (`REDIS_URL`), one atomic token bucket per key
+//! Valkey-backed state (Redis protocol): API tokens and rate limits. Nothing else
+//! is stored - no customer names, no invoice data.
 //!
-//! Without them the backend falls back to `API_KEYS` and an in-memory limiter.
+//! Token format: `pf_<id>_<secret>` (free) or `pk_<id>_<secret>` (paid). The `id`
+//! (12 hex chars) is not secret and identifies the token (e.g. for renewal); only a
+//! SHA-256 hash of the secret is stored, in the hash `pdfcraft:token:<id>`:
+//! `h` (secret hash), `kind`, `plan`, `limit` (invoices/minute), `until` (unix seconds).
+//!
+//! Lifetimes: a free token is deleted by Valkey when it expires (`EXPIRE`). A paid
+//! token is invalid after `until` but kept for `PAID_TOKEN_RETENTION_DAYS` so it can be
+//! renewed by its id, then Valkey deletes it (`EXPIREAT`).
+//!
+//! Rate limit: one atomic token bucket per token id (`pdfcraft:rl:<id>`, Lua script).
 
 use crate::config;
 use rand::RngCore;
+use redis::aio::ConnectionManager;
 use sha2::{Digest, Sha256};
-use sqlx::{postgres::PgPoolOptions, PgPool, Row};
 use std::{
-    collections::HashMap,
-    sync::{Mutex, OnceLock},
-    time::{Duration, Instant},
+    sync::OnceLock,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
-#[derive(Clone)]
+const TOKEN_PREFIX: &str = "pdfcraft:token:";
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Kind {
+    Free,
+    Paid,
+}
+
+impl Kind {
+    fn as_str(self) -> &'static str {
+        match self {
+            Kind::Free => "free",
+            Kind::Paid => "paid",
+        }
+    }
+
+    fn prefix(self) -> &'static str {
+        match self {
+            Kind::Free => "pf",
+            Kind::Paid => "pk",
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct Client {
-    /// Stable identifier used as rate-limit bucket name.
     pub id: String,
-    /// Invoices per minute for this client.
+    pub kind: Kind,
+    /// Invoices per minute for this token.
     pub limit: u32,
 }
 
-static POOL: OnceLock<PgPool> = OnceLock::new();
-static REDIS: OnceLock<redis::aio::ConnectionManager> = OnceLock::new();
-static CACHE: OnceLock<Mutex<HashMap<String, (Option<Client>, Instant)>>> = OnceLock::new();
-
-const POSITIVE_TTL: Duration = Duration::from_secs(30);
-const NEGATIVE_TTL: Duration = Duration::from_secs(5);
-
-pub fn has_database() -> bool {
-    POOL.get().is_some()
+pub struct Created {
+    pub id: String,
+    pub token: String,
+    pub valid_until: u64,
 }
 
-pub fn hash_key(key: &str) -> String {
-    Sha256::digest(key.as_bytes())
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
+/// The state store cannot be reached.
+#[derive(Debug)]
+pub struct Unavailable;
+
+static VALKEY: OnceLock<ConnectionManager> = OnceLock::new();
+
+pub fn now() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
 }
 
-async fn connect_pool(url: &str) -> Result<PgPool, sqlx::Error> {
-    let pool = PgPoolOptions::new().max_connections(5).connect(url).await?;
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS api_keys (
-            id BIGSERIAL PRIMARY KEY,
-            customer TEXT NOT NULL,
-            key_hash TEXT NOT NULL UNIQUE,
-            rate_limit_per_minute INTEGER NOT NULL,
-            active BOOLEAN NOT NULL DEFAULT TRUE,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        )",
-    )
-    .execute(&pool)
-    .await?;
-    Ok(pool)
+pub fn hash_secret(secret: &str) -> String {
+    hex(&Sha256::digest(secret.as_bytes()))
 }
 
-/// Connects to Postgres and Redis when configured. Failing to reach a configured
-/// service is fatal for Postgres (keys are required) and a warning for Redis.
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn random_hex(len: usize) -> String {
+    let mut bytes = vec![0u8; len];
+    rand::rngs::OsRng.fill_bytes(&mut bytes);
+    hex(&bytes)
+}
+
+fn ct_eq(a: &[u8], b: &[u8]) -> bool {
+    let mut diff = (a.len() != b.len()) as u8;
+    for i in 0..a.len().max(b.len()) {
+        diff |= a.get(i).copied().unwrap_or(0) ^ b.get(i).copied().unwrap_or(0);
+    }
+    diff == 0
+}
+
+async fn connect(url: &str) -> redis::RedisResult<ConnectionManager> {
+    ConnectionManager::new(redis::Client::open(url)?).await
+}
+
+/// Connects to Valkey when `VALKEY_URL` is set. Without it `/v1` answers 503.
 pub async fn init() {
-    let cfg = config::get();
-    if let Some(url) = &cfg.database_url {
-        match connect_pool(url).await {
-            Ok(pool) => {
-                let _ = POOL.set(pool);
-            }
-            Err(e) => panic!("cannot connect to DATABASE_URL: {e}"),
+    let Some(url) = &config::get().valkey_url else { return };
+    match connect(url).await {
+        Ok(m) => {
+            let _ = VALKEY.set(m);
         }
-    }
-    if let Some(url) = &cfg.redis_url {
-        let manager = async {
-            let client = redis::Client::open(url.as_str())?;
-            redis::aio::ConnectionManager::new(client).await
-        }
-        .await;
-        match manager {
-            Ok(m) => {
-                let _ = REDIS.set(m);
-            }
-            Err(e) => eprintln!("warning: cannot connect to REDIS_URL ({e}); using the in-memory rate limit"),
-        }
+        Err(e) => eprintln!("warning: cannot connect to VALKEY_URL ({e}); /v1 will answer 503"),
     }
 }
 
-pub fn has_redis() -> bool {
-    REDIS.get().is_some()
+pub fn is_configured() -> bool {
+    VALKEY.get().is_some()
 }
 
-/// Looks up an API key (cached for a few seconds to spare the database).
-pub async fn lookup_key(presented: &str) -> Option<Client> {
-    let pool = POOL.get()?;
-    let hash = hash_key(presented);
-    let cache = CACHE.get_or_init(Default::default);
-    if let Some((client, at)) = cache.lock().unwrap().get(&hash) {
-        let ttl = if client.is_some() { POSITIVE_TTL } else { NEGATIVE_TTL };
-        if at.elapsed() < ttl {
-            return client.clone();
-        }
-    }
-    let row = sqlx::query(
-        "SELECT id, rate_limit_per_minute FROM api_keys WHERE key_hash = $1 AND active",
-    )
-    .bind(&hash)
-    .fetch_optional(pool)
-    .await;
-    let client = match row {
-        Ok(Some(r)) => Some(Client {
-            id: format!("db:{}", r.get::<i64, _>("id")),
-            limit: r.get::<i32, _>("rate_limit_per_minute").max(1) as u32,
-        }),
-        Ok(None) => None,
-        Err(e) => {
-            eprintln!("api key lookup failed: {e}");
-            return None;
-        }
+fn conn() -> Result<ConnectionManager, Unavailable> {
+    VALKEY.get().cloned().ok_or(Unavailable)
+}
+
+fn unavailable(e: redis::RedisError) -> Unavailable {
+    eprintln!("valkey error: {e}");
+    Unavailable
+}
+
+/// Splits `pf_<id>_<secret>` / `pk_<id>_<secret>`.
+fn parse_token(presented: &str) -> Option<(Kind, &str, &str)> {
+    let mut parts = presented.splitn(3, '_');
+    let kind = match parts.next()? {
+        "pf" => Kind::Free,
+        "pk" => Kind::Paid,
+        _ => return None,
     };
-    let mut map = cache.lock().unwrap();
-    if map.len() > 10_000 {
-        map.clear();
+    let id = parts.next()?;
+    let secret = parts.next()?;
+    let hex_only = |s: &str| !s.is_empty() && s.len() <= 64 && s.bytes().all(|b| b.is_ascii_hexdigit());
+    (hex_only(id) && hex_only(secret)).then_some((kind, id, secret))
+}
+
+/// `Ok(None)` for unknown, expired or malformed tokens.
+pub async fn lookup(presented: &str) -> Result<Option<Client>, Unavailable> {
+    let Some((kind, id, secret)) = parse_token(presented) else { return Ok(None) };
+    let mut c = conn()?;
+    let (hash, stored_kind, limit, until): (Option<String>, Option<String>, Option<u32>, Option<u64>) =
+        redis::cmd("HMGET")
+            .arg(format!("{TOKEN_PREFIX}{id}"))
+            .arg(&["h", "kind", "limit", "until"])
+            .query_async(&mut c)
+            .await
+            .map_err(unavailable)?;
+    let (Some(hash), Some(stored_kind), Some(limit), Some(until)) = (hash, stored_kind, limit, until)
+    else {
+        return Ok(None);
+    };
+    let valid = ct_eq(hash.as_bytes(), hash_secret(secret).as_bytes())
+        && stored_kind == kind.as_str()
+        && until > now();
+    // The free limit is static configuration, so changing it applies to existing tokens.
+    let limit = match kind {
+        Kind::Free => config::get().free_rate_limit_per_minute,
+        Kind::Paid => limit.max(1),
+    };
+    Ok(valid.then(|| Client { id: id.to_string(), kind, limit }))
+}
+
+/// Creates a token valid for `ttl_secs`. The plain token is only returned here.
+pub async fn create_token(kind: Kind, plan: &str, limit: u32, ttl_secs: u64) -> Result<Created, Unavailable> {
+    let id = random_hex(6);
+    let secret = random_hex(16);
+    let until = now() + ttl_secs;
+    let key = format!("{TOKEN_PREFIX}{id}");
+    let mut pipe = redis::pipe();
+    pipe.atomic()
+        .hset_multiple(
+            &key,
+            &[("h", hash_secret(&secret)), ("kind", kind.as_str().into()), ("plan", plan.into()), ("limit", limit.to_string()), ("until", until.to_string())],
+        )
+        .ignore();
+    pipe.cmd("EXPIREAT").arg(&key).arg(expire_at(kind, until)).ignore();
+    pipe.query_async::<()>(&mut conn()?).await.map_err(unavailable)?;
+    Ok(Created { token: format!("{}_{id}_{secret}", kind.prefix()), id, valid_until: until })
+}
+
+fn expire_at(kind: Kind, until: u64) -> u64 {
+    match kind {
+        Kind::Free => until,
+        Kind::Paid => until + config::get().paid_retention_days * 86_400,
     }
-    map.insert(hash, (client.clone(), Instant::now()));
-    client
+}
+
+/// Extends a paid token by `add_secs` (from its current end, or from now if it already
+/// expired). Returns the new end, or `None` if the id is unknown (e.g. past retention).
+pub async fn extend_paid_token(id: &str, add_secs: u64) -> Result<Option<u64>, Unavailable> {
+    if parse_token(&format!("pk_{id}_00")).is_none() {
+        return Ok(None);
+    }
+    let key = format!("{TOKEN_PREFIX}{id}");
+    let mut c = conn()?;
+    let (kind, until): (Option<String>, Option<u64>) = redis::cmd("HMGET")
+        .arg(&key)
+        .arg(&["kind", "until"])
+        .query_async(&mut c)
+        .await
+        .map_err(unavailable)?;
+    if kind.as_deref() != Some("paid") {
+        return Ok(None);
+    }
+    let new_until = until.unwrap_or(0).max(now()) + add_secs;
+    let mut pipe = redis::pipe();
+    pipe.atomic().hset(&key, "until", new_until.to_string()).ignore();
+    pipe.cmd("EXPIREAT").arg(&key).arg(expire_at(Kind::Paid, new_until)).ignore();
+    pipe.query_async::<()>(&mut c).await.map_err(unavailable)?;
+    Ok(Some(new_until))
+}
+
+pub async fn delete_token(id: &str) -> Result<bool, Unavailable> {
+    let n: i64 = redis::cmd("DEL")
+        .arg(format!("{TOKEN_PREFIX}{id}"))
+        .query_async(&mut conn()?)
+        .await
+        .map_err(unavailable)?;
+    Ok(n > 0)
 }
 
 /// Atomic token bucket. Returns 0 if allowed, otherwise the seconds to wait.
@@ -148,117 +242,111 @@ redis.call('EXPIRE', KEYS[1], 120)
 return wait
 "#;
 
-/// `Some(Ok)` / `Some(Err(wait))` when Redis decided, `None` if Redis is unavailable.
-pub async fn redis_take(client: &Client, cost: u32) -> Option<Result<(), u64>> {
-    let mut conn = REDIS.get()?.clone();
+/// `Ok(Ok(()))` if allowed, `Ok(Err(wait_secs))` if the limit is reached.
+pub async fn take(client: &Client, cost: u32) -> Result<Result<(), u64>, Unavailable> {
     let per_sec = client.limit as f64 / 60.0;
-    let result: redis::RedisResult<i64> = redis::Script::new(BUCKET_SCRIPT)
+    let wait: i64 = redis::Script::new(BUCKET_SCRIPT)
         .key(format!("pdfcraft:rl:{}", client.id))
         .arg(client.limit)
         .arg(per_sec)
         .arg(cost)
-        .invoke_async(&mut conn)
-        .await;
-    match result {
-        Ok(0) => Some(Ok(())),
-        Ok(wait) => Some(Err(wait.max(1) as u64)),
-        Err(e) => {
-            eprintln!("redis rate limit failed ({e}); using the in-memory limit");
-            None
-        }
-    }
+        .invoke_async(&mut conn()?)
+        .await
+        .map_err(unavailable)?;
+    Ok(if wait == 0 { Ok(()) } else { Err(wait.max(1) as u64) })
 }
 
 fn arg_value(args: &[String], name: &str) -> Option<String> {
     args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned()
 }
 
-/// `keys create|list|revoke` subcommands. Returns `true` if a command was handled.
+fn die(msg: impl std::fmt::Display, code: i32) -> ! {
+    eprintln!("{msg}");
+    std::process::exit(code)
+}
+
+const USAGE: &str = "usage: pdfcraft-backend tokens <create --plan <name> [--days <n>] | create-free | list | extend <id> --days <n> | revoke <id>>";
+
+/// `tokens ...` subcommands for operators. Returns `true` if a command was handled.
 pub async fn run_cli(args: &[String]) -> bool {
-    if args.first().map(String::as_str) != Some("keys") {
+    if args.first().map(String::as_str) != Some("tokens") {
         return false;
     }
-    let Some(url) = config::get().database_url.clone() else {
-        eprintln!("DATABASE_URL must be set");
-        std::process::exit(2);
-    };
-    let pool = connect_pool(&url).await.unwrap_or_else(|e| {
-        eprintln!("cannot connect to the database: {e}");
-        std::process::exit(1);
-    });
+    let cfg = config::get();
+    let Some(url) = &cfg.valkey_url else { die("VALKEY_URL must be set", 2) };
+    let manager = connect(url).await.unwrap_or_else(|e| die(format!("cannot connect to Valkey: {e}"), 1));
+    let _ = VALKEY.set(manager);
+    let days = |default: u64| arg_value(args, "--days").and_then(|v| v.parse::<u64>().ok()).unwrap_or(default);
     match args.get(1).map(String::as_str) {
         Some("create") => {
-            let Some(customer) = arg_value(args, "--customer") else {
-                eprintln!("usage: keys create --customer <name> [--limit <per minute>]");
-                std::process::exit(2);
+            let Some(plan) = arg_value(args, "--plan").map(|p| p.to_ascii_lowercase()) else { die(USAGE, 2) };
+            let Some(limit) = cfg.plan_limit(&plan) else {
+                let names: Vec<_> = cfg.paid_plans.iter().map(|(n, _)| n.as_str()).collect();
+                die(format!("unknown plan `{plan}` (PAID_PLANS: {})", names.join(", ")), 2)
             };
-            let limit: i32 = arg_value(args, "--limit")
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(config::get().rate_limit_per_minute as i32)
-                .max(1);
-            let mut bytes = [0u8; 32];
-            rand::rngs::OsRng.fill_bytes(&mut bytes);
-            let key = format!("pk_{}", bytes.iter().map(|b| format!("{b:02x}")).collect::<String>());
-            let id: i64 = sqlx::query(
-                "INSERT INTO api_keys (customer, key_hash, rate_limit_per_minute) VALUES ($1, $2, $3) RETURNING id",
-            )
-            .bind(&customer)
-            .bind(hash_key(&key))
-            .bind(limit)
-            .fetch_one(&pool)
-            .await
-            .unwrap_or_else(|e| {
-                eprintln!("insert failed: {e}");
-                std::process::exit(1);
-            })
-            .get("id");
-            println!("Created key #{id} for {customer} ({limit} invoices/minute).");
-            println!("API key (shown only once, store it safely):\n{key}");
+            let created = create_token(Kind::Paid, &plan, limit, days(30) * 86_400)
+                .await
+                .unwrap_or_else(|_| die("could not write to Valkey", 1));
+            println!("Created paid token `{}` (plan {plan}, {limit} invoices/minute), valid until unix time {}.", created.id, created.valid_until);
+            println!("Token (shown only once, store it safely):\n{}", created.token);
+            if !cfg.paid_tokens_enabled {
+                println!("Note: PAID_TOKENS_ENABLED is not true, the server rejects paid tokens until you enable it.");
+            }
+        }
+        Some("create-free") => {
+            let limit = cfg.free_rate_limit_per_minute;
+            let created = create_token(Kind::Free, "free", limit, cfg.free_token_ttl_secs)
+                .await
+                .unwrap_or_else(|_| die("could not write to Valkey", 1));
+            println!("Created free token `{}` ({limit} invoices/minute), valid until unix time {}.\n{}", created.id, created.valid_until, created.token);
         }
         Some("list") => {
-            let rows = sqlx::query(
-                "SELECT id, customer, rate_limit_per_minute, active, created_at::text AS created FROM api_keys ORDER BY id",
-            )
-            .fetch_all(&pool)
-            .await
-            .unwrap_or_else(|e| {
-                eprintln!("query failed: {e}");
-                std::process::exit(1);
-            });
-            println!("{:<6} {:<28} {:<8} {:<7} created", "id", "customer", "limit", "active");
-            for r in rows {
-                println!(
-                    "{:<6} {:<28} {:<8} {:<7} {}",
-                    r.get::<i64, _>("id"),
-                    r.get::<String, _>("customer"),
-                    r.get::<i32, _>("rate_limit_per_minute"),
-                    r.get::<bool, _>("active"),
-                    r.get::<String, _>("created"),
-                );
+            let mut c = conn().unwrap_or_else(|_| die("no Valkey", 1));
+            let mut cursor = 0u64;
+            println!("{:<14} {:<6} {:<12} {:<7} valid until (unix)", "id", "kind", "plan", "limit");
+            loop {
+                let (next, keys): (u64, Vec<String>) = redis::cmd("SCAN")
+                    .arg(cursor)
+                    .arg("MATCH")
+                    .arg(format!("{TOKEN_PREFIX}*"))
+                    .arg("COUNT")
+                    .arg(200)
+                    .query_async(&mut c)
+                    .await
+                    .unwrap_or_else(|e| die(format!("scan failed: {e}"), 1));
+                for key in keys {
+                    let row: Vec<Option<String>> = redis::cmd("HMGET")
+                        .arg(&key)
+                        .arg(&["kind", "plan", "limit", "until"])
+                        .query_async(&mut c)
+                        .await
+                        .unwrap_or_default();
+                    let f = |i: usize| row.get(i).cloned().flatten().unwrap_or_default();
+                    println!("{:<14} {:<6} {:<12} {:<7} {}", &key[TOKEN_PREFIX.len()..], f(0), f(1), f(2), f(3));
+                }
+                cursor = next;
+                if cursor == 0 {
+                    break;
+                }
             }
         }
-        Some(cmd @ ("revoke" | "activate")) => {
-            let Some(id) = args.get(2).and_then(|v| v.parse::<i64>().ok()) else {
-                eprintln!("usage: keys {cmd} <id>");
-                std::process::exit(2);
-            };
-            let done = sqlx::query("UPDATE api_keys SET active = $2 WHERE id = $1")
-                .bind(id)
-                .bind(cmd == "activate")
-                .execute(&pool)
-                .await
-                .map(|r| r.rows_affected())
-                .unwrap_or(0);
-            if done == 0 {
-                eprintln!("no key with id {id}");
-                std::process::exit(1);
+        Some("extend") => {
+            let Some(id) = args.get(2) else { die(USAGE, 2) };
+            match extend_paid_token(id, days(30) * 86_400).await {
+                Ok(Some(until)) => println!("Token {id} is now valid until unix time {until}."),
+                Ok(None) => die(format!("no paid token with id {id}"), 1),
+                Err(_) => die("could not write to Valkey", 1),
             }
-            println!("Key #{id}: {cmd}d (running servers notice within ~30 s).");
         }
-        _ => {
-            eprintln!("usage: pdfcraft-backend keys <create --customer <name> [--limit <n>] | list | revoke <id> | activate <id>>");
-            std::process::exit(2);
+        Some("revoke") => {
+            let Some(id) = args.get(2) else { die(USAGE, 2) };
+            match delete_token(id).await {
+                Ok(true) => println!("Token {id} deleted."),
+                Ok(false) => die(format!("no token with id {id}"), 1),
+                Err(_) => die("could not write to Valkey", 1),
+            }
         }
+        _ => die(USAGE, 2),
     }
     true
 }

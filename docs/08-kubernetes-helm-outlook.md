@@ -6,7 +6,7 @@
 
 - One chart that can deploy both the **production API** and the **demo system** (different values).
 - Stateless backend, horizontally scalable, rolling updates without downtime.
-- Postgres and Redis either external (recommended) or optional sub-charts for small setups.
+- Valkey: the chart ships a single persistent StatefulSet; for HA use an external Valkey or a Valkey operator.
 
 ## Proposed chart layout
 
@@ -39,8 +39,8 @@ deploy/helm/pdfcraft/
 | `Ingress` | TLS (cert-manager); routes `/v1` (production) or `/` and `/generate-pdf` (demo) |
 | `HorizontalPodAutoscaler` | Scale on CPU (compilation is CPU-bound) |
 | `PodDisruptionBudget` | `minAvailable: 1` during node maintenance |
-| `NetworkPolicy` | Only ingress → backend; only backend → Postgres/Redis |
-| `Secret` | `DATABASE_URL`, `REDIS_URL` (or reference an `existingSecret` / external secrets operator) |
+| `NetworkPolicy` | Only ingress → backend; only backend → Valkey |
+| `Secret` | `VALKEY_URL` (or reference an `existingSecret` / external secrets operator) |
 
 ## Probes and resources
 
@@ -70,7 +70,7 @@ backend:
     RATE_LIMIT_PER_MINUTE: "120"
     BULK_MAX_INVOICES: "100"
     MAX_CONCURRENT_COMPILES: "2"
-  existingSecret: pdfcraft-secrets     # keys: DATABASE_URL, REDIS_URL
+  existingSecret: pdfcraft-secrets     # keys: VALKEY_URL
 frontend:
   enabled: false
 ingress:
@@ -83,8 +83,7 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 10
   targetCPUUtilizationPercentage: 70
-postgresql: { enabled: false }          # use a managed database
-redis: { enabled: false }               # use a managed Redis
+valkey: { enabled: false }              # use an external Valkey / operator
 ```
 
 Demo (`values-demo.yaml`):
@@ -111,7 +110,7 @@ ingress:
 ## Open design points
 
 1. **Frontend `VITE_API_BASE_URL` is a build-time value.** The image needs either a rebuild per environment or a small change so the URL is read at container start (for example generating a `config.js` from an environment variable in the nginx entrypoint). Recommended: same-origin via the ingress with an empty base URL, which needs no per-environment build.
-2. **Key management.** `keys create` is a CLI command of the backend binary. Options: `kubectl exec` into a pod, a Helm-managed `Job` that takes `customer` and `limit` as values, or later an admin API. Because keys are shown only once, a Job's log is a fragile place to keep them; prefer `kubectl exec` or a manual Job run.
+2. **Token management.** `tokens create` is a CLI command of the backend binary. Use `kubectl exec` into a backend pod (tokens are shown only once, so a Job's log is a fragile place to keep them); purchased tokens are normally created by the Stripe webhook.
 3. **Database migrations.** The schema is created idempotently at start; a future migration tool (for example sqlx migrations) would need an init container or hook.
 4. **Rate limiting at the ingress.** The backend limits per key; add ingress limits (per IP) for the demo and as a safety net in production.
 5. **Non-root image.** The Dockerfile should drop root before it is used with a restrictive `securityContext` (`runAsNonRoot`, `readOnlyRootFilesystem`).
@@ -123,6 +122,6 @@ ingress:
 
 1. Non-root Dockerfile and a runtime-configurable frontend URL.
 2. CI that publishes images.
-3. Chart skeleton: backend `Deployment`, `Service`, `Ingress`, secrets; install on a local cluster (kind or minikube) with in-cluster Postgres and Redis.
+3. Chart skeleton: backend `Deployment`, `Service`, `Ingress`, secrets; install on a local cluster (kind or minikube) with the in-cluster Valkey.
 4. Add probes, HPA, PDB and network policies.
 5. Demo values and verification; production values and a load test (many `/v1/invoices/bulk` requests) to tune CPU limits and `MAX_CONCURRENT_COMPILES`.

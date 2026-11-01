@@ -5,29 +5,19 @@
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `BIND_ADDR` | `0.0.0.0:3000` | Listen address |
-| `API_KEYS` | – | Comma-separated static API keys. Fine for tests and very small setups; keys are visible in the process environment |
-| `DATABASE_URL` | – | Postgres connection string. Enables database-stored keys; table `api_keys` is created automatically. The backend refuses to start if it cannot connect |
-| `REDIS_URL` | – | Redis connection string. Enables the rate limit shared by all instances. Unreachable: warning and in-memory fallback |
-| `RATE_LIMIT_PER_MINUTE` | `120` | Default invoices per minute per key. Keys in the database carry their own limit (`--limit`) |
-| `BULK_MAX_INVOICES` | `100` | Maximum invoices in one bulk request. A bulk request costs one token per invoice, so it must not exceed the key's limit |
+| `VALKEY_URL` | – | Valkey connection (`redis://host:6379`). Holds tokens and rate limits. Unset or unreachable: `/v1` answers `503` |
+| `FREE_RATE_LIMIT_PER_MINUTE` | `20` | Invoices per minute for every free token (static) |
+| `FREE_TOKEN_TTL_SECONDS` | `43200` | Lifetime of a free token (12 h) |
+| `PAID_TOKENS_ENABLED` | `false` | Feature flag for purchased tokens; off = they are rejected |
+| `PAID_PLANS` | `starter=60,business=300,pro=1000` | Paid plans as `name=invoices_per_minute` |
+| `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey so it can be renewed by id |
+| `BULK_MAX_INVOICES` | `100` | Maximum invoices in one bulk request. A bulk request costs one token per invoice, so it must not exceed the token's limit |
 | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations across all endpoints; further requests wait |
 | `CORS_ALLOWED_ORIGINS` | any | Comma-separated browser origins (for example `https://demo.example.com`). `*` or unset allows any |
 | `ENABLE_GENERATE_PDF` | `true` | `false` removes `POST /generate-pdf` |
 | `TYPST_PACKAGE_PATH` | `<backend>/vendor/typst-packages` | Directory with the vendored Typst packages |
 
-Behavior summary:
-
-| `API_KEYS` | `DATABASE_URL` | `/v1` |
-| --- | --- | --- |
-| unset | unset | `503 api_keys_not_configured` |
-| set | unset | enabled, static keys only |
-| unset | set | enabled, database keys only |
-| set | set | enabled, both accepted |
-
-| `REDIS_URL` | Rate limit |
-| --- | --- |
-| set and reachable | shared token bucket per key across all instances |
-| unset or unreachable | token bucket per key per instance (N instances allow up to N times the limit) |
+Without `VALKEY_URL`, `/v1` is unavailable (`503 store_unavailable`); there is no in-memory fallback. See [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md).
 
 ## Fixed limits (compile-time constants)
 
@@ -51,22 +41,8 @@ Because it is a build-time value, a different backend URL means a new build (a n
 
 | Variable | Used for |
 | --- | --- |
-| `API_KEYS`, `DATABASE_URL`, `REDIS_URL`, `CORS_ALLOWED_ORIGINS`, `ENABLE_GENERATE_PDF` | passed through to the backend container |
-| `POSTGRES_PASSWORD` | password of the optional `postgres` service (default `pdfcraft`) |
+| `CORS_ALLOWED_ORIGINS`, `ENABLE_GENERATE_PDF`, `PAID_TOKENS_ENABLED` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
 
-## Database schema
+## Valkey data
 
-Created automatically on first start (or first `keys` command):
-
-```sql
-CREATE TABLE api_keys (
-  id BIGSERIAL PRIMARY KEY,
-  customer TEXT NOT NULL,
-  key_hash TEXT NOT NULL UNIQUE,          -- SHA-256 hex of the key
-  rate_limit_per_minute INTEGER NOT NULL,
-  active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-```
-
-Redis keys: `pdfcraft:rl:<key id>` (hash with `tokens` and `ts`, expires after 120 s of inactivity). No customer data is stored in Redis.
+See [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md#what-is-stored-valkey-only) for the keys. Valkey must persist (`--appendonly yes`, a volume); Compose and the Helm chart do this.

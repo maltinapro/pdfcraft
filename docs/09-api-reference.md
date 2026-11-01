@@ -1,6 +1,6 @@
 # 9. API Reference
 
-See also: [API Keys and Rate Limiting](05-api-keys-and-rate-limiting.md) for key management and error codes, and [Configuration](04-configuration.md) for server settings.
+See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key management and error codes, and [Configuration](04-configuration.md) for server settings.
 
 ## Overview
 
@@ -8,8 +8,8 @@ See also: [API Keys and Rate Limiting](05-api-keys-and-rate-limiting.md) for key
 | --- | --- | --- |
 | `GET /health` | none | Server status |
 | `POST /generate-pdf` | none | Compile a template with data (used by the frontend) |
-| `POST /v1/invoices` | API key | One invoice → PDF |
-| `POST /v1/invoices/bulk` | API key | Many invoices → ZIP of PDFs |
+| `POST /v1/invoices` | token | One invoice → PDF |
+| `POST /v1/invoices/bulk` | token | Many invoices → ZIP of PDFs |
 
 ## `GET /health`
 

@@ -1,10 +1,10 @@
 # 7. Demo System
 
-Goal: let prospective customers try the configurator in the browser (form, live preview, PDF download) without giving them API keys and without exposing the production API.
+Goal: let prospective customers try the configurator in the browser (form, live preview, PDF download) without giving them purchased tokens and without exposing the production API.
 
 ## Key facts
 
-- The frontend is a static site. It talks to the backend through `POST /generate-pdf`, which needs **no API key**.
+- The frontend is a static site. It talks to the backend through `POST /generate-pdf`, which needs **no token** (this changes with the free token, see [Free Token](11-free-token-and-anubis.md)).
 - A key must never be embedded in the frontend: it would be visible to everyone.
 - `POST /generate-pdf` accepts an arbitrary Typst template and has no per-user rate limit. The Typst engine only sees the request's own files and the vendored packages (no network, no host files), so the main risk is **resource abuse** (expensive layouts, many requests). Mitigate it as described below.
 - Use a **separate backend instance** for the demo. Never enable `/generate-pdf` on the production API that customers use.
@@ -75,7 +75,7 @@ CORS_ALLOWED_ORIGINS=https://demo.example.com
 
 ```bash
 ENABLE_GENERATE_PDF=true            # needed by the UI
-# no API_KEYS and no DATABASE_URL  -> /v1 stays disabled (503)
+# no VALKEY_URL  -> /v1 stays disabled (503)
 MAX_CONCURRENT_COMPILES=2           # keep the demo cheap and bounded
 CORS_ALLOWED_ORIGINS=https://demo.example.com   # only for the two-domain variant
 ```
@@ -118,7 +118,7 @@ Further options: HTTP basic auth or a shared demo password at the proxy if only 
 
 Do not hand out a production key. Options:
 
-1. Create a **demo customer key** with a small limit on a separate, non-production environment: `keys create --customer "Demo" --limit 20`, and revoke it after the demo (`keys revoke <id>`).
+1. Create a **demo token**: `tokens create-free` (static free limit, expires on its own) or a purchased one with `tokens create --plan starter --days 1`, and revoke it after the demo (`tokens revoke <id>`).
 2. Show the `/v1` examples from your own terminal during a call (see the README "Production API").
 
 ## Deploy checklist

@@ -4,7 +4,7 @@
 
 - Rust (stable) with `cargo`. The first build compiles Typst and takes several minutes; later builds are fast.
 - Node.js 20+ with `npm`.
-- Optional: `curl`, `jq` for API tests; Docker for Postgres/Redis; Java and the [Mustang CLI](https://www.mustangproject.org/) to validate e-invoice PDFs.
+- Optional: `curl`, `jq` for API tests; Docker for Valkey; Java and the [Mustang CLI](https://www.mustangproject.org/) to validate e-invoice PDFs.
 
 Nix users: `backend/shell.nix` provides a shell.
 
@@ -72,20 +72,32 @@ curl -X POST http://localhost:3000/generate-pdf \
 
 Many invoices: change `data.invoice` per request, for example with `jq` (see the README section "Using the backend directly").
 
-## 5. Test the `/v1` API with a static key (no database)
+## 5. Test the `/v1` API with tokens (needs Valkey)
+
+```bash
+docker run -d --name pdfcraft-valkey -p 6379:6379 valkey/valkey:8-alpine valkey-server --appendonly yes
+export VALKEY_URL=redis://localhost:6379
+
+cd backend
+cargo run -- tokens create-free                 # prints pf_... once
+PAID_TOKENS_ENABLED=true cargo run              # start the server (paid tokens on)
+```
+
+In a second terminal:
 
 ```bash
 cd backend
-API_KEYS=secret cargo run
+cargo run -- tokens create --plan starter --days 30   # prints pk_... once
+cargo run -- tokens list
 ```
 
 ```bash
 # In the UI: Exportieren -> pdfcraft-config.json
 curl -X POST http://localhost:3000/v1/invoices \
-  -H 'Authorization: Bearer secret' -H 'content-type: application/json' \
+  -H 'Authorization: Bearer <token>' -H 'content-type: application/json' \
   --data @pdfcraft-config.json -o invoice.pdf
 
-# Without or with a wrong key -> 401
+# Without or with a wrong token -> 401
 curl -i -X POST http://localhost:3000/v1/invoices --data @pdfcraft-config.json
 ```
 
@@ -113,43 +125,31 @@ unzip -l invoices.zip
 
 Useful error cases: an invalid unit or date returns `400 validation_error` listing every problem at once; more than `BULK_MAX_INVOICES` returns `400`.
 
-Test the rate limit with a tiny value:
+Test the rate limit with a tiny free limit:
 
 ```bash
-API_KEYS=secret RATE_LIMIT_PER_MINUTE=3 cargo run
-# the 4th invoice within a minute -> 429 with a Retry-After header
+FREE_RATE_LIMIT_PER_MINUTE=3 cargo run
+# the 4th invoice within a minute with a free token -> 429 with a Retry-After header
 ```
 
-## 6. Test with Postgres and Redis (shared keys and limit)
+## 6. Test tokens across instances, expiry and revocation
 
-```bash
-docker run -d --name pdfcraft-pg -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=pdfcraft -p 5432:5432 postgres:16-alpine
-docker run -d --name pdfcraft-redis -p 6379:6379 redis:7-alpine
-
-export DATABASE_URL=postgres://postgres:pw@localhost:5432/pdfcraft
-export REDIS_URL=redis://localhost:6379
-
-cd backend
-cargo run -- keys create --customer "ACME" --limit 4     # prints pk_... once
-cargo run -- keys list
-```
-
-Start two instances in separate terminals (same environment variables):
+Start two instances in separate terminals (same `VALKEY_URL`):
 
 ```bash
 BIND_ADDR=0.0.0.0:3000 cargo run
 BIND_ADDR=0.0.0.0:3001 cargo run
 ```
 
-Alternate bulk requests between ports 3000 and 3001 with the same key: the limit of 4 invoices per minute is shared (the second 3-invoice request already gets `429`). Then:
+Alternate requests between ports 3000 and 3001 with the same token: the limit is shared. Then:
 
 ```bash
-cargo run -- keys revoke 1     # the key gets 401 within ~30 s
-cargo run -- keys activate 1
-docker stop pdfcraft-redis     # requests keep working with the in-memory limit (warning in the log)
+cargo run -- tokens revoke <id>                 # the token gets 401 immediately
+FREE_TOKEN_TTL_SECONDS=60 cargo run -- tokens create-free   # expires (401) after 60 s
+docker stop pdfcraft-valkey                     # /v1 answers 503 store_unavailable
 ```
 
-Cleanup: `docker rm -f pdfcraft-pg pdfcraft-redis`.
+Cleanup: `docker rm -f pdfcraft-valkey`.
 
 ## 7. Validate e-invoice PDFs (optional)
 
@@ -165,9 +165,8 @@ Expected: `Parsed PDF:valid XML:valid`, PDF/A-3b compliant. For the EN 16931 pro
 | --- | --- |
 | Preview shows a connection error | Backend not running or wrong `VITE_API_BASE_URL` |
 | Browser CORS error | `CORS_ALLOWED_ORIGINS` is set and does not contain the frontend origin |
-| `/v1` returns 503 | Neither `API_KEYS` nor `DATABASE_URL` is set |
-| `/v1` returns 401 | Wrong key; use `Authorization: Bearer <key>` or `X-API-Key` |
-| `cargo run -- keys ...` says `DATABASE_URL must be set` | Export `DATABASE_URL` first |
-| Backend panics at start with `cannot connect to DATABASE_URL` | Postgres not reachable yet |
+| `/v1` returns 503 | `VALKEY_URL` is not set or Valkey is not reachable |
+| `/v1` returns 401 | Wrong or expired token; paid tokens need `PAID_TOKENS_ENABLED=true` |
+| `cargo run -- tokens ...` says `VALKEY_URL must be set` | Export `VALKEY_URL` first |
 | `typst_compile_error` mentioning `@preview/...` | Vendored packages not found; check `TYPST_PACKAGE_PATH` |
 | First `cargo run` takes minutes | Normal (compiling Typst); later runs are fast |

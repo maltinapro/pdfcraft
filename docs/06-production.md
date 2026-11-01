@@ -1,6 +1,6 @@
 # 6. Production Deployment
 
-Goal: customers call `POST /v1/invoices` and `/v1/invoices/bulk` with their own API key. The configurator frontend is not part of this deployment (see [Demo System](07-demo-system.md) for that).
+Goal: customers call `POST /v1/invoices` and `/v1/invoices/bulk` with a purchased token. The configurator frontend is not part of this deployment (see [Demo System](07-demo-system.md) for that).
 
 ## Recommended architecture
 
@@ -11,9 +11,8 @@ Customer systems ──HTTPS──> Reverse proxy / load balancer (TLS, body lim
                     ▼                         ▼
              backend instance 1        backend instance N      (stateless)
                     └────────────┬────────────┘
-                       ┌─────────┴─────────┐
-                       ▼                   ▼
-                  Postgres (keys)     Redis (rate limit)
+                                 ▼
+                    Valkey (tokens + rate limit, persistent)
 ```
 
 ## Checklist
@@ -22,16 +21,14 @@ Customer systems ──HTTPS──> Reverse proxy / load balancer (TLS, body lim
 
 ```bash
 ENABLE_GENERATE_PDF=false            # no arbitrary templates for external callers
-DATABASE_URL=postgres://...          # keys in Postgres, not API_KEYS
-REDIS_URL=redis://...                # shared rate limit across instances
-RATE_LIMIT_PER_MINUTE=120            # default; set per customer with --limit
+VALKEY_URL=redis://...               # tokens and shared rate limit (persistent Valkey)
+PAID_TOKENS_ENABLED=true             # feature flag, see 12-paid-tokens-stripe.md
+PAID_PLANS=starter=60,business=300,pro=1000
 BULK_MAX_INVOICES=100
 MAX_CONCURRENT_COMPILES=<CPU cores>
 BIND_ADDR=0.0.0.0:3000
 # CORS_ALLOWED_ORIGINS: server-to-server callers do not need CORS; set it only if browsers call the API
 ```
-
-Do not set `API_KEYS` unless you need a break-glass key.
 
 ### Reverse proxy
 
@@ -44,25 +41,24 @@ Do not set `API_KEYS` unless you need a break-glass key.
 
 ### Infrastructure
 
-- **Postgres**: managed service preferred; daily backups (the `api_keys` table is small but critical). Use TLS in the connection string if the provider requires it (`?sslmode=require`).
-- **Redis**: a small instance is enough. Persistence is not needed; losing it only resets the buckets. Protect it with a password and a private network.
+- **Valkey**: a single instance with append-only persistence on a volume is enough (the Helm chart and Compose do this). It holds the purchased tokens, so back up the volume (or use a Valkey operator with replicas). Protect it with a password (`redis://:password@host:6379`) and a private network.
 - **Backend sizing**: a compile is CPU-bound and single-threaded (about 50–200 ms). Plan roughly one CPU core per 5–10 invoices per second. Memory is modest (hundreds of MB). Scale horizontally by adding instances.
 - **Health checks**: `GET /health` on port 3000 for liveness and readiness. The backend does a warm-up compile at start, so allow a few seconds after start.
-- **Secrets**: provide `DATABASE_URL` and `REDIS_URL` through your secret store, not in images or the repository.
+- **Secrets**: provide `VALKEY_URL` through your secret store, not in images or the repository.
 - **Packages**: the image bundles `vendor/typst-packages`; no outbound network is required at runtime.
 
 ### Operations
 
-- Create customer keys from a trusted machine or a one-off job: `pdfcraft-backend keys create --customer ... --limit ...` (see [API Keys](05-api-keys-and-rate-limiting.md)).
-- Logs go to stdout: compile timings (`typst layout`, `pdf export`) and warnings (for example Redis unreachable). Request logging per customer is not implemented; the reverse proxy access log fills that gap.
-- Rolling updates are safe: instances are stateless and the schema is created idempotently.
+- Purchased tokens are normally created by the Stripe webhook; manually with `pdfcraft-backend tokens create --plan ... --days ...` (see [Tokens](05-tokens-and-rate-limiting.md)).
+- Logs go to stdout: compile timings (`typst layout`, `pdf export`) and warnings (for example Valkey unreachable). Request logging per customer is not implemented; the reverse proxy access log fills that gap.
+- Rolling updates are safe: instances are stateless.
 - No PDFs or invoice data are persisted by the backend. If you log request bodies at the proxy, you are storing customer data; avoid that.
 
 ### Hardening ideas (not done yet)
 
 - Run the container as a non-root user with a read-only root file system.
-- Network policies or security groups so only the proxy reaches the backend, and only the backend reaches Postgres and Redis.
-- Key expiry, usage statistics and an admin API.
+- Network policies or security groups so only the proxy reaches the backend, and only the backend reaches Valkey.
+- Usage statistics and an admin API.
 - Separate rate-limit classes for single and bulk endpoints.
 
 ## Minimal single-host example (Untested)
@@ -70,17 +66,14 @@ Do not set `API_KEYS` unless you need a break-glass key.
 A Docker host with a reverse proxy such as Caddy or nginx:
 
 ```bash
-export POSTGRES_PASSWORD=<strong-password>
-export DATABASE_URL=postgres://postgres:<strong-password>@postgres:5432/pdfcraft
-export REDIS_URL=redis://redis:6379
 export ENABLE_GENERATE_PDF=false
+export PAID_TOKENS_ENABLED=true
 
-docker compose --profile shared up -d postgres redis
-docker compose --profile shared run --rm backend /app/pdfcraft-backend keys create --customer "ACME" --limit 300
-docker compose --profile shared up -d --build backend     # without the frontend service
+docker compose up -d --build valkey backend     # without the frontend service
+docker compose exec backend /app/pdfcraft-backend tokens create --plan starter --days 30
 ```
 
-Put the proxy in front of port 3000 and publish only 443. For real production use, prefer managed Postgres/Redis and an orchestrator (see [Kubernetes / Helm](08-kubernetes-helm-outlook.md)).
+Put the proxy in front of port 3000 and publish only 443. For real production use, prefer an orchestrator with a persistent Valkey (see [Kubernetes / Helm](08-kubernetes-helm-outlook.md)).
 
 ## Verifying a deployment
 
