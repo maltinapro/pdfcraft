@@ -197,13 +197,26 @@
 
   data-motif(
     "item",
-    scope: ctx => loom.mutator.batch(ctx, {
-      import loom.mutator: *
+    // Equivalent to a `loom.mutator.batch` of derive/put/update/ensure steps, written
+    // as plain dictionary updates: every item runs this twice (measure and draw pass),
+    // and the mutator's per-step closures were the largest cost of a long invoice.
+    scope: ctx => {
+      // `loom.mutator.derive`: `auto` keeps the current value (`default` if none)
+      let derive(c, key, value, default: none) = {
+        if value == auto {
+          if c.at(key, default: none) == none { c.insert(key, default) }
+        } else {
+          c.insert(key, value)
+        }
+        c
+      }
 
-      derive("description", description)
+      let c = ctx
+      c = derive(c, "description", description)
 
-      derive("quantity", coercion.to-decimal(quantity), default: decimal("1"))
-      derive(
+      c = derive(c, "quantity", coercion.to-decimal(quantity), default: decimal("1"))
+      c = derive(
+        c,
         "base-quantity",
         coercion.to-decimal(base-quantity),
         default: decimal("1"),
@@ -213,58 +226,56 @@
       let unit-input = if unit != auto { unit } else {
         ctx.at("unit", default: auto)
       }
-      put(
-        "unit",
-        unit-logic.resolve(
-          unit-input,
-          ctx.locale,
-          quantity: if quantity != auto { coercion.to-decimal(quantity) } else {
-            ctx.at("quantity", default: decimal("1"))
-          },
-          default: m-unit.pc,
-        ),
-      )
+      c.insert("unit", unit-logic.resolve(
+        unit-input,
+        ctx.locale,
+        quantity: if quantity != auto { coercion.to-decimal(quantity) } else {
+          ctx.at("quantity", default: decimal("1"))
+        },
+        default: m-unit.pc,
+      ))
       // Quantity-independent form, used to detect and name a shared unit.
-      put(
-        "unit-singular",
-        unit-logic.resolve(
-          unit-input,
-          ctx.locale,
-          quantity: decimal("1"),
-          default: m-unit.pc,
-        ),
-      )
+      c.insert("unit-singular", unit-logic.resolve(
+        unit-input,
+        ctx.locale,
+        quantity: decimal("1"),
+        default: m-unit.pc,
+      ))
 
-      derive("date", coercion.to-date(date))
+      c = derive(c, "date", coercion.to-date(date))
 
-      derive("item-price", coercion.to-decimal(price), default: auto)
-      derive("item-total", coercion.to-decimal(total), default: auto)
+      c = derive(c, "item-price", coercion.to-decimal(price), default: auto)
+      c = derive(c, "item-total", coercion.to-decimal(total), default: auto)
 
-      ensure("tax-mode", "exclusive")
-      derive(
+      if "tax-mode" not in ctx or ctx.tax-mode == none {
+        c.insert("tax-mode", "exclusive")
+      }
+      c = derive(
+        c,
         "input-gross",
         input-gross,
         default: ctx.at("tax-mode", default: "exclusive") == "inclusive",
       )
       // Without a tax from anywhere (`tax: none` on the invoice), the item is
       // zero rated, marked as implicit (see `tax.implicit-zero`).
-      update("tax", t => m-tax.resolve(ctx, t, "item"))
-      derive(
+      c.insert("tax", m-tax.resolve(ctx, ctx.at("tax", default: none), "item"))
+      c = derive(
+        c,
         "tax",
         m-tax.resolve(ctx, tax, "item"),
         default: m-tax.implicit-zero(),
       )
 
       if ctx.at("tax-exempt-small-biz", default: false) {
-        put("tax", ctx.locale.tax.small-enterprise-special-scheme)
+        c.insert("tax", ctx.locale.tax.small-enterprise-special-scheme)
       }
 
-      derive("item-id", item-id)
-      derive("reference", reference)
+      c = derive(c, "item-id", item-id)
+      c = derive(c, "reference", reference)
       // Set only if given, so that items without them carry no extra keys
       // (`calculate-item-data` reads them with a default).
-      if note != auto { put("note", note) }
-      if origin != auto { put("origin", origin) }
+      if note != auto { c.insert("note", note) }
+      if origin != auto { c.insert("origin", origin) }
       // The items of a bundle are no lines of their own: the bundle is
       // printed and written as one line, which names its items, so a note or
       // a country of origin of one of them would be lost.
@@ -277,20 +288,37 @@
         )
       }
 
-      derive("modifier", evaluate-modifier(ctx, modifier), default: ())
-      update("modifier", evaluate-modifier.with(ctx))
+      c = derive(c, "modifier", evaluate-modifier(ctx, modifier), default: ())
+      // `loom.mutator.update` skips a key that this batch added to a base without it
+      if "modifier" in ctx {
+        c.insert("modifier", evaluate-modifier(ctx, c.modifier))
+      }
 
-      nest("locale", {
-        nest("normalize", {
-          ensure("money", (..) => panic(
-            "locale::normalize::money is not provided",
-          ))
-          ensure("money-fine", (..) => panic(
-            "locale::normalize::money-fine is not provided",
-          ))
+      // Only a locale without the normalizers needs the mutator.
+      let normalize = if type(ctx.at("locale", default: none)) == dictionary {
+        ctx.locale.at("normalize", default: none)
+      }
+      if (
+        type(normalize) != dictionary
+          or normalize.at("money", default: none) == none
+          or normalize.at("money-fine", default: none) == none
+      ) {
+        c = loom.mutator.batch(c, {
+          import loom.mutator: *
+          nest("locale", {
+            nest("normalize", {
+              ensure("money", (..) => panic(
+                "locale::normalize::money is not provided",
+              ))
+              ensure("money-fine", (..) => panic(
+                "locale::normalize::money-fine is not provided",
+              ))
+            })
+          })
         })
-      })
-    }),
+      }
+      c
+    },
     measure: ctx => {
       loom.guards.assert-direct-parent(ctx, "line-items", "bundle", "group")
       // the row style of a `themed` scope around the item, as a group records it
