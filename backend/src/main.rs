@@ -1,5 +1,6 @@
 mod config;
 mod facturx;
+mod free;
 mod invoice;
 mod store;
 mod v1;
@@ -352,7 +353,7 @@ async fn health() -> Json<HealthResponse> {
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if store::run_cli(&args).await {
+    if free::run_cli(&args) || store::run_cli(&args).await {
         return;
     }
     let cfg = config::get();

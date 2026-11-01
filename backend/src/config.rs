@@ -6,6 +6,8 @@
 //! | `VALKEY_URL` | – | Valkey (Redis protocol) holding tokens and rate limits; required for `/v1` |
 //! | `FREE_RATE_LIMIT_PER_MINUTE` | `20` | Invoices per minute for a free token (static) |
 //! | `FREE_TOKEN_TTL_SECONDS` | `43200` | Lifetime of a free token (12 h) |
+//! | `ANUBIS_PUBLIC_KEY_HEX` | – | Ed25519 public key (hex) of Anubis; enables `POST /v1/free-token` |
+//! | `ANUBIS_COOKIE_NAME` | `techaro.lol-anubis-auth` | Name of the Anubis pass cookie |
 //! | `PAID_TOKENS_ENABLED` | `false` | Feature flag: accept purchased tokens |
 //! | `PAID_PLANS` | `starter=60,business=300,pro=1000` | Paid plans as `name=invoices_per_minute` |
 //! | `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey (renewable by its id) |
@@ -22,6 +24,8 @@ pub struct Config {
     pub valkey_url: Option<String>,
     pub free_rate_limit_per_minute: u32,
     pub free_token_ttl_secs: u64,
+    pub anubis_public_key_hex: Option<String>,
+    pub anubis_cookie_name: String,
     pub paid_tokens_enabled: bool,
     pub paid_plans: Vec<(String, u32)>,
     pub paid_retention_days: u64,
@@ -79,6 +83,11 @@ impl Config {
             valkey_url: std::env::var("VALKEY_URL").ok().filter(|v| !v.trim().is_empty()),
             free_rate_limit_per_minute: env_parse("FREE_RATE_LIMIT_PER_MINUTE", 20u32).max(1),
             free_token_ttl_secs: env_parse("FREE_TOKEN_TTL_SECONDS", 43_200u64).max(60),
+            anubis_public_key_hex: std::env::var("ANUBIS_PUBLIC_KEY_HEX").ok().filter(|v| !v.trim().is_empty()),
+            anubis_cookie_name: std::env::var("ANUBIS_COOKIE_NAME")
+                .ok()
+                .filter(|v| !v.trim().is_empty())
+                .unwrap_or_else(|| "techaro.lol-anubis-auth".into()),
             paid_tokens_enabled: env_parse("PAID_TOKENS_ENABLED", false),
             paid_plans: parse_plans(&plans_raw),
             paid_retention_days: env_parse("PAID_TOKEN_RETENTION_DAYS", 365u64),
