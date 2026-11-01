@@ -15,7 +15,7 @@ deploy/helm/pdfcraft/
 ├── Chart.yaml
 ├── values.yaml
 ├── values-production.yaml        # example: /v1 only
-├── values-demo.yaml              # example: frontend + /generate-pdf
+├── values-demo.yaml              # example: frontend + Anubis + free tokens
 └── templates/
     ├── backend-deployment.yaml
     ├── backend-service.yaml
@@ -36,7 +36,7 @@ deploy/helm/pdfcraft/
 | `Deployment` (backend) | Image `pdfcraft-backend`, port 3000, 2+ replicas for production |
 | `Service` (backend) | ClusterIP on 3000 |
 | `Deployment` + `Service` (frontend) | nginx image, only for the demo |
-| `Ingress` | TLS (cert-manager); routes `/v1` (production) or `/` and `/generate-pdf` (demo) |
+| `Ingress` | TLS (cert-manager); routes `/v1` (production) or `/v1` and `/` via Anubis (demo) |
 | `HorizontalPodAutoscaler` | Scale on CPU (compilation is CPU-bound) |
 | `PodDisruptionBudget` | `minAvailable: 1` during node maintenance |
 | `NetworkPolicy` | Only ingress → backend; only backend → Valkey |
@@ -66,7 +66,6 @@ Production (`values-production.yaml`):
 backend:
   replicaCount: 2
   env:
-    ENABLE_GENERATE_PDF: "false"
     RATE_LIMIT_PER_MINUTE: "120"
     BULK_MAX_INVOICES: "100"
     MAX_CONCURRENT_COMPILES: "2"
@@ -92,7 +91,6 @@ Demo (`values-demo.yaml`):
 backend:
   replicaCount: 1
   env:
-    ENABLE_GENERATE_PDF: "true"
     MAX_CONCURRENT_COMPILES: "2"
   resources: { limits: { cpu: "1", memory: 512Mi } }
 frontend:

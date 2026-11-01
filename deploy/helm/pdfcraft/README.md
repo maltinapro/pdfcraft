@@ -6,7 +6,7 @@ Routing on one host (same origin, no CORS):
 
 | Path | Service |
 | --- | --- |
-| `/v1/*` (and `/generate-pdf` until it is removed) | backend (no Anubis, token protected) |
+| `/v1/*` | backend (no Anubis, token protected) |
 | `/` (landing page, `/app/`) | Anubis → frontend |
 
 Anubis (`templates/anubis.yaml`, policy in `files/botPolicy.yaml`) needs an Ed25519 key pair: run `pdfcraft-backend anubis-keygen` (e.g. `docker run --rm ghcr.io/maltinapro/pdfcraft-backend:<tag> anubis-keygen`) and set `anubis.privateKeyHex` (or `anubis.existingSecret` with key `ED25519_PRIVATE_KEY_HEX`) and `anubis.publicKeyHex`. See [Free token and Anubis](../../../docs/11-free-token-and-anubis.md).
@@ -34,7 +34,7 @@ Actions → "Release images" → Run workflow, with `tag` (for example `dev`) an
 ### Images
 
 - `ghcr.io/maltinapro/pdfcraft-backend`
-- `ghcr.io/maltinapro/pdfcraft-frontend` (built with an empty `VITE_API_BASE_URL`, so it calls `/generate-pdf` on its own host)
+- `ghcr.io/maltinapro/pdfcraft-frontend` (built with an empty `VITE_API_BASE_URL`, so it calls `/v1` on its own host)
 
 Both images are **multi-arch** (`linux/amd64` and `linux/arm64`) under a single tag. The backend is compiled natively on a GitHub-hosted ARM runner (`ubuntu-24.04-arm`) instead of QEMU, which would take hours for Rust/Typst; the frontend build stage always runs on the build machine because its output is architecture independent. `helm-lint.yml` lints the chart on pull requests that touch `deploy/`.
 
@@ -121,12 +121,12 @@ Then open `https://pdfcraft.vorneweg.org/` (landing page) and `/app/` and check 
 
 ## Values
 
-See `values.yaml`: image registry/tag (empty tag = the chart's `appVersion`), replicas and resources, `backend.env` (defaults `ENABLE_GENERATE_PDF=true`, `MAX_CONCURRENT_COMPILES=2`), ingress host, class, TLS secret and ClusterIssuer.
+See `values.yaml`: image registry/tag (empty tag = the chart's `appVersion`), replicas and resources, `backend.env` (default `MAX_CONCURRENT_COMPILES=2`), ingress host, class, TLS secret and ClusterIssuer.
 
 ## Not included yet
 
 - **Valkey operator / HA**: the chart runs one Valkey pod with a PVC (`valkey.persistence.size`, `valkey.persistence.storageClass`). That is enough for the demo: a few KB of tokens, restarts keep the data. For HA, snapshots and backups use an external Valkey or a Valkey operator: set `valkey.enabled=false` and `backend.env.VALKEY_URL`. See [Production](../../../docs/06-production.md).
-- **Per-IP rate limit** for `/generate-pdf`: recommended at the edge (Cloudflare rate-limiting rule), see [Demo System](../../../docs/07-demo-system.md#where-to-rate-limit-application-vs-edge); optionally a Traefik `Middleware` as a second layer. Currently only the compile limit and pod resource limits protect the demo.
+- **Per-IP rate limit** for `/v1/free-token` and `/v1/invoices`: recommended at the edge (Cloudflare rate-limiting rule), see [Demo System](../../../docs/07-demo-system.md#where-to-rate-limit-application-vs-edge); optionally a Traefik `Middleware` as a second layer. Currently only the compile limit and pod resource limits protect the demo.
 - Pinned image tags and automatic deployment from GitHub Actions (would need a kubeconfig secret).
 - Non-root images, NetworkPolicy, autoscaling, monitoring.
 - Image pull secrets for private registries.

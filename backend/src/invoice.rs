@@ -2,8 +2,8 @@
 //!
 //! Accepts the same JSON as the app's config export (`settings` + `invoice`),
 //! validates it strictly (whitelisted values, length limits) and escapes all
-//! text so it can be placed into Typst string literals. This mirrors
-//! `frontend/src/lib/buildRequest.ts`; keep both in sync.
+//! text so it can be placed into Typst string literals. This is the only
+//! validation layer: the frontend sends its raw form values.
 
 use serde::Deserialize;
 use serde_json::{json, Value as JsonValue};

@@ -185,7 +185,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # empty = same origin: the browser calls /generate-pdf on the page's own host
+          # empty = same origin: the browser calls /v1 on the page's own host
           build-args: VITE_API_BASE_URL=
           cache-from: type=gha,scope=pdfcraft-frontend
           cache-to: type=gha,mode=max,scope=pdfcraft-frontend

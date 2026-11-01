@@ -10,8 +10,6 @@ services:
       VALKEY_URL: redis://valkey:6379
       # Comma-separated browser origins; unset = any
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
-      # Set to false in production if only /v1 is needed
-      ENABLE_GENERATE_PDF: ${ENABLE_GENERATE_PDF:-true}
       # Public key of the Anubis instance below (local defaults; generate your own with
       # `pdfcraft-backend anubis-keygen` and never reuse these)
       ANUBIS_PUBLIC_KEY_HEX: ${ANUBIS_PUBLIC_KEY_HEX:-03cadd7f9e7ce61b77ce911666f5186dc5b45b9a72e1d3d423bed269033a7e38}

@@ -34,6 +34,28 @@
       </section>
 
       <section>
+        <h2>Gratis-Token und Kauf-Token</h2>
+        <p>
+          In der Demo bekommst du automatisch ein <strong>kostenloses Token</strong>. Es wird nach
+          einer kurzen Browser-Prüfung (Anubis) erzeugt, im Browser gespeichert und gilt einige
+          Stunden. Es hat ein Rate-Limit, und die damit erzeugten PDFs tragen das Wasserzeichen
+          <strong>„Entwurf“</strong>. Ist es abgelaufen, löst du die Prüfung einfach erneut.
+        </p>
+        <p>
+          Für den <strong>produktiven Einsatz</strong> ist ein <strong>Kauf-Token</strong>
+          notwendig (ohne Wasserzeichen, mit höheren Limits, als Tages-, Monats- oder
+          Abo-Token). Es wird freigeschaltet, sobald der Service in den produktiven Betrieb geht.
+        </p>
+        <p>
+          <strong>Wir speichern keine Kundendaten und wollen das auch nicht.</strong>
+          Rechnungsdaten werden nur für die Erzeugung des PDFs verarbeitet und danach verworfen;
+          gespeichert wird allein das Token selbst (als Hash) mit seinem Limit und seiner
+          Laufzeit. Das folgt den Prinzipien von
+          <a href="https://vorneweg.org/">vorneweg.org</a>.
+        </p>
+      </section>
+
+      <section>
         <h2>Funktionen</h2>
         <div class="cards">
           <article>
@@ -47,7 +69,7 @@
             <h3>Bulk-Rechnungen</h3>
             <p>
               Über die REST-API lassen sich viele Rechnungen in einem Request erzeugen und als
-              ZIP abholen – mit API-Key und Rate-Limit pro Kunde.
+              ZIP abholen – mit Token und Rate-Limit pro Kunde.
             </p>
           </article>
           <article>

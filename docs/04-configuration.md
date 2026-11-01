@@ -16,7 +16,6 @@
 | `BULK_MAX_INVOICES` | `100` | Maximum invoices in one bulk request. A bulk request costs one token per invoice, so it must not exceed the token's limit |
 | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations across all endpoints; further requests wait |
 | `CORS_ALLOWED_ORIGINS` | any | Comma-separated browser origins (for example `https://demo.example.com`). `*` or unset allows any |
-| `ENABLE_GENERATE_PDF` | `true` | `false` removes `POST /generate-pdf` |
 | `TYPST_PACKAGE_PATH` | `<backend>/vendor/typst-packages` | Directory with the vendored Typst packages |
 
 Without `VALKEY_URL`, `/v1` is unavailable (`503 store_unavailable`); there is no in-memory fallback. See [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md).
@@ -26,7 +25,6 @@ Without `VALKEY_URL`, `/v1` is unavailable (`503 store_unavailable`); there is n
 | Limit | Value |
 | --- | --- |
 | Request body size | 2 MB |
-| Assets per `/generate-pdf` request | 8, 1 MB each |
 | Logo via `/v1` | 1 MB decoded (the UI limits uploads to 300 KB) |
 | Items per invoice (`/v1`) | 500 |
 | Text length (`/v1`) | 200 characters for short fields, 2000 for long fields |
@@ -43,7 +41,7 @@ Because it is a build-time value, a different backend URL means a new build (a n
 
 | Variable | Used for |
 | --- | --- |
-| `CORS_ALLOWED_ORIGINS`, `ENABLE_GENERATE_PDF`, `PAID_TOKENS_ENABLED` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
+| `CORS_ALLOWED_ORIGINS`, `PAID_TOKENS_ENABLED`, `ANUBIS_PUBLIC_KEY_HEX` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
 
 ## Valkey data
 

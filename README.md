@@ -35,13 +35,13 @@ cd frontend && npm install && npm run dev
 
 Or with Docker: `docker compose up --build` (landing page http://localhost:8080, app http://localhost:8080/app/, backend http://localhost:3000).
 
-Open the frontend, fill in **Settings** and **Invoice**, and download the PDF. Input is saved in the browser; use **Exportieren / Importieren** for a JSON backup. The UI needs no token yet.
+Open the frontend, fill in **Settings** and **Invoice**, and download the PDF. Input is saved in the browser; use **Exportieren / Importieren** for a JSON backup. The UI fetches a short-lived free token itself (Anubis challenge, PDFs carry an "Entwurf" watermark).
 
 ## Architecture
 
 ```
-Browser form ──POST /generate-pdf──> Rust / Axum ── minijinja ── Typst ──> PDF/A-3b (+ ZUGFeRD XML)
-Customer system ──POST /v1/invoices (token)──> same engine, server-side template
+Browser form ──POST /v1/invoices (free token)──> Rust / Axum ── minijinja ── Typst ──> PDF/A-3b (+ ZUGFeRD XML)
+Customer system ──POST /v1/invoices (purchased token)──> same engine, no watermark
 ```
 
 Details: [Architecture and Extending](docs/10-architecture-and-extending.md).
@@ -50,7 +50,7 @@ Details: [Architecture and Extending](docs/10-architecture-and-extending.md).
 
 | Endpoint | Auth | Purpose |
 | --- | --- | --- |
-| `POST /generate-pdf` | none | Frontend preview/download (arbitrary template; disable in production) |
+| `POST /v1/free-token` | Anubis pass | Free token for the demo frontend |
 | `POST /v1/invoices` | token | One invoice → PDF |
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP |
 | `GET /health` | none | Status |
