@@ -11,6 +11,8 @@
 | `ANUBIS_PUBLIC_KEY_HEX` | empty | Public key of the Anubis instance; free tokens are disabled without it ([guide](11-free-token-and-anubis.md)) |
 | `ANUBIS_COOKIE_NAME` | `techaro.lol-anubis-auth` | Anubis cookie to read |
 | `PAID_TOKENS_ENABLED` | `false` | Feature flag for purchased tokens; off = they are rejected |
+| `STRIPE_WEBHOOK_SECRET` | empty | Signing secret of the Stripe webhook; needed when `PAID_TOKENS_ENABLED=true` ([guide](12-paid-tokens-stripe.md)) |
+| `PAID_GRACE_DAYS` | `3` | Days a subscription token stays valid after the paid period end |
 | `PAID_PLANS` | `starter=60,business=300,pro=1000` | Paid plans as `name=invoices_per_minute` |
 | `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey so it can be renewed by id |
 | `BULK_MAX_INVOICES` | `100` | Maximum invoices in one bulk request. A bulk request costs one token per invoice, so it must not exceed the token's limit |
@@ -41,7 +43,7 @@ Because it is a build-time value, a different backend URL means a new build (a n
 
 | Variable | Used for |
 | --- | --- |
-| `CORS_ALLOWED_ORIGINS`, `PAID_TOKENS_ENABLED`, `ANUBIS_PUBLIC_KEY_HEX` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
+| `CORS_ALLOWED_ORIGINS`, `PAID_TOKENS_ENABLED`, `STRIPE_WEBHOOK_SECRET`, `ANUBIS_PUBLIC_KEY_HEX` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
 
 ## Valkey data
 

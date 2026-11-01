@@ -2,6 +2,7 @@ mod config;
 mod facturx;
 mod free;
 mod invoice;
+mod stripe;
 mod store;
 mod v1;
 

@@ -10,7 +10,7 @@ use axum::{
     http::{header, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{get, post},
     Router,
 };
 use serde::Deserialize;
@@ -29,7 +29,12 @@ pub fn router() -> Router {
         .route("/invoices/bulk", post(bulk))
         .layer(middleware::from_fn(auth));
     // Free tokens are issued against an Anubis pass instead of a token
-    Router::new().route("/free-token", post(crate::free::issue)).merge(protected)
+    // Purchase hand-over (Stripe): only answers while PAID_TOKENS_ENABLED
+    Router::new()
+        .route("/free-token", post(crate::free::issue))
+        .route("/stripe/webhook", post(crate::stripe::webhook))
+        .route("/tokens/claim", get(crate::stripe::claim))
+        .merge(protected)
 }
 
 fn presented_key(req: &Request) -> Option<String> {

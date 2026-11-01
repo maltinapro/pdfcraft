@@ -209,6 +209,55 @@ pub async fn extend_paid_token(id: &str, add_secs: u64) -> Result<Option<u64>, U
     Ok(Some(new_until))
 }
 
+/// Moves a paid token's end to `until` if that is later than the current end.
+pub async fn extend_paid_token_to(id: &str, until: u64) -> Result<Option<u64>, Unavailable> {
+    if parse_token(&format!("pk_{id}_00")).is_none() {
+        return Ok(None);
+    }
+    let key = format!("{TOKEN_PREFIX}{id}");
+    let mut c = conn()?;
+    let (kind, current): (Option<String>, Option<u64>) = redis::cmd("HMGET")
+        .arg(&key)
+        .arg(&["kind", "until"])
+        .query_async(&mut c)
+        .await
+        .map_err(unavailable)?;
+    if kind.as_deref() != Some("paid") {
+        return Ok(None);
+    }
+    let new_until = current.unwrap_or(0).max(until);
+    let mut pipe = redis::pipe();
+    pipe.atomic().hset(&key, "until", new_until.to_string()).ignore();
+    pipe.cmd("EXPIREAT").arg(&key).arg(expire_at(Kind::Paid, new_until)).ignore();
+    pipe.query_async::<()>(&mut c).await.map_err(unavailable)?;
+    Ok(Some(new_until))
+}
+
+/// Stores a short-lived value (used for one-time token hand-over after a purchase).
+pub async fn put(key: &str, value: &str, ttl_secs: u64) -> Result<(), Unavailable> {
+    redis::cmd("SET")
+        .arg(key)
+        .arg(value)
+        .arg("EX")
+        .arg(ttl_secs.max(1))
+        .query_async::<()>(&mut conn()?)
+        .await
+        .map_err(unavailable)
+}
+
+/// Reads and deletes a value in one step.
+pub async fn take_value(key: &str) -> Result<Option<String>, Unavailable> {
+    redis::cmd("GETDEL").arg(key).query_async(&mut conn()?).await.map_err(unavailable)
+}
+
+pub async fn get_value(key: &str) -> Result<Option<String>, Unavailable> {
+    redis::cmd("GET").arg(key).query_async(&mut conn()?).await.map_err(unavailable)
+}
+
+pub async fn delete_key(key: &str) -> Result<(), Unavailable> {
+    redis::cmd("DEL").arg(key).query_async::<()>(&mut conn()?).await.map_err(unavailable)
+}
+
 /// `SET key NX EX ttl`: true if the marker was newly set, false if it already existed.
 pub async fn mark_once(key: &str, ttl_secs: u64) -> Result<bool, Unavailable> {
     let set: Option<String> = redis::cmd("SET")

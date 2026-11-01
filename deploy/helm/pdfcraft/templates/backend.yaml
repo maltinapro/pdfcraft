@@ -30,6 +30,13 @@ spec:
             - name: ANUBIS_PUBLIC_KEY_HEX
               value: {{ required "anubis.publicKeyHex is required (pdfcraft-backend anubis-keygen)" .Values.anubis.publicKeyHex | quote }}
             {{- end }}
+            {{- if .Values.backend.stripeSecret }}
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.stripeSecret }}
+                  key: STRIPE_WEBHOOK_SECRET
+            {{- end }}
             {{- range $k, $v := .Values.backend.env }}
             - name: {{ $k }}
               value: {{ $v | quote }}
