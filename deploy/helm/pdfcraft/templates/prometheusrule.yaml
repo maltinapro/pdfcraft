@@ -1,0 +1,48 @@
+{{- if .Values.metrics.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "pdfcraft.labels" . | nindent 4 }}
+    {{- with .Values.metrics.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: pdfcraft
+      rules:
+        - alert: PDFCraftBackendDown
+          expr: absent(pdfcraft_build_info{namespace={{ .Release.Namespace | quote }}}) == 1
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: PDFCraft backend metrics are missing (backend down or not scraped)
+        - alert: PDFCraftHighErrorRate
+          expr: |
+            sum(rate(pdfcraft_http_requests_total{namespace={{ .Release.Namespace | quote }},status=~"5.."}[5m]))
+              / sum(rate(pdfcraft_http_requests_total{namespace={{ .Release.Namespace | quote }}}[5m])) > 0.05
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: More than 5% of PDFCraft requests fail with 5xx
+        - alert: PDFCraftSlowPdfGeneration
+          expr: |
+            histogram_quantile(0.95, sum by (le) (rate(pdfcraft_pdf_generation_seconds_bucket{namespace={{ .Release.Namespace | quote }}}[10m]))) > 5
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: p95 PDF generation time is above 5 s
+        - alert: PDFCraftCompileSlotsSaturated
+          expr: max(pdfcraft_compile_slots_in_use{namespace={{ .Release.Namespace | quote }}}) >= max(pdfcraft_compile_slots{namespace={{ .Release.Namespace | quote }}})
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: All compile slots are busy; requests queue up (consider more CPU / MAX_CONCURRENT_COMPILES)
+        - alert: PDFCraftStoreErrors
+          expr: sum(increase(pdfcraft_store_errors_total{namespace={{ .Release.Namespace | quote }}}[5m])) > 0
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: The backend cannot reach Valkey (tokens/rate limits unavailable, /v1 answers 503)
+{{- end }}

@@ -41,7 +41,11 @@ spec:
           image: {{ .Values.anubis.image }}
           ports:
             - containerPort: 8923
+            - name: metrics
+              containerPort: {{ .Values.metrics.anubisPort }}
           env:
+            - name: METRICS_BIND
+              value: ":{{ .Values.metrics.anubisPort }}"
             - name: BIND
               value: ":8923"
             - name: TARGET

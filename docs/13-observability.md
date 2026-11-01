@@ -96,3 +96,21 @@ Counters reset when a pod restarts; always use `rate()`/`increase()`.
 | How many visitors turn into token users? | `sum(increase(pdfcraft_free_token_requests_total{result="issued"}[1d]))` vs. `sum(increase(pdfcraft_invoices_total{kind="free"}[1d]))` |
 | Are we successful (conversion free → paid)? | `sum(increase(pdfcraft_tokens_created_total{kind="paid"}[30d]))` vs. `sum(increase(pdfcraft_tokens_created_total{kind="free"}[30d]))` |
 | Error rate | `sum(rate(pdfcraft_http_requests_total{status=~"5.."}[5m])) / sum(rate(pdfcraft_http_requests_total[5m]))` |
+
+## Kubernetes: scraping and alerts (Helm)
+
+With the Prometheus Operator installed, enable the optional resources in the chart values:
+
+```yaml
+metrics:
+  podMonitor:
+    enabled: true
+    labels: { release: kube-prometheus-stack }   # whatever your Prometheus selects on
+  prometheusRule:
+    enabled: true
+    labels: { release: kube-prometheus-stack }
+```
+
+- `PodMonitor` scrapes the backend (`metrics` port, `/metrics`) and, if enabled, Anubis (`METRICS_BIND`, funnel metrics such as challenges issued/validated). The chart adds no Service/Ingress port for metrics, so they stay cluster-internal.
+- `PrometheusRule` ships alerts: `PDFCraftBackendDown`, `PDFCraftHighErrorRate`, `PDFCraftSlowPdfGeneration`, `PDFCraftCompileSlotsSaturated`, `PDFCraftStoreErrors`.
+- Prometheus adds `namespace`, `pod` and `job` labels; queries in the dashboards/rules work across replicas via `sum`/`max`.
