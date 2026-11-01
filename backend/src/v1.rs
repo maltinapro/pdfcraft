@@ -23,6 +23,37 @@ use std::{
 /// The same template the frontend ships; compiled into the binary.
 const INVOICE_TEMPLATE: &str = include_str!("../../frontend/src/template/invoice.typ");
 
+/// Compiles a sample invoice once at startup so fonts, package modules and the
+/// template's constant parts are cached before the first real request.
+pub async fn warm_up() {
+    let settings: Settings = serde_json::from_value(json!({
+        "sender": {"name": "Warm-up", "address": "Street 1", "city": "12345 City"},
+        "bank": {"name": "Bank", "iban": "DE89370400440532013000", "bic": "COBADEFFXXX"},
+        "zugferd": true,
+    }))
+    .expect("valid warm-up settings");
+    let invoice: Invoice = serde_json::from_value(json!({
+        "number": "0",
+        "date": "2026-01-01",
+        "recipient": {"name": "Warm-up", "address": "Street 2", "city": "12345 City"},
+        "items": [{"description": "Item", "quantity": 1, "unit": "pcs", "price": 1, "taxRate": 19}],
+    }))
+    .expect("valid warm-up invoice");
+    let mut errors = Errors::default();
+    let settings = check_settings(&settings, &mut errors);
+    let invoice = check_invoice(&invoice, "invoice", &mut errors);
+    if !errors.0.is_empty() {
+        tracing::warn!(event = "warm_up_skipped", errors = ?errors.0);
+        return;
+    }
+    let data = json!({ "settings": settings.data, "invoice": invoice });
+    let started = std::time::Instant::now();
+    match render_pdf(INVOICE_TEMPLATE, data, Vec::new()).await {
+        Ok(_) => tracing::info!(event = "warm_up", duration_ms = started.elapsed().as_secs_f64() * 1000.0),
+        Err(e) => tracing::warn!(event = "warm_up_failed", error = ?e.details),
+    }
+}
+
 pub fn router() -> Router {
     let protected = Router::new()
         .route("/invoices", post(single))
