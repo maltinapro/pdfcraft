@@ -78,7 +78,7 @@ Labels are bounded: `kind` (`free`/`paid`), `plan` (`free` + the configured `PAI
 | `pdfcraft_compile_slots`, `pdfcraft_compile_slots_in_use` | gauge | – | `MAX_CONCURRENT_COMPILES` and slots in use |
 | `pdfcraft_store_errors_total` | counter | – | failed Valkey operations |
 | `pdfcraft_stripe_events_total` | counter | `event`, `result` | Stripe webhook events (`ok`/`error`) |
-| `pdfcraft_build_info` | gauge | `version` | always 1 |
+| `pdfcraft_build_info` | gauge | `version`, `commit` | always 1; `version` is the release tag (build arg `APP_VERSION`, falls back to the crate version), `commit` the git SHA (`APP_COMMIT`, `unknown` for local builds). Shown as "Version" on the technical dashboard |
 
 Counters reset when a pod restarts; always use `rate()`/`increase()`.
 

@@ -76,7 +76,20 @@ pub struct StripeLabels {
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
 pub struct VersionLabels {
     pub version: String,
+    pub commit: String,
 }
+
+/// Release version: `APP_VERSION` at build time (set by the release workflow / Docker build
+/// arg), otherwise the crate version.
+pub const VERSION: &str = match option_env!("APP_VERSION") {
+    Some(v) if !v.is_empty() => v,
+    _ => env!("CARGO_PKG_VERSION"),
+};
+
+const COMMIT: &str = match option_env!("APP_COMMIT") {
+    Some(v) if !v.is_empty() => v,
+    _ => "unknown",
+};
 
 pub struct Metrics {
     pub http_requests: Family<HttpLabels, Counter>,
@@ -169,8 +182,8 @@ fn build() -> State {
     r.register("stripe_events", "Stripe webhook events by type and result", m.stripe_events.clone());
 
     let info: Family<VersionLabels, Gauge> = Family::default();
-    info.get_or_create(&VersionLabels { version: env!("CARGO_PKG_VERSION").into() }).set(1);
-    r.register("build_info", "Backend version", info);
+    info.get_or_create(&VersionLabels { version: VERSION.into(), commit: COMMIT.into() }).set(1);
+    r.register("build_info", "Backend version and commit", info);
 
     State { metrics: m, registry: r }
 }
