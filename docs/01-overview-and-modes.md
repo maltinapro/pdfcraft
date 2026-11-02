@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Frontend | React + Vite, served as static files (nginx in Docker) | Form-based invoice configurator, live PDF preview, config import/export |
 | Backend | Rust + Axum | Renders the Typst template and returns PDFs |
-| Typst packages | Vendored in `backend/vendor/typst-packages` | `invoice-pro` (our fork) and its dependencies; no internet access needed at runtime |
+| Typst packages | Vendored in `backend/vendor/typst-packages` | `sepay` (EPC QR code) and its dependencies; no internet access needed at runtime |
 | Valkey | Valkey 8 (Redis protocol), with persistence | Tokens (hashed) and the rate limit shared by all backend instances. Required for `/v1` |
 
 The backend is stateless apart from Valkey. It keeps **no** rendered PDFs or customer data between requests (by design).

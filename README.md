@@ -17,7 +17,8 @@ A full-stack **PDF Template Builder** that combines a simple form-based invoice 
 - 👀 **Live PDF preview** — debounced re-render via the backend, shown in an iframe
 - 📐 **Typst-quality PDF output** via `typst-as-lib` + `typst-pdf` — no local Typst installation needed
 - 💉 **Data injection** via [minijinja](https://docs.rs/minijinja/) templating at render time
-- 📦 **Vendored Typst packages** — [invoice-pro](https://typst.app/universe/package/invoice-pro/) 0.5.0 and its dependencies ship in the repo; no network access at runtime
+- ⚡ **Fast PDFs** — a lean Typst template and a Rust-generated Factur-X/XRechnung XML render an invoice in under 10 ms
+- 📦 **Vendored Typst packages** — the few packages used (EPC QR code) ship in the repo; no network access at runtime
 - 🧾 **ZUGFeRD / Factur-X and XRechnung** — PDF/A-3b output with embedded EN 16931 or XRechnung XML (validated with Mustang), plus a sidebar that flags missing mandatory data
 
 ## Quick Start
@@ -84,10 +85,10 @@ Full reference: [API Reference](docs/09-api-reference.md).
 
 ## Tech Stack
 
-React + Vite, Rust + Axum, minijinja, Typst (`typst-as-lib`, `typst-pdf`), [invoice-pro](https://typst.app/universe/package/invoice-pro/) (our [fork](https://github.com/maltinapro/invoice-pro)), Valkey.
+React + Vite, Rust + Axum, minijinja, Typst (`typst-as-lib`, `typst-pdf`), Valkey.
 
 ## License
 
-PDFCraft is MIT-licensed. The vendored Typst packages keep their own licenses (see `backend/vendor/typst-packages/**/LICENSE`); invoice-pro is MIT © Leonie Ziechmann.
+PDFCraft is MIT-licensed. The vendored Typst packages keep their own licenses (see `backend/vendor/typst-packages/**/LICENSE`).
 
 MIT © 2026 PDFCraft contributors

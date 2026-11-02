@@ -30,22 +30,22 @@ const MAX_LONG: usize = 2000;
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Sender {
-    name: String,
-    address: String,
-    city: String,
-    tax_nr: String,
-    vat_id: String,
-    email: String,
-    phone: String,
-    contact_name: String,
+    pub name: String,
+    pub address: String,
+    pub city: String,
+    pub tax_nr: String,
+    pub vat_id: String,
+    pub email: String,
+    pub phone: String,
+    pub contact_name: String,
 }
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
 pub struct Bank {
-    name: String,
-    iban: String,
-    bic: String,
+    pub name: String,
+    pub iban: String,
+    pub bic: String,
 }
 
 #[derive(Deserialize)]
@@ -56,49 +56,49 @@ pub struct Logo {
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
-    logo: Option<Logo>,
-    sender: Sender,
-    accent_color: Option<String>,
-    font: Option<String>,
-    locale: Option<String>,
-    footer: String,
-    intro: String,
-    closing: String,
-    payment_days: Option<f64>,
-    exemption_reason: Option<String>,
-    bank: Bank,
-    zugferd: Option<bool>,
-    einvoice_profile: Option<String>,
+    pub logo: Option<Logo>,
+    pub sender: Sender,
+    pub accent_color: Option<String>,
+    pub font: Option<String>,
+    pub locale: Option<String>,
+    pub footer: String,
+    pub intro: String,
+    pub closing: String,
+    pub payment_days: Option<f64>,
+    pub exemption_reason: Option<String>,
+    pub bank: Bank,
+    pub zugferd: Option<bool>,
+    pub einvoice_profile: Option<String>,
 }
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Recipient {
-    name: String,
-    address: String,
-    city: String,
-    vat_id: String,
-    email: String,
-    buyer_reference: String,
+    pub name: String,
+    pub address: String,
+    pub city: String,
+    pub vat_id: String,
+    pub email: String,
+    pub buyer_reference: String,
 }
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Item {
-    description: String,
-    quantity: f64,
-    unit: Option<String>,
-    price: f64,
-    tax_rate: Option<f64>,
+    pub description: String,
+    pub quantity: f64,
+    pub unit: Option<String>,
+    pub price: f64,
+    pub tax_rate: Option<f64>,
 }
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
 pub struct Invoice {
     pub number: String,
-    date: String,
-    recipient: Recipient,
-    items: Vec<Item>,
+    pub date: String,
+    pub recipient: Recipient,
+    pub items: Vec<Item>,
 }
 
 /// Collects all validation problems so the client sees them at once.
@@ -112,7 +112,7 @@ impl Errors {
 }
 
 /// Only `\` and `"` need escaping inside a Typst string literal; line breaks are kept.
-fn escape(value: &str) -> String {
+pub fn escape(value: &str) -> String {
     value
         .replace("\r\n", "\n")
         .replace('\r', "\n")
@@ -153,7 +153,7 @@ fn number(e: &mut Errors, path: &str, value: f64) -> f64 {
     value
 }
 
-fn valid_date(iso: &str) -> Option<(i32, u32, u32)> {
+pub fn valid_date(iso: &str) -> Option<(i32, u32, u32)> {
     let mut parts = iso.split('-');
     let (y, m, d) = (parts.next()?, parts.next()?, parts.next()?);
     if parts.next().is_some() || y.len() != 4 || m.len() != 2 || d.len() != 2 {
