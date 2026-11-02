@@ -140,9 +140,8 @@ pub fn run_cli(args: &[String]) -> bool {
     if args.first().map(String::as_str) != Some("anubis-keygen") {
         return false;
     }
-    use rand::RngCore;
     let mut seed = [0u8; 32];
-    rand::rngs::OsRng.fill_bytes(&mut seed);
+    rand::fill(&mut seed);
     let signing = ed25519_dalek::SigningKey::from_bytes(&seed);
     let hex = |b: &[u8]| b.iter().map(|x| format!("{x:02x}")).collect::<String>();
     println!("ED25519_PRIVATE_KEY_HEX (Anubis, keep secret): {}", hex(&seed));

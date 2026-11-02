@@ -13,7 +13,6 @@
 //! Rate limit: one atomic token bucket per token id (`pdfcraft:rl:<id>`, Lua script).
 
 use crate::config;
-use rand::RngCore;
 use redis::{aio::ConnectionManager, cluster_async::ClusterConnection, RedisFuture, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -121,7 +120,7 @@ fn hex(bytes: &[u8]) -> String {
 
 fn random_hex(len: usize) -> String {
     let mut bytes = vec![0u8; len];
-    rand::rngs::OsRng.fill_bytes(&mut bytes);
+    rand::fill(&mut bytes);
     hex(&bytes)
 }
 
