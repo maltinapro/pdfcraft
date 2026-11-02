@@ -258,6 +258,46 @@
       }
     },
     {
+      "id": 21,
+      "type": "stat",
+      "title": "Version",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "max by (version) (pdfcraft_build_info{namespace=~\"$namespace\"})",
+          "instant": true,
+          "legendFormat": "{{version}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "none",
+        "textMode": "name"
+      }
+    },
+    {
       "id": 7,
       "type": "timeseries",
       "title": "Requests by route and status",

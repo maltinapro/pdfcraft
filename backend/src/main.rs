@@ -364,7 +364,7 @@ async fn main() {
     tracing::info!(
         event = "startup",
         listen = %cfg.bind_addr,
-        version = env!("CARGO_PKG_VERSION"),
+        version = metrics::VERSION,
         store = store::is_configured(),
         paid_tokens_enabled = cfg.paid_tokens_enabled,
         free_rate_limit_per_minute = cfg.free_rate_limit_per_minute,

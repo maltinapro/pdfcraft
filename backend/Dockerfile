@@ -5,6 +5,9 @@ WORKDIR /app
 COPY backend/Cargo.toml backend/Cargo.lock backend/
 COPY backend/src backend/src
 COPY frontend/src/template frontend/src/template
+ARG APP_VERSION=
+ARG APP_COMMIT=
+ENV APP_VERSION=$APP_VERSION APP_COMMIT=$APP_COMMIT
 RUN cd backend && cargo build --release
 
 FROM debian:stable-slim

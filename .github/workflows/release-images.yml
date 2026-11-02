@@ -103,6 +103,9 @@ jobs:
           context: .
           file: backend/Dockerfile
           platforms: ${{ matrix.platform }}
+          build-args: |
+            APP_VERSION=${{ needs.prepare.outputs.tag }}
+            APP_COMMIT=${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=pdfcraft-backend-${{ env.ARCH }}
