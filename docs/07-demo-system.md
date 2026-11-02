@@ -137,3 +137,7 @@ Do not hand out a production key. Options:
 3. Put TLS and the rate limit in front.
 4. Open the site, change an item, check that the preview updates and the download works.
 5. Confirm `POST /v1/free-token` without the Anubis cookie answers `403` and `/v1/invoices` without a token answers `401`.
+
+## Landing page news
+
+The landing page (`frontend/index.html`) has a static "Neuigkeiten" section with the current version (build arg `APP_VERSION`) and short highlights, linking to the GitHub release notes. It is edited by hand and deliberately does not fetch anything from GitHub at runtime (privacy, no third-party requests).

@@ -142,6 +142,7 @@ Typst/krilla writes its own XMP and cannot be extended (XMP cannot be extended f
 - Frontend serializer and backend template language should stay aligned.
 - Add new form fields in `types.ts` + `backend/src/invoice.rs` (validate/escape; the frontend sends raw form values) + `backend/src/einvoice.rs` (totals/XML) + the form + `invoice.typ`. User data goes only into Typst string literals (escape `\` and `"`).
 - Observability: logs are JSON on stdout (`backend/src/telemetry.rs`); metrics in `backend/src/metrics.rs` (OpenMetrics on `METRICS_ADDR`, never via Ingress/Service; `token_id` label only for paid tokens). New metrics must be added to the dashboards in `deploy/helm/pdfcraft/dashboards/` and `docs/13-observability.md`.
+- User-visible changes: add a short entry to the "Neuigkeiten" section of `frontend/index.html` (static, no runtime fetch from GitHub; full notes live in the GitHub releases).
 - Keep `cargo check` green after any backend change.
 - Keep `npm run build` green after any frontend change.
 
