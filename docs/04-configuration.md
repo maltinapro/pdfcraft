@@ -44,6 +44,10 @@ Without `VALKEY_URL`, `/v1` is unavailable (`503 store_unavailable`); there is n
 
 Because it is a build-time value, a different backend URL means a new build (a new image).
 
+## Fonts
+
+The configurator offers the fonts listed in `FONTS` (`backend/src/invoice.rs` and `frontend/src/lib/types.ts`, keep both in sync). Typst embeds only Libertinus Serif, New Computer Modern and DejaVu Sans Mono; Liberation Sans/Serif, Carlito (Calibri-compatible), Open Sans, Roboto, Lato and DejaVu Sans are installed as Debian packages in the backend image (`backend/Dockerfile`; locally install the same `fonts-*` packages, otherwise Typst falls back to another font). At startup the backend renders a sample invoice per font and logs `font_missing` for fonts that are not available.
+
 ## Docker Compose variables
 
 | Variable | Used for |

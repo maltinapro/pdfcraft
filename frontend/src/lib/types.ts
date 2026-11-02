@@ -67,6 +67,11 @@ export interface Invoice {
 
 export const FONTS = [
   'Liberation Sans',
+  'Carlito',
+  'Open Sans',
+  'Roboto',
+  'Lato',
+  'DejaVu Sans',
   'Liberation Serif',
   'Libertinus Serif',
   'New Computer Modern',

@@ -49,7 +49,16 @@ fn document(
 /// Compiles a sample invoice once at startup so fonts, package modules and the
 /// template's constant parts are cached before the first real request.
 pub async fn warm_up() {
+    for font in crate::invoice::FONTS {
+        check_font(font).await;
+    }
+    sample_render(None).await;
+}
+
+/// Renders the sample invoice; `font` overrides `settings.font` and the PDF bytes are returned.
+async fn sample_render(font: Option<&str>) -> Option<Vec<u8>> {
     let raw_settings: Settings = serde_json::from_value(json!({
+        "font": font,
         "sender": {"name": "Warm-up", "address": "Street 1", "city": "12345 City"},
         "bank": {"name": "Bank", "iban": "DE89370400440532013000", "bic": "COBADEFFXXX"},
         "zugferd": true,
@@ -67,13 +76,32 @@ pub async fn warm_up() {
     let invoice = check_invoice(&raw_invoice, "invoice", &mut errors);
     if !errors.0.is_empty() {
         tracing::warn!(event = "warm_up_skipped", errors = ?errors.0);
-        return;
+        return None;
     }
     let (data, assets) = document(&raw_settings, settings.data, &raw_invoice, invoice, Vec::new());
     let started = std::time::Instant::now();
     match render_pdf(INVOICE_TEMPLATE, data, assets).await {
-        Ok(_) => tracing::info!(event = "warm_up", duration_ms = started.elapsed().as_secs_f64() * 1000.0),
-        Err(e) => tracing::warn!(event = "warm_up_failed", error = ?e.details),
+        Ok(pdf) => {
+            if font.is_none() {
+                tracing::info!(event = "warm_up", duration_ms = started.elapsed().as_secs_f64() * 1000.0);
+            }
+            Some(pdf)
+        }
+        Err(e) => {
+            tracing::warn!(event = "warm_up_failed", error = ?e.details);
+            None
+        }
+    }
+}
+
+/// Typst silently falls back to another font when a family is not installed; warn at startup
+/// if a selectable font does not end up embedded in the PDF.
+async fn check_font(font: &str) {
+    let Some(pdf) = sample_render(Some(font)).await else { return };
+    // The PDF names the embedded font by its PostScript name (NewCM10-Regular for New Computer Modern).
+    let needle = if font == "New Computer Modern" { "NewCM".to_string() } else { font.replace(' ', "") };
+    if !pdf.windows(needle.len()).any(|w| w == needle.as_bytes()) {
+        tracing::warn!(event = "font_missing", font, "selectable font is not installed; PDFs fall back to another font");
     }
 }
 

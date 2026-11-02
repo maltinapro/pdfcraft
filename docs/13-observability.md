@@ -21,6 +21,7 @@ Every line has `timestamp`, `level`, `target` and `message`/`event`. Important `
 | `event` | Level | Extra fields |
 | --- | --- | --- |
 | `startup` | info | `listen`, `version`, `store`, `paid_tokens_enabled`, `free_rate_limit_per_minute`, `max_concurrent_compiles` |
+| `font_missing` | warn | `font` (a selectable font is not installed; PDFs silently fall back to another font; checked at startup) |
 | `http_request` | info (`/health`: debug) | `method`, `route`, `status`, `duration_ms`, and for authenticated requests `token_id`, `token_kind` (`free`/`paid`), `token_plan`, `token_age_s` |
 | `invoice_generated` | info | `endpoint` (`single`/`bulk`), `invoices`, `token_id`, `token_kind`, `token_plan`, `duration_ms`, `size_bytes` |
 | `token_created` / `token_extended` | info | `token_id`, `token_kind`, `token_plan`, `reason`, `until` |
