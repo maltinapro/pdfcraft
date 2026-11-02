@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Rust (stable) with `cargo`. The first build compiles Typst and takes several minutes; later builds are fast.
-- Node.js 20+ with `npm`.
+- Node.js 24+ with `npm`.
 - Optional: `curl`, `jq` for API tests; Docker for Valkey; Java and the [Mustang CLI](https://www.mustangproject.org/) to validate e-invoice PDFs.
 
 Nix users: `backend/shell.nix` provides a shell.

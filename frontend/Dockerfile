@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM node:22-slim AS build
+FROM --platform=$BUILDPLATFORM node:26-slim AS build
 # Not /app: it collides with the app/ entry (Vite drops the root index.html)
 WORKDIR /build
 COPY package.json package-lock.json ./
