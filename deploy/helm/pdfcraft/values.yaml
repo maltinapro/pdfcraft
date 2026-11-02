@@ -4,8 +4,13 @@ image:
   tag: ""
   pullPolicy: Always
 
+# Schedule all pods on matching nodes (e.g. { kubernetes.io/arch: arm64 }); each component
+# (backend, frontend, anubis, valkey) can override it with its own `nodeSelector`.
+nodeSelector: {}
+
 backend:
   replicaCount: 1
+  nodeSelector: {}
   # Name of a Secret with the key STRIPE_WEBHOOK_SECRET (only needed for purchased tokens,
   # together with backend.env.PAID_TOKENS_ENABLED="true"; see docs/12-paid-tokens-stripe.md)
   stripeSecret: ""
@@ -22,6 +27,7 @@ backend:
 # For HA use a Valkey operator instead: set enabled=false and backend.env.VALKEY_URL.
 valkey:
   enabled: true
+  nodeSelector: {}
   image: valkey/valkey:8-alpine
   persistence:
     size: 1Gi
@@ -35,6 +41,7 @@ valkey:
 # `pdfcraft-backend anubis-keygen` (both end up in one Secret).
 anubis:
   enabled: true
+  nodeSelector: {}
   image: ghcr.io/techarohq/anubis:v1.28.2
   replicaCount: 1
   difficulty: 4
@@ -93,6 +100,7 @@ grafana:
 
 frontend:
   replicaCount: 1
+  nodeSelector: {}
   resources:
     requests: { cpu: 10m, memory: 16Mi }
     limits: { cpu: 200m, memory: 64Mi }
