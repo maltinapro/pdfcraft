@@ -8,8 +8,13 @@
 use serde::Deserialize;
 use serde_json::{json, Value as JsonValue};
 
-const FONTS: &[&str] = &[
+pub const FONTS: &[&str] = &[
     "Liberation Sans",
+    "Carlito",
+    "Open Sans",
+    "Roboto",
+    "Lato",
+    "DejaVu Sans",
     "Liberation Serif",
     "Libertinus Serif",
     "New Computer Modern",
