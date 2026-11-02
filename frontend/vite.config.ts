@@ -2,8 +2,18 @@ import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// Release version (build arg APP_VERSION in the Docker build), `dev` for local builds
+const appVersion = process.env.APP_VERSION || 'dev'
+
 export default defineConfig({
-  plugins: [react()],
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
+  plugins: [
+    react(),
+    {
+      name: 'app-version-html',
+      transformIndexHtml: (html) => html.replaceAll('__APP_VERSION__', appVersion),
+    },
+  ],
   build: {
     rollupOptions: {
       input: {

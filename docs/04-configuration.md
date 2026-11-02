@@ -40,6 +40,7 @@ Without `VALKEY_URL`, `/v1` is unavailable (`503 store_unavailable`); there is n
 | Setting | Where | Default | Meaning |
 | --- | --- | --- | --- |
 | `VITE_API_BASE_URL` | build time (`npm run dev` / `npm run build` / Docker build arg) | `http://localhost:3000` | Backend URL as seen by the browser. Empty string = same origin |
+| `APP_VERSION` | build time (`npm run build` / Docker build arg) | `dev` | Version shown in the app header and the landing page footer (set to the release tag by the release workflow) |
 
 Because it is a build-time value, a different backend URL means a new build (a new image).
 
