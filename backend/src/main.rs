@@ -346,14 +346,8 @@ async fn main() {
         .layer(DefaultBodyLimit::max(MAX_REQUEST_BODY_BYTES))
         .layer(config::cors_layer());
 
-    // Warm up fonts and package cache so the first request is fast
-    tokio::task::spawn_blocking(|| {
-        let _ = compile_pdf(
-            String::from("#import \"@preview/invoice-pro:0.5.0\": *\n"),
-            REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed),
-            Vec::new(),
-        );
-    });
+    // Warm up fonts, packages and the template so the first request is fast
+    tokio::spawn(v1::warm_up());
 
     if let Some(addr) = cfg.metrics_addr.clone() {
         tokio::spawn(metrics::serve(addr));

@@ -1,5 +1,6 @@
 #import "../../../utils/types.typ"
 #import "columns.typ": get-column-metadata
+#import "../../../utils/text.typ": plain-text
 
 // --- Default Renderers (Content Only) ---
 
@@ -1117,9 +1118,29 @@
   // Measuring the header as well makes Typst lay out the document once more,
   // so that is only done for entries that are not obviously small.
   // `layout` is shadowed by the layout information above.
+  // A few short lines cannot be taller than half a page, so measuring such
+  // entries only costs layout time (one extra table layout per entry).
+  let compact-entry(entry) = {
+    if entry.at("kind", default: "item") != "item" { return false }
+    let text-len(value) = if value == none { 0 } else {
+      let plain = plain-text(value, keep-newlines: true)
+      plain.len() + 80 * plain.clusters().filter(c => c == "\n").len()
+    }
+    let modifiers = (
+      entry.at("discounts", default: ()).len()
+        + entry.at("surcharge", default: ()).len()
+    )
+    (
+      modifiers <= 3
+        and text-len(entry.at("name", default: none)) <= 150
+        and text-len(entry.at("description", default: none)) <= 150
+    )
+  }
+  let all-compact = entries.all(compact-entry)
+
   std.layout(size => {
     let fits(rows) = {
-      if not keep-together { return true }
+      if not keep-together or all-compact { return true }
       let height(..header-footer) = {
         measure(
           width: size.width,
