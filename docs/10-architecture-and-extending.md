@@ -37,6 +37,7 @@ pdfcraft/
 ├── docs/                             # Guides (this folder)
 ├── docker-compose.yml
 ├── frontend/                         # React + Vite
+│   ├── public/                       # Logo (logo.svg), favicons, icons, og-image, robots.txt, sitemap.xml
 │   └── src/
 │       ├── App.tsx                   # Shell: tabs, debounced preview, download
 │       ├── components/               # Field, SettingsForm, InvoiceForm
