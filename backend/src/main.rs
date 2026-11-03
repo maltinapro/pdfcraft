@@ -1,4 +1,5 @@
 mod config;
+mod documents;
 mod einvoice;
 mod facturx;
 mod free;

@@ -23,7 +23,7 @@ Every line has `timestamp`, `level`, `target` and `message`/`event`. Important `
 | `startup` | info | `listen`, `version`, `store`, `paid_tokens_enabled`, `free_rate_limit_per_minute`, `max_concurrent_compiles` |
 | `font_missing` | warn | `font` (a selectable font is not installed; PDFs silently fall back to another font; checked at startup) |
 | `http_request` | info (`/health`: debug) | `method`, `route`, `status`, `duration_ms`, and for authenticated requests `token_id`, `token_kind` (`free`/`paid`), `token_plan`, `token_age_s` |
-| `invoice_generated` | info | `endpoint` (`single`/`bulk`), `invoices`, `token_id`, `token_kind`, `token_plan`, `duration_ms`, `size_bytes` |
+| `invoice_generated` | info | `endpoint` (`single`/`bulk`, or the document type for `/v1/documents`: `credit-note`/`offer`/`order`/`delivery-note`/`letter`), `invoices`, `token_id`, `token_kind`, `token_plan`, `duration_ms`, `size_bytes` |
 | `token_created` / `token_extended` | info | `token_id`, `token_kind`, `token_plan`, `reason`, `until` |
 | `rate_limited` | warn | token fields, `wait_secs` |
 | `auth_failed` | warn | `reason` |
@@ -67,7 +67,7 @@ Labels are bounded: `kind` (`free`/`paid`), `plan` (`free` + the configured `PAI
 | `pdfcraft_tokens_created_total` | counter | `kind`, `plan` | tokens created (free tokens via Anubis, paid via Stripe/CLI) |
 | `pdfcraft_free_token_requests_total` | counter | `result` | `issued`, `challenge_required`, `already_issued`, `free_token_disabled`, `store_unavailable` |
 | `pdfcraft_tokens_active` | gauge | `kind`, `plan` | currently valid tokens (scanned from Valkey every minute; every replica reports the same value, use `max`) |
-| `pdfcraft_invoices_total` | counter | `kind`, `plan`, `endpoint` | generated PDFs (`single`/`bulk`) |
+| `pdfcraft_invoices_total` | counter | `kind`, `plan`, `endpoint` | generated PDFs (`single`/`bulk`/document type) |
 | `pdfcraft_paid_token_invoices_total` | counter | `token_id`, `plan` | PDFs per paid token |
 | `pdfcraft_pdf_generation_seconds` | histogram | `kind`, `plan` | time per PDF incl. waiting for a compile slot |
 | `pdfcraft_pdf_size_bytes` | histogram | `kind` | PDF size |

@@ -1,3 +1,4 @@
+import type { Doc, DocKind } from './documents'
 import type { Invoice, Settings } from './types'
 
 const API_BASE_URL =
@@ -79,8 +80,8 @@ function fetchFreeToken(): Promise<string> {
   return pendingToken
 }
 
-async function post(token: string, body: string, signal?: AbortSignal): Promise<Response> {
-  return fetch(`${API_BASE_URL}/v1/invoices`, {
+async function post(path: string, token: string, body: string, signal?: AbortSignal): Promise<Response> {
+  return fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body,
@@ -88,18 +89,14 @@ async function post(token: string, body: string, signal?: AbortSignal): Promise<
   })
 }
 
-/** Renders the invoice with `POST /v1/invoices` and a free token (fetched on demand). */
-export async function requestPdf(
-  settings: Settings,
-  invoice: Invoice,
-  signal?: AbortSignal,
-): Promise<Blob> {
-  const body = JSON.stringify({ settings, invoice })
-  let response = await post(loadToken() ?? (await fetchFreeToken()), body, signal)
+/** POSTs JSON with a free token (fetched on demand, renewed once on 401) and returns the PDF. */
+async function requestBlob(path: string, payload: unknown, signal?: AbortSignal): Promise<Blob> {
+  const body = JSON.stringify(payload)
+  let response = await post(path, loadToken() ?? (await fetchFreeToken()), body, signal)
 
   if (response.status === 401 && !DEV_TOKEN) {
     clearToken()
-    response = await post(await fetchFreeToken(), body, signal)
+    response = await post(path, await fetchFreeToken(), body, signal)
   }
 
   if (response.status === 429) {
@@ -108,4 +105,19 @@ export async function requestPdf(
   }
   if (!response.ok) throw new Error(await errorMessage(response))
   return response.blob()
+}
+
+/** Renders the invoice with `POST /v1/invoices`. */
+export function requestPdf(settings: Settings, invoice: Invoice, signal?: AbortSignal): Promise<Blob> {
+  return requestBlob('/v1/invoices', { settings, invoice }, signal)
+}
+
+/** Renders a credit note, offer, order confirmation, delivery note or letter with `POST /v1/documents`. */
+export function requestDocument(
+  kind: DocKind,
+  settings: Settings,
+  document: Doc,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  return requestBlob('/v1/documents', { type: kind, settings, document }, signal)
 }
