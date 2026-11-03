@@ -104,6 +104,12 @@ export function Dashboard({
 
         <section className="archive">
           <h2>{tr('Ausgestellte Belege', 'Issued documents')}</h2>
+          <p className="archive-gobd" role="note">
+            {tr(
+              'Hinweis: Dieses Archiv ist eine Arbeitshilfe im Browser und kein GoBD-konformes Archiv. Rechnungen und Gutschriften müssen Sie selbst unveränderbar und revisionssicher aufbewahren (in der Regel 8 Jahre, Handelsbriefe 6 Jahre). Speichern Sie die PDFs (bei E-Rechnungen mit eingebettetem XML) in Ihrem Archiv- oder Buchhaltungssystem.',
+              'Note: this archive is a working aid in your browser, not a GoBD-compliant archive. You must store invoices and credit notes yourself in an unalterable, audit-proof way (usually 8 years, business letters 6 years). Keep the PDFs (with the embedded XML for e-invoices) in your archive or accounting system.',
+            )}
+          </p>
           {archive.length === 0 ? (
             <p>{tr('Heruntergeladene Dokumente erscheinen hier. Daraus lassen sich Stornos und Folgebelege (Angebot → Auftrag → Lieferschein → Rechnung) erstellen.', 'Downloaded documents appear here. From them you can create cancellations and follow-up documents (offer → order → delivery note → invoice).')}</p>
           ) : (
@@ -142,11 +148,11 @@ export function Dashboard({
                       <input type="checkbox" checked={selected.includes(e.id)} onChange={() => toggle(e.id)} aria-label={tr(`${e.number} wählen`, `Select ${e.number}`)} />
                       <div className="archive-main">
                         <strong>{docSpec(e.kind)?.label} {e.number}</strong>
-                        {done && <span className="badge">{tr('storniert', 'cancelled')}</span>}
+                        {done && <span className="badge">{tr('Gutschrift erstellt', 'credit note issued')}</span>}
                         <span className="archive-sub">{e.recipient} · {new Date(e.date).toLocaleDateString(uiLocale())}{e.total !== null ? ` · ${money(e.total)}` : ''}</span>
                       </div>
                       <div className="archive-actions">
-                        {FOLLOW_UPS[e.kind].filter((f) => !(done && f.to === 'credit-note')).map((f) => (
+                        {FOLLOW_UPS[e.kind].map((f) => (
                           <button key={f.to} className="btn" onClick={() => onFollowUp(e, f.to)}>{f.label}</button>
                         ))}
                       </div>

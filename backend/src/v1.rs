@@ -240,11 +240,12 @@ async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiError> {
     }
 }
 
-/// PDFs created with a free token get a diagonal "Entwurf" (draft) watermark.
+/// PDFs created with a free token get a diagonal "Entwurf" / "Draft" watermark (by document language).
 fn with_watermark(client: &Client, mut settings: serde_json::Value) -> serde_json::Value {
     if client.kind == store::Kind::Free {
         if let Some(obj) = settings.as_object_mut() {
-            obj.insert("watermark".into(), "Entwurf".into());
+            let english = obj.get("locale").and_then(|v| v.as_str()) == Some("en-de");
+            obj.insert("watermark".into(), if english { "Draft" } else { "Entwurf" }.into());
         }
     }
     settings
