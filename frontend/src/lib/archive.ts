@@ -1,5 +1,6 @@
 import { isObj } from './storage'
 import { tr } from './i18n'
+import type { Issue } from './validate'
 import { docSpec, type Doc, type DocDataKind, type DocKind } from './documents'
 import { newItem, type Invoice, type InvoiceItem, type Settings } from './types'
 
@@ -110,6 +111,19 @@ export function makeEntry(kind: DocKind, source: Invoice | Doc, settings: Settin
 export function incrementNumber(number: string): string {
   const m = /^(.*?)(\d+)$/.exec(number)
   return m ? m[1] + String(Number(m[2]) + 1).padStart(m[2].length, '0') : number
+}
+
+/** Warning when `number` was already issued for this document type (numbers must be unique). */
+export function duplicateNumberIssue(entries: ArchiveEntry[], kind: DocKind, number: string): Issue | null {
+  const n = number.trim()
+  if (!n || !entries.some((e) => e.kind === kind && e.number.trim() === n)) return null
+  return {
+    level: 'warning',
+    message: tr(
+      `Die Nummer ${n} wurde bereits ausgestellt – Belegnummern müssen eindeutig sein.`,
+      `Number ${n} has already been issued – document numbers must be unique.`,
+    ),
+  }
 }
 
 /** Numbers of cancelled invoices: every issued credit note references one. */

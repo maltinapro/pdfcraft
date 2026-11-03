@@ -6,6 +6,7 @@ import { Workspace } from './components/Workspace'
 import { requestBulk, requestDocument, requestPdf } from './lib/api'
 import {
   cancelledNumbers,
+  duplicateNumberIssue,
   clearArchive,
   followUpDraft,
   incrementNumber,
@@ -159,6 +160,10 @@ export default function App() {
     setNotice(tr('Zurückgesetzt.', 'Reset.'))
   }, [])
 
+  const duplicate = (number: string, kind: DocKind) => {
+    const issue = duplicateNumberIssue(archive, kind, number)
+    return issue ? [issue] : []
+  }
   const issues = useMemo(() => validateInvoice(settings, invoice), [settings, invoice])
   const spec = docSpec(route)
 
@@ -194,7 +199,7 @@ export default function App() {
         data={{ settings, invoice }}
         render={(signal) => requestPdf(settings, invoice, signal)}
         form={<InvoiceForm invoice={invoice} onChange={setInvoice} />}
-        issues={issues}
+        issues={[...issues, ...duplicate(invoice.number, 'invoice')]}
         onDownloaded={() => issue('invoice')}
       />
     )
@@ -211,6 +216,7 @@ export default function App() {
       settings={settings}
       onSettingsChange={setSettings}
       forInvoice={false}
+      issues={duplicate(doc.number, kind)}
       onDownloaded={() => issue(kind)}
       data={{ kind, settings, doc }}
       render={(signal) => requestDocument(kind, settings, doc, signal)}
