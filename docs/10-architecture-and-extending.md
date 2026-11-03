@@ -58,7 +58,7 @@ pdfcraft/
     ├── src/free.rs                   # POST /v1/free-token (Anubis cookie check), anubis-keygen
     ├── src/v1.rs                     # POST /v1/invoices[/bulk]: token auth, rate limit, ZIP
     ├── src/invoice.rs                # Validation/escaping of the /v1 input
-    ├── src/documents.rs              # POST /v1/documents: types, validation, template assembly
+    ├── src/documents.rs              # POST /v1/documents[/bulk]: types, validation, template assembly, credit-note XML
     ├── src/store.rs                  # tokens + rate limit (Valkey), `tokens` CLI
     ├── src/config.rs                 # Environment configuration
     ├── src/facturx.rs                # Factur-X XMP post-processing (lopdf)

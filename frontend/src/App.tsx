@@ -3,7 +3,17 @@ import { Dashboard } from './components/Dashboard'
 import { DocumentForm } from './components/DocumentForm'
 import { InvoiceForm } from './components/InvoiceForm'
 import { Workspace } from './components/Workspace'
-import { requestDocument, requestPdf } from './lib/api'
+import { requestBulk, requestDocument, requestPdf } from './lib/api'
+import {
+  cancelledNumbers,
+  clearArchive,
+  followUpDraft,
+  incrementNumber,
+  loadArchive,
+  makeEntry,
+  saveArchive,
+  type ArchiveEntry,
+} from './lib/archive'
 import {
   clearDrafts,
   docSpec,
@@ -11,8 +21,9 @@ import {
   saveDrafts,
   type DocDataKind,
   type DocDrafts,
+  type DocKind,
 } from './lib/documents'
-import { useRoute } from './lib/router'
+import { routeHref, useRoute } from './lib/router'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
 import { validateInvoice } from './lib/validate'
 import { DEFAULT_SETTINGS, defaultInvoice, type Invoice, type Settings } from './lib/types'
@@ -26,7 +37,53 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(initial?.settings ?? DEFAULT_SETTINGS)
   const [invoice, setInvoice] = useState<Invoice>(initial?.invoice ?? defaultInvoice)
   const [drafts, setDrafts] = useState<DocDrafts>(loadDrafts)
+  const [archive, setArchive] = useState<ArchiveEntry[]>(loadArchive)
   const [notice, setNotice] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!saveArchive(archive)) setNotice('Archiv konnte nicht gespeichert werden (Speicher voll oder deaktiviert).')
+  }, [archive])
+
+  // A downloaded document is final: remember it and continue with the next number.
+  const issue = useCallback(
+    (kind: DocKind) => {
+      const source = kind === 'invoice' ? invoice : drafts[kind as DocDataKind]
+      setArchive((current) => [makeEntry(kind, source), ...current])
+      if (kind === 'invoice') setInvoice((i) => ({ ...i, number: incrementNumber(i.number) }))
+      else
+        setDrafts((d) => ({
+          ...d,
+          [kind]: { ...d[kind as DocDataKind], number: incrementNumber(d[kind as DocDataKind].number) },
+        }))
+    },
+    [invoice, drafts],
+  )
+
+  const followUp = useCallback(
+    (entry: ArchiveEntry, target: DocKind) => {
+      if (target === 'invoice') setInvoice((i) => followUpDraft(entry, 'invoice', i) as Invoice)
+      else
+        setDrafts((d) => ({
+          ...d,
+          [target]: followUpDraft(entry, target, d[target as DocDataKind]),
+        }))
+      window.location.hash = routeHref(target)
+    },
+    [],
+  )
+
+  const bulk = useCallback(
+    async (kind: DocKind, entries: ArchiveEntry[]) => {
+      const blob = await requestBulk(kind, settings, entries.map((e) => (e.invoice ?? e.doc)!))
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${kind}-bulk.zip`
+      link.click()
+      URL.revokeObjectURL(url)
+    },
+    [settings],
+  )
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -62,6 +119,8 @@ export default function App() {
     if (!window.confirm('Alle gespeicherten Einstellungen und Dokumentdaten zurücksetzen?')) return
     clearConfig()
     clearDrafts()
+    clearArchive()
+    setArchive([])
     setSettings(DEFAULT_SETTINGS)
     setInvoice(defaultInvoice())
     setDrafts(loadDrafts())
@@ -79,6 +138,11 @@ export default function App() {
         onImport={(file) => void onImport(file)}
         onExport={exportJson}
         onReset={reset}
+        archive={archive}
+        cancelled={cancelledNumbers(archive)}
+        onFollowUp={followUp}
+        onBulk={bulk}
+        onDeleteEntries={(ids) => setArchive((a) => a.filter((e) => !ids.includes(e.id)))}
       />
     )
   }
@@ -97,6 +161,7 @@ export default function App() {
         render={(signal) => requestPdf(settings, invoice, signal)}
         form={<InvoiceForm invoice={invoice} onChange={setInvoice} />}
         issues={issues}
+        onDownloaded={() => issue('invoice')}
       />
     )
   }
@@ -112,6 +177,7 @@ export default function App() {
       settings={settings}
       onSettingsChange={setSettings}
       forInvoice={false}
+      onDownloaded={() => issue(kind)}
       data={{ kind, settings, doc }}
       render={(signal) => requestDocument(kind, settings, doc, signal)}
       form={

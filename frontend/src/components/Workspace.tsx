@@ -23,6 +23,8 @@ interface Props {
   form: ReactNode
   tabLabel: string
   issues?: Issue[]
+  /** Called after the PDF was downloaded (the document counts as issued). */
+  onDownloaded?: () => void
 }
 
 type Tab = 'document' | 'settings'
@@ -39,6 +41,7 @@ export function Workspace({
   form,
   tabLabel,
   issues = [],
+  onDownloaded,
 }: Props) {
   const [tab, setTab] = useState<Tab>('document')
   const [mobileView, setMobileView] = useState<'form' | 'preview'>('form')
@@ -117,6 +120,7 @@ export function Workspace({
     link.download = `${fileName}.pdf`
     link.click()
     URL.revokeObjectURL(url)
+    onDownloaded?.()
   }
 
   return (

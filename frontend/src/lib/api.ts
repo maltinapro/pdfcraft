@@ -121,3 +121,15 @@ export function requestDocument(
 ): Promise<Blob> {
   return requestBlob('/v1/documents', { type: kind, settings, document }, signal)
 }
+
+/** Renders many documents of one type into a ZIP (`/v1/invoices/bulk` or `/v1/documents/bulk`). */
+export function requestBulk(
+  kind: DocKind,
+  settings: Settings,
+  documents: (Invoice | Doc)[],
+  signal?: AbortSignal,
+): Promise<Blob> {
+  return kind === 'invoice'
+    ? requestBlob('/v1/invoices/bulk', { settings, invoices: documents }, signal)
+    : requestBlob('/v1/documents/bulk', { type: kind, settings, documents }, signal)
+}

@@ -46,6 +46,13 @@ export function DocumentForm({ spec, doc, onChange }: Props) {
         <TextField label="Name" value={doc.recipient.name} onChange={(v) => setRecipient('name', v)} />
         <TextField label="Straße / Hausnummer" value={doc.recipient.address} onChange={(v) => setRecipient('address', v)} />
         <TextField label="PLZ / Ort" value={doc.recipient.city} onChange={(v) => setRecipient('city', v)} />
+        {spec.einvoice && (
+          <>
+            <TextField label="USt-IdNr. (E-Rechnung)" value={doc.recipient.vatId ?? ''} onChange={(v) => setRecipient('vatId', v)} />
+            <TextField label="E-Mail (E-Rechnung)" value={doc.recipient.email ?? ''} onChange={(v) => setRecipient('email', v)} />
+            <TextField label="Leitweg-ID / Käuferreferenz" value={doc.recipient.buyerReference ?? ''} onChange={(v) => setRecipient('buyerReference', v)} />
+          </>
+        )}
       </section>
 
       {spec.letter && (

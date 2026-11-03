@@ -76,7 +76,7 @@ pub struct Settings {
     pub einvoice_profile: Option<String>,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, Clone)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Recipient {
     pub name: String,
@@ -87,7 +87,7 @@ pub struct Recipient {
     pub buyer_reference: String,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, Clone)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Item {
     pub description: String,

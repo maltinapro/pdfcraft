@@ -1,5 +1,5 @@
 import { isObj, mergeObject, type Obj } from './storage'
-import { newItem, todayIso, type InvoiceItem } from './types'
+import { newItem, todayIso, type InvoiceItem, type Recipient } from './types'
 
 export type DocKind = 'invoice' | 'credit-note' | 'offer' | 'order' | 'delivery-note' | 'letter'
 
@@ -8,7 +8,7 @@ export interface Doc {
   number: string
   /** ISO date, `YYYY-MM-DD`. */
   date: string
-  recipient: { name: string; address: string; city: string }
+  recipient: Recipient
   items: InvoiceItem[]
   reference: string
   referenceDate: string
@@ -46,6 +46,8 @@ export interface DocSpec {
   validUntil?: string
   deliveryDate?: string
   reason?: string
+  /** Recipient needs e-invoice data (VAT id, e-mail, buyer reference) for the ZUGFeRD / XRechnung XML. */
+  einvoice?: boolean
   letter?: boolean
   intro?: string
   closing?: string
@@ -65,7 +67,7 @@ export const DOC_SPECS: DocSpec[] = [
     kind: 'credit-note',
     numberLabel: 'Nummer der Stornorechnung',
     label: 'Stornorechnung',
-    description: 'Storniert eine Rechnung vollständig oder teilweise – mit Bezug zur Originalrechnung.',
+    description: 'Storniert eine ausgestellte Rechnung mit Bezug zur Originalrechnung – auf Wunsch mit ZUGFeRD / XRechnung (Gutschrift).',
     color: '#d6336c',
     numberPrefix: 'ST-',
     dateLabel: 'Datum',
@@ -75,6 +77,7 @@ export const DOC_SPECS: DocSpec[] = [
     reference: { label: 'Stornierte Rechnung (Nr.)' },
     referenceDate: 'Datum der Originalrechnung',
     reason: 'Grund der Stornierung',
+    einvoice: true,
     closing: 'Der Betrag wird Ihnen erstattet bzw. mit offenen Forderungen verrechnet.',
   },
   {
@@ -143,7 +146,14 @@ export function defaultDoc(kind: DocDataKind): Doc {
   return {
     number: spec.numberPrefix ? `${spec.numberPrefix}${year}-001` : '',
     date: todayIso(),
-    recipient: { name: 'Kunde AG', address: 'Kundenweg 5', city: '54321 Kundenstadt' },
+    recipient: {
+      name: 'Kunde AG',
+      address: 'Kundenweg 5',
+      city: '54321 Kundenstadt',
+      vatId: '',
+      email: '',
+      buyerReference: '',
+    },
     items:
       spec.items === 'none' ? [] : [newItem({ description: 'Beratung', quantity: 8, unit: 'h', price: 95 })],
     reference: '',
@@ -212,4 +222,20 @@ export function clearDrafts(): void {
   } catch {
     // ignore
   }
+}
+
+/** Documents that can be created from an issued document (the document chain). */
+export const FOLLOW_UPS: Record<DocKind, { to: DocKind; label: string }[]> = {
+  offer: [
+    { to: 'order', label: 'Auftragsbestätigung' },
+    { to: 'invoice', label: 'Rechnung' },
+  ],
+  order: [
+    { to: 'delivery-note', label: 'Lieferschein' },
+    { to: 'invoice', label: 'Rechnung' },
+  ],
+  'delivery-note': [{ to: 'invoice', label: 'Rechnung' }],
+  invoice: [{ to: 'credit-note', label: 'Stornieren' }],
+  'credit-note': [],
+  letter: [],
 }

@@ -5,9 +5,10 @@
 //! string literals. Each type has its own template (`frontend/src/template/<type>.typ`) that is
 //! appended to the shared `document-common.typ`. No e-invoice XML is produced for these types.
 
-use crate::einvoice::{describe_items, german_date};
+use crate::einvoice::{self, describe_items, german_date};
 use crate::invoice::{
-    number, one_of, text, valid_date, Errors, Item, Recipient, MAX_ITEMS, MAX_LONG, MAX_SHORT, TAX_RATES, UNITS,
+    number, one_of, text, valid_date, Errors, Invoice, Item, Recipient, Settings, MAX_ITEMS, MAX_LONG, MAX_SHORT, TAX_RATES,
+    UNITS,
 };
 use serde::Deserialize;
 use serde_json::{json, Value as JsonValue};
@@ -168,6 +169,43 @@ pub fn check_document(kind: Kind, doc: &Document, english: bool, e: &mut Errors)
     out
 }
 
+/// Template data and virtual files of one document. A credit note gets an EN 16931 credit note XML
+/// (ZUGFeRD / XRechnung, TypeCode 381) when `settings.zugferd` is on; it uses the e-invoice fields
+/// of the recipient (VAT id, e-mail, buyer reference).
+pub fn build(
+    kind: Kind,
+    raw: &Settings,
+    settings: JsonValue,
+    doc: &Document,
+    checked: JsonValue,
+    mut assets: Vec<(String, Vec<u8>)>,
+) -> (JsonValue, Vec<(String, Vec<u8>)>) {
+    let mut data = json!({ "settings": settings, "doc": checked });
+    if kind == Kind::CreditNote {
+        let invoice = Invoice {
+            number: doc.number.clone(),
+            date: doc.date.clone(),
+            recipient: doc.recipient.clone(),
+            items: doc.items.clone(),
+        };
+        let prepared = einvoice::prepare(
+            raw,
+            &data["settings"],
+            &invoice,
+            &mut json!({}),
+            Some((&doc.reference, &doc.reference_date)),
+        );
+        if let Some(xml) = prepared.xml {
+            if xml.draft {
+                tracing::warn!(event = "einvoice_draft", document = kind.slug(), problems = ?xml.problems);
+            }
+            assets.push(("xml".to_string(), xml.bytes));
+            data["einvoice"] = prepared.extra["einvoice"].clone();
+        }
+    }
+    (data, assets)
+}
+
 /// File name stem for the download: `<type>-<number>`.
 pub fn file_name(kind: Kind, doc: &Document) -> String {
     let stem: String = doc
@@ -180,6 +218,18 @@ pub fn file_name(kind: Kind, doc: &Document) -> String {
         format!("{}.pdf", kind.slug())
     } else {
         format!("{}-{stem}.pdf", kind.slug())
+    }
+}
+
+/// Name inside a bulk ZIP: the download name, made unique by the position when it repeats.
+pub fn zip_name(kind: Kind, doc: &Document, index: usize, used: &mut std::collections::HashSet<String>) -> String {
+    let name = file_name(kind, doc);
+    if used.insert(name.clone()) {
+        name
+    } else {
+        let alt = format!("{}-{}.pdf", name.trim_end_matches(".pdf"), index + 1);
+        used.insert(alt.clone());
+        alt
     }
 }
 
@@ -218,6 +268,28 @@ mod tests {
         let mut e = Errors::default();
         check_document(Kind::Letter, &doc, false, &mut e);
         assert_eq!(e.0.len(), 2);
+    }
+
+    #[test]
+    fn zip_names_stay_unique() {
+        let doc = sample(Kind::Offer);
+        let mut used = std::collections::HashSet::new();
+        let a = zip_name(Kind::Offer, &doc, 0, &mut used);
+        let b = zip_name(Kind::Offer, &doc, 1, &mut used);
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn credit_note_xml_references_the_invoice() {
+        let raw: Settings = serde_json::from_value(json!({"zugferd": true, "vatId": "DE123456789"})).unwrap();
+        let mut doc = sample(Kind::CreditNote);
+        doc.reference_date = "2026-01-15".into();
+        let (data, assets) = build(Kind::CreditNote, &raw, json!({}), &doc, json!({}), vec![]);
+        let xml = assets.iter().find(|(k, _)| k == "xml").map(|(_, v)| String::from_utf8_lossy(v).to_string());
+        let xml = xml.expect("xml asset");
+        assert!(xml.contains("<ram:TypeCode>381</ram:TypeCode>"), "{xml}");
+        assert!(xml.contains("InvoiceReferencedDocument") && xml.contains("R-1"));
+        assert!(data.get("einvoice").is_some());
     }
 
     #[test]

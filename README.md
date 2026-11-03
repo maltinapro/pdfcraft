@@ -14,7 +14,7 @@ A full-stack **PDF Template Builder** that combines a simple form-based invoice 
 
 ## Features
 
-- 🗂️ **Dashboard with document types** — invoice, credit note (Stornorechnung), offer, order confirmation, delivery note and letter (DIN 5008); each has its own Typst template and form, sender data and design are shared
+- 🗂️ **Dashboard with document types** — invoice, credit note (Stornorechnung), offer, order confirmation, delivery note and letter (DIN 5008); each has its own Typst template and form, sender data and design are shared; issued documents are archived in the browser (cancel an invoice, create follow-up documents, bulk ZIP download); credit notes can carry a ZUGFeRD/XRechnung XML (TypeCode 381)
 - 🧾 **Form-based invoice configurator** — fill in invoice, recipient and line items; settings cover logo, company address, bank details, accent color, font, footer and texts
 - 🖼️ **Logo upload** (PNG/JPG/SVG, ≤ 300 KB) sent to the backend as a base64 asset
 - 💾 **Persistence** — settings and invoice draft are auto-saved in the browser (`localStorage`, versioned `schemaVersion`); export/import as JSON, reset to defaults
@@ -62,6 +62,7 @@ Details: [Architecture and Extending](docs/10-architecture-and-extending.md).
 | `POST /v1/invoices` | token | One invoice → PDF |
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP |
 | `POST /v1/documents` | token | Credit note, offer, order confirmation, delivery note or letter → PDF |
+| `POST /v1/documents/bulk` | token | Many documents of one type → ZIP |
 | `GET /health` | none | Status |
 
 ```bash
