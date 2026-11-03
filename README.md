@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/public/logo-wide.png" alt="PDFCraft – digitalrechnung.jetzt" width="360" />
+</p>
+
 # PDFCraft — Visual PDF Template Builder
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)

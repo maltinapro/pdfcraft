@@ -156,7 +156,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1 className="app-title">
-          <span className="logo">📄</span> PDFCraft
+          <img className="logo" src="/logo-mark.png" width="32" height="32" alt="" /> PDFCraft
           <span className="app-version" title="Version">{__APP_VERSION__}</span>
         </h1>
         <p className="app-subtitle">Rechnungs-Konfigurator</p>

@@ -1,9 +1,10 @@
 :root {
-  --bg: #f0f2f5; --text: #1a1a2e; --surface: #fff; --header-bg: #1a1a2e;
+  --bg: #f0f2f5; --text: #1a1a2e; --surface: #fff; --header-bg: #241259;
   --border: #dde1e7; --border-soft: #eef0f3; --border2: #e2e8f0; --input-border: #cbd5e1;
   --muted: #64748b; --muted2: #475569; --faint: #94a3b8; --focus-ring: #bfdbfe;
   --surface2: #f8fafc; --hover: #f1f5f9;
   --err-bg: #fee2e2; --err-text: #991b1b; --warn-bg: #fef3c7; --warn-text: #92400e;
+  --brand: #4a2fb0; --brand-hover: #3a2390;
   --err: #b91c1c; --warn: #b45309;
   color-scheme: light;
 }
@@ -14,6 +15,7 @@
   --muted: #9aa5b8; --muted2: #b4bdcc; --faint: #6b7589; --focus-ring: #1e3a8a;
   --surface2: #20242f; --hover: #262b38;
   --err-bg: #4a1d1d; --err-text: #fca5a5; --warn-bg: #4a3a12; --warn-text: #fcd34d;
+  --brand: #7c5ce0; --brand-hover: #6a49cc;
   --err: #f87171; --warn: #fbbf24;
   color-scheme: dark;
 }
@@ -50,8 +52,17 @@ body {
 }
 
 .app-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 1.2rem;
   font-weight: 700;
+}
+
+.app-title .logo {
+  height: 32px;
+  width: 32px;
+  border-radius: 6px;
 }
 
 .app-version {
@@ -102,8 +113,8 @@ body {
 
 .tab.active {
   font-weight: 600;
-  border-bottom-color: #1d4ed8;
-  color: #1d4ed8;
+  border-bottom-color: var(--brand);
+  color: var(--brand);
 }
 
 .form {
@@ -161,7 +172,7 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: 2px solid var(--focus-ring);
-  border-color: #1d4ed8;
+  border-color: var(--brand);
 }
 
 input[type='color'] {
@@ -215,7 +226,7 @@ input[type='color'] {
 }
 
 .item-card.drop-target {
-  border-color: #1d4ed8;
+  border-color: var(--brand);
   box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.25);
 }
 
@@ -265,13 +276,13 @@ input[type='color'] {
 }
 
 .btn-primary {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: var(--brand);
+  border-color: var(--brand);
   color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #1e40af;
+  background: var(--brand-hover);
 }
 
 .preview {
