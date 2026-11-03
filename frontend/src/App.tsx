@@ -12,6 +12,7 @@ import {
   loadArchive,
   exportArchive,
   importArchive,
+  groupBySettings,
   makeEntry,
   saveArchive,
   type ArchiveEntry,
@@ -52,7 +53,7 @@ export default function App() {
   const issue = useCallback(
     (kind: DocKind) => {
       const source = kind === 'invoice' ? invoice : drafts[kind as DocDataKind]
-      setArchive((current) => [makeEntry(kind, source), ...current])
+      setArchive((current) => [makeEntry(kind, source, settings), ...current])
       if (kind === 'invoice') setInvoice((i) => ({ ...i, number: incrementNumber(i.number) }))
       else
         setDrafts((d) => ({
@@ -60,7 +61,7 @@ export default function App() {
           [kind]: { ...d[kind as DocDataKind], number: incrementNumber(d[kind as DocDataKind].number) },
         }))
     },
-    [invoice, drafts],
+    [invoice, drafts, settings],
   )
 
   const followUp = useCallback(
@@ -78,13 +79,17 @@ export default function App() {
 
   const bulk = useCallback(
     async (kind: DocKind, entries: ArchiveEntry[]) => {
-      const blob = await requestBulk(kind, settings, entries.map((e) => (e.invoice ?? e.doc)!))
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${kind}-bulk.zip`
-      link.click()
-      URL.revokeObjectURL(url)
+      // One ZIP per distinct sender/design snapshot, so every document keeps its issue-time data
+      const groups = groupBySettings(entries, settings)
+      for (const [index, group] of groups.entries()) {
+        const blob = await requestBulk(kind, group.settings, group.entries.map((e) => (e.invoice ?? e.doc)!))
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = groups.length > 1 ? `${kind}-bulk-${index + 1}.zip` : `${kind}-bulk.zip`
+        link.click()
+        URL.revokeObjectURL(url)
+      }
     },
     [settings],
   )

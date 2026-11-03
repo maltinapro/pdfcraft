@@ -1,7 +1,7 @@
 import { isObj } from './storage'
 import { tr } from './i18n'
 import { docSpec, type Doc, type DocDataKind, type DocKind } from './documents'
-import { newItem, type Invoice, type InvoiceItem } from './types'
+import { newItem, type Invoice, type InvoiceItem, type Settings } from './types'
 
 /** A document that was downloaded. Issued documents are final: they are never edited, only cancelled or copied. */
 export interface ArchiveEntry {
@@ -17,6 +17,8 @@ export interface ArchiveEntry {
   /** Invoice data when `kind` is `invoice`, otherwise `doc`. */
   invoice?: Invoice
   doc?: Doc
+  /** Sender and design at issue time, without the logo (entries from older versions have none). */
+  settings?: Omit<Settings, 'logo'>
 }
 
 const STORAGE_KEY = 'pdfcraft.archive'
@@ -85,7 +87,9 @@ export function clearArchive(): void {
   }
 }
 
-export function makeEntry(kind: DocKind, source: Invoice | Doc): ArchiveEntry {
+export function makeEntry(kind: DocKind, source: Invoice | Doc, settings: Settings): ArchiveEntry {
+  const { logo: _logo, ...snapshotSettings } = settings
+  void _logo
   const items = 'items' in source ? source.items : []
   const priced = docSpec(kind)?.items === 'priced'
   const snapshot = JSON.parse(JSON.stringify(source)) as Invoice | Doc
@@ -97,6 +101,7 @@ export function makeEntry(kind: DocKind, source: Invoice | Doc): ArchiveEntry {
     recipient: source.recipient.name,
     total: priced ? Math.round(grossTotal(items) * 100) / 100 : null,
     issuedAt: new Date().toISOString(),
+    settings: JSON.parse(JSON.stringify(snapshotSettings)) as Omit<Settings, 'logo'>,
     ...(kind === 'invoice' ? { invoice: snapshot as Invoice } : { doc: snapshot as Doc }),
   }
 }
@@ -139,3 +144,16 @@ export function followUpDraft(
 }
 
 export type { DocDataKind }
+
+/** Entries grouped by their issue-time settings (one bulk request per group); the logo is always the current one. */
+export function groupBySettings(entries: ArchiveEntry[], current: Settings): { settings: Settings; entries: ArchiveEntry[] }[] {
+  const groups = new Map<string, { settings: Settings; entries: ArchiveEntry[] }>()
+  for (const entry of entries) {
+    const settings: Settings = entry.settings ? { ...current, ...entry.settings, logo: current.logo } : current
+    const key = JSON.stringify(entry.settings ?? null)
+    const group = groups.get(key) ?? { settings, entries: [] }
+    group.entries.push(entry)
+    groups.set(key, group)
+  }
+  return [...groups.values()]
+}
