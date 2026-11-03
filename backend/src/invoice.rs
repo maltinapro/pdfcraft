@@ -21,16 +21,16 @@ pub const FONTS: &[&str] = &[
     "DejaVu Sans Mono",
 ];
 const LOCALES: &[&str] = &["de-de", "en-de"];
-const UNITS: &[&str] = &[
+pub(crate) const UNITS: &[&str] = &[
     "pcs", "h", "d", "mo", "y", "flat", "kg", "m", "km", "m2", "l",
 ];
 const PROFILES: &[&str] = &["en16931", "xrechnung"];
-const TAX_RATES: &[i64] = &[19, 7, 0];
+pub(crate) const TAX_RATES: &[i64] = &[19, 7, 0];
 
 const MAX_NUMBER: f64 = 1e9;
-const MAX_ITEMS: usize = 500;
-const MAX_SHORT: usize = 200;
-const MAX_LONG: usize = 2000;
+pub(crate) const MAX_ITEMS: usize = 500;
+pub(crate) const MAX_SHORT: usize = 200;
+pub(crate) const MAX_LONG: usize = 2000;
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
@@ -111,7 +111,7 @@ pub struct Invoice {
 pub struct Errors(pub Vec<String>);
 
 impl Errors {
-    fn add(&mut self, path: &str, msg: &str) {
+    pub(crate) fn add(&mut self, path: &str, msg: &str) {
         self.0.push(format!("{path}: {msg}"));
     }
 }
@@ -128,7 +128,7 @@ pub fn escape(value: &str) -> String {
         .replace('"', "\\\"")
 }
 
-fn text(e: &mut Errors, path: &str, value: &str, max: usize, required: bool) -> String {
+pub(crate) fn text(e: &mut Errors, path: &str, value: &str, max: usize, required: bool) -> String {
     let value = value.trim();
     if required && value.is_empty() {
         e.add(path, "is required");
@@ -139,7 +139,7 @@ fn text(e: &mut Errors, path: &str, value: &str, max: usize, required: bool) -> 
     escape(value)
 }
 
-fn one_of(e: &mut Errors, path: &str, value: Option<&String>, allowed: &[&str], default: &str) -> String {
+pub(crate) fn one_of(e: &mut Errors, path: &str, value: Option<&String>, allowed: &[&str], default: &str) -> String {
     match value {
         None => default.to_string(),
         Some(v) if allowed.contains(&v.as_str()) => v.clone(),
@@ -150,7 +150,7 @@ fn one_of(e: &mut Errors, path: &str, value: Option<&String>, allowed: &[&str], 
     }
 }
 
-fn number(e: &mut Errors, path: &str, value: f64) -> f64 {
+pub(crate) fn number(e: &mut Errors, path: &str, value: f64) -> f64 {
     if !value.is_finite() || value.abs() > MAX_NUMBER {
         e.add(path, "must be a number between -1e9 and 1e9");
         return 0.0;

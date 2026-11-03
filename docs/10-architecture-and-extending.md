@@ -39,15 +39,18 @@ pdfcraft/
 ├── frontend/                         # React + Vite
 │   ├── public/                       # Logo (logo.svg), favicons, icons, og-image, robots.txt, sitemap.xml
 │   └── src/
-│       ├── App.tsx                   # Shell: tabs, debounced preview, download
-│       ├── components/               # Field, SettingsForm, InvoiceForm
+│       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, ...), shared settings, drafts
+│       ├── components/               # Dashboard (tiles), Workspace (form + live preview + download),
+│       │                             # DocumentForm (generic, driven by DocSpec), InvoiceForm, ItemsEditor, SettingsForm, Field
 │       ├── lib/
+│       │   ├── documents.ts          # DOC_SPECS (one entry per document type), drafts in localStorage
+│       │   ├── router.ts             # Tiny hash router
 │       │   ├── types.ts              # Model, defaults, whitelists (fonts, units, tax rates)
 │       │   ├── storage.ts            # Versioned localStorage + JSON export/import
 │       │   ├── theme.ts              # Light/dark theme (system default, manual override)
 │       │   ├── validate.ts           # E-invoice issues shown in the sidebar
-│       │   └── api.ts                # free token handling + requestPdf() (POST /v1/invoices)
-│       └── template/invoice.typ      # Lean static Typst template with minijinja placeholders
+│       │   └── api.ts                # free token handling + requestPdf() / requestDocument()
+│       └── template/                 # invoice.typ; document-common.typ + credit-note/offer/order/delivery-note/letter.typ
 │
 └── backend/                          # Rust (Axum + typst-as-lib + typst-pdf + minijinja)
     ├── Cargo.toml
@@ -55,6 +58,7 @@ pdfcraft/
     ├── src/free.rs                   # POST /v1/free-token (Anubis cookie check), anubis-keygen
     ├── src/v1.rs                     # POST /v1/invoices[/bulk]: token auth, rate limit, ZIP
     ├── src/invoice.rs                # Validation/escaping of the /v1 input
+    ├── src/documents.rs              # POST /v1/documents: types, validation, template assembly
     ├── src/store.rs                  # tokens + rate limit (Valkey), `tokens` CLI
     ├── src/config.rs                 # Environment configuration
     ├── src/facturx.rs                # Factur-X XMP post-processing (lopdf)
@@ -87,6 +91,8 @@ The invoice is a single Typst file: `frontend/src/template/invoice.typ` (the bac
 **Checking a change**: `cd backend && cargo test --release`, start the backend (`cargo run --release`; the warm-up compiles the real template and fails loudly on errors), generate a PDF via the app or `/v1/invoices`, and for e-invoice changes validate it with Mustang (`java -jar Mustang-CLI-2.26.0.jar --action validate --source invoice.pdf`).
 
 ## Extending
+
+- **New document type**: add an entry to `DOC_SPECS` in `frontend/src/lib/documents.ts` (dashboard tile and form fields), a template `frontend/src/template/<type>.typ` that builds on `document-common.typ`, and the type in `Kind` in `backend/src/documents.rs` (slug, template, validation). Add an icon in `components/icons.tsx`. Drafts of all types except invoices live in `localStorage` key `pdfcraft.documents`.
 
 - **New setting / field**: add it to `frontend/src/lib/types.ts`, validate it in `backend/src/invoice.rs`, add an input in the matching form, and handle it in `backend/src/einvoice.rs` (totals, XML) if it affects amounts or the e-invoice, and use it in `frontend/src/template/invoice.typ`.
 - **New unit or tax rate**: extend `UNITS` / `TAX_RATES` in `types.ts` (also add the unit label/UN code in `einvoice.rs` and the template).

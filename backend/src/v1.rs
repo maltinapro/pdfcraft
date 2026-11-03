@@ -2,6 +2,7 @@
 //! rate limit. The client sends plain invoice data; the template never leaves the server.
 
 use crate::config;
+use crate::documents::{self, Document, Kind};
 use crate::einvoice;
 use crate::invoice::{check_invoice, check_settings, file_stem, Errors, Invoice, Settings};
 use crate::store::{self, Client};
@@ -53,6 +54,33 @@ pub async fn warm_up() {
         check_font(font).await;
     }
     sample_render(None).await;
+    for kind in Kind::ALL {
+        sample_document(kind).await;
+    }
+}
+
+async fn sample_document(kind: Kind) {
+    let raw_settings: Settings = serde_json::from_value(json!({
+        "sender": {"name": "Warm-up", "address": "Street 1", "city": "12345 City"},
+    }))
+    .expect("valid warm-up settings");
+    let raw_doc: Document = serde_json::from_value(json!({
+        "number": "0", "date": "2026-01-01", "reference": "0", "subject": "Warm-up", "body": "Text",
+        "recipient": {"name": "Warm-up", "address": "Street 2", "city": "12345 City"},
+        "items": [{"description": "Item", "quantity": 1, "unit": "pcs", "price": 1, "taxRate": 19}],
+    }))
+    .expect("valid warm-up document");
+    let mut errors = Errors::default();
+    let settings = check_settings(&raw_settings, &mut errors);
+    let doc = documents::check_document(kind, &raw_doc, false, &mut errors);
+    if !errors.0.is_empty() {
+        tracing::warn!(event = "warm_up_skipped", document = kind.slug(), errors = ?errors.0);
+        return;
+    }
+    let data = json!({ "settings": settings.data, "doc": doc });
+    if let Err(e) = render_pdf(&kind.template(), data, Vec::new()).await {
+        tracing::warn!(event = "warm_up_failed", document = kind.slug(), error = ?e.details);
+    }
 }
 
 /// Renders the sample invoice; `font` overrides `settings.font` and the PDF bytes are returned.
@@ -109,6 +137,7 @@ pub fn router() -> Router {
     let protected = Router::new()
         .route("/invoices", post(single))
         .route("/invoices/bulk", post(bulk))
+        .route("/documents", post(document_single))
         .layer(middleware::from_fn(auth));
     // Free tokens are issued against an Anubis pass instead of a token
     // Purchase hand-over (Stripe): only answers while PAID_TOKENS_ENABLED
@@ -291,6 +320,65 @@ async fn single(
         .into_response())
 }
 
+#[derive(Deserialize)]
+struct DocumentRequest {
+    #[serde(rename = "type")]
+    kind: String,
+    settings: Settings,
+    document: Document,
+}
+
+/// Credit note, offer, order confirmation, delivery note or letter (`type` selects the template).
+async fn document_single(
+    Extension(client): Extension<Client>,
+    payload: Result<Json<DocumentRequest>, JsonRejection>,
+) -> Result<Response, ApiError> {
+    let Json(req) = payload.map_err(bad_json)?;
+    let kind = Kind::parse(&req.kind).ok_or_else(|| {
+        let allowed: Vec<&str> = Kind::ALL.iter().map(|k| k.slug()).collect();
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "invalid_request",
+            format!("`type` must be one of: {}", allowed.join(", ")),
+        )
+    })?;
+    take_tokens(&client, 1).await?;
+
+    let mut errors = Errors::default();
+    let settings = check_settings(&req.settings, &mut errors);
+    let english = settings.data["locale"] == "en-de";
+    let doc = documents::check_document(kind, &req.document, english, &mut errors);
+    if !errors.0.is_empty() {
+        return Err(validation_error(errors));
+    }
+    let assets = logo_assets(settings.logo)?;
+    let data = json!({ "settings": with_watermark(&client, settings.data), "doc": doc });
+    let started = std::time::Instant::now();
+    let pdf = render_pdf(&kind.template(), data, assets).await?;
+    crate::metrics::observe_pdf(&client, started.elapsed().as_secs_f64(), pdf.len());
+    crate::metrics::invoices_generated(&client, kind.slug(), 1);
+    tracing::info!(
+        event = "invoice_generated",
+        endpoint = kind.slug(),
+        invoices = 1,
+        token_id = %client.id,
+        token_kind = client.kind.label(),
+        token_plan = %client.plan,
+        duration_ms = started.elapsed().as_secs_f64() * 1000.0,
+        size_bytes = pdf.len(),
+    );
+    let disposition = format!("attachment; filename=\"{}\"", documents::file_name(kind, &req.document));
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/pdf".to_string()),
+            (header::CONTENT_DISPOSITION, disposition),
+        ],
+        pdf,
+    )
+        .into_response())
+}
+
 async fn bulk(
     Extension(client): Extension<Client>,
     payload: Result<Json<BulkRequest>, JsonRejection>,
@@ -389,4 +477,41 @@ async fn bulk(
         bytes,
     )
         .into_response())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn renders_every_document_type() {
+        for kind in Kind::ALL {
+            let settings: Settings = serde_json::from_value(json!({
+                "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt", "email": "a@b.de"},
+                "footer": "Muster GmbH · Musterstr. 1",
+            }))
+            .unwrap();
+            let raw: Document = serde_json::from_value(json!({
+                "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
+                "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff \"x\"",
+                "body": "Zeile 1\nZeile 2", "reason": "Falsche Menge", "intro": "Hallo", "closing": "Gruß",
+                "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+                "items": [
+                    {"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19},
+                    {"description": "Befreit", "quantity": 1, "unit": "pcs", "price": 10, "taxRate": 0},
+                ],
+            }))
+            .unwrap();
+            let mut errors = Errors::default();
+            let s = check_settings(&settings, &mut errors);
+            let doc = documents::check_document(kind, &raw, false, &mut errors);
+            assert!(errors.0.is_empty(), "{:?}", errors.0);
+            let data = json!({ "settings": s.data, "doc": doc });
+            let pdf = render_pdf(&kind.template(), data, Vec::new()).await.unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details));
+            assert!(pdf.starts_with(b"%PDF"));
+            if let Ok(dir) = std::env::var("PDF_OUT") {
+                std::fs::write(format!("{dir}/{}.pdf", kind.slug()), pdf).unwrap();
+            }
+        }
+    }
 }

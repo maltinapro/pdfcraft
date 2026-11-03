@@ -17,12 +17,12 @@ export interface AppConfig {
   invoice: Invoice
 }
 
-type Obj = Record<string, unknown>
+export type Obj = Record<string, unknown>
 
-const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v)
+export const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v)
 
 /** Copies only keys of `defaults` whose value has the same primitive type; nested objects recurse. */
-function mergeObject<T extends Obj>(defaults: T, input: unknown): T {
+export function mergeObject<T extends Obj>(defaults: T, input: unknown): T {
   const src = isObj(input) ? input : {}
   const out: Obj = { ...defaults }
   for (const key of Object.keys(defaults)) {

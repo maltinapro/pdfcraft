@@ -46,6 +46,29 @@ curl -X POST http://localhost:3000/v1/invoices \
   --data @pdfcraft-config.json -o invoice.pdf
 ```
 
+## `POST /v1/documents`
+
+Credit note (Stornorechnung), offer, order confirmation, delivery note and letter. Same authentication, rate limit (one token per PDF), watermark rules and error format as `/v1/invoices`.
+
+**Body:** `{ "type": "...", "settings": { ... }, "document": { ... } }`
+
+| `type` | Required `document` fields | Notes |
+| --- | --- | --- |
+| `credit-note` | `number`, `date`, `recipient`, `items`, `reference` (cancelled invoice) | Quantities are shown negative automatically; optional `referenceDate`, `reason`, `closing`. No e-invoice XML |
+| `offer` | `number`, `date`, `recipient`, `items` | Optional `validUntil`, `reference`, `intro`, `closing` |
+| `order` | `number`, `date`, `recipient`, `items` | Optional `deliveryDate`, `reference`, `intro`, `closing` |
+| `delivery-note` | `number`, `date`, `recipient`, `items` | No prices; optional `deliveryDate`, `reference`, `intro`, `closing` |
+| `letter` | `date`, `recipient`, `subject`, `body` | Optional `reference`, `closing` (e.g. "Mit freundlichen Grüßen") |
+
+`recipient` is `{ name, address, city }`, items are `{ description, quantity, unit, price, taxRate }` like in invoices, dates are `YYYY-MM-DD`. Only `settings.sender`, the logo, accent color, font, locale and footer are used. Unknown `type` → `400 invalid_request`.
+
+```bash
+curl -X POST http://localhost:3000/v1/documents \
+  -H 'Authorization: ******' -H 'content-type: application/json' \
+  -d '{"type":"letter","settings":{"sender":{"name":"Muster GmbH","address":"Musterstr. 1","city":"12345 Musterstadt"}},"document":{"date":"2026-11-03","recipient":{"name":"Kunde AG","address":"Kundenweg 5","city":"54321 Kundenstadt"},"subject":"Hallo","body":"Sehr geehrte Damen und Herren,\n\n...","closing":"Mit freundlichen Grüßen"}}' \
+  -o letter.pdf
+```
+
 ## `POST /v1/invoices/bulk`
 
 Many invoices with shared settings → ZIP.

@@ -13,6 +13,8 @@ import {
 interface Props {
   settings: Settings
   onChange: (settings: Settings) => void
+  /** Bank details, intro/closing text and e-invoice options only apply to invoices. */
+  forInvoice?: boolean
 }
 
 const ACCEPTED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml']
@@ -26,7 +28,7 @@ function readFileAsBase64(file: File): Promise<string> {
   })
 }
 
-export function SettingsForm({ settings, onChange }: Props) {
+export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
   const [logoError, setLogoError] = useState<string | null>(null)
 
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) =>
@@ -93,26 +95,28 @@ export function SettingsForm({ settings, onChange }: Props) {
         <TextField label="USt-IdNr." value={settings.sender.vatId} onChange={(v) => setSender('vatId', v)} />
       </section>
 
-      <section className="form-section">
-        <h3>Bankverbindung</h3>
-        <TextField label="Bank" value={settings.bank.name} onChange={(v) => setBank('name', v)} />
-        <TextField label="IBAN" value={settings.bank.iban} onChange={(v) => setBank('iban', v)} />
-        <TextField label="BIC" value={settings.bank.bic} onChange={(v) => setBank('bic', v)} />
-        <Field label="Zahlungsziel (Tage)">
-          <input
-            type="number"
-            min={0}
-            value={settings.paymentDays}
-            onChange={(e) => set('paymentDays', Number(e.target.value))}
+      {forInvoice && (
+        <section className="form-section">
+          <h3>Bankverbindung</h3>
+          <TextField label="Bank" value={settings.bank.name} onChange={(v) => setBank('name', v)} />
+          <TextField label="IBAN" value={settings.bank.iban} onChange={(v) => setBank('iban', v)} />
+          <TextField label="BIC" value={settings.bank.bic} onChange={(v) => setBank('bic', v)} />
+          <Field label="Zahlungsziel (Tage)">
+            <input
+              type="number"
+              min={0}
+              value={settings.paymentDays}
+              onChange={(e) => set('paymentDays', Number(e.target.value))}
+            />
+          </Field>
+          <TextField
+            label="Grund der Steuerbefreiung"
+            value={settings.exemptionReason}
+            onChange={(v) => set('exemptionReason', v)}
+            hint="Wird für Positionen mit 0 % (steuerbefreit) ausgewiesen."
           />
-        </Field>
-        <TextField
-          label="Grund der Steuerbefreiung"
-          value={settings.exemptionReason}
-          onChange={(v) => set('exemptionReason', v)}
-          hint="Wird für Positionen mit 0 % (steuerbefreit) ausgewiesen."
-        />
-      </section>
+        </section>
+      )}
 
       <section className="form-section">
         <h3>Design</h3>
@@ -132,7 +136,7 @@ export function SettingsForm({ settings, onChange }: Props) {
             ))}
           </select>
         </Field>
-        <Field label="Sprache der Rechnung">
+        <Field label="Sprache des Dokuments">
           <select value={settings.locale} onChange={(e) => set('locale', e.target.value)}>
             {LOCALES.map((l) => (
               <option key={l.value} value={l.value}>
@@ -145,33 +149,39 @@ export function SettingsForm({ settings, onChange }: Props) {
 
       <section className="form-section">
         <h3>Texte</h3>
-        <TextAreaField label="Einleitung" value={settings.intro} onChange={(v) => set('intro', v)} />
-        <TextAreaField label="Schlusstext" value={settings.closing} onChange={(v) => set('closing', v)} />
+        {forInvoice && (
+          <>
+            <TextAreaField label="Einleitung" value={settings.intro} onChange={(v) => set('intro', v)} />
+            <TextAreaField label="Schlusstext" value={settings.closing} onChange={(v) => set('closing', v)} />
+          </>
+        )}
         <TextAreaField label="Fußzeile" value={settings.footer} onChange={(v) => set('footer', v)} rows={2} />
       </section>
 
-      <section className="form-section">
-        <h3>E-Rechnung</h3>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={settings.zugferd}
-            onChange={(e) => set('zugferd', e.target.checked)}
-          />
-          ZUGFeRD / Factur-X einbetten (experimentell)
-        </label>
-        {settings.zugferd && (
-          <Field label="Profil">
-            <select value={settings.einvoiceProfile} onChange={(e) => set('einvoiceProfile', e.target.value)}>
-              {EINVOICE_PROFILES.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-        )}
-      </section>
+      {forInvoice && (
+        <section className="form-section">
+          <h3>E-Rechnung</h3>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={settings.zugferd}
+              onChange={(e) => set('zugferd', e.target.checked)}
+            />
+            ZUGFeRD / Factur-X einbetten (experimentell)
+          </label>
+          {settings.zugferd && (
+            <Field label="Profil">
+              <select value={settings.einvoiceProfile} onChange={(e) => set('einvoiceProfile', e.target.value)}>
+                {EINVOICE_PROFILES.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+        </section>
+      )}
     </div>
   )
 }

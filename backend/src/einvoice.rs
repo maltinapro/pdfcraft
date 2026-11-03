@@ -118,7 +118,7 @@ fn add_days((mut y, mut m, mut d): (i32, u32, u32), days: i64) -> (i32, u32, u32
     (y, m, d)
 }
 
-fn german_date((y, m, d): (i32, u32, u32)) -> String {
+pub(crate) fn german_date((y, m, d): (i32, u32, u32)) -> String {
     format!("{d:02}.{m:02}.{y}")
 }
 
@@ -260,6 +260,66 @@ fn electronic_address_element(out: &mut String, address: &Option<(&'static str, 
         element_attr(out, "ram:URIID", "schemeID", scheme, id);
         close(out, "ram:URIUniversalCommunication");
     }
+}
+
+/// Fills the display texts (`pos`, `qty`, `price`, `tax`, `net`) of already validated items and the
+/// `totals` of a non-invoice document (offer, order, credit note, ...). `negate` shows quantities
+/// and amounts with a negative sign (credit note). No XML is produced.
+pub fn describe_items(english: bool, items: &[Item], negate: bool, doc: &mut Value) {
+    let lines: Vec<Line> = items
+        .iter()
+        .map(|item| {
+            let key = item.unit.as_deref().unwrap_or("pcs");
+            let unit = UNITS.iter().find(|u| u.key == key).unwrap_or(&UNITS[0]);
+            let sign = if negate { -1 } else { 1 };
+            let (qty, price) = (fixed(item.quantity) * sign, fixed(item.price));
+            Line {
+                item,
+                unit,
+                qty,
+                price,
+                rate: item.tax_rate.unwrap_or(19.0) as i64,
+                net: div_round(qty * price, 1_000_000),
+            }
+        })
+        .collect();
+    let mut groups: Vec<TaxGroup> = Vec::new();
+    for line in &lines {
+        match groups.iter_mut().find(|g| g.rate == line.rate) {
+            Some(g) => g.basis += line.net,
+            None => groups.push(TaxGroup { rate: line.rate, basis: line.net, tax: 0 }),
+        }
+    }
+    for g in &mut groups {
+        g.tax = div_round(g.basis * g.rate as i128, 100);
+    }
+    let net: i128 = lines.iter().map(|l| l.net).sum();
+    let tax: i128 = groups.iter().map(|g| g.tax).sum();
+    if let Some(list) = doc["items"].as_array_mut() {
+        for (i, (item, line)) in list.iter_mut().zip(&lines).enumerate() {
+            let unit = if line.qty.abs() == 10_000 {
+                if english { line.unit.en.0 } else { line.unit.de.0 }
+            } else if english {
+                line.unit.en.1
+            } else {
+                line.unit.de.1
+            };
+            item["pos"] = json!((i + 1).to_string());
+            item["qty"] = json!(format!("{}{NBSP}{unit}", decimal(line.qty, 0, true)));
+            item["price"] = json!(format!("{}{NBSP}€", decimal(line.price, 2, true)));
+            item["tax"] = json!(format!("{}%", line.rate));
+            item["net"] = json!(format!("{}{NBSP}€", money(line.net)));
+        }
+    }
+    doc["totals"] = json!({
+        "net": format!("{}{NBSP}€", money(net)),
+        "gross": format!("{}{NBSP}€", money(net + tax)),
+        "taxes": groups.iter().filter(|g| g.rate != 0).map(|g| json!({
+            "rate": format!("{}%", g.rate),
+            "amount": format!("{}{NBSP}€", money(g.tax)),
+        })).collect::<Vec<_>>(),
+        "exempt": groups.iter().any(|g| g.rate == 0),
+    });
 }
 
 /// Computes everything the template and the e-invoice need. `settings` is the
