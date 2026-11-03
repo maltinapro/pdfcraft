@@ -1,4 +1,5 @@
 import { isObj } from './storage'
+import { tr } from './i18n'
 import { docSpec, type Doc, type DocDataKind, type DocKind } from './documents'
 import { newItem, type Invoice, type InvoiceItem } from './types'
 
@@ -25,16 +26,46 @@ export function grossTotal(items: InvoiceItem[]): number {
   return items.reduce((sum, i) => sum + i.quantity * i.price * (1 + i.taxRate / 100), 0)
 }
 
+function validEntries(parsed: unknown): ArchiveEntry[] {
+  if (!Array.isArray(parsed)) return []
+  return parsed.filter(
+    (e): e is ArchiveEntry =>
+      isObj(e) &&
+      typeof e.id === 'string' &&
+      typeof e.kind === 'string' &&
+      !!docSpec(e.kind) &&
+      isObj(e.kind === 'invoice' ? e.invoice : e.doc) &&
+      isObj((isObj(e.invoice) ? e.invoice : (e.doc as Record<string, unknown>)).recipient),
+  )
+}
+
 export function loadArchive(): ArchiveEntry[] {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
-    if (Array.isArray(parsed)) {
-      return parsed.filter((e): e is ArchiveEntry => isObj(e) && typeof e.id === 'string' && typeof e.kind === 'string' && !!docSpec(e.kind as string))
-    }
+    return validEntries(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null'))
   } catch {
-    // unreadable storage
+    return []
   }
-  return []
+}
+
+/** Archive backup file (`pdfcraft-archive.json`); sender settings are not part of it. */
+export function exportArchive(entries: ArchiveEntry[]): Blob {
+  return new Blob([JSON.stringify({ archiveVersion: 1, entries }, null, 2)], { type: 'application/json' })
+}
+
+/** Entries of a backup file that are not yet in `existing` (matched by id). */
+export async function importArchive(file: File, existing: ArchiveEntry[]): Promise<ArchiveEntry[]> {
+  if (file.size > 4 * 1024 * 1024) throw new Error(tr('Datei ist zu groß.', 'File is too large.'))
+  let json: unknown
+  try {
+    json = JSON.parse(await file.text())
+  } catch {
+    throw new Error(tr('Datei ist kein gültiges JSON.', 'File is not valid JSON.'))
+  }
+  if (!isObj(json) || json.archiveVersion !== 1) {
+    throw new Error(tr('Keine Archiv-Datei.', 'Not an archive file.'))
+  }
+  const known = new Set(existing.map((e) => e.id))
+  return validEntries(json.entries).filter((e) => !known.has(e.id))
 }
 
 export function saveArchive(entries: ArchiveEntry[]): boolean {

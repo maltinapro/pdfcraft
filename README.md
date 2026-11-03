@@ -14,7 +14,7 @@ A full-stack **PDF Template Builder** that combines simple form-based configurat
 
 ## Features
 
-- 🗂️ **Dashboard with document types** — invoice, credit note (Stornorechnung), offer, order confirmation, delivery note and letter (DIN 5008); each has its own Typst template and form, sender data and design are shared; issued documents are archived in the browser (cancel an invoice, create follow-up documents, bulk ZIP download); the UI is available in German and English (PDF language is a separate setting); credit notes can carry a ZUGFeRD/XRechnung XML (TypeCode 381)
+- 🗂️ **Dashboard with document types** — invoice, credit note (Stornorechnung), offer, order confirmation, delivery note and letter (DIN 5008); each has its own Typst template and form, sender data and design are shared; issued documents are archived in the browser (`localStorage`, form data only – no PDFs; backup via `pdfcraft-archive.json` export/import; cancel an invoice, create follow-up documents, bulk ZIP download); the UI is available in German and English (PDF language is a separate setting); credit notes can carry a ZUGFeRD/XRechnung XML (TypeCode 381)
 - 🧾 **Form-based invoice configurator** — fill in invoice, recipient and line items; settings cover logo, company address, bank details, accent color, font, footer and texts
 - 🖼️ **Logo upload** (PNG/JPG/SVG, ≤ 300 KB) sent to the backend as a base64 asset
 - 💾 **Persistence** — settings and invoice draft are auto-saved in the browser (`localStorage`, versioned `schemaVersion`); export/import as JSON, reset to defaults

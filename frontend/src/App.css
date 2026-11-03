@@ -710,3 +710,4 @@ input[type='color'] {
   display: inline-flex;
   gap: 2px;
 }
+.archive-backup { margin-top: 0.75rem; }

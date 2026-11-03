@@ -16,6 +16,8 @@ interface Props {
   archive: ArchiveEntry[]
   /** Numbers of invoices that already have a credit note. */
   cancelled: Set<string>
+  onExportArchive: () => void
+  onImportArchive: (file: File | undefined) => void
   onFollowUp: (entry: ArchiveEntry, target: DocKind) => void
   onBulk: (kind: DocKind, entries: ArchiveEntry[]) => Promise<void>
   onDeleteEntries: (ids: string[]) => void
@@ -30,12 +32,15 @@ export function Dashboard({
   onReset,
   archive,
   cancelled,
+  onExportArchive,
+  onImportArchive,
   onFollowUp,
   onBulk,
   onDeleteEntries,
 }: Props) {
   useLang()
   const importRef = useRef<HTMLInputElement>(null)
+  const archiveImportRef = useRef<HTMLInputElement>(null)
   const [filter, setFilter] = useState<DocKind | 'all'>('all')
   const [selected, setSelected] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
@@ -151,6 +156,20 @@ export function Dashboard({
               </ul>
             </>
           )}
+          <div className="archive-toolbar archive-backup">
+            <button className="btn" onClick={() => archiveImportRef.current?.click()}>{tr('Archiv importieren', 'Import archive')}</button>
+            <input
+              ref={archiveImportRef}
+              type="file"
+              accept="application/json,.json"
+              hidden
+              onChange={(e) => {
+                onImportArchive(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+            <button className="btn" disabled={archive.length === 0} onClick={onExportArchive}>{tr('Archiv exportieren', 'Export archive')}</button>
+          </div>
         </section>
 
         <section className="dashboard-data">

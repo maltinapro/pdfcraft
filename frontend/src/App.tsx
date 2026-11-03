@@ -10,6 +10,8 @@ import {
   followUpDraft,
   incrementNumber,
   loadArchive,
+  exportArchive,
+  importArchive,
   makeEntry,
   saveArchive,
   type ArchiveEntry,
@@ -96,6 +98,29 @@ export default function App() {
     return () => window.clearTimeout(timer)
   }, [settings, invoice, drafts])
 
+  const downloadArchive = useCallback(() => {
+    const url = URL.createObjectURL(exportArchive(archive))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'pdfcraft-archive.json'
+    link.click()
+    URL.revokeObjectURL(url)
+  }, [archive])
+
+  const uploadArchive = useCallback(
+    async (file: File | undefined) => {
+      if (!file) return
+      try {
+        const added = await importArchive(file, archive)
+        setArchive((current) => [...current, ...added].sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)))
+        setNotice(tr(`${added.length} Beleg(e) importiert.`, `${added.length} document(s) imported.`))
+      } catch (e) {
+        setNotice(e instanceof Error ? e.message : String(e))
+      }
+    },
+    [archive],
+  )
+
   const exportJson = useCallback(() => {
     const url = URL.createObjectURL(exportConfig(settings, invoice))
     const link = document.createElement('a')
@@ -142,6 +167,8 @@ export default function App() {
         onReset={reset}
         archive={archive}
         cancelled={cancelledNumbers(archive)}
+        onExportArchive={downloadArchive}
+        onImportArchive={(file) => void uploadArchive(file)}
         onFollowUp={followUp}
         onBulk={bulk}
         onDeleteEntries={(ids) => setArchive((a) => a.filter((e) => !ids.includes(e.id)))}
