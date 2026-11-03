@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/public/logo-wide.png" alt="PDFCraft – digitalrechnung.jetzt" width="360" />
+</p>
+
 # PDFCraft — Visual PDF Template Builder
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -13,6 +17,7 @@ A full-stack **PDF Template Builder** that combines a simple form-based invoice 
 - 🧾 **Form-based invoice configurator** — fill in invoice, recipient and line items; settings cover logo, company address, bank details, accent color, font, footer and texts
 - 🖼️ **Logo upload** (PNG/JPG/SVG, ≤ 300 KB) sent to the backend as a base64 asset
 - 💾 **Persistence** — settings and invoice draft are auto-saved in the browser (`localStorage`, versioned `schemaVersion`); export/import as JSON, reset to defaults
+- 🎨 **Branded UI** — PDFCraft logo, favicon set and a modern landing page and configurator design (brand colors navy/orange/violet)
 - 🌙 **Dark mode** — follows the browser/OS setting (`prefers-color-scheme`); the configurator header has a toggle that is remembered in `localStorage` (`pdfcraft.theme`); the landing page follows the system setting
 - 👀 **Live PDF preview** — debounced re-render via the backend, shown in an iframe
 - 📐 **Typst-quality PDF output** via `typst-as-lib` + `typst-pdf` — no local Typst installation needed

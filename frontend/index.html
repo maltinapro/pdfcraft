@@ -19,7 +19,7 @@
       property="og:description"
       content="PDF-Rechnungen mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung) per Formular erstellen. Open Source."
     />
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -30,25 +30,46 @@
         "operatingSystem": "Web",
         "inLanguage": "de",
         "description": "Rechnungen per Formular erstellen: PDF mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung).",
+        "image": "https://digitalrechnung.jetzt/og-image.png",
         "sameAs": ["https://github.com/maltinapro/pdfcraft"],
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
       }
     </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#241259" />
+    <meta property="og:image" content="https://digitalrechnung.jetzt/og-image.png" />
+    <meta name="twitter:image" content="https://digitalrechnung.jetzt/og-image.png" />
     <link rel="stylesheet" href="/src/landing.css" />
   </head>
   <body>
     <div class="banner">Demo-System – bitte keine echten Kundendaten eingeben.</div>
 
     <header class="hero">
-      <p class="lead">
-        Digitale Rechnungen online erstellen, jetzt schnell und einfach.
-      </p>
-      <h1>Digitalrechnung, jetzt!</h1>
-      <a class="button" href="/app/">Demo ausprobieren</a>
-      <a class="button secondary" href="https://github.com/maltinapro/pdfcraft">Quellcode auf GitHub</a>
+      <div class="hero-text">
+        <ul class="badges">
+          <li>ZUGFeRD</li>
+          <li>XRechnung</li>
+          <li>Open Source</li>
+        </ul>
+        <h1>Digitalrechnung, <span>jetzt!</span></h1>
+        <p class="lead">Digitale Rechnungen online erstellen, jetzt schnell und einfach.</p>
+        <a class="button" href="/app/">Demo ausprobieren</a>
+        <a class="button secondary" href="https://github.com/maltinapro/pdfcraft">Quellcode auf GitHub</a>
+      </div>
+      <img class="hero-logo" src="/logo-wide.png" width="360" height="232" alt="PDFCraft – digitalrechnung.jetzt" />
     </header>
 
     <main>
+      <ol class="steps">
+        <li><strong>Formular ausfüllen</strong><span>Logo, Anschrift, Empfänger und Positionen.</span></li>
+        <li><strong>Live-Vorschau</strong><span>Das PDF aktualisiert sich bei jeder Eingabe.</span></li>
+        <li><strong>PDF mit E-Rechnung</strong><span>ZUGFeRD oder XRechnung eingebettet, ohne Konto.</span></li>
+      </ol>
+
       <section>
         <h2>Was ist das hier?</h2>
         <p>
@@ -85,6 +106,7 @@
         <h2>Funktionen</h2>
         <div class="cards">
           <article>
+            <div class="icon" aria-hidden="true">🧾</div>
             <h3>ZUGFeRD &amp; XRechnung</h3>
             <p>
               PDF/A-3 mit eingebettetem XML (EN 16931 bzw. XRechnung), geprüft mit dem
@@ -92,6 +114,7 @@
             </p>
           </article>
           <article>
+            <div class="icon" aria-hidden="true">📦</div>
             <h3>Bulk-Rechnungen</h3>
             <p>
               Über die REST-API lassen sich viele Rechnungen in einem Request erzeugen und als
@@ -99,6 +122,7 @@
             </p>
           </article>
           <article>
+            <div class="icon" aria-hidden="true">🔓</div>
             <h3>Open Source</h3>
             <p>
               Das Projekt ist quelloffen (MIT-Lizenz). Du kannst es selbst betreiben, prüfen und
@@ -112,6 +136,9 @@
         <h2>Neuigkeiten</h2>
         <p>Aktuelle Version: <strong>__APP_VERSION__</strong></p>
         <ul>
+          <li>
+            Neues <strong>Logo</strong>, Favicon und ein modernes <strong>Design</strong> für Landing Page und Konfigurator.
+          </li>
           <li>
             Mehr <strong>Schriftarten</strong> für die Rechnung: Carlito (Calibri-kompatibel), Open
             Sans, Roboto, Lato und DejaVu Sans. Liberation Sans wird jetzt tatsächlich verwendet.
