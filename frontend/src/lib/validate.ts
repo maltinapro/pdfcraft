@@ -32,6 +32,7 @@ export function validateInvoice(settings: Settings, invoice: Invoice): Issue[] {
   const s = settings.sender
   if (blank(s.name) || blank(s.address) || blank(s.city)) err(tr('Absender: Name, Straße und PLZ/Ort sind Pflicht.', 'Sender: name, street and postcode/city are required.'))
   if (blank(s.taxNr) && blank(s.vatId)) err(tr('Absender: Steuernummer oder USt-IdNr. ist Pflicht.', 'Sender: tax number or VAT ID is required.'))
+  if (!blank(s.taxNr) && blank(s.vatId)) warn(tr('Absender: Mit nur einer Steuernummer meldet der Validator BR-CO-26 – für eine voll gültige E-Rechnung die USt-IdNr. angeben.', 'Sender: with only a tax number the validator reports BR-CO-26 – enter the VAT ID for a fully valid e-invoice.'))
   if (blank(s.email) && blank(s.vatId)) warn(tr('Absender: E-Mail oder USt-IdNr. fehlt (Peppol-Adresse).', 'Sender: e-mail or VAT ID is missing (Peppol address).'))
   if (settings.paymentDays < 1) err(tr('Zahlungsziel muss mindestens 1 Tag betragen.', 'Payment term must be at least 1 day.'))
   if (blank(settings.bank.iban)) err(tr('Bankverbindung: IBAN fehlt.', 'Bank details: IBAN is missing.'))
