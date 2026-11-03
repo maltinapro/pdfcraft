@@ -240,7 +240,7 @@ const followUps = (): Record<DocKind, { to: DocKind; label: string }[]> => ({
     { to: 'invoice', label: tr('Rechnung', 'Invoice') },
   ],
   'delivery-note': [{ to: 'invoice', label: tr('Rechnung', 'Invoice') }],
-  invoice: [{ to: 'credit-note', label: tr('Stornieren', 'Cancel') }],
+  invoice: [{ to: 'credit-note', label: tr('Stornieren', 'Issue credit note') }],
   'credit-note': [],
   letter: [],
 })
