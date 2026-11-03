@@ -6,7 +6,7 @@
     <title>E-Rechnung erstellen – ZUGFeRD &amp; XRechnung | Digitalrechnung jetzt</title>
     <meta
       name="description"
-      content="Rechnungen per Formular erstellen: PDF mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung), Logo, Live-Vorschau. Open Source, ohne Konto."
+      content="Rechnungen, Stornorechnungen, Angebote, Aufträge, Lieferscheine und Briefe per Formular erstellen: PDF mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung), Logo, Live-Vorschau. Open Source, ohne Konto."
     />
     <link rel="canonical" href="https://digitalrechnung.jetzt/" />
     <meta name="robots" content="index, follow" />
@@ -17,7 +17,7 @@
     <meta property="og:title" content="Digitalrechnung jetzt – E-Rechnung online erstellen" />
     <meta
       property="og:description"
-      content="PDF-Rechnungen mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung) per Formular erstellen. Open Source."
+      content="Rechnungen, Gutschriften, Angebote, Aufträge, Lieferscheine und Briefe als PDF erstellen – mit E-Rechnung (ZUGFeRD/Factur-X, XRechnung), Massenerstellung und DE/EN. Open Source."
     />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -26,7 +26,7 @@
     <meta name="twitter:title" content="Digitalrechnung jetzt – E-Rechnung online erstellen" />
     <meta
       name="twitter:description"
-      content="PDF-Rechnungen mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung) per Formular erstellen. Open Source."
+      content="Rechnungen, Gutschriften, Angebote, Aufträge, Lieferscheine und Briefe als PDF erstellen – mit E-Rechnung (ZUGFeRD/Factur-X, XRechnung), Massenerstellung und DE/EN. Open Source."
     />
     <script type="application/ld+json">
       {
@@ -36,12 +36,12 @@
         "url": "https://digitalrechnung.jetzt/",
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "Web",
-        "inLanguage": "de",
-        "description": "Rechnungen per Formular erstellen: PDF mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung).",
+        "inLanguage": ["de", "en"],
+        "description": "Rechnungen, Stornorechnungen, Angebote, Aufträge, Lieferscheine und Briefe per Formular erstellen – PDF mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung).",
         "image": "https://digitalrechnung.jetzt/og-image.png",
         "sameAs": ["https://github.com/maltinapro/pdfcraft"],
         "isAccessibleForFree": true,
-        "featureList": ["ZUGFeRD / Factur-X", "XRechnung", "Live-Vorschau", "REST-API", "Open Source"],
+        "featureList": ["ZUGFeRD / Factur-X", "XRechnung", "Gutschriften, Angebote, Aufträge, Lieferscheine, Briefe", "Massenerstellung (ZIP)", "Deutsch / Englisch", "Live-Vorschau", "REST-API", "Open Source"],
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
       }
     </script>
@@ -66,7 +66,7 @@
           <li>Open Source</li>
         </ul>
         <h1>Digitalrechnung, <span>jetzt!</span></h1>
-        <p class="lead">E-Rechnungen (ZUGFeRD &amp; XRechnung) online erstellen – schnell und einfach.</p>
+        <p class="lead">E-Rechnungen (ZUGFeRD &amp; XRechnung) und weitere Geschäftsdokumente online erstellen – schnell und einfach.</p>
         <a class="button" href="/app/">Demo ausprobieren</a>
         <a class="button secondary" href="https://github.com/maltinapro/pdfcraft">Quellcode auf GitHub</a>
       </div>
@@ -75,7 +75,7 @@
 
     <main>
       <ol class="steps">
-        <li><strong>Formular ausfüllen</strong><span>Logo, Anschrift, Empfänger und Positionen.</span></li>
+        <li><strong>Dokument wählen &amp; ausfüllen</strong><span>Rechnung, Angebot, Lieferschein &amp; Co. mit Logo, Anschrift und Positionen.</span></li>
         <li><strong>Live-Vorschau</strong><span>Das PDF aktualisiert sich bei jeder Eingabe.</span></li>
         <li><strong>PDF mit E-Rechnung</strong><span>ZUGFeRD oder XRechnung eingebettet, ohne Konto.</span></li>
       </ol>
@@ -84,7 +84,7 @@
         <h2>Was ist das hier?</h2>
         <p>
           Diese Seite ist ein <strong>Demo-System</strong>. Du kannst hier ausprobieren, wie sich
-          Rechnungen per Formular zusammenklicken lassen: Logo, Firmenanschrift, Positionen und
+          Rechnungen, Stornorechnungen, Angebote, Auftragsbestätigungen, Lieferscheine und Briefe per Formular zusammenklicken lassen: Logo, Firmenanschrift, Positionen und
           ein paar Gestaltungsoptionen – die Vorschau aktualisiert sich live. Deine Eingaben
           bleiben im Browser gespeichert und lassen sich als JSON sichern und wieder einlesen.
         </p>
@@ -125,9 +125,9 @@
           </article>
           <article>
             <div class="icon" aria-hidden="true">📦</div>
-            <h3>Bulk-Rechnungen</h3>
+            <h3>Bulk-Erzeugung</h3>
             <p>
-              Über die REST-API lassen sich viele Rechnungen in einem Request erzeugen und als
+              Über die REST-API lassen sich viele Dokumente jeder Art in einem Request erzeugen und als
               ZIP abholen – mit Token und Rate-Limit pro Kunde.
             </p>
           </article>
@@ -146,6 +146,15 @@
         <h2>Neuigkeiten</h2>
         <p>Aktuelle Version: <strong>__APP_VERSION__</strong></p>
         <ul>
+          <li>
+            Der Konfigurator ist jetzt <strong>zweisprachig</strong> (Deutsch/Englisch, Umschalter oben
+            rechts). Die Sprache der PDFs wird weiterhin separat unter „Dokumentsprache“ gewählt.
+          </li>
+          <li>
+            <strong>Beleg-Archiv</strong> im Konfigurator: Rechnungen stornieren, Folgebelege erstellen
+            (Angebot → Auftrag → Lieferschein → Rechnung) und mehrere PDFs als ZIP laden – für alle
+            Dokumentarten. Stornorechnungen enthalten jetzt auch ZUGFeRD/XRechnung.
+          </li>
           <li>
             Neue <strong>Dokumentarten</strong>: Stornorechnung, Angebot, Auftragsbestätigung, Lieferschein
             und Brief – auswählbar über die neue Übersicht im Konfigurator.
@@ -169,8 +178,9 @@
         <h2>Wie geht es weiter?</h2>
         <ul>
           <li>
-            Aktuell sind <strong>Rechnungen</strong> umgesetzt. <strong>Weitere PDF-Dokumente</strong>
-            (etwa Angebote, Lieferscheine oder Berichte) sollen folgen.
+            Aktuell gibt es <strong>Rechnung, Stornorechnung, Angebot, Auftragsbestätigung,
+            Lieferschein und Brief</strong>. <strong>Weitere PDF-Dokumente</strong> (etwa Mahnungen
+            oder Berichte) können folgen.
           </li>
           <li>
             Bei Bedarf können <strong>individuelle PDF-Vorlagen</strong> für dich erstellt werden.

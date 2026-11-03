@@ -1,3 +1,4 @@
+import { tr } from './i18n'
 import {
   DEFAULT_SETTINGS,
   MAX_LOGO_BYTES,
@@ -44,11 +45,11 @@ function parseLogo(input: unknown): Logo | null {
 
 /** Validates unknown JSON and migrates older schema versions. Throws on unusable input. */
 export function parseConfig(raw: unknown): AppConfig {
-  if (!isObj(raw)) throw new Error('Ungültige Konfigurationsdatei.')
+  if (!isObj(raw)) throw new Error(tr('Ungültige Konfigurationsdatei.', 'Invalid configuration file.'))
   const version = raw.schemaVersion
   if (typeof version !== 'number' || version < 1) throw new Error('Unbekannte Schema-Version.')
   if (version > SCHEMA_VERSION) {
-    throw new Error(`Konfiguration stammt aus einer neueren Version (${version}).`)
+    throw new Error(tr(`Konfiguration stammt aus einer neueren Version (${version}).`, `Configuration comes from a newer version (${version}).`))
   }
   // Migrations for older versions go here, one step per version.
 
@@ -102,12 +103,12 @@ export function exportConfig(settings: Settings, invoice: Invoice): Blob {
 }
 
 export async function importConfig(file: File): Promise<AppConfig> {
-  if (file.size > 1024 * 1024) throw new Error('Datei ist zu groß.')
+  if (file.size > 1024 * 1024) throw new Error(tr('Datei ist zu groß.', 'File is too large.'))
   let json: unknown
   try {
     json = JSON.parse(await file.text())
   } catch {
-    throw new Error('Datei ist kein gültiges JSON.')
+    throw new Error(tr('Datei ist kein gültiges JSON.', 'File is not valid JSON.'))
   }
   return parseConfig(json)
 }

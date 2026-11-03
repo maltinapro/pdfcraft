@@ -1,3 +1,4 @@
+import { tr } from './i18n'
 import type { Doc, DocKind } from './documents'
 import type { Invoice, Settings } from './types'
 
@@ -58,12 +59,18 @@ function fetchFreeToken(): Promise<string> {
     })
     if (response.status === 403) {
       throw new Error(
-        'Keine Anubis-Prüfung gefunden (403). Bitte die Seite neu laden und die Browser-Prüfung lösen.',
+        tr(
+          'Keine Anubis-Prüfung gefunden (403). Bitte die Seite neu laden und die Browser-Prüfung lösen.',
+          'No Anubis check found (403). Please reload the page and complete the browser check.',
+        ),
       )
     }
     if (response.status === 409) {
       throw new Error(
-        'Für diese Browser-Prüfung wurde bereits ein Token ausgegeben (409). Cookie „techaro.lol-anubis-auth“ löschen oder ein privates Fenster nutzen und neu laden.',
+        tr(
+          'Für diese Browser-Prüfung wurde bereits ein Token ausgegeben (409). Cookie „techaro.lol-anubis-auth“ löschen oder ein privates Fenster nutzen und neu laden.',
+          'A token has already been issued for this browser check (409). Delete the cookie "techaro.lol-anubis-auth" or use a private window and reload.',
+        ),
       )
     }
     if (!response.ok) throw new Error(await errorMessage(response))
@@ -101,7 +108,9 @@ async function requestBlob(path: string, payload: unknown, signal?: AbortSignal)
 
   if (response.status === 429) {
     const wait = response.headers.get('Retry-After')
-    throw new Error(`Zu viele Anfragen${wait ? `, bitte ${wait} s warten` : ''}.`)
+    throw new Error(
+      tr(`Zu viele Anfragen${wait ? `, bitte ${wait} s warten` : ''}.`, `Too many requests${wait ? `, please wait ${wait} s` : ''}.`),
+    )
   }
   if (!response.ok) throw new Error(await errorMessage(response))
   return response.blob()
@@ -120,4 +129,16 @@ export function requestDocument(
   signal?: AbortSignal,
 ): Promise<Blob> {
   return requestBlob('/v1/documents', { type: kind, settings, document }, signal)
+}
+
+/** Renders many documents of one type into a ZIP (`/v1/invoices/bulk` or `/v1/documents/bulk`). */
+export function requestBulk(
+  kind: DocKind,
+  settings: Settings,
+  documents: (Invoice | Doc)[],
+  signal?: AbortSignal,
+): Promise<Blob> {
+  return kind === 'invoice'
+    ? requestBlob('/v1/invoices/bulk', { settings, invoices: documents }, signal)
+    : requestBlob('/v1/documents/bulk', { type: kind, settings, documents }, signal)
 }

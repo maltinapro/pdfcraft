@@ -52,7 +52,7 @@ Both Anubis and the backend read their value from this Secret. A single combined
 
 ## Watermark
 
-For free tokens the backend adds `settings.watermark = "Entwurf"` to the request. `frontend/src/template/invoice.typ` renders it as a grey diagonal background text on every page. Purchased tokens never get it.
+For free tokens the backend adds `settings.watermark` (`"Entwurf"`, or `"Draft"` when the document language is English) to the request. It applies to all document types. `frontend/src/template/invoice.typ` renders it as a grey diagonal background text on every page. Purchased tokens never get it.
 
 ## Test locally (Docker)
 

@@ -1,3 +1,5 @@
+import { tr } from './i18n'
+
 export interface Sender {
   name: string
   address: string
@@ -79,27 +81,27 @@ export const FONTS = [
 ] as const
 
 export const LOCALES = [
-  { value: 'de-de', label: 'Deutsch' },
-  { value: 'en-de', label: 'English' },
+  { value: 'de-de', get label() { return tr('Deutsch', 'German') } },
+  { value: 'en-de', get label() { return tr('English', 'English') } },
 ] as const
 
 export const UNITS = [
-  { value: 'pcs', label: 'Stück' },
-  { value: 'h', label: 'Stunden' },
-  { value: 'd', label: 'Tage' },
-  { value: 'mo', label: 'Monate' },
-  { value: 'y', label: 'Jahre' },
-  { value: 'flat', label: 'Pauschal' },
+  { value: 'pcs', get label() { return tr('Stück', 'Pieces') } },
+  { value: 'h', get label() { return tr('Stunden', 'Hours') } },
+  { value: 'd', get label() { return tr('Tage', 'Days') } },
+  { value: 'mo', get label() { return tr('Monate', 'Months') } },
+  { value: 'y', get label() { return tr('Jahre', 'Years') } },
+  { value: 'flat', get label() { return tr('Pauschal', 'Flat rate') } },
   { value: 'kg', label: 'kg' },
   { value: 'm', label: 'm' },
   { value: 'km', label: 'km' },
   { value: 'm2', label: 'm²' },
-  { value: 'l', label: 'Liter' },
+  { value: 'l', get label() { return tr('Liter', 'Litres') } },
 ] as const
 
 export const EINVOICE_PROFILES = [
-  { value: 'en16931', label: 'ZUGFeRD / Factur-X (EN 16931, Unternehmen)' },
-  { value: 'xrechnung', label: 'XRechnung (Behörden)' },
+  { value: 'en16931', get label() { return tr('ZUGFeRD / Factur-X (EN 16931, Unternehmen)', 'ZUGFeRD / Factur-X (EN 16931, businesses)') } },
+  { value: 'xrechnung', get label() { return tr('XRechnung (Behörden)', 'XRechnung (public authorities)') } },
 ] as const
 
 export const TAX_RATES = [19, 7, 0] as const

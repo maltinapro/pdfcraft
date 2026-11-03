@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { tr } from '../lib/i18n'
 import { applyTheme, storedTheme, systemTheme, type Theme } from '../lib/theme'
 
 export function ThemeToggle() {
@@ -26,8 +27,12 @@ export function ThemeToggle() {
     <button
       className="btn"
       onClick={toggle}
-      aria-label={theme === 'dark' ? 'Helles Design aktivieren' : 'Dunkles Design aktivieren'}
-      title={theme === 'dark' ? 'Helles Design' : 'Dunkles Design'}
+      aria-label={
+        theme === 'dark'
+          ? tr('Helles Design aktivieren', 'Switch to light theme')
+          : tr('Dunkles Design aktivieren', 'Switch to dark theme')
+      }
+      title={theme === 'dark' ? tr('Helles Design', 'Light theme') : tr('Dunkles Design', 'Dark theme')}
     >
       {theme === 'dark' ? '☀️' : '🌙'}
     </button>

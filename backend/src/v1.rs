@@ -33,7 +33,7 @@ fn document(
     mut checked: serde_json::Value,
     mut assets: Vec<(String, Vec<u8>)>,
 ) -> (serde_json::Value, Vec<(String, Vec<u8>)>) {
-    let prepared = einvoice::prepare(raw, &settings, invoice, &mut checked);
+    let prepared = einvoice::prepare(raw, &settings, invoice, &mut checked, None);
     let mut data = json!({ "settings": settings, "invoice": checked });
     if let (Some(data), Some(extra)) = (data.as_object_mut(), prepared.extra.as_object()) {
         data.extend(extra.clone());
@@ -77,8 +77,8 @@ async fn sample_document(kind: Kind) {
         tracing::warn!(event = "warm_up_skipped", document = kind.slug(), errors = ?errors.0);
         return;
     }
-    let data = json!({ "settings": settings.data, "doc": doc });
-    if let Err(e) = render_pdf(&kind.template(), data, Vec::new()).await {
+    let (data, assets) = documents::build(kind, &raw_settings, settings.data, &raw_doc, doc, Vec::new());
+    if let Err(e) = render_pdf(&kind.template(), data, assets).await {
         tracing::warn!(event = "warm_up_failed", document = kind.slug(), error = ?e.details);
     }
 }
@@ -138,6 +138,7 @@ pub fn router() -> Router {
         .route("/invoices", post(single))
         .route("/invoices/bulk", post(bulk))
         .route("/documents", post(document_single))
+        .route("/documents/bulk", post(document_bulk))
         .layer(middleware::from_fn(auth));
     // Free tokens are issued against an Anubis pass instead of a token
     // Purchase hand-over (Stripe): only answers while PAID_TOKENS_ENABLED
@@ -239,11 +240,12 @@ async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiError> {
     }
 }
 
-/// PDFs created with a free token get a diagonal "Entwurf" (draft) watermark.
+/// PDFs created with a free token get a diagonal "Entwurf" / "Draft" watermark (by document language).
 fn with_watermark(client: &Client, mut settings: serde_json::Value) -> serde_json::Value {
     if client.kind == store::Kind::Free {
         if let Some(obj) = settings.as_object_mut() {
-            obj.insert("watermark".into(), "Entwurf".into());
+            let english = obj.get("locale").and_then(|v| v.as_str()) == Some("en-de");
+            obj.insert("watermark".into(), if english { "Draft" } else { "Entwurf" }.into());
         }
     }
     settings
@@ -328,45 +330,81 @@ struct DocumentRequest {
     document: Document,
 }
 
-/// Credit note, offer, order confirmation, delivery note or letter (`type` selects the template).
-async fn document_single(
-    Extension(client): Extension<Client>,
-    payload: Result<Json<DocumentRequest>, JsonRejection>,
-) -> Result<Response, ApiError> {
-    let Json(req) = payload.map_err(bad_json)?;
-    let kind = Kind::parse(&req.kind).ok_or_else(|| {
+/// Validates one document and renders it to PDF.
+async fn render_document(
+    client: &Client,
+    kind: Kind,
+    raw: &Settings,
+    settings: &crate::invoice::CheckedSettings,
+    doc: &Document,
+    path: &str,
+    errors: &mut Errors,
+) -> Option<Result<Vec<u8>, ApiError>> {
+    let english = settings.data["locale"] == "en-de";
+    let before = errors.0.len();
+    let checked = documents::check_document(kind, doc, english, errors);
+    if errors.0.len() > before {
+        for e in errors.0.iter_mut().skip(before) {
+            *e = e.replacen("document", path, 1);
+        }
+        return None;
+    }
+    let assets = match logo_assets(settings.logo.clone()) {
+        Ok(a) => a,
+        Err(e) => return Some(Err(e)),
+    };
+    let (data, assets) = documents::build(kind, raw, with_watermark(client, settings.data.clone()), doc, checked, assets);
+    Some(render_pdf(&kind.template(), data, assets).await)
+}
+
+fn parse_kind(value: &str) -> Result<Kind, ApiError> {
+    Kind::parse(value).ok_or_else(|| {
         let allowed: Vec<&str> = Kind::ALL.iter().map(|k| k.slug()).collect();
         ApiError::new(
             StatusCode::BAD_REQUEST,
             "invalid_request",
             format!("`type` must be one of: {}", allowed.join(", ")),
         )
-    })?;
-    take_tokens(&client, 1).await?;
+    })
+}
 
-    let mut errors = Errors::default();
-    let settings = check_settings(&req.settings, &mut errors);
-    let english = settings.data["locale"] == "en-de";
-    let doc = documents::check_document(kind, &req.document, english, &mut errors);
-    if !errors.0.is_empty() {
-        return Err(validation_error(errors));
-    }
-    let assets = logo_assets(settings.logo)?;
-    let data = json!({ "settings": with_watermark(&client, settings.data), "doc": doc });
-    let started = std::time::Instant::now();
-    let pdf = render_pdf(&kind.template(), data, assets).await?;
-    crate::metrics::observe_pdf(&client, started.elapsed().as_secs_f64(), pdf.len());
-    crate::metrics::invoices_generated(&client, kind.slug(), 1);
+fn log_generated(client: &Client, endpoint: &str, count: usize, started: std::time::Instant, size: usize) {
+    crate::metrics::invoices_generated(client, endpoint, count);
     tracing::info!(
         event = "invoice_generated",
-        endpoint = kind.slug(),
-        invoices = 1,
+        endpoint,
+        invoices = count,
         token_id = %client.id,
         token_kind = client.kind.label(),
         token_plan = %client.plan,
         duration_ms = started.elapsed().as_secs_f64() * 1000.0,
-        size_bytes = pdf.len(),
+        size_bytes = size,
     );
+}
+
+/// Credit note, offer, order confirmation, delivery note or letter (`type` selects the template).
+async fn document_single(
+    Extension(client): Extension<Client>,
+    payload: Result<Json<DocumentRequest>, JsonRejection>,
+) -> Result<Response, ApiError> {
+    let Json(req) = payload.map_err(bad_json)?;
+    let kind = parse_kind(&req.kind)?;
+    take_tokens(&client, 1).await?;
+
+    let mut errors = Errors::default();
+    let settings = check_settings(&req.settings, &mut errors);
+    if !errors.0.is_empty() {
+        return Err(validation_error(errors));
+    }
+    let started = std::time::Instant::now();
+    let result = render_document(&client, kind, &req.settings, &settings, &req.document, "document", &mut errors).await;
+    let Some(result) = result else { return Err(validation_error(errors)) };
+    if !errors.0.is_empty() {
+        return Err(validation_error(errors));
+    }
+    let pdf = result?;
+    crate::metrics::observe_pdf(&client, started.elapsed().as_secs_f64(), pdf.len());
+    log_generated(&client, kind.slug(), 1, started, pdf.len());
     let disposition = format!("attachment; filename=\"{}\"", documents::file_name(kind, &req.document));
     Ok((
         StatusCode::OK,
@@ -375,6 +413,77 @@ async fn document_single(
             (header::CONTENT_DISPOSITION, disposition),
         ],
         pdf,
+    )
+        .into_response())
+}
+
+#[derive(Deserialize)]
+struct DocumentBulkRequest {
+    #[serde(rename = "type")]
+    kind: String,
+    settings: Settings,
+    documents: Vec<Document>,
+}
+
+/// Many documents of one type with shared settings -> ZIP.
+async fn document_bulk(
+    Extension(client): Extension<Client>,
+    payload: Result<Json<DocumentBulkRequest>, JsonRejection>,
+) -> Result<Response, ApiError> {
+    let Json(req) = payload.map_err(bad_json)?;
+    let kind = parse_kind(&req.kind)?;
+    let max = config::get().bulk_max_invoices;
+    if req.documents.is_empty() || req.documents.len() > max {
+        return Err(ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "invalid_request",
+            format!("`documents` needs 1 to {max} entries"),
+        ));
+    }
+    take_tokens(&client, req.documents.len()).await?;
+
+    let mut errors = Errors::default();
+    let settings = check_settings(&req.settings, &mut errors);
+    if !errors.0.is_empty() {
+        return Err(validation_error(errors));
+    }
+    let started = std::time::Instant::now();
+    let mut pdfs = Vec::new();
+    for (i, doc) in req.documents.iter().enumerate() {
+        let path = format!("documents[{i}]");
+        match render_document(&client, kind, &req.settings, &settings, doc, &path, &mut errors).await {
+            Some(Ok(pdf)) => pdfs.push(pdf),
+            Some(Err(mut e)) => {
+                e.details = format!("{path}: {}", e.details);
+                return Err(e);
+            }
+            None => {}
+        }
+    }
+    if !errors.0.is_empty() {
+        return Err(validation_error(errors));
+    }
+
+    let size = pdfs.iter().map(Vec::len).sum::<usize>();
+    log_generated(&client, &format!("{}-bulk", kind.slug()), pdfs.len(), started, size);
+    crate::metrics::get().bulk_size.observe(pdfs.len() as f64);
+    let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    let mut used = HashSet::new();
+    let zip_err = |e: String| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "zip_error", e);
+    for (i, pdf) in pdfs.iter().enumerate() {
+        zip.start_file(documents::zip_name(kind, &req.documents[i], i, &mut used), options)
+            .map_err(|e| zip_err(e.to_string()))?;
+        zip.write_all(pdf).map_err(|e| zip_err(e.to_string()))?;
+    }
+    let bytes = zip.finish().map_err(|e| zip_err(e.to_string()))?.into_inner();
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/zip".to_string()),
+            (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}.zip\"", kind.slug())),
+        ],
+        bytes,
     )
         .into_response())
 }
@@ -487,7 +596,8 @@ mod tests {
     async fn renders_every_document_type() {
         for kind in Kind::ALL {
             let settings: Settings = serde_json::from_value(json!({
-                "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt", "email": "a@b.de"},
+                "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt", "email": "a@b.de", "vatId": "DE123456789"},
+                "bank": {"iban": "DE89370400440532013000"},
                 "footer": "Muster GmbH · Musterstr. 1",
             }))
             .unwrap();
@@ -506,9 +616,11 @@ mod tests {
             let s = check_settings(&settings, &mut errors);
             let doc = documents::check_document(kind, &raw, false, &mut errors);
             assert!(errors.0.is_empty(), "{:?}", errors.0);
-            let data = json!({ "settings": s.data, "doc": doc });
-            let pdf = render_pdf(&kind.template(), data, Vec::new()).await.unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details));
+            let (data, assets) = documents::build(kind, &settings, s.data, &raw, doc, Vec::new());
+            let pdf = render_pdf(&kind.template(), data, assets).await.unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details));
             assert!(pdf.starts_with(b"%PDF"));
+            let has_xml = pdf.windows(12).any(|w| w == b"factur-x.xml");
+            assert_eq!(has_xml, kind == Kind::CreditNote, "{}", kind.slug());
             if let Ok(dir) = std::env::var("PDF_OUT") {
                 std::fs::write(format!("{dir}/{}.pdf", kind.slug()), pdf).unwrap();
             }

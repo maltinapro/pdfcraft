@@ -1,5 +1,6 @@
 import { Field, TextAreaField, TextField } from './Field'
 import { ItemsEditor } from './ItemsEditor'
+import { tr, useLang } from '../lib/i18n'
 import type { Doc, DocSpec } from '../lib/documents'
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 
 /** Generic form for all non-invoice documents, built from the type's `DocSpec`. */
 export function DocumentForm({ spec, doc, onChange }: Props) {
+  useLang()
   const set = <K extends keyof Doc>(key: K, value: Doc[K]) => onChange({ ...doc, [key]: value })
   const setRecipient = (key: keyof Doc['recipient'], value: string) =>
     onChange({ ...doc, recipient: { ...doc.recipient, [key]: value } })
@@ -19,7 +21,7 @@ export function DocumentForm({ spec, doc, onChange }: Props) {
       <section className="form-section">
         <h3>{spec.label}</h3>
         {!spec.letter && (
-          <TextField label={spec.numberLabel ?? 'Nummer'} value={doc.number} onChange={(v) => set('number', v)} />
+          <TextField label={spec.numberLabel ?? tr('Nummer', 'Number')} value={doc.number} onChange={(v) => set('number', v)} />
         )}
         <TextField label={spec.dateLabel} type="date" value={doc.date} onChange={(v) => set('date', v)} />
         {spec.reference && (
@@ -42,17 +44,24 @@ export function DocumentForm({ spec, doc, onChange }: Props) {
       </section>
 
       <section className="form-section">
-        <h3>Empfänger</h3>
-        <TextField label="Name" value={doc.recipient.name} onChange={(v) => setRecipient('name', v)} />
-        <TextField label="Straße / Hausnummer" value={doc.recipient.address} onChange={(v) => setRecipient('address', v)} />
-        <TextField label="PLZ / Ort" value={doc.recipient.city} onChange={(v) => setRecipient('city', v)} />
+        <h3>{tr('Empfänger', 'Recipient')}</h3>
+        <TextField label={tr('Name', 'Name')} value={doc.recipient.name} onChange={(v) => setRecipient('name', v)} />
+        <TextField label={tr('Straße / Hausnummer', 'Street / house number')} value={doc.recipient.address} onChange={(v) => setRecipient('address', v)} />
+        <TextField label={tr('PLZ / Ort', 'Postcode / city')} value={doc.recipient.city} onChange={(v) => setRecipient('city', v)} />
+        {spec.einvoice && (
+          <>
+            <TextField label={tr('USt-IdNr. (E-Rechnung)', 'VAT ID (e-invoice)')} value={doc.recipient.vatId ?? ''} onChange={(v) => setRecipient('vatId', v)} />
+            <TextField label={tr('E-Mail (E-Rechnung)', 'E-mail (e-invoice)')} value={doc.recipient.email ?? ''} onChange={(v) => setRecipient('email', v)} />
+            <TextField label={tr('Leitweg-ID / Käuferreferenz', 'Leitweg ID / buyer reference')} value={doc.recipient.buyerReference ?? ''} onChange={(v) => setRecipient('buyerReference', v)} />
+          </>
+        )}
       </section>
 
       {spec.letter && (
         <section className="form-section">
-          <h3>Inhalt</h3>
-          <TextField label="Betreff" value={doc.subject} onChange={(v) => set('subject', v)} />
-          <Field label="Text">
+          <h3>{tr('Inhalt', 'Content')}</h3>
+          <TextField label={tr('Betreff', 'Subject')} value={doc.subject} onChange={(v) => set('subject', v)} />
+          <Field label={tr('Text', 'Text')}>
             <textarea rows={14} value={doc.body} onChange={(e) => set('body', e.target.value)} />
           </Field>
         </section>
@@ -61,7 +70,7 @@ export function DocumentForm({ spec, doc, onChange }: Props) {
       {spec.reason && (
         <section className="form-section">
           <h3>{spec.reason}</h3>
-          <TextAreaField label="Begründung (optional)" value={doc.reason} onChange={(v) => set('reason', v)} />
+          <TextAreaField label={tr('Begründung (optional)', 'Reason (optional)')} value={doc.reason} onChange={(v) => set('reason', v)} />
         </section>
       )}
 
@@ -76,12 +85,12 @@ export function DocumentForm({ spec, doc, onChange }: Props) {
 
       {(spec.intro !== undefined || spec.closing !== undefined) && (
         <section className="form-section">
-          <h3>Texte</h3>
+          <h3>{tr('Texte', 'Texts')}</h3>
           {spec.intro !== undefined && (
-            <TextAreaField label="Einleitung" value={doc.intro} onChange={(v) => set('intro', v)} />
+            <TextAreaField label={tr('Einleitung', 'Introduction')} value={doc.intro} onChange={(v) => set('intro', v)} />
           )}
           {spec.closing !== undefined && (
-            <TextAreaField label={spec.letter ? 'Grußformel' : 'Schlusstext'} value={doc.closing} onChange={(v) => set('closing', v)} />
+            <TextAreaField label={spec.letter ? tr('Grußformel', 'Closing phrase') : tr('Schlusstext', 'Closing text')} value={doc.closing} onChange={(v) => set('closing', v)} />
           )}
         </section>
       )}

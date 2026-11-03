@@ -322,7 +322,9 @@ pub fn describe_items(english: bool, items: &[Item], negate: bool, doc: &mut Val
     });
 }
 
-/// Computes everything the template and the e-invoice need. `settings` is the
+/// Computes everything the template and the e-invoice need. With `credit_for` (number and ISO date
+/// of the cancelled invoice) the XML is a credit note (TypeCode 381, amounts stay positive as EN 16931
+/// requires, `InvoiceReferencedDocument` points to the original). `settings` is the
 /// validated template data (defaults applied), `invoice_json` the validated
 /// invoice data that gets its display texts added.
 pub fn prepare(
@@ -330,6 +332,7 @@ pub fn prepare(
     settings: &Value,
     inv: &Invoice,
     invoice_json: &mut Value,
+    credit_for: Option<(&str, &str)>,
 ) -> Prepared {
     let english = settings["locale"] == "en-de";
     let date = valid_date(&inv.date).unwrap_or((1970, 1, 1));
@@ -508,7 +511,7 @@ pub fn prepare(
 
     open(&mut x, "rsm:ExchangedDocument");
     element(&mut x, "ram:ID", number);
-    element(&mut x, "ram:TypeCode", "380");
+    element(&mut x, "ram:TypeCode", if credit_for.is_some() { "381" } else { "380" });
     date_element(&mut x, "ram:IssueDateTime", date);
     close(&mut x, "rsm:ExchangedDocument");
 
@@ -631,6 +634,16 @@ pub fn prepare(
     element(&mut x, "ram:GrandTotalAmount", &xml_amount(gross));
     element(&mut x, "ram:DuePayableAmount", &xml_amount(gross));
     close(&mut x, "ram:SpecifiedTradeSettlementHeaderMonetarySummation");
+    if let Some((original, original_date)) = credit_for {
+        open(&mut x, "ram:InvoiceReferencedDocument");
+        element(&mut x, "ram:IssuerAssignedID", original.trim());
+        if let Some(d) = valid_date(original_date) {
+            open(&mut x, "ram:FormattedIssueDateTime");
+            element_attr(&mut x, "qdt:DateTimeString", "format", "102", &xml_date(d));
+            close(&mut x, "ram:FormattedIssueDateTime");
+        }
+        close(&mut x, "ram:InvoiceReferencedDocument");
+    }
     close(&mut x, "ram:ApplicableHeaderTradeSettlement");
     close(&mut x, "rsm:SupplyChainTradeTransaction");
     close(&mut x, "rsm:CrossIndustryInvoice");

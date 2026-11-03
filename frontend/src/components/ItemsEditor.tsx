@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Field, TextField } from './Field'
+import { tr, useLang } from '../lib/i18n'
 import { TAX_RATES, UNITS, newItem, type InvoiceItem } from '../lib/types'
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
+  useLang()
   const setItem = (id: string, patch: Partial<InvoiceItem>) =>
     onChange(items.map((item) => (item.id === id ? { ...item, ...patch } : item)))
 
@@ -34,7 +36,7 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
 
   return (
     <section className="form-section">
-      <h3>Positionen</h3>
+      <h3>{tr('Positionen', 'Items')}</h3>
       {hint && <p className="form-hint">{hint}</p>}
       {items.map((item, index) => (
         <div
@@ -57,8 +59,8 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
             <span
               className="drag-handle"
               draggable
-              title="Zum Sortieren ziehen"
-              aria-label="Position verschieben"
+              title={tr('Zum Sortieren ziehen', 'Drag to reorder')}
+              aria-label={tr('Position verschieben', 'Move item')}
               onDragStart={(e) => {
                 e.dataTransfer.effectAllowed = 'move'
                 setDragIndex(index)
@@ -67,13 +69,13 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
             >
               ⠿
             </span>
-            <strong>Position {index + 1}</strong>
+            <strong>{tr('Position', 'Item')} {index + 1}</strong>
             <span className="item-actions">
               <button
                 type="button"
                 className="btn btn-small"
-                title="Nach oben"
-                aria-label="Position nach oben"
+                title={tr('Nach oben', 'Move up')}
+                aria-label={tr('Position nach oben', 'Move item up')}
                 disabled={index === 0}
                 onClick={() => moveItem(index, index - 1)}
               >
@@ -82,21 +84,21 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
               <button
                 type="button"
                 className="btn btn-small"
-                title="Nach unten"
-                aria-label="Position nach unten"
+                title={tr('Nach unten', 'Move down')}
+                aria-label={tr('Position nach unten', 'Move item down')}
                 disabled={index === items.length - 1}
                 onClick={() => moveItem(index, index + 1)}
               >
                 ↓
               </button>
               <button type="button" className="btn btn-small" onClick={() => removeItem(item.id)}>
-                Entfernen
+                {tr('Entfernen', 'Remove')}
               </button>
             </span>
           </div>
-          <TextField label="Beschreibung" value={item.description} onChange={(v) => setItem(item.id, { description: v })} />
+          <TextField label={tr('Beschreibung', 'Description')} value={item.description} onChange={(v) => setItem(item.id, { description: v })} />
           <div className="item-row">
-            <Field label="Menge">
+            <Field label={tr('Menge', 'Quantity')}>
               <input
                 type="number"
                 min={0}
@@ -105,7 +107,7 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
                 onChange={(e) => setItem(item.id, { quantity: Number(e.target.value) })}
               />
             </Field>
-            <Field label="Einheit">
+            <Field label={tr('Einheit', 'Unit')}>
               <select value={item.unit} onChange={(e) => setItem(item.id, { unit: e.target.value })}>
                 {UNITS.map((u) => (
                   <option key={u.value} value={u.value}>
@@ -117,7 +119,7 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
           </div>
           {prices && (
             <div className="item-row">
-              <Field label="Einzelpreis (netto)">
+              <Field label={tr('Einzelpreis (netto)', 'Unit price (net)')}>
                 <input
                   type="number"
                   step="0.01"
@@ -125,14 +127,14 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
                   onChange={(e) => setItem(item.id, { price: Number(e.target.value) })}
                 />
               </Field>
-              <Field label="USt.">
+              <Field label={tr('USt.', 'VAT')}>
                 <select
                   value={item.taxRate}
                   onChange={(e) => setItem(item.id, { taxRate: Number(e.target.value) })}
                 >
                   {TAX_RATES.map((rate) => (
                     <option key={rate} value={rate}>
-                      {rate === 0 ? '0 % (steuerbefreit)' : `${rate} %`}
+                      {rate === 0 ? tr('0 % (steuerbefreit)', '0 % (tax exempt)') : `${rate} %`}
                     </option>
                   ))}
                 </select>
@@ -146,7 +148,7 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
         className="btn"
         onClick={() => onChange([...items, newItem()])}
       >
-        + Position hinzufügen
+        {tr('+ Position hinzufügen', '+ Add item')}
       </button>
     </section>
   )

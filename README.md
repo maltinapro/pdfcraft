@@ -8,13 +8,13 @@
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org/)
 
-A full-stack **PDF Template Builder** that combines a simple form-based invoice configurator in the browser with a blazing-fast Rust backend. Fill in your invoice data and compile it on a fixed invoice template to publication-quality PDFs via Typst — with no local Typst installation required.
+A full-stack **PDF Template Builder** that combines simple form-based configurators for business documents (invoice, credit note, offer, order confirmation, delivery note, letter) in the browser with a blazing-fast Rust backend. Fill in your data and compile it on fixed templates to publication-quality PDFs via Typst — with no local Typst installation required.
 
-**Live demo:** [digitalrechnung.jetzt](https://digitalrechnung.jetzt) — try the [invoice configurator](https://digitalrechnung.jetzt/app/) without a local installation. Please use sample data only.
+**Live demo:** [digitalrechnung.jetzt](https://digitalrechnung.jetzt) — try the [document configurator](https://digitalrechnung.jetzt/app/) without a local installation. Please use sample data only.
 
 ## Features
 
-- 🗂️ **Dashboard with document types** — invoice, credit note (Stornorechnung), offer, order confirmation, delivery note and letter (DIN 5008); each has its own Typst template and form, sender data and design are shared
+- 🗂️ **Dashboard with document types** — invoice, credit note (Stornorechnung), offer, order confirmation, delivery note and letter (DIN 5008); each has its own Typst template and form, sender data and design are shared; issued documents are archived in the browser (`localStorage`, form data and the sender/design snapshot (no logo, no PDFs); backup via `pdfcraft-archive.json` export/import; cancel an invoice, create follow-up documents, bulk ZIP download); the UI is available in German and English (PDF language is a separate setting); credit notes can carry a ZUGFeRD/XRechnung XML (TypeCode 381)
 - 🧾 **Form-based invoice configurator** — fill in invoice, recipient and line items; settings cover logo, company address, bank details, accent color, font, footer and texts
 - 🖼️ **Logo upload** (PNG/JPG/SVG, ≤ 300 KB) sent to the backend as a base64 asset
 - 💾 **Persistence** — settings and invoice draft are auto-saved in the browser (`localStorage`, versioned `schemaVersion`); export/import as JSON, reset to defaults
@@ -62,6 +62,7 @@ Details: [Architecture and Extending](docs/10-architecture-and-extending.md).
 | `POST /v1/invoices` | token | One invoice → PDF |
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP |
 | `POST /v1/documents` | token | Credit note, offer, order confirmation, delivery note or letter → PDF |
+| `POST /v1/documents/bulk` | token | Many documents of one type → ZIP |
 | `GET /health` | none | Status |
 
 ```bash

@@ -1,3 +1,4 @@
+import { tr } from './i18n'
 import type { Invoice, Settings } from './types'
 
 export interface Issue {
@@ -29,34 +30,35 @@ export function validateInvoice(settings: Settings, invoice: Invoice): Issue[] {
   if (!settings.zugferd) return issues
 
   const s = settings.sender
-  if (blank(s.name) || blank(s.address) || blank(s.city)) err('Absender: Name, Straße und PLZ/Ort sind Pflicht.')
-  if (blank(s.taxNr) && blank(s.vatId)) err('Absender: Steuernummer oder USt-IdNr. ist Pflicht.')
-  if (blank(s.email) && blank(s.vatId)) warn('Absender: E-Mail oder USt-IdNr. fehlt (Peppol-Adresse).')
-  if (settings.paymentDays < 1) err('Zahlungsziel muss mindestens 1 Tag betragen.')
-  if (blank(settings.bank.iban)) err('Bankverbindung: IBAN fehlt.')
-  else if (!ibanValid(settings.bank.iban)) err('Bankverbindung: IBAN ist ungültig.')
+  if (blank(s.name) || blank(s.address) || blank(s.city)) err(tr('Absender: Name, Straße und PLZ/Ort sind Pflicht.', 'Sender: name, street and postcode/city are required.'))
+  if (blank(s.taxNr) && blank(s.vatId)) err(tr('Absender: Steuernummer oder USt-IdNr. ist Pflicht.', 'Sender: tax number or VAT ID is required.'))
+  if (!blank(s.taxNr) && blank(s.vatId)) warn(tr('Absender: Mit nur einer Steuernummer meldet der Validator BR-CO-26 – für eine voll gültige E-Rechnung die USt-IdNr. angeben.', 'Sender: with only a tax number the validator reports BR-CO-26 – enter the VAT ID for a fully valid e-invoice.'))
+  if (blank(s.email) && blank(s.vatId)) warn(tr('Absender: E-Mail oder USt-IdNr. fehlt (Peppol-Adresse).', 'Sender: e-mail or VAT ID is missing (Peppol address).'))
+  if (settings.paymentDays < 1) err(tr('Zahlungsziel muss mindestens 1 Tag betragen.', 'Payment term must be at least 1 day.'))
+  if (blank(settings.bank.iban)) err(tr('Bankverbindung: IBAN fehlt.', 'Bank details: IBAN is missing.'))
+  else if (!ibanValid(settings.bank.iban)) err(tr('Bankverbindung: IBAN ist ungültig.', 'Bank details: IBAN is invalid.'))
 
   if (invoice.items.some((i) => i.taxRate === 0) && blank(settings.exemptionReason)) {
-    err('Steuerbefreiung: Grund fehlt (Einstellungen → Bankverbindung).')
+    err(tr('Steuerbefreiung: Grund fehlt (Einstellungen → Bankverbindung).', 'Tax exemption: reason is missing (Sender & design → Bank details).'))
   }
 
   const xr = settings.einvoiceProfile === 'xrechnung'
   if (xr) {
-    if (blank(s.contactName)) err('XRechnung: Ansprechpartner des Absenders fehlt (BR-DE-5).')
-    if ((s.phone.match(/\d/g) ?? []).length < 3) err('XRechnung: Telefon des Absenders mit mindestens 3 Ziffern fehlt (BR-DE-6).')
-    if (blank(s.email)) err('XRechnung: E-Mail des Absenders fehlt.')
-    if (blank(invoice.recipient.buyerReference)) err('XRechnung: Leitweg-ID / Käuferreferenz fehlt (BR-DE-15).')
-    if (blank(invoice.recipient.email)) err('XRechnung: E-Mail des Empfängers fehlt (elektronische Adresse).')
+    if (blank(s.contactName)) err(tr('XRechnung: Ansprechpartner des Absenders fehlt (BR-DE-5).', 'XRechnung: sender contact person is missing (BR-DE-5).'))
+    if ((s.phone.match(/\d/g) ?? []).length < 3) err(tr('XRechnung: Telefon des Absenders mit mindestens 3 Ziffern fehlt (BR-DE-6).', 'XRechnung: sender phone with at least 3 digits is missing (BR-DE-6).'))
+    if (blank(s.email)) err(tr('XRechnung: E-Mail des Absenders fehlt.', 'XRechnung: sender e-mail is missing.'))
+    if (blank(invoice.recipient.buyerReference)) err(tr('XRechnung: Leitweg-ID / Käuferreferenz fehlt (BR-DE-15).', 'XRechnung: Leitweg ID / buyer reference is missing (BR-DE-15).'))
+    if (blank(invoice.recipient.email)) err(tr('XRechnung: E-Mail des Empfängers fehlt (elektronische Adresse).', 'XRechnung: recipient e-mail is missing (electronic address).'))
   }
 
   const r = invoice.recipient
-  if (blank(r.name) || blank(r.address) || blank(r.city)) err('Empfänger: Name, Straße und PLZ/Ort sind Pflicht.')
-  if (blank(r.email) && blank(r.vatId)) warn('Empfänger: E-Mail oder USt-IdNr. fehlt (Peppol-Adresse).')
-  if (blank(invoice.number)) err('Rechnungsnummer fehlt.')
-  if (invoice.items.length === 0) err('Mindestens eine Position ist Pflicht.')
+  if (blank(r.name) || blank(r.address) || blank(r.city)) err(tr('Empfänger: Name, Straße und PLZ/Ort sind Pflicht.', 'Recipient: name, street and postcode/city are required.'))
+  if (blank(r.email) && blank(r.vatId)) warn(tr('Empfänger: E-Mail oder USt-IdNr. fehlt (Peppol-Adresse).', 'Recipient: e-mail or VAT ID is missing (Peppol address).'))
+  if (blank(invoice.number)) err(tr('Rechnungsnummer fehlt.', 'Invoice number is missing.'))
+  if (invoice.items.length === 0) err(tr('Mindestens eine Position ist Pflicht.', 'At least one item is required.'))
   invoice.items.forEach((item, i) => {
-    if (blank(item.description)) err(`Position ${i + 1}: Beschreibung fehlt.`)
-    if (item.quantity <= 0) warn(`Position ${i + 1}: Menge sollte größer 0 sein.`)
+    if (blank(item.description)) err(tr(`Position ${i + 1}: Beschreibung fehlt.`, `Item ${i + 1}: description is missing.`))
+    if (item.quantity <= 0) warn(tr(`Position ${i + 1}: Menge sollte größer 0 sein.`, `Item ${i + 1}: quantity should be greater than 0.`))
   })
   return issues
 }

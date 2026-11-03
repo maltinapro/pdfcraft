@@ -12,6 +12,7 @@ See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key man
 | `GET /v1/tokens/claim` | session id | Hands out a purchased token once after payment |
 | `POST /v1/invoices` | token | One invoice → PDF |
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP of PDFs |
+| `POST /v1/documents/bulk` | token | Many documents of one type → ZIP of PDFs |
 
 ## `GET /health`
 
@@ -54,7 +55,7 @@ Credit note (Stornorechnung), offer, order confirmation, delivery note and lette
 
 | `type` | Required `document` fields | Notes |
 | --- | --- | --- |
-| `credit-note` | `number`, `date`, `recipient`, `items`, `reference` (cancelled invoice) | Quantities are shown negative automatically; optional `referenceDate`, `reason`, `closing`. No e-invoice XML |
+| `credit-note` | `number`, `date`, `recipient`, `items`, `reference` (cancelled invoice) | Quantities are shown negative automatically; optional `referenceDate`, `reason`, `closing`. With `settings.zugferd` the PDF carries an EN 16931 / XRechnung credit-note XML (TypeCode 381, positive amounts, reference to the cancelled invoice); recipient `vatId`, `email`, `buyerReference` are used for it |
 | `offer` | `number`, `date`, `recipient`, `items` | Optional `validUntil`, `reference`, `intro`, `closing` |
 | `order` | `number`, `date`, `recipient`, `items` | Optional `deliveryDate`, `reference`, `intro`, `closing` |
 | `delivery-note` | `number`, `date`, `recipient`, `items` | No prices; optional `deliveryDate`, `reference`, `intro`, `closing` |
@@ -68,6 +69,10 @@ curl -X POST http://localhost:3000/v1/documents \
   -d '{"type":"letter","settings":{"sender":{"name":"Muster GmbH","address":"Musterstr. 1","city":"12345 Musterstadt"}},"document":{"date":"2026-11-03","recipient":{"name":"Kunde AG","address":"Kundenweg 5","city":"54321 Kundenstadt"},"subject":"Hallo","body":"Sehr geehrte Damen und Herren,\n\n...","closing":"Mit freundlichen Grüßen"}}' \
   -o letter.pdf
 ```
+
+## `POST /v1/documents/bulk`
+
+Body `{ "type": "offer", "settings": {...}, "documents": [ {...}, ... ] }` (each entry as in `/v1/documents`). Returns a ZIP of PDFs, costs one rate-limit token per document and is capped by `BULK_MAX_INVOICES`. Any validation error rejects the whole request.
 
 ## `POST /v1/invoices/bulk`
 
