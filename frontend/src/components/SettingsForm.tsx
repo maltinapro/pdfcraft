@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Field, TextAreaField, TextField } from './Field'
+import { tr, useLang } from '../lib/i18n'
 import {
   FONTS,
   EINVOICE_PROFILES,
@@ -29,6 +30,7 @@ function readFileAsBase64(file: File): Promise<string> {
 }
 
 export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
+  useLang()
   const [logoError, setLogoError] = useState<string | null>(null)
 
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) =>
@@ -42,11 +44,13 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
     setLogoError(null)
     if (!file) return
     if (!ACCEPTED_LOGO_TYPES.includes(file.type)) {
-      setLogoError('Nur PNG, JPEG oder SVG erlaubt.')
+      setLogoError(tr('Nur PNG, JPEG oder SVG erlaubt.', 'Only PNG, JPEG or SVG allowed.'))
       return
     }
     if (file.size > MAX_LOGO_BYTES) {
-      setLogoError(`Das Logo darf maximal ${MAX_LOGO_BYTES / 1024} KB groß sein.`)
+      setLogoError(
+        tr(`Das Logo darf maximal ${MAX_LOGO_BYTES / 1024} KB groß sein.`, `The logo must not exceed ${MAX_LOGO_BYTES / 1024} KB.`),
+      )
       return
     }
     set('logo', {
@@ -62,10 +66,10 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
         <h3>Logo</h3>
         {settings.logo ? (
           <div className="logo-preview">
-            <img src={`data:${settings.logo.mimeType};base64,${settings.logo.base64}`} alt="Logo" />
+            <img src={`data:${settings.logo.mimeType};base64,${settings.logo.base64}`} alt={tr('Logo', 'Logo')} />
             <span>{settings.logo.fileName}</span>
             <button type="button" className="btn btn-small" onClick={() => set('logo', null)}>
-              Entfernen
+              {tr('Entfernen', 'Remove')}
             </button>
           </div>
         ) : (
@@ -79,29 +83,29 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
       </section>
 
       <section className="form-section">
-        <h3>Firma</h3>
-        <TextField label="Name" value={settings.sender.name} onChange={(v) => setSender('name', v)} />
-        <TextField label="Straße / Hausnummer" value={settings.sender.address} onChange={(v) => setSender('address', v)} />
-        <TextField label="PLZ / Ort" value={settings.sender.city} onChange={(v) => setSender('city', v)} />
-        <TextField label="E-Mail" type="email" value={settings.sender.email} onChange={(v) => setSender('email', v)} />
+        <h3>{tr('Firma', 'Company')}</h3>
+        <TextField label={tr('Name', 'Name')} value={settings.sender.name} onChange={(v) => setSender('name', v)} />
+        <TextField label={tr('Straße / Hausnummer', 'Street / house number')} value={settings.sender.address} onChange={(v) => setSender('address', v)} />
+        <TextField label={tr('PLZ / Ort', 'Postcode / city')} value={settings.sender.city} onChange={(v) => setSender('city', v)} />
+        <TextField label={tr('E-Mail', 'E-mail')} type="email" value={settings.sender.email} onChange={(v) => setSender('email', v)} />
         <TextField
-          label="Ansprechpartner"
+          label={tr('Ansprechpartner', 'Contact person')}
           value={settings.sender.contactName}
           onChange={(v) => setSender('contactName', v)}
-          hint="Für XRechnung Pflicht (zusammen mit Telefon)."
+          hint={tr('Für XRechnung Pflicht (zusammen mit Telefon).', 'Required for XRechnung (together with phone).')}
         />
-        <TextField label="Telefon" value={settings.sender.phone} onChange={(v) => setSender('phone', v)} />
-        <TextField label="Steuernummer" value={settings.sender.taxNr} onChange={(v) => setSender('taxNr', v)} />
-        <TextField label="USt-IdNr." value={settings.sender.vatId} onChange={(v) => setSender('vatId', v)} />
+        <TextField label={tr('Telefon', 'Phone')} value={settings.sender.phone} onChange={(v) => setSender('phone', v)} />
+        <TextField label={tr('Steuernummer', 'Tax number')} value={settings.sender.taxNr} onChange={(v) => setSender('taxNr', v)} />
+        <TextField label={tr('USt-IdNr.', 'VAT ID')} value={settings.sender.vatId} onChange={(v) => setSender('vatId', v)} />
       </section>
 
       {forInvoice && (
         <section className="form-section">
-          <h3>Bankverbindung</h3>
-          <TextField label="Bank" value={settings.bank.name} onChange={(v) => setBank('name', v)} />
+          <h3>{tr('Bankverbindung', 'Bank details')}</h3>
+          <TextField label={tr('Bank', 'Bank')} value={settings.bank.name} onChange={(v) => setBank('name', v)} />
           <TextField label="IBAN" value={settings.bank.iban} onChange={(v) => setBank('iban', v)} />
           <TextField label="BIC" value={settings.bank.bic} onChange={(v) => setBank('bic', v)} />
-          <Field label="Zahlungsziel (Tage)">
+          <Field label={tr('Zahlungsziel (Tage)', 'Payment term (days)')}>
             <input
               type="number"
               min={0}
@@ -110,24 +114,24 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
             />
           </Field>
           <TextField
-            label="Grund der Steuerbefreiung"
+            label={tr('Grund der Steuerbefreiung', 'Reason for tax exemption')}
             value={settings.exemptionReason}
             onChange={(v) => set('exemptionReason', v)}
-            hint="Wird für Positionen mit 0 % (steuerbefreit) ausgewiesen."
+            hint={tr('Wird für Positionen mit 0 % (steuerbefreit) ausgewiesen.', 'Shown for items with 0 % (tax exempt).')}
           />
         </section>
       )}
 
       <section className="form-section">
-        <h3>Design</h3>
-        <Field label="Akzentfarbe">
+        <h3>{tr('Design', 'Design')}</h3>
+        <Field label={tr('Akzentfarbe', 'Accent color')}>
           <input
             type="color"
             value={settings.accentColor}
             onChange={(e) => set('accentColor', e.target.value)}
           />
         </Field>
-        <Field label="Schriftart">
+        <Field label={tr('Schriftart', 'Font')}>
           <select value={settings.font} onChange={(e) => set('font', e.target.value)}>
             {FONTS.map((font) => (
               <option key={font} value={font}>
@@ -136,7 +140,7 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
             ))}
           </select>
         </Field>
-        <Field label="Sprache des Dokuments">
+        <Field label={tr('Dokumentsprache / Document language', 'Document language / Dokumentsprache')}>
           <select value={settings.locale} onChange={(e) => set('locale', e.target.value)}>
             {LOCALES.map((l) => (
               <option key={l.value} value={l.value}>
@@ -148,29 +152,29 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
       </section>
 
       <section className="form-section">
-        <h3>Texte</h3>
+        <h3>{tr('Texte', 'Texts')}</h3>
         {forInvoice && (
           <>
-            <TextAreaField label="Einleitung" value={settings.intro} onChange={(v) => set('intro', v)} />
-            <TextAreaField label="Schlusstext" value={settings.closing} onChange={(v) => set('closing', v)} />
+            <TextAreaField label={tr('Einleitung', 'Introduction')} value={settings.intro} onChange={(v) => set('intro', v)} />
+            <TextAreaField label={tr('Schlusstext', 'Closing text')} value={settings.closing} onChange={(v) => set('closing', v)} />
           </>
         )}
-        <TextAreaField label="Fußzeile" value={settings.footer} onChange={(v) => set('footer', v)} rows={2} />
+        <TextAreaField label={tr('Fußzeile', 'Footer')} value={settings.footer} onChange={(v) => set('footer', v)} rows={2} />
       </section>
 
       {forInvoice && (
         <section className="form-section">
-          <h3>E-Rechnung</h3>
+          <h3>{tr('E-Rechnung', 'E-invoice')}</h3>
           <label className="checkbox">
             <input
               type="checkbox"
               checked={settings.zugferd}
               onChange={(e) => set('zugferd', e.target.checked)}
             />
-            ZUGFeRD / Factur-X einbetten (experimentell)
+            {tr('ZUGFeRD / Factur-X einbetten (experimentell)', 'Embed ZUGFeRD / Factur-X (experimental)')}
           </label>
           {settings.zugferd && (
-            <Field label="Profil">
+            <Field label={tr('Profil', 'Profile')}>
               <select value={settings.einvoiceProfile} onChange={(e) => set('einvoiceProfile', e.target.value)}>
                 {EINVOICE_PROFILES.map((p) => (
                   <option key={p.value} value={p.value}>

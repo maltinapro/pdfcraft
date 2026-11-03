@@ -3,6 +3,7 @@ import { AppHeader } from './AppHeader'
 import { PdfCanvasPreview, inlinePdfSupported } from './PdfCanvasPreview'
 import { SettingsForm } from './SettingsForm'
 import { ThemeToggle } from './ThemeToggle'
+import { tr, useLang } from '../lib/i18n'
 import type { Issue } from '../lib/validate'
 import type { Settings } from '../lib/types'
 
@@ -43,6 +44,7 @@ export function Workspace({
   issues = [],
   onDownloaded,
 }: Props) {
+  useLang()
   const [tab, setTab] = useState<Tab>('document')
   const [mobileView, setMobileView] = useState<'form' | 'preview'>('form')
   const [inlineSupported] = useState(inlinePdfSupported)
@@ -128,7 +130,7 @@ export function Workspace({
       <AppHeader title={title}>
         <ThemeToggle />
         <button className="btn btn-primary" onClick={download} disabled={!pdfBlob || loading}>
-          ⬇ PDF herunterladen
+          {tr('⬇ PDF herunterladen', '⬇ Download PDF')}
         </button>
       </AppHeader>
 
@@ -139,7 +141,7 @@ export function Workspace({
           className={mobileView === 'form' ? 'tab active' : 'tab'}
           onClick={() => setMobileView('form')}
         >
-          Formular
+          {tr('Formular', 'Form')}
         </button>
         <button
           role="tab"
@@ -147,7 +149,7 @@ export function Workspace({
           className={mobileView === 'preview' ? 'tab active' : 'tab'}
           onClick={() => setMobileView('preview')}
         >
-          Vorschau
+          {tr('Vorschau', 'Preview')}
         </button>
       </div>
 
@@ -158,11 +160,11 @@ export function Workspace({
               {tabLabel}
             </button>
             <button className={tab === 'settings' ? 'tab active' : 'tab'} onClick={() => setTab('settings')}>
-              Absender &amp; Design
+              {tr('Absender & Design', 'Sender & design')}
             </button>
           </div>
           {issues.length > 0 && (
-            <ul className="issues" aria-label="E-Rechnung Hinweise">
+            <ul className="issues" aria-label={tr('E-Rechnung Hinweise', 'E-invoice notes')}>
               {issues.map((issue) => (
                 <li key={issue.message} className={`issue issue-${issue.level}`}>
                   {issue.message}
@@ -178,22 +180,22 @@ export function Workspace({
         </aside>
 
         <main className="preview">
-          {error && <div className="preview-error">Vorschau fehlgeschlagen: {error}</div>}
-          {loading && <div className="preview-loading">Aktualisiere Vorschau …</div>}
+          {error && <div className="preview-error">{tr('Vorschau fehlgeschlagen', 'Preview failed')}: {error}</div>}
+          {loading && <div className="preview-loading">{tr('Aktualisiere Vorschau …', 'Updating preview …')}</div>}
           {!inlineSupported && pdfBlob && <PdfCanvasPreview blob={pdfBlob} />}
           {inlineSupported && previewUrl && (
-            <iframe className="preview-frame" title="PDF-Vorschau" src={previewUrl} />
+            <iframe className="preview-frame" title={tr('PDF-Vorschau', 'PDF preview')} src={previewUrl} />
           )}
           {inlineSupported && pendingUrl && (
             <iframe
               key={pendingUrl}
               className="preview-frame pending"
-              title="PDF-Vorschau (wird geladen)"
+              title={tr('PDF-Vorschau (wird geladen)', 'PDF preview (loading)')}
               src={pendingUrl}
               onLoad={promotePending}
             />
           )}
-          {!pdfBlob && !error && <div className="preview-empty">Vorschau wird erstellt …</div>}
+          {!pdfBlob && !error && <div className="preview-empty">{tr('Vorschau wird erstellt …', 'Creating preview …')}</div>}
         </main>
       </div>
     </div>

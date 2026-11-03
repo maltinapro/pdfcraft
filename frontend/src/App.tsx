@@ -23,6 +23,7 @@ import {
   type DocDrafts,
   type DocKind,
 } from './lib/documents'
+import { tr, useLang } from './lib/i18n'
 import { routeHref, useRoute } from './lib/router'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
 import { validateInvoice } from './lib/validate'
@@ -32,6 +33,7 @@ import './App.css'
 const fileStem = (value: string, fallback: string) => value.replace(/[^\w.-]+/g, '_') || fallback
 
 export default function App() {
+  useLang() // re-render the whole tree when the UI language changes
   const route = useRoute()
   const [initial] = useState(loadConfig)
   const [settings, setSettings] = useState<Settings>(initial?.settings ?? DEFAULT_SETTINGS)
@@ -41,7 +43,7 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!saveArchive(archive)) setNotice('Archiv konnte nicht gespeichert werden (Speicher voll oder deaktiviert).')
+    if (!saveArchive(archive)) setNotice(tr('Archiv konnte nicht gespeichert werden (Speicher voll oder deaktiviert).', 'Archive could not be saved (storage full or disabled).'))
   }, [archive])
 
   // A downloaded document is final: remember it and continue with the next number.
@@ -88,7 +90,7 @@ export default function App() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (!saveConfig(settings, invoice) || !saveDrafts(drafts)) {
-        setNotice('Speichern im Browser fehlgeschlagen (Speicher voll oder deaktiviert).')
+        setNotice(tr('Speichern im Browser fehlgeschlagen (Speicher voll oder deaktiviert).', 'Saving in the browser failed (storage full or disabled).'))
       }
     }, 400)
     return () => window.clearTimeout(timer)
@@ -109,14 +111,14 @@ export default function App() {
       const config = await importConfig(file)
       setSettings(config.settings)
       setInvoice(config.invoice)
-      setNotice('Konfiguration importiert.')
+      setNotice(tr('Konfiguration importiert.', 'Configuration imported.'))
     } catch (e) {
       setNotice(e instanceof Error ? e.message : String(e))
     }
   }, [])
 
   const reset = useCallback(() => {
-    if (!window.confirm('Alle gespeicherten Einstellungen und Dokumentdaten zurücksetzen?')) return
+    if (!window.confirm(tr('Alle gespeicherten Einstellungen und Dokumentdaten zurücksetzen?', 'Reset all saved settings and document data?'))) return
     clearConfig()
     clearDrafts()
     clearArchive()
@@ -124,7 +126,7 @@ export default function App() {
     setSettings(DEFAULT_SETTINGS)
     setInvoice(defaultInvoice())
     setDrafts(loadDrafts())
-    setNotice('Zurückgesetzt.')
+    setNotice(tr('Zurückgesetzt.', 'Reset.'))
   }, [])
 
   const issues = useMemo(() => validateInvoice(settings, invoice), [settings, invoice])
@@ -152,8 +154,8 @@ export default function App() {
       <Workspace
         key="invoice"
         title={spec.label}
-        tabLabel="Rechnung"
-        fileName={`rechnung-${fileStem(invoice.number, 'neu')}`}
+        tabLabel={tr('Rechnung', 'Invoice')}
+        fileName={`${tr('rechnung', 'invoice')}-${fileStem(invoice.number, tr('neu', 'new'))}`}
         settings={settings}
         onSettingsChange={setSettings}
         forInvoice
@@ -173,7 +175,7 @@ export default function App() {
       key={kind}
       title={spec.label}
       tabLabel={spec.label}
-      fileName={`${kind}-${fileStem(doc.number, 'neu')}`}
+      fileName={`${kind}-${fileStem(doc.number, tr('neu', 'new'))}`}
       settings={settings}
       onSettingsChange={setSettings}
       forInvoice={false}
