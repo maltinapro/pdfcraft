@@ -8,9 +8,9 @@
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org/)
 
-A full-stack **PDF Template Builder** that combines a simple form-based invoice configurator in the browser with a blazing-fast Rust backend. Fill in your invoice data and compile it on a fixed invoice template to publication-quality PDFs via Typst — with no local Typst installation required.
+A full-stack **PDF Template Builder** that combines simple form-based configurators for business documents (invoice, credit note, offer, order confirmation, delivery note, letter) in the browser with a blazing-fast Rust backend. Fill in your data and compile it on fixed templates to publication-quality PDFs via Typst — with no local Typst installation required.
 
-**Live demo:** [digitalrechnung.jetzt](https://digitalrechnung.jetzt) — try the [invoice configurator](https://digitalrechnung.jetzt/app/) without a local installation. Please use sample data only.
+**Live demo:** [digitalrechnung.jetzt](https://digitalrechnung.jetzt) — try the [document configurator](https://digitalrechnung.jetzt/app/) without a local installation. Please use sample data only.
 
 ## Features
 

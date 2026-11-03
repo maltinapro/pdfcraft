@@ -4,7 +4,7 @@
 
 | Component | Technology | Purpose |
 | --- | --- | --- |
-| Frontend | React + Vite, served as static files (nginx in Docker) | Form-based invoice configurator, live PDF preview, config import/export |
+| Frontend | React + Vite, served as static files (nginx in Docker) | Form-based document configurator (invoice, credit note, offer, order, delivery note, letter), live PDF preview, config import/export |
 | Backend | Rust + Axum | Renders the Typst template and returns PDFs |
 | Typst packages | Vendored in `backend/vendor/typst-packages` | `sepay` (EPC QR code) and its dependencies; no internet access needed at runtime |
 | Valkey | Valkey 8 (Redis protocol), with persistence | Tokens (hashed) and the rate limit shared by all backend instances. Required for `/v1` |

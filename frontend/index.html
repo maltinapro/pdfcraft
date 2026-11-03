@@ -6,7 +6,7 @@
     <title>E-Rechnung erstellen – ZUGFeRD &amp; XRechnung | Digitalrechnung jetzt</title>
     <meta
       name="description"
-      content="Rechnungen per Formular erstellen: PDF mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung), Logo, Live-Vorschau. Open Source, ohne Konto."
+      content="Rechnungen, Stornorechnungen, Angebote, Aufträge, Lieferscheine und Briefe per Formular erstellen: PDF mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung), Logo, Live-Vorschau. Open Source, ohne Konto."
     />
     <link rel="canonical" href="https://digitalrechnung.jetzt/" />
     <meta name="robots" content="index, follow" />
@@ -37,7 +37,7 @@
         "applicationCategory": "BusinessApplication",
         "operatingSystem": "Web",
         "inLanguage": "de",
-        "description": "Rechnungen per Formular erstellen: PDF mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung).",
+        "description": "Rechnungen, Stornorechnungen, Angebote, Aufträge, Lieferscheine und Briefe per Formular erstellen – PDF mit eingebetteter E-Rechnung (ZUGFeRD/Factur-X, XRechnung).",
         "image": "https://digitalrechnung.jetzt/og-image.png",
         "sameAs": ["https://github.com/maltinapro/pdfcraft"],
         "isAccessibleForFree": true,
@@ -66,7 +66,7 @@
           <li>Open Source</li>
         </ul>
         <h1>Digitalrechnung, <span>jetzt!</span></h1>
-        <p class="lead">E-Rechnungen (ZUGFeRD &amp; XRechnung) online erstellen – schnell und einfach.</p>
+        <p class="lead">E-Rechnungen (ZUGFeRD &amp; XRechnung) und weitere Geschäftsdokumente online erstellen – schnell und einfach.</p>
         <a class="button" href="/app/">Demo ausprobieren</a>
         <a class="button secondary" href="https://github.com/maltinapro/pdfcraft">Quellcode auf GitHub</a>
       </div>
@@ -75,7 +75,7 @@
 
     <main>
       <ol class="steps">
-        <li><strong>Formular ausfüllen</strong><span>Logo, Anschrift, Empfänger und Positionen.</span></li>
+        <li><strong>Dokument wählen &amp; ausfüllen</strong><span>Rechnung, Angebot, Lieferschein &amp; Co. mit Logo, Anschrift und Positionen.</span></li>
         <li><strong>Live-Vorschau</strong><span>Das PDF aktualisiert sich bei jeder Eingabe.</span></li>
         <li><strong>PDF mit E-Rechnung</strong><span>ZUGFeRD oder XRechnung eingebettet, ohne Konto.</span></li>
       </ol>
@@ -84,7 +84,7 @@
         <h2>Was ist das hier?</h2>
         <p>
           Diese Seite ist ein <strong>Demo-System</strong>. Du kannst hier ausprobieren, wie sich
-          Rechnungen per Formular zusammenklicken lassen: Logo, Firmenanschrift, Positionen und
+          Rechnungen, Stornorechnungen, Angebote, Auftragsbestätigungen, Lieferscheine und Briefe per Formular zusammenklicken lassen: Logo, Firmenanschrift, Positionen und
           ein paar Gestaltungsoptionen – die Vorschau aktualisiert sich live. Deine Eingaben
           bleiben im Browser gespeichert und lassen sich als JSON sichern und wieder einlesen.
         </p>
@@ -125,9 +125,9 @@
           </article>
           <article>
             <div class="icon" aria-hidden="true">📦</div>
-            <h3>Bulk-Rechnungen</h3>
+            <h3>Bulk-Erzeugung</h3>
             <p>
-              Über die REST-API lassen sich viele Rechnungen in einem Request erzeugen und als
+              Über die REST-API lassen sich viele Dokumente jeder Art in einem Request erzeugen und als
               ZIP abholen – mit Token und Rate-Limit pro Kunde.
             </p>
           </article>
@@ -178,8 +178,9 @@
         <h2>Wie geht es weiter?</h2>
         <ul>
           <li>
-            Aktuell sind <strong>Rechnungen</strong> umgesetzt. <strong>Weitere PDF-Dokumente</strong>
-            (etwa Angebote, Lieferscheine oder Berichte) sollen folgen.
+            Aktuell gibt es <strong>Rechnung, Stornorechnung, Angebot, Auftragsbestätigung,
+            Lieferschein und Brief</strong>. <strong>Weitere PDF-Dokumente</strong> (etwa Mahnungen
+            oder Berichte) können folgen.
           </li>
           <li>
             Bei Bedarf können <strong>individuelle PDF-Vorlagen</strong> für dich erstellt werden.
