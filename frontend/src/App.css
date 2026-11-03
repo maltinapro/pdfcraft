@@ -355,6 +355,18 @@ input[type='color'] {
   border: none;
 }
 
+.preview-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+.preview-canvas canvas {
+  display: block;
+  margin-bottom: 8px;
+  background: #fff;
+}
+
 /* New PDF loads invisibly on top; it replaces the visible one once ready (no flicker) */
 .preview-frame.pending {
   visibility: hidden;

@@ -6,6 +6,7 @@ import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from 
 import { validateInvoice } from './lib/validate'
 import { DEFAULT_SETTINGS, defaultInvoice, type Invoice, type Settings } from './lib/types'
 import { applyTheme, storedTheme, systemTheme, type Theme } from './lib/theme'
+import { PdfCanvasPreview, inlinePdfSupported } from './components/PdfCanvasPreview'
 import './App.css'
 
 const PREVIEW_DEBOUNCE_MS = 600
@@ -16,6 +17,7 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(() => storedTheme() ?? systemTheme())
   const [tab, setTab] = useState<Tab>('invoice')
   const [mobileView, setMobileView] = useState<'form' | 'preview'>('form')
+  const [inlineSupported] = useState(inlinePdfSupported)
   const [initial] = useState(loadConfig)
   const [settings, setSettings] = useState<Settings>(initial?.settings ?? DEFAULT_SETTINGS)
   const [invoice, setInvoice] = useState<Invoice>(initial?.invoice ?? defaultInvoice)
@@ -242,8 +244,11 @@ export default function App() {
         <main className="preview">
           {error && <div className="preview-error">Vorschau fehlgeschlagen: {error}</div>}
           {loading && <div className="preview-loading">Aktualisiere Vorschau …</div>}
-          {previewUrl && <iframe className="preview-frame" title="PDF-Vorschau" src={previewUrl} />}
-          {pendingUrl && (
+          {!inlineSupported && pdfBlob && <PdfCanvasPreview blob={pdfBlob} />}
+          {inlineSupported && previewUrl && (
+            <iframe className="preview-frame" title="PDF-Vorschau" src={previewUrl} />
+          )}
+          {inlineSupported && pendingUrl && (
             <iframe
               key={pendingUrl}
               className="preview-frame pending"
@@ -252,7 +257,7 @@ export default function App() {
               onLoad={promotePending}
             />
           )}
-          {!previewUrl && !pendingUrl && !error && (
+          {!pdfBlob && !error && (
             <div className="preview-empty">Vorschau wird erstellt …</div>
           )}
         </main>
