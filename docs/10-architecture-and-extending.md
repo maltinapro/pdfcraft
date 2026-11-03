@@ -104,3 +104,8 @@ The invoice is a single Typst file: `frontend/src/template/invoice.typ` (the bac
 | Invoice template | Own lean Typst template + `einvoice.rs` (XML) |
 | Keys / rate limit | Valkey (`redis` crate) |
 | CORS | [tower-http](https://docs.rs/tower-http/) |
+
+## CI and dependency updates
+
+- `.github/workflows/ci.yml` runs on every PR and on `main`: frontend `npm ci && npm run build` (type check + build) and backend `cargo check --locked --all-targets` + `cargo test --locked` (with dependency caching). `helm-lint.yml` lints the chart when `deploy/` changes. Make the `CI` jobs (`frontend`, `backend`) required checks in the branch protection of `main`.
+- `renovate.json` configures Renovate (npm, cargo, GitHub Actions, Dockerfiles, Helm values). Updates run weekly (Monday before 06:00), minor/patch updates are grouped per ecosystem, Typst crates are bumped together. The issue "Dependency Dashboard" gives the overview. Requires the Renovate GitHub App to be installed for the repository (https://github.com/apps/renovate).
