@@ -50,10 +50,13 @@
 
     <header class="hero">
       <div class="hero-text">
-        <p class="lead">
-          Digitale Rechnungen online erstellen, jetzt schnell und einfach.
-        </p>
-        <h1>Digitalrechnung, jetzt!</h1>
+        <ul class="badges">
+          <li>ZUGFeRD</li>
+          <li>XRechnung</li>
+          <li>Open Source</li>
+        </ul>
+        <h1>Digitalrechnung, <span>jetzt!</span></h1>
+        <p class="lead">Digitale Rechnungen online erstellen, jetzt schnell und einfach.</p>
         <a class="button" href="/app/">Demo ausprobieren</a>
         <a class="button secondary" href="https://github.com/maltinapro/pdfcraft">Quellcode auf GitHub</a>
       </div>
@@ -61,6 +64,12 @@
     </header>
 
     <main>
+      <ol class="steps">
+        <li><strong>Formular ausfüllen</strong><span>Logo, Anschrift, Empfänger und Positionen.</span></li>
+        <li><strong>Live-Vorschau</strong><span>Das PDF aktualisiert sich bei jeder Eingabe.</span></li>
+        <li><strong>PDF mit E-Rechnung</strong><span>ZUGFeRD oder XRechnung eingebettet, ohne Konto.</span></li>
+      </ol>
+
       <section>
         <h2>Was ist das hier?</h2>
         <p>
@@ -97,6 +106,7 @@
         <h2>Funktionen</h2>
         <div class="cards">
           <article>
+            <div class="icon" aria-hidden="true">🧾</div>
             <h3>ZUGFeRD &amp; XRechnung</h3>
             <p>
               PDF/A-3 mit eingebettetem XML (EN 16931 bzw. XRechnung), geprüft mit dem
@@ -104,6 +114,7 @@
             </p>
           </article>
           <article>
+            <div class="icon" aria-hidden="true">📦</div>
             <h3>Bulk-Rechnungen</h3>
             <p>
               Über die REST-API lassen sich viele Rechnungen in einem Request erzeugen und als
@@ -111,6 +122,7 @@
             </p>
           </article>
           <article>
+            <div class="icon" aria-hidden="true">🔓</div>
             <h3>Open Source</h3>
             <p>
               Das Projekt ist quelloffen (MIT-Lizenz). Du kannst es selbst betreiben, prüfen und
