@@ -1,0 +1,33 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard", ":semanticCommitsDisabled"],
+  "dependencyDashboardTitle": "Dependency Dashboard",
+  "timezone": "Europe/Berlin",
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 5,
+  "commitMessagePrefix": "chore(deps):",
+  "lockFileMaintenance": { "enabled": true },
+  "packageRules": [
+    {
+      "description": "Group non-major updates per ecosystem",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "frontend dependencies"
+    },
+    {
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "backend dependencies"
+    },
+    {
+      "matchManagers": ["github-actions", "dockerfile", "docker-compose", "helm-values"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "infrastructure (actions, images)"
+    },
+    {
+      "description": "Typst crates must be bumped together (typst, typst-pdf, typst-as-lib)",
+      "matchPackageNames": ["typst", "typst-pdf", "typst-as-lib"],
+      "groupName": "typst"
+    }
+  ]
+}
