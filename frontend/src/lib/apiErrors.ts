@@ -31,6 +31,7 @@ function settingsField(path: string): Field | null {
     'settings.bank.iban': () => ({ label: 'IBAN', area: bank() }),
     'settings.bank.bic': () => ({ label: 'BIC', area: bank() }),
     'settings.paymentDays': () => ({ label: tr('Zahlungsziel (Tage)', 'Payment term (days)'), area: bank() }),
+    'settings.exemptionReason': () => ({ label: tr('Grund der Steuerbefreiung', 'Reason for tax exemption'), area: bank() }),
     'settings.accentColor': () => ({ label: tr('Akzentfarbe', 'Accent color'), area: design() }),
     'settings.font': () => ({ label: tr('Schriftart', 'Font'), area: design() }),
     'settings.locale': () => ({ label: tr('Dokumentsprache', 'Document language'), area: design() }),
@@ -81,49 +82,66 @@ function itemField(name: string, n: number): Field | null {
   return label ? { label, area: itemArea(n) } : null
 }
 
-/** `invoice.items[2].price` -> field "Einzelpreis (netto)" in "Positionen › Position 3". */
-function resolveField(path: string, kind: string): { field: Field | null; prefix: string; raw: string } {
-  let rest = path
-  let prefix = ''
-  const batch = /^(?:invoices|documents)\[(\d+)\]\.?/.exec(rest)
-  if (batch) {
-    prefix = tr(`Beleg ${Number(batch[1]) + 1}: `, `Document ${Number(batch[1]) + 1}: `)
-    rest = rest.slice(batch[0].length)
-  } else {
-    rest = rest.replace(/^(?:invoice|document)\.?/, '')
-  }
-  const item = /^items\[(\d+)\]\.(.+)$/.exec(rest)
-  const field = item ? itemField(item[2], Number(item[1]) + 1) : (settingsField(path) ?? documentField(rest, kind))
-  return { field, prefix, raw: rest || path }
+/** Where a form field key (`recipient.name`, `items[0].price`, `settings.bank.iban`) lives in the UI. */
+export function describeField(key: string, kind: string): Field | null {
+  if (key.startsWith('settings.')) return settingsField(key)
+  const item = /^items\[(\d+)\]\.(.+)$/.exec(key)
+  return item ? itemField(item[2], Number(item[1]) + 1) : documentField(key, kind)
+}
+
+/** "Empfänger › Name" for a field key, `null` when the key is unknown. */
+export function fieldTitle(key: string, kind: string): string | null {
+  const field = describeField(key, kind)
+  return field ? `${field.area} › ${field.label}` : null
 }
 
 function rule(message: string): string | null {
-  if (message === 'is required') return tr('muss ausgefüllt werden', 'must be filled in')
+  if (message === 'is required') return tr('Pflichtfeld', 'Required')
   let m = /^must be at most (\d+) characters$/.exec(message)
-  if (m) return tr(`darf höchstens ${m[1]} Zeichen lang sein`, `must be at most ${m[1]} characters long`)
-  if (message === 'must be a valid date as YYYY-MM-DD') return tr('braucht ein gültiges Datum', 'needs a valid date')
-  if (message === 'must be a number between -1e9 and 1e9') return tr('muss eine Zahl sein (maximal 1 Milliarde)', 'must be a number (at most 1 billion)')
-  if (message === 'must look like #1d4ed8') return tr('muss eine Farbe wie #1d4ed8 sein', 'must be a color like #1d4ed8')
-  if (message === 'must be a whole number between 0 and 365') return tr('muss eine ganze Zahl zwischen 0 und 365 sein', 'must be a whole number between 0 and 365')
-  if (message === 'must be one of: 19, 7, 0') return tr('muss 19 %, 7 % oder 0 % sein', 'must be 19 %, 7 % or 0 %')
-  if (/^must be one of: /.test(message)) return tr('enthält einen nicht erlaubten Wert', 'contains a value that is not allowed')
+  if (m) return tr(`Höchstens ${m[1]} Zeichen`, `At most ${m[1]} characters`)
+  if (message === 'must be a valid date as YYYY-MM-DD') return tr('Bitte ein gültiges Datum angeben', 'Please enter a valid date')
+  if (message === 'must be a number between -1e9 and 1e9') return tr('Bitte eine Zahl angeben (max. 1 Milliarde)', 'Please enter a number (at most 1 billion)')
+  if (message === 'must look like #1d4ed8') return tr('Bitte eine Farbe wie #1d4ed8 angeben', 'Please enter a color like #1d4ed8')
+  if (message === 'must be a whole number between 0 and 365') return tr('Ganze Zahl zwischen 0 und 365', 'Whole number between 0 and 365')
+  if (message === 'must be one of: 19, 7, 0') return tr('Nur 19 %, 7 % oder 0 % möglich', 'Only 19 %, 7 % or 0 % allowed')
+  if (/^must be one of: /.test(message)) return tr('Nicht erlaubter Wert', 'Value not allowed')
   m = /^needs 1 to (\d+) items$/.exec(message)
-  if (m) return tr(`braucht 1 bis ${m[1]} Positionen`, `needs 1 to ${m[1]} items`)
+  if (m) return tr(`1 bis ${m[1]} Positionen nötig`, `1 to ${m[1]} items needed`)
   return null
 }
 
-/** One line per problem: "Rechnung › Rechnungsnummer: muss ausgefüllt werden". */
-function validationLines(details: string, kind: string): string[] {
+export interface ServerIssue {
+  /** Form field key without `invoice.`/`document.` prefix; undefined for summary lines like "and 3 more". */
+  field?: string
+  message: string
+}
+
+/**
+ * Splits the backend's `path: message; path: message` text into field issues.
+ * Entries of bulk requests (`invoices[2]…`) get no field because the forms edit a single document.
+ */
+export function parseValidationDetails(details: string): ServerIssue[] {
   return details.split('; ').map((part) => {
     const more = /^\.\.\. and (\d+) more$/.exec(part)
-    if (more) return tr(`… und ${more[1]} weitere Probleme`, `… and ${more[1]} more problems`)
+    if (more) return { message: tr(`… und ${more[1]} weitere Probleme`, `… and ${more[1]} more problems`) }
     const idx = part.indexOf(': ')
-    if (idx < 0) return part
-    const { field, prefix, raw } = resolveField(part.slice(0, idx), kind)
-    const text = rule(part.slice(idx + 2))
-    if (!text) return part
-    const where = field ? `${field.area} › ${field.label}` : raw
-    return `${prefix}${where}: ${text}`
+    if (idx < 0) return { message: part }
+    const path = part.slice(0, idx)
+    const message = rule(part.slice(idx + 2)) ?? part.slice(idx + 2)
+    if (/^(?:invoices|documents)\[/.test(path)) {
+      const batch = /^(?:invoices|documents)\[(\d+)\]\.?(.*)$/.exec(path)
+      const n = Number(batch?.[1] ?? 0) + 1
+      return { message: `${tr(`Beleg ${n}`, `Document ${n}`)} › ${batch?.[2] ?? ''}: ${message}` }
+    }
+    return { field: path.replace(/^(?:invoice|document)\./, ''), message }
+  })
+}
+
+/** One line per problem: "Rechnung › Rechnungsnummer: Pflichtfeld". */
+function validationLines(details: string, kind: string): string[] {
+  return parseValidationDetails(details).map(({ field, message }) => {
+    const title = field ? fieldTitle(field, kind) : null
+    return title ? `${title}: ${message}` : field ? `${field}: ${message}` : message
   })
 }
 

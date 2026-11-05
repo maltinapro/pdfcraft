@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Field, TextField } from './Field'
+import { errorId, useFieldIssue, useFieldPropsFor } from './FormIssues'
 import { tr, useLang } from '../lib/i18n'
 import { TAX_RATES, UNITS, newItem, type InvoiceItem } from '../lib/types'
 
@@ -13,6 +14,8 @@ interface Props {
 
 export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
   useLang()
+  const fieldProps = useFieldPropsFor()
+  const listIssue = useFieldIssue('items')
   const setItem = (id: string, patch: Partial<InvoiceItem>) =>
     onChange(items.map((item) => (item.id === id ? { ...item, ...patch } : item)))
 
@@ -38,6 +41,11 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
     <section className="form-section">
       <h3>{tr('Positionen', 'Items')}</h3>
       {hint && <p className="form-hint">{hint}</p>}
+      {listIssue && (
+        <p className="form-error" id={errorId('items')}>
+          {listIssue.message}
+        </p>
+      )}
       {items.map((item, index) => (
         <div
           className={`item-card${dragIndex === index ? ' dragging' : ''}${
@@ -96,10 +104,11 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
               </button>
             </span>
           </div>
-          <TextField label={tr('Beschreibung', 'Description')} value={item.description} onChange={(v) => setItem(item.id, { description: v })} />
+          <TextField field={`items[${index}].description`} label={tr('Beschreibung', 'Description')} value={item.description} onChange={(v) => setItem(item.id, { description: v })} />
           <div className="item-row">
-            <Field label={tr('Menge', 'Quantity')}>
+            <Field field={`items[${index}].quantity`} label={tr('Menge', 'Quantity')}>
               <input
+                {...fieldProps(`items[${index}].quantity`)}
                 type="number"
                 min={0}
                 step="any"
@@ -119,8 +128,9 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
           </div>
           {prices && (
             <div className="item-row">
-              <Field label={tr('Einzelpreis (netto)', 'Unit price (net)')}>
+              <Field field={`items[${index}].price`} label={tr('Einzelpreis (netto)', 'Unit price (net)')}>
                 <input
+                  {...fieldProps(`items[${index}].price`)}
                   type="number"
                   step="0.01"
                   value={item.price}
@@ -146,6 +156,8 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
       <button
         type="button"
         className="btn"
+        data-field="items"
+        aria-describedby={listIssue ? errorId('items') : undefined}
         onClick={() => onChange([...items, newItem()])}
       >
         {tr('+ Position hinzufügen', '+ Add item')}

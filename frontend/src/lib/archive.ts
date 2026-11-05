@@ -119,9 +119,10 @@ export function duplicateNumberIssue(entries: ArchiveEntry[], kind: DocKind, num
   if (!n || !entries.some((e) => e.kind === kind && e.number.trim() === n)) return null
   return {
     level: 'warning',
+    field: 'number',
     message: tr(
-      `Die Nummer ${n} wurde bereits ausgestellt – Belegnummern müssen eindeutig sein.`,
-      `Number ${n} has already been issued – document numbers must be unique.`,
+      `Nummer ${n} wurde schon ausgestellt – Belegnummern müssen eindeutig sein`,
+      `Number ${n} was already issued – document numbers must be unique`,
     ),
   }
 }

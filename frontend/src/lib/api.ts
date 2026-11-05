@@ -1,4 +1,4 @@
-import { friendlyApiError } from './apiErrors'
+import { friendlyApiError, parseValidationDetails, type ServerIssue } from './apiErrors'
 import { tr } from './i18n'
 import type { Doc, DocKind } from './documents'
 import type { Invoice, Settings } from './types'
@@ -38,14 +38,28 @@ function clearToken() {
   }
 }
 
-async function errorMessage(response: Response, kind: string): Promise<string> {
+/** The backend rejected the document data; `issues` point at the faulty form fields. */
+export class ValidationError extends Error {
+  readonly issues: ServerIssue[]
+
+  constructor(message: string, issues: ServerIssue[]) {
+    super(message)
+    this.name = 'ValidationError'
+    this.issues = issues
+  }
+}
+
+async function apiError(response: Response, kind: string): Promise<Error> {
   let payload: { error?: string; details?: string } = {}
   try {
     payload = (await response.json()) as typeof payload
   } catch {
     // no JSON body, the status code is enough
   }
-  return friendlyApiError(response.status, payload.error, payload.details, kind)
+  const message = friendlyApiError(response.status, payload.error, payload.details, kind)
+  return payload.error === 'validation_error'
+    ? new ValidationError(message, parseValidationDetails(payload.details ?? ''))
+    : new Error(message)
 }
 
 let pendingToken: Promise<string> | null = null
@@ -73,7 +87,7 @@ function fetchFreeToken(): Promise<string> {
         ),
       )
     }
-    if (!response.ok) throw new Error(await errorMessage(response, 'invoice'))
+    if (!response.ok) throw await apiError(response, 'invoice')
     const stored = (await response.json()) as StoredToken
     try {
       localStorage.setItem(TOKEN_KEY, JSON.stringify(stored))
@@ -117,7 +131,7 @@ async function requestBlob(path: string, payload: unknown, signal?: AbortSignal)
       tr(`Zu viele Anfragen${wait ? `, bitte ${wait} s warten` : ''}.`, `Too many requests${wait ? `, please wait ${wait} s` : ''}.`),
     )
   }
-  if (!response.ok) throw new Error(await errorMessage(response, (payload as { type?: string }).type ?? 'invoice'))
+  if (!response.ok) throw await apiError(response, (payload as { type?: string }).type ?? 'invoice')
   return response.blob()
 }
 
