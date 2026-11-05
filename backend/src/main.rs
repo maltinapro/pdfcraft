@@ -49,7 +49,7 @@ use typst_as_lib::{
     conversions::IntoFileId,
     file_resolver::{FileResolver, FileSystemResolver},
     cached_file_resolver::IntoCachedFileResolver,
-    typst_kit_options::TypstKitFontOptions, TypstEngine, TypstTemplateCollection,
+    TypstEngine, TypstTemplateCollection,
 };
 
 const MAX_REQUEST_BODY_BYTES: usize = 2 * 1024 * 1024;
@@ -80,6 +80,30 @@ impl FileResolver for RequestSources {
     }
 }
 
+/// Loads the embedded and system fonts once. typst-as-lib's own font search keeps only
+/// file paths and re-reads and re-parses the font file on every lookup (~10 ms per request).
+fn load_fonts() -> Vec<typst::text::Font> {
+    let mut fonts: Vec<typst::text::Font> = typst_kit::fonts::embedded().map(|(font, _)| font).collect();
+    let mut file: Option<(std::path::PathBuf, Bytes)> = None;
+    for (slot, _) in typst_kit::fonts::system() {
+        let bytes = match &file {
+            Some((path, bytes)) if *path == slot.path => bytes.clone(),
+            _ => match std::fs::read(&slot.path) {
+                Ok(data) => {
+                    let bytes = Bytes::new(data);
+                    file = Some((slot.path.clone(), bytes.clone()));
+                    bytes
+                }
+                Err(_) => continue,
+            },
+        };
+        if let Some(font) = typst::text::Font::new(bytes, slot.index) {
+            fonts.push(font);
+        }
+    }
+    fonts
+}
+
 struct Compiler {
     engine: TypstEngine<TypstTemplateCollection>,
     sources: Sources,
@@ -100,7 +124,7 @@ fn compiler() -> &'static Compiler {
                 std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("vendor/typst-packages")
             });
         let engine = TypstEngine::builder()
-            .search_fonts_with(TypstKitFontOptions::default())
+            .fonts(load_fonts())
             .add_file_resolver(RequestSources {
                 sources: sources.clone(),
                 assets: assets.clone(),

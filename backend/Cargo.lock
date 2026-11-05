@@ -2152,6 +2152,7 @@ dependencies = [
  "tracing-subscriber",
  "typst",
  "typst-as-lib",
+ "typst-kit",
  "typst-pdf",
  "zip",
 ]
@@ -3442,7 +3443,6 @@ dependencies = [
  "ecow",
  "thiserror",
  "typst",
- "typst-kit",
 ]
 
 [[package]]
