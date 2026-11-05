@@ -9,12 +9,12 @@ interface Field {
   area: string
 }
 
-const sender = () => tr('Absender & Design → Firma', 'Sender & design → Company')
-const bank = () => tr('Absender & Design → Bankverbindung', 'Sender & design → Bank details')
-const design = () => tr('Absender & Design → Design', 'Sender & design → Design')
-const texts = () => tr('Absender & Design → Texte', 'Sender & design → Texts')
+const sender = () => tr('Absender & Design › Firma', 'Sender & design › Company')
+const bank = () => tr('Absender & Design › Bankverbindung', 'Sender & design › Bank details')
+const design = () => tr('Absender & Design › Design', 'Sender & design › Design')
+const texts = () => tr('Absender & Design › Texte', 'Sender & design › Texts')
 const recipient = () => tr('Empfänger', 'Recipient')
-const itemArea = (n: number) => tr(`Positionen → Position ${n}`, `Items → Item ${n}`)
+const itemArea = (n: number) => tr(`Positionen › Position ${n}`, `Items › Item ${n}`)
 
 /** Labels and places exactly as the forms show them (see InvoiceForm, DocumentForm, SettingsForm). */
 function settingsField(path: string): Field | null {
@@ -34,7 +34,7 @@ function settingsField(path: string): Field | null {
     'settings.accentColor': () => ({ label: tr('Akzentfarbe', 'Accent color'), area: design() }),
     'settings.font': () => ({ label: tr('Schriftart', 'Font'), area: design() }),
     'settings.locale': () => ({ label: tr('Dokumentsprache', 'Document language'), area: design() }),
-    'settings.einvoiceProfile': () => ({ label: tr('Profil', 'Profile'), area: tr('Absender & Design → E-Rechnung', 'Sender & design → E-invoice') }),
+    'settings.einvoiceProfile': () => ({ label: tr('Profil', 'Profile'), area: tr('Absender & Design › E-Rechnung', 'Sender & design › E-invoice') }),
     'settings.intro': () => ({ label: tr('Einleitung', 'Introduction'), area: texts() }),
     'settings.closing': () => ({ label: tr('Schlusstext', 'Closing text'), area: texts() }),
     'settings.footer': () => ({ label: tr('Fußzeile', 'Footer'), area: texts() }),
@@ -81,7 +81,7 @@ function itemField(name: string, n: number): Field | null {
   return label ? { label, area: itemArea(n) } : null
 }
 
-/** `invoice.items[2].price` -> field "Einzelpreis (netto)" in "Positionen → Position 3". */
+/** `invoice.items[2].price` -> field "Einzelpreis (netto)" in "Positionen › Position 3". */
 function resolveField(path: string, kind: string): { field: Field | null; prefix: string; raw: string } {
   let rest = path
   let prefix = ''
@@ -97,44 +97,41 @@ function resolveField(path: string, kind: string): { field: Field | null; prefix
   return { field, prefix, raw: rest || path }
 }
 
-const ref = (f: Field | null, raw: string) => (f ? `„${f.label}“ (${f.area})` : `„${raw}“`)
-
-function rule(message: string, subject: string): string | null {
-  if (message === 'is required') return tr(`${subject} muss ausgefüllt werden.`, `${subject} must be filled in.`)
+function rule(message: string): string | null {
+  if (message === 'is required') return tr('muss ausgefüllt werden', 'must be filled in')
   let m = /^must be at most (\d+) characters$/.exec(message)
-  if (m) return tr(`${subject} darf höchstens ${m[1]} Zeichen lang sein.`, `${subject} must be at most ${m[1]} characters long.`)
-  if (message === 'must be a valid date as YYYY-MM-DD') return tr(`${subject} muss ein gültiges Datum enthalten.`, `${subject} must contain a valid date.`)
-  if (message === 'must be a number between -1e9 and 1e9') return tr(`${subject} muss eine Zahl sein (maximal 1 Milliarde).`, `${subject} must be a number (at most 1 billion).`)
-  if (message === 'must look like #1d4ed8') return tr(`${subject} muss eine Farbe wie #1d4ed8 sein.`, `${subject} must be a color like #1d4ed8.`)
-  if (message === 'must be a whole number between 0 and 365') return tr(`${subject} muss eine ganze Zahl zwischen 0 und 365 sein.`, `${subject} must be a whole number between 0 and 365.`)
-  if (message === 'must be one of: 19, 7, 0') return tr(`${subject} muss 19 %, 7 % oder 0 % sein.`, `${subject} must be 19 %, 7 % or 0 %.`)
-  if (/^must be one of: /.test(message)) return tr(`${subject} enthält einen nicht erlaubten Wert.`, `${subject} contains a value that is not allowed.`)
+  if (m) return tr(`darf höchstens ${m[1]} Zeichen lang sein`, `must be at most ${m[1]} characters long`)
+  if (message === 'must be a valid date as YYYY-MM-DD') return tr('braucht ein gültiges Datum', 'needs a valid date')
+  if (message === 'must be a number between -1e9 and 1e9') return tr('muss eine Zahl sein (maximal 1 Milliarde)', 'must be a number (at most 1 billion)')
+  if (message === 'must look like #1d4ed8') return tr('muss eine Farbe wie #1d4ed8 sein', 'must be a color like #1d4ed8')
+  if (message === 'must be a whole number between 0 and 365') return tr('muss eine ganze Zahl zwischen 0 und 365 sein', 'must be a whole number between 0 and 365')
+  if (message === 'must be one of: 19, 7, 0') return tr('muss 19 %, 7 % oder 0 % sein', 'must be 19 %, 7 % or 0 %')
+  if (/^must be one of: /.test(message)) return tr('enthält einen nicht erlaubten Wert', 'contains a value that is not allowed')
   m = /^needs 1 to (\d+) items$/.exec(message)
-  if (m) return tr(`${subject}: Es werden 1 bis ${m[1]} Positionen benötigt.`, `${subject}: 1 to ${m[1]} items are needed.`)
+  if (m) return tr(`braucht 1 bis ${m[1]} Positionen`, `needs 1 to ${m[1]} items`)
   return null
 }
 
-function validationMessage(details: string, kind: string): string {
-  return details
-    .split('; ')
-    .map((part) => {
-      const more = /^\.\.\. and (\d+) more$/.exec(part)
-      if (more) return tr(`… und ${more[1]} weitere Probleme`, `… and ${more[1]} more problems`)
-      const idx = part.indexOf(': ')
-      if (idx < 0) return part
-      const { field, prefix, raw } = resolveField(part.slice(0, idx), kind)
-      const subject = tr(`Das Feld ${ref(field, raw)}`, `The field ${ref(field, raw)}`)
-      const text = rule(part.slice(idx + 2), subject)
-      return text ? prefix + text : part
-    })
-    .join(' ')
+/** One line per problem: "Rechnung › Rechnungsnummer: muss ausgefüllt werden". */
+function validationLines(details: string, kind: string): string[] {
+  return details.split('; ').map((part) => {
+    const more = /^\.\.\. and (\d+) more$/.exec(part)
+    if (more) return tr(`… und ${more[1]} weitere Probleme`, `… and ${more[1]} more problems`)
+    const idx = part.indexOf(': ')
+    if (idx < 0) return part
+    const { field, prefix, raw } = resolveField(part.slice(0, idx), kind)
+    const text = rule(part.slice(idx + 2))
+    if (!text) return part
+    const where = field ? `${field.area} › ${field.label}` : raw
+    return `${prefix}${where}: ${text}`
+  })
 }
 
 /** Plain-language message for a backend error response (`code` = `error`, `details` as sent). */
 export function friendlyApiError(status: number, code: string | undefined, details: string | undefined, kind = 'invoice'): string {
   switch (code) {
     case 'validation_error':
-      return tr('Bitte Eingaben prüfen. ', 'Please check your input. ') + validationMessage(details ?? '', kind)
+      return [tr('Bitte diese Eingaben prüfen:', 'Please check these entries:'), ...validationLines(details ?? '', kind)].join('\n')
     case 'rate_limited':
       return tr('Zu viele Anfragen. Bitte kurz warten und es erneut versuchen.', 'Too many requests. Please wait a moment and try again.')
     case 'unauthorized':

@@ -31,6 +31,22 @@ interface Props {
 type Tab = 'document' | 'settings'
 
 /** Form + live PDF preview + download, shared by all document types. */
+function PreviewError({ message }: { message: string }) {
+  const [title, ...items] = message.split('\n')
+  return (
+    <div className="preview-error" role="alert">
+      <strong>{items.length > 0 ? title : `${tr('Vorschau fehlgeschlagen', 'Preview failed')}: ${title}`}</strong>
+      {items.length > 0 && (
+        <ul>
+          {items.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export function Workspace({
   title,
   fileName,
@@ -180,7 +196,7 @@ export function Workspace({
         </aside>
 
         <main className="preview">
-          {error && <div className="preview-error">{tr('Vorschau fehlgeschlagen', 'Preview failed')}: {error}</div>}
+          {error && <PreviewError message={error} />}
           {loading && <div className="preview-loading">{tr('Aktualisiere Vorschau …', 'Updating preview …')}</div>}
           {!inlineSupported && pdfBlob && <PdfCanvasPreview blob={pdfBlob} />}
           {inlineSupported && previewUrl && (
