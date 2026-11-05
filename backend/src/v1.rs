@@ -142,6 +142,7 @@ pub fn router() -> Router {
         .route("/documents/bulk", post(document_bulk))
         .route("/postage/products", get(crate::internetmarke::list_products))
         .route("/postage/stamps", post(crate::internetmarke::buy_stamp))
+        .route("/postage/stamps/bulk", post(crate::internetmarke::buy_stamps_bulk))
         .layer(middleware::from_fn(auth));
     // Free tokens are issued against an Anubis pass instead of a token
     // Purchase hand-over (Stripe): only answers while PAID_TOKENS_ENABLED

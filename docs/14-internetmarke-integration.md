@@ -31,6 +31,7 @@ If the payment succeeded but the download failed, the error `postage_download_fa
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /v1/postage/products` | `{ "products": [{ "productCode", "name", "priceCents" }] }` |
+| `POST /v1/postage/stamps/bulk` | same body plus `quantity` (1 to 25); buys all stamps in **one cart with one login** (all or nothing). Response `{ "stamps": [{ "png", "widthMm", "heightMm", "voucherId", "shopOrderId" }], "productCode", "productName", "priceCents" (each), "totalCents", "walletBalanceCents" }`. Costs `4 + quantity` rate-limit tokens, so a free token (20 per minute) can buy at most 16 at once |
 | `POST /v1/postage/stamps` | body `{ "productCode", "expectedPriceCents", "requestId", "credentials": { "username", "password" } }`; response `{ "png" (base64), "widthMm", "heightMm", "voucherId", "shopOrderId", "productCode", "productName", "priceCents", "walletBalanceCents" }` |
 
 Both need a token (free or paid) and answer `404 postage_disabled` while the feature is off. Error codes: `postage_login_failed` (422, deliberately not 401), `postage_wallet_insufficient` (402), `postage_price_changed` / `postage_duplicate` (409), `postage_unknown_product` (400), `postage_download_failed`, `postage_upstream_error` (502). The frontend translates them in `frontend/src/lib/apiErrors.ts`.
@@ -50,10 +51,14 @@ Helm: `backend.env.INTERNETMARKE_ENABLED: "true"` plus `backend.internetmarkeSec
 
 Metric: `pdfcraft_postage_stamps_total{result}` (dashboard "Internetmarke purchases by result", see [Observability](13-observability.md)).
 
+## Testing without Deutsche Post
+
+`backend/tools/mock_internetmarke.py` is a local stand-in for both Deutsche Post APIs (products, login, cart, PNG checkout, ZIP download; password `secret`, `poor@example.com` has only 1 EUR). Start it, point `INTERNETMARKE_SHIPPING_URL=http://127.0.0.1:9100/im/v1` and `INTERNETMARKE_PRODUCTS_URL=http://127.0.0.1:9100/products` at it, and set `INTERNETMARKE_ENABLED=true` with any client id/secret (see the header of the script). Plain `http://` is accepted **only** for `localhost`/`127.0.0.1`; any other shipping URL requires https for the API and the download link. The unit tests start a similar mock server in-process (`cargo test internetmarke`).
+
 ## Open points
 
 - **Onboarding:** production credentials come with a Deutsche Post partner onboarding. Whether a partner app may log in with *end-customer* Portokasse credentials in production must be clarified with Deutsche Post. If not, a reseller model (users pay PDFCraft via Stripe, PDFCraft pays from its own wallet) would replace the credentials dialog; the stamp handling in templates and browser stays the same.
 - **Live check:** run the flow against the sandbox. The product filter (letter names), the response fields (`walletBalance`/`walletBallance`, `voucherList`) and the download link host are derived from the spec and sample code.
 - **Print test:** the layout rules of the franking mark are binding. Print the PDF at 100 % and test it in a window envelope; the placement in the address field was checked visually only.
-- **Bulk / API-only use:** the bulk endpoints accept a `postage` per entry but never buy stamps; API clients buy one stamp per document via `POST /v1/postage/stamps` and attach it (example in the [API reference](09-api-reference.md)). Reproduced archive entries have no stamp. A bulk purchase endpoint (several stamps per login, defined partial-failure behaviour) is not built.
+- **Bulk / API-only use:** the document bulk endpoints accept a `postage` per entry but never buy stamps themselves. API clients buy `n` stamps with `POST /v1/postage/stamps/bulk` and attach one to each entry (example in the [API reference](09-api-reference.md)). The images are paired with the voucher ids by their file number in the download (`0.png`, `1.png`, ...); this pairing follows the spec and is not verified against the live service. If the number of images differs from the number of stamps, the call fails with `postage_download_failed` and the shop order id. The browser UI buys single stamps only; reproduced archive entries have no stamp.
 - **Legal:** the privacy policy names Deutsche Post as an external service and describes the pass-through of the login. The operator must verify the wording.
