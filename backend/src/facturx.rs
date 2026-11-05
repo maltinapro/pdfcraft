@@ -121,7 +121,18 @@ pub fn add_facturx_xmp(pdf: Vec<u8>) -> Vec<u8> {
     }
 }
 
+fn mentions_invoice_xml(pdf: &[u8]) -> bool {
+    XML_NAMES.iter().any(|name| {
+        let name = name.as_bytes();
+        pdf.windows(name.len()).any(|w| w.eq_ignore_ascii_case(name))
+    })
+}
+
 fn try_add(pdf: &[u8]) -> Result<Option<Vec<u8>>, String> {
+    // Cheap check first: parsing the whole PDF is pointless without an attached invoice XML.
+    if !mentions_invoice_xml(pdf) {
+        return Ok(None);
+    }
     let mut doc = Document::load_mem(pdf).map_err(|e| e.to_string())?;
     let Some((file_name, xml)) = find_invoice_xml(&doc) else {
         return Ok(None);

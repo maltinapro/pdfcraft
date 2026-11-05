@@ -633,6 +633,42 @@ mod tests {
         }
     }
 
+    /// Timing benchmark: `cargo test --release bench_render -- --ignored --nocapture`.
+    #[tokio::test]
+    #[ignore]
+    async fn bench_render() {
+        let settings: Settings = serde_json::from_value(json!({
+            "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt", "email": "a@b.de", "vatId": "DE123456789"},
+            "bank": {"iban": "DE89370400440532013000"},
+        }))
+        .unwrap();
+        for count in [3usize, 60] {
+            let items: Vec<_> = (0..count)
+                .map(|i| json!({"description": format!("Position {i}"), "quantity": 2, "unit": "h", "price": 95, "taxRate": 19}))
+                .collect();
+            let raw: Invoice = serde_json::from_value(json!({
+                "number": "2026-001", "date": "2026-01-31", "deliveryDate": "2026-01-30", "dueDate": "2026-02-14",
+                "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+                "items": items,
+            }))
+            .unwrap();
+            let mut errors = Errors::default();
+            let s = check_settings(&settings, &mut errors);
+            let invoice = check_invoice(&raw, "invoice", &mut errors);
+            assert!(errors.0.is_empty(), "{:?}", errors.0);
+            let mut times = Vec::new();
+            for _ in 0..25 {
+                let (data, assets) = document(&settings, s.data.clone(), &raw, invoice.clone(), Vec::new());
+                let started = std::time::Instant::now();
+                let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await.unwrap_or_else(|e| panic!("{}", e.details));
+                times.push((started.elapsed().as_secs_f64() * 1000.0, pdf.len()));
+            }
+            times.remove(0);
+            times.sort_by(|a, b| a.0.total_cmp(&b.0));
+            println!("BENCH items={count} median={:.1}ms min={:.1}ms max={:.1}ms size={}", times[times.len() / 2].0, times[0].0, times[times.len() - 1].0, times[0].1);
+        }
+    }
+
     #[tokio::test]
     async fn renders_invoice_with_and_without_watermark() {
         let settings: Settings = serde_json::from_value(json!({

@@ -21,7 +21,7 @@ It listens on `http://0.0.0.0:3000` (change with `BIND_ADDR`). Check it:
 curl http://localhost:3000/health      # {"status":"ok"}
 ```
 
-The dev profile is optimized (`opt-level`) on purpose: Typst is very slow unoptimized. A warm-up compile runs at start-up so the first request is fast (about 50–200 ms afterwards).
+The dev profile is optimized (`opt-level`) on purpose: Typst is very slow unoptimized. A warm-up compile runs at start-up so the first request is fast (a 3-item invoice renders in about 5 ms afterwards, 60 items in about 30 ms).
 
 Vendored Typst packages are read from `backend/vendor/typst-packages`; override with `TYPST_PACKAGE_PATH`.
 
