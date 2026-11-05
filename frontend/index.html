@@ -86,29 +86,31 @@
         <p>
           Diese Seite ist ein <strong>Demo-System</strong>. Du kannst hier ausprobieren, wie sich
           Rechnungen, Stornorechnungen, Angebote, Auftragsbestätigungen, Lieferscheine und Briefe per Formular zusammenklicken lassen: Logo, Firmenanschrift, Positionen und
-          ein paar Gestaltungsoptionen – die Vorschau aktualisiert sich live. Deine Eingaben
-          bleiben im Browser gespeichert und lassen sich als JSON sichern und wieder einlesen.
+          ein paar Gestaltungsoptionen – die Vorschau aktualisiert sich live. Es ist kein
+          Konto nötig: Deine Eingaben bleiben nur in deinem Browser gespeichert. Lade dir deshalb
+          regelmäßig eine Sicherungsdatei herunter (unter „Daten &amp; Sicherung“) – so gehen deine
+          Daten nicht verloren und du kannst sie auf einem anderen Gerät wieder einlesen.
         </p>
       </section>
 
       <section>
-        <h2>Gratis-Token und Kauf-Token</h2>
+        <h2>Kostenlos testen, später kaufen</h2>
         <p>
-          In der Demo bekommst du automatisch ein <strong>kostenloses Token</strong>. Es wird nach
-          einer kurzen Browser-Prüfung (Anubis) erzeugt, im Browser gespeichert und gilt einige
-          Stunden. Es hat ein Rate-Limit, und die damit erzeugten PDFs tragen das Wasserzeichen
-          <strong>„Entwurf“</strong>. Ist es abgelaufen, löst du die Prüfung einfach erneut.
+          In der Demo bekommst du automatisch einen <strong>kostenlosen Zugangsschlüssel (Token)</strong>.
+          Er wird nach einer kurzen Prüfung, ob du ein Mensch bist (Anubis), erzeugt, im Browser
+          gespeichert und gilt einige Stunden. Damit kannst du begrenzt viele PDFs pro Minute
+          erzeugen; sie tragen das Wasserzeichen <strong>„Entwurf“</strong>. Ist er abgelaufen,
+          wird die Prüfung einfach erneut durchgeführt.
         </p>
         <p>
-          Für den <strong>produktiven Einsatz</strong> ist ein <strong>Kauf-Token</strong>
-          notwendig (ohne Wasserzeichen, mit höheren Limits, als Tages-, Monats- oder
-          Abo-Token). Es wird freigeschaltet, sobald der Service in den produktiven Betrieb geht.
+          Für den <strong>echten Einsatz</strong> brauchst du einen <strong>gekauften Token</strong>
+          (ohne Wasserzeichen, mit höheren Limits, als Tages-, Monats- oder Abo-Token). Es wird freigeschaltet, sobald der Service in den produktiven Betrieb geht.
         </p>
         <p>
           <strong>Wir speichern keine Kundendaten und wollen das auch nicht.</strong>
           Rechnungsdaten werden nur für die Erzeugung des PDFs verarbeitet und danach verworfen;
-          gespeichert wird allein das Token selbst (als Hash) mit seinem Limit und seiner
-          Laufzeit. Das folgt den Prinzipien von
+          gespeichert wird allein der Token selbst (nur als unlesbarer Prüfwert) mit seinem Limit
+          und seiner Laufzeit. Das folgt den Prinzipien von
           <a href="https://vorneweg.org/">vorneweg.org</a>.
         </p>
       </section>
@@ -126,10 +128,10 @@
           </article>
           <article>
             <div class="icon" aria-hidden="true">📦</div>
-            <h3>Bulk-Erzeugung</h3>
+            <h3>Viele Dokumente auf einmal</h3>
             <p>
-              Über die REST-API lassen sich viele Dokumente jeder Art in einem Request erzeugen und als
-              ZIP abholen – mit Token und Rate-Limit pro Kunde.
+              Mehrere Dokumente lassen sich gemeinsam als ZIP-Datei herunterladen. Entwickler können sie
+              außerdem über die REST-API automatisiert erzeugen.
             </p>
           </article>
           <article>
@@ -148,9 +150,15 @@
         <p>Aktuelle Version: <strong>__APP_VERSION__</strong></p>
         <ul>
           <li>
+            <strong>Leichterer Einstieg</strong>: Eine Willkommenskarte führt durch die ersten Schritte,
+            Hinweise erklären Begriffe wie USt-IdNr., Leitweg-ID und E-Rechnung, das Logo lässt sich
+            per Klick auswählen und ein Status zeigt, dass deine Eingaben automatisch im Browser
+            gespeichert werden.
+          </li>
+          <li>
             <strong>Einfachere Sicherung</strong>: Neue Seiten „Meine Belege“ und „Daten &amp; Sicherung“.
-            Mit einem Klick laden Sie Absender, Logo, Entwürfe und alle Belege als eine Datei herunter und
-            stellen sie bei Bedarf wieder her. Die Übersicht erinnert Sie, solange neue Belege noch nicht
+            Mit einem Klick lädst du Absender, Logo, Entwürfe und alle Belege als eine Datei herunter und
+            stellst sie bei Bedarf wieder her. Die Übersicht erinnert dich, solange neue Belege noch nicht
             gesichert sind.
           </li>
           <li>
@@ -158,6 +166,10 @@
             Sprache (Deutsch oder Englisch) statt als technischer Code. Betroffene Felder werden rot
             markiert, ein Klick auf den Hinweis springt direkt zum Eingabefeld.
           </li>
+        </ul>
+        <details>
+          <summary>Ältere Neuigkeiten anzeigen</summary>
+        <ul>
           <li>
             Alle PDFs sind jetzt nach <strong>DIN 5008 (Form B)</strong> aufgebaut: Falt- und Lochmarke,
             Anschriftfeld für den Fensterumschlag, Bezugszeichenzeile und Seitenränder.
@@ -184,6 +196,7 @@
           </li>
           <li>Die <strong>Versionsnummer</strong> steht im Konfigurator und hier im Footer.</li>
         </ul>
+        </details>
         <p>
           Alle Änderungen je Version findest du in den
           <a href="https://github.com/maltinapro/pdfcraft/releases">Release Notes auf GitHub</a>.

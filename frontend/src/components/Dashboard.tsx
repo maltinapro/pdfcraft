@@ -20,10 +20,12 @@ interface Props {
   onFollowUp: (entry: ArchiveEntry, target: DocKind) => void
   unsaved: number
   onBackup: () => void
+  /** First visit: sender still shows the example data. */
+  showWelcome?: boolean
 }
 
 /** Start page: one tile per document type (see `DOC_SPECS`) and the latest documents. */
-export function Dashboard({ notice, onDismissNotice, archive, cancelled, onFollowUp, unsaved, onBackup }: Props) {
+export function Dashboard({ notice, onDismissNotice, archive, cancelled, onFollowUp, unsaved, onBackup, showWelcome = false }: Props) {
   useLang()
   return (
     <div className="app app-scroll">
@@ -39,6 +41,19 @@ export function Dashboard({ notice, onDismissNotice, archive, cancelled, onFollo
       )}
 
       <main className="dashboard">
+        {showWelcome && (
+          <section className="welcome" aria-label={tr('Erste Schritte', 'Getting started')}>
+            <div>
+              <h2>{tr('Willkommen! In zwei Schritten zum ersten Dokument', 'Welcome! Two steps to your first document')}</h2>
+              <ol>
+                <li>{tr('Tragen Sie einmalig Ihre Firmendaten ein (Name, Adresse, Bankverbindung, optional Logo).', 'Enter your company details once (name, address, bank details, optional logo).')}</li>
+                <li>{tr('Wählen Sie unten eine Dokumentart – die Vorschau zeigt sofort, wie das PDF aussieht.', 'Choose a document type below – the preview instantly shows what the PDF looks like.')}</li>
+              </ol>
+            </div>
+            <a className="btn btn-primary" href={routeHref('sender')}>{tr('Firmendaten eintragen', 'Enter company details')}</a>
+          </section>
+        )}
+
         <BackupBanner unsaved={unsaved} onBackup={onBackup} />
 
         <section className="dashboard-hero">
