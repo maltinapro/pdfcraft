@@ -38,14 +38,14 @@ function clearToken() {
   }
 }
 
-async function errorMessage(response: Response): Promise<string> {
+async function errorMessage(response: Response, kind: string): Promise<string> {
   let payload: { error?: string; details?: string } = {}
   try {
     payload = (await response.json()) as typeof payload
   } catch {
     // no JSON body, the status code is enough
   }
-  return friendlyApiError(response.status, payload.error, payload.details)
+  return friendlyApiError(response.status, payload.error, payload.details, kind)
 }
 
 let pendingToken: Promise<string> | null = null
@@ -73,7 +73,7 @@ function fetchFreeToken(): Promise<string> {
         ),
       )
     }
-    if (!response.ok) throw new Error(await errorMessage(response))
+    if (!response.ok) throw new Error(await errorMessage(response, 'invoice'))
     const stored = (await response.json()) as StoredToken
     try {
       localStorage.setItem(TOKEN_KEY, JSON.stringify(stored))
@@ -117,7 +117,7 @@ async function requestBlob(path: string, payload: unknown, signal?: AbortSignal)
       tr(`Zu viele Anfragen${wait ? `, bitte ${wait} s warten` : ''}.`, `Too many requests${wait ? `, please wait ${wait} s` : ''}.`),
     )
   }
-  if (!response.ok) throw new Error(await errorMessage(response))
+  if (!response.ok) throw new Error(await errorMessage(response, (payload as { type?: string }).type ?? 'invoice'))
   return response.blob()
 }
 
