@@ -59,12 +59,27 @@ export interface InvoiceItem {
   taxRate: number
 }
 
+/** A bought Internetmarke (Deutsche Post franking mark). It is valid for one letter only. */
+export interface PostageStamp {
+  /** PNG without the data URL prefix. */
+  base64: string
+  voucherId: string
+  shopOrderId: string
+  productName: string
+  priceCents: number
+  boughtAt: string
+}
+
+/** What the archive remembers about a used stamp (never the image). */
+export type StampInfo = Pick<PostageStamp, 'voucherId' | 'productName' | 'priceCents'>
+
 export interface Invoice {
   number: string
   /** ISO date, `YYYY-MM-DD`. */
   date: string
   recipient: Recipient
   items: InvoiceItem[]
+  postage?: PostageStamp | null
 }
 
 export const FONTS = [

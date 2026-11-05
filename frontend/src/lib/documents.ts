@@ -1,6 +1,6 @@
 import { tr } from './i18n'
-import { isObj, mergeObject, type Obj } from './storage'
-import { newItem, todayIso, type InvoiceItem, type Recipient } from './types'
+import { isObj, mergeObject, parsePostage, type Obj } from './storage'
+import { newItem, todayIso, type InvoiceItem, type PostageStamp, type Recipient } from './types'
 
 export type DocKind = 'invoice' | 'credit-note' | 'offer' | 'order' | 'delivery-note' | 'letter'
 
@@ -20,6 +20,7 @@ export interface Doc {
   reason: string
   intro: string
   closing: string
+  postage?: PostageStamp | null
 }
 
 export type DocDataKind = Exclude<DocKind, 'invoice'>
@@ -194,6 +195,7 @@ function parseDoc(kind: DocDataKind, raw: unknown): Doc {
     void _id
     return newItem(rest as Partial<typeof base>)
   })
+  doc.postage = parsePostage(isObj(raw) ? raw.postage : null)
   return doc
 }
 

@@ -916,6 +916,49 @@
           "mode": "multi"
         }
       }
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "Internetmarke purchases by result",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 64
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (increase(pdfcraft_postage_stamps_total{namespace=~\"$namespace\"}[1h]))",
+          "legendFormat": "{{result}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "description": "bought = stamp delivered; the other results are errors (postage_login_failed, postage_wallet_insufficient, postage_download_failed = paid but not downloaded, ...)"
     }
   ]
 }

@@ -54,6 +54,18 @@ spec:
                   name: {{ .Values.backend.stripeSecret }}
                   key: STRIPE_WEBHOOK_SECRET
             {{- end }}
+            {{- if .Values.backend.internetmarkeSecret }}
+            - name: INTERNETMARKE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.internetmarkeSecret }}
+                  key: INTERNETMARKE_CLIENT_ID
+            - name: INTERNETMARKE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.internetmarkeSecret }}
+                  key: INTERNETMARKE_CLIENT_SECRET
+            {{- end }}
             {{- range $k, $v := .Values.backend.env }}
             - name: {{ $k }}
               value: {{ $v | quote }}

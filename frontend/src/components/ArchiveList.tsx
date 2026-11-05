@@ -28,6 +28,7 @@ export function ArchiveList({ entries, cancelled, onFollowUp, selected, onToggle
             <div className="archive-main">
               <strong>{docSpec(e.kind)?.label} {e.number}</strong>
               {done && <span className="badge">{tr('Gutschrift erstellt', 'credit note issued')}</span>}
+              {e.stamp && <span className="badge" title={e.stamp.voucherId}>{tr('mit Briefmarke', 'with postage stamp')}</span>}
               <span className="archive-sub">{e.recipient} · {new Date(e.date).toLocaleDateString(uiLocale())}{e.total !== null ? ` · ${money(e.total)}` : ''}</span>
             </div>
             <div className="archive-actions">

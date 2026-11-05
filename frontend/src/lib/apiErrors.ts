@@ -60,6 +60,7 @@ function documentField(rest: string, kind: string): Field | null {
     intro: () => ({ label: tr('Einleitung', 'Introduction'), area: tr('Texte', 'Texts') }),
     closing: () => ({ label: spec?.letter ? tr('Grußformel', 'Closing phrase') : tr('Schlusstext', 'Closing text'), area: tr('Texte', 'Texts') }),
     items: () => ({ label: tr('Positionen', 'Items'), area: tr('Positionen', 'Items') }),
+    postage: () => ({ label: tr('Briefmarke', 'Postage stamp'), area: tr('Porto', 'Postage') }),
     'recipient.name': () => ({ label: tr('Name', 'Name'), area: recipient() }),
     'recipient.address': () => ({ label: tr('Straße / Hausnummer', 'Street / house number'), area: recipient() }),
     'recipient.city': () => ({ label: tr('PLZ / Ort', 'Postcode / city'), area: recipient() }),
@@ -160,6 +161,27 @@ export function friendlyApiError(status: number, code: string | undefined, detai
       return tr('Das Logo konnte nicht verarbeitet werden. Bitte eine andere Bilddatei verwenden.', 'The logo could not be processed. Please use a different image file.')
     case 'invalid_request':
       return tr('Die Anfrage war unvollständig oder zu groß. Bitte Eingaben und Logo prüfen.', 'The request was incomplete or too large. Please check your input and logo.')
+    case 'postage_disabled':
+      return tr('Der Kauf von Briefmarken ist auf diesem Server nicht aktiviert.', 'Buying postage stamps is not enabled on this server.')
+    case 'postage_login_failed':
+      return tr('Die Portokasse hat die Anmeldung abgelehnt. Bitte E-Mail-Adresse und Passwort prüfen.', 'The Portokasse rejected the login. Please check your e-mail address and password.')
+    case 'postage_price_changed':
+      return tr('Der Preis hat sich geändert. Bitte die Produktliste neu laden und erneut versuchen. Es wurde nichts gekauft.', 'The price has changed. Please reload the product list and try again. Nothing was bought.')
+    case 'postage_duplicate':
+      return tr('Dieser Kauf wurde bereits verarbeitet. Bitte erneut auf „Kaufen“ klicken.', 'This purchase was already processed. Please click “Buy” again.')
+    case 'postage_wallet_insufficient':
+      return tr('Das Guthaben der Portokasse reicht nicht aus. Bitte die Portokasse aufladen.', 'The Portokasse balance is too low. Please top up your Portokasse.')
+    case 'postage_unknown_product':
+      return tr('Dieses Porto-Produkt ist nicht mehr verfügbar. Bitte ein anderes wählen.', 'This postage product is no longer available. Please choose another one.')
+    case 'postage_upstream_error':
+      return tr('Die Deutsche Post ist gerade nicht erreichbar oder lehnt die Anfrage ab. Es wurde nichts gekauft. Bitte später erneut versuchen.', 'Deutsche Post is not reachable right now or rejects the request. Nothing was bought. Please try again later.')
+    case 'postage_download_failed': {
+      const order = /order (\S+)/.exec(details ?? '')?.[1]
+      return tr(
+        `Die Marke wurde bezahlt, konnte aber nicht geladen werden.${order ? ` Bitte in der Portokasse die Bestellung ${order} ansehen.` : ''}`,
+        `The stamp was paid for but could not be downloaded.${order ? ` Please look up order ${order} in your Portokasse.` : ''}`,
+      )
+    }
     case 'typst_compile_error':
     case 'template_parse_error':
     case 'template_render_error':

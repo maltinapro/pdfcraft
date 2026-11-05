@@ -43,9 +43,13 @@
 ))
 
 #block(height: 47.4mm, width: 100%, [
-  #text(7pt, underline[#"{{ settings.sender.name }}", #"{{ settings.sender.address }}", #"{{ settings.sender.city }}"]) \
+  {% if doc.postage %}// Franking mark (Internetmarke) in the top right of the 85 mm address field; the recipient starts below it
+  #place(top + left, dx: 85mm - {{ doc.postage.widthMm }}mm, image("{{ assets.postage }}", width: {{ doc.postage.widthMm }}mm, alt: "Frankiervermerk"))
+  #box(width: 83mm - {{ doc.postage.widthMm }}mm, text(7pt, underline[#"{{ settings.sender.name }}", #"{{ settings.sender.address }}", #"{{ settings.sender.city }}"])) \
+  #v(1mm + calc.max(0mm, {{ doc.postage.heightMm }}mm - 3.5mm))
+  {% else %}#text(7pt, underline[#"{{ settings.sender.name }}", #"{{ settings.sender.address }}", #"{{ settings.sender.city }}"]) \
   #v(1mm)
-  #"{{ doc.recipient.name }}" \
+  {% endif %}  #"{{ doc.recipient.name }}" \
   #"{{ doc.recipient.address }}" \
   #"{{ doc.recipient.city }}"
 ])

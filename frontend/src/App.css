@@ -244,6 +244,7 @@ body {
 
 input[type='text'],
 input[type='email'],
+input[type='password'],
 input[type='date'],
 input[type='number'],
 select,
@@ -893,3 +894,10 @@ input[type='color'] {
 .save-status[data-state='error'] { color: var(--err); }
 
 a.btn { text-decoration: none; display: inline-block; }
+
+.postage-stamp { display: flex; gap: 12px; align-items: center; }
+.postage-stamp img { width: 96px; height: auto; flex: none; border: 1px solid var(--border-soft); border-radius: 6px; background: #fff; }
+.postage-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.postage-actions a.btn { text-decoration: none; color: inherit; }
+.postage-form { display: flex; flex-direction: column; gap: 12px; }
+.postage-error { padding: 8px 10px; border-radius: 8px; font-size: 0.85rem; background: color-mix(in srgb, #dc2626 14%, var(--surface)); border: 1px solid color-mix(in srgb, #dc2626 45%, transparent); white-space: pre-line; }

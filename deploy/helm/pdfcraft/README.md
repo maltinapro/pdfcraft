@@ -13,6 +13,8 @@ Anubis (`templates/anubis.yaml`, policy in `files/botPolicy.yaml`) needs an Ed25
 
 Purchased tokens stay off until you set `backend.env.PAID_TOKENS_ENABLED: "true"` and `backend.stripeSecret` (a Secret with the key `STRIPE_WEBHOOK_SECRET`); see [Purchased Tokens (Stripe)](../../../docs/12-paid-tokens-stripe.md).
 
+Buying Deutsche Post stamps (Internetmarke) stays off until you set `backend.env.INTERNETMARKE_ENABLED: "true"` and `backend.internetmarkeSecret` (a Secret with the keys `INTERNETMARKE_CLIENT_ID` and `INTERNETMARKE_CLIENT_SECRET`); see [Internetmarke](../../../docs/14-internetmarke-integration.md).
+
 ## Releasing (images and chart)
 
 The workflow `.github/workflows/release-images.yml` builds and publishes both images and the chart. It runs in two ways.

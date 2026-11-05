@@ -1,7 +1,7 @@
 import { friendlyApiError, parseValidationDetails, type ServerIssue } from './apiErrors'
 import { tr } from './i18n'
 import type { Doc, DocKind } from './documents'
-import type { Invoice, Settings } from './types'
+import type { Invoice, PostageStamp, Settings } from './types'
 
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ??
@@ -49,6 +49,17 @@ export class ValidationError extends Error {
   }
 }
 
+/** Error of the backend with its stable error code (`postage_disabled`, `validation_error`, …). */
+export class ApiError extends Error {
+  readonly code: string | undefined
+
+  constructor(message: string, code?: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.code = code
+  }
+}
+
 async function apiError(response: Response, kind: string): Promise<Error> {
   let payload: { error?: string; details?: string } = {}
   try {
@@ -59,7 +70,7 @@ async function apiError(response: Response, kind: string): Promise<Error> {
   const message = friendlyApiError(response.status, payload.error, payload.details, kind)
   return payload.error === 'validation_error'
     ? new ValidationError(message, parseValidationDetails(payload.details ?? ''))
-    : new Error(message)
+    : new ApiError(message, payload.error)
 }
 
 let pendingToken: Promise<string> | null = null
@@ -101,11 +112,11 @@ function fetchFreeToken(): Promise<string> {
   return pendingToken
 }
 
-async function post(path: string, token: string, body: string, signal?: AbortSignal): Promise<Response> {
+async function send(method: string, path: string, token: string, body?: string, signal?: AbortSignal): Promise<Response> {
   try {
     return await fetch(`${API_BASE_URL}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      method,
+      headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), Authorization: `Bearer ${token}` },
       body,
       signal,
     })
@@ -115,14 +126,14 @@ async function post(path: string, token: string, body: string, signal?: AbortSig
   }
 }
 
-/** POSTs JSON with a free token (fetched on demand, renewed once on 401) and returns the PDF. */
-async function requestBlob(path: string, payload: unknown, signal?: AbortSignal): Promise<Blob> {
-  const body = JSON.stringify(payload)
-  let response = await post(path, loadToken() ?? (await fetchFreeToken()), body, signal)
+/** Calls the API with a free token (fetched on demand, renewed once on 401); returns the successful response. */
+async function request(method: string, path: string, payload?: unknown, signal?: AbortSignal): Promise<Response> {
+  const body = payload === undefined ? undefined : JSON.stringify(payload)
+  let response = await send(method, path, loadToken() ?? (await fetchFreeToken()), body, signal)
 
   if (response.status === 401 && !DEV_TOKEN) {
     clearToken()
-    response = await post(path, await fetchFreeToken(), body, signal)
+    response = await send(method, path, await fetchFreeToken(), body, signal)
   }
 
   if (response.status === 429) {
@@ -131,13 +142,27 @@ async function requestBlob(path: string, payload: unknown, signal?: AbortSignal)
       tr(`Zu viele Anfragen${wait ? `, bitte ${wait} s warten` : ''}.`, `Too many requests${wait ? `, please wait ${wait} s` : ''}.`),
     )
   }
-  if (!response.ok) throw await apiError(response, (payload as { type?: string }).type ?? 'invoice')
-  return response.blob()
+  if (!response.ok) throw await apiError(response, (payload as { type?: string } | undefined)?.type ?? 'invoice')
+  return response
+}
+
+const requestBlob = async (path: string, payload: unknown, signal?: AbortSignal): Promise<Blob> =>
+  (await request('POST', path, payload, signal)).blob()
+
+/** JSON call for endpoints that do not return a PDF (`/v1/postage/*`). */
+export async function requestJson<T>(method: 'GET' | 'POST', path: string, payload?: unknown): Promise<T> {
+  return (await request(method, path, payload)).json() as Promise<T>
+}
+
+/** Only the stamp image goes to the backend; the purchase details stay in the browser. */
+function forBackend<T extends { postage?: PostageStamp | null }>(document: T) {
+  const { postage, ...rest } = document
+  return postage ? { ...rest, postage: { base64: postage.base64 } } : rest
 }
 
 /** Renders the invoice with `POST /v1/invoices`. */
 export function requestPdf(settings: Settings, invoice: Invoice, signal?: AbortSignal): Promise<Blob> {
-  return requestBlob('/v1/invoices', { settings, invoice }, signal)
+  return requestBlob('/v1/invoices', { settings, invoice: forBackend(invoice) }, signal)
 }
 
 /** Renders a credit note, offer, order confirmation, delivery note or letter with `POST /v1/documents`. */
@@ -147,7 +172,7 @@ export function requestDocument(
   document: Doc,
   signal?: AbortSignal,
 ): Promise<Blob> {
-  return requestBlob('/v1/documents', { type: kind, settings, document }, signal)
+  return requestBlob('/v1/documents', { type: kind, settings, document: forBackend(document) }, signal)
 }
 
 /** Renders many documents of one type into a ZIP (`/v1/invoices/bulk` or `/v1/documents/bulk`). */
