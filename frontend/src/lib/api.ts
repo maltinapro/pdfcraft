@@ -1,3 +1,4 @@
+import { friendlyApiError } from './apiErrors'
 import { tr } from './i18n'
 import type { Doc, DocKind } from './documents'
 import type { Invoice, Settings } from './types'
@@ -38,14 +39,13 @@ function clearToken() {
 }
 
 async function errorMessage(response: Response): Promise<string> {
-  let details = `HTTP ${response.status}`
+  let payload: { error?: string; details?: string } = {}
   try {
-    const payload = (await response.json()) as { error?: string; details?: string }
-    details = [payload.error, payload.details].filter(Boolean).join(': ') || details
+    payload = (await response.json()) as typeof payload
   } catch {
-    // keep the status text
+    // no JSON body, the status code is enough
   }
-  return details
+  return friendlyApiError(response.status, payload.error, payload.details)
 }
 
 let pendingToken: Promise<string> | null = null
@@ -88,12 +88,17 @@ function fetchFreeToken(): Promise<string> {
 }
 
 async function post(path: string, token: string, body: string, signal?: AbortSignal): Promise<Response> {
-  return fetch(`${API_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body,
-    signal,
-  })
+  try {
+    return await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body,
+      signal,
+    })
+  } catch (e) {
+    if (signal?.aborted) throw e
+    throw new Error(tr('Der Server ist nicht erreichbar. Bitte Internetverbindung prüfen.', 'The server cannot be reached. Please check your connection.'))
+  }
 }
 
 /** POSTs JSON with a free token (fetched on demand, renewed once on 401) and returns the PDF. */
