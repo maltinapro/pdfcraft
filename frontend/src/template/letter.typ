@@ -10,5 +10,5 @@
 #v(4mm)
 #lines("{{ doc.body }}")
 #closing-text
-#v(10mm)
+#v(14mm)
 #"{{ settings.sender.name }}"

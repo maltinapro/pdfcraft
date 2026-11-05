@@ -307,7 +307,7 @@ pub fn describe_items(english: bool, items: &[Item], negate: bool, doc: &mut Val
             item["pos"] = json!((i + 1).to_string());
             item["qty"] = json!(format!("{}{NBSP}{unit}", decimal(line.qty, 0, true)));
             item["price"] = json!(format!("{}{NBSP}€", decimal(line.price, 2, true)));
-            item["tax"] = json!(format!("{}%", line.rate));
+            item["tax"] = json!(format!("{}\u{a0}%", line.rate));
             item["net"] = json!(format!("{}{NBSP}€", money(line.net)));
         }
     }
@@ -315,7 +315,7 @@ pub fn describe_items(english: bool, items: &[Item], negate: bool, doc: &mut Val
         "net": format!("{}{NBSP}€", money(net)),
         "gross": format!("{}{NBSP}€", money(net + tax)),
         "taxes": groups.iter().filter(|g| g.rate != 0).map(|g| json!({
-            "rate": format!("{}%", g.rate),
+            "rate": format!("{}\u{a0}%", g.rate),
             "amount": format!("{}{NBSP}€", money(g.tax)),
         })).collect::<Vec<_>>(),
         "exempt": groups.iter().any(|g| g.rate == 0),
@@ -386,7 +386,7 @@ pub fn prepare(
             item["pos"] = json!((i + 1).to_string());
             item["qty"] = json!(format!("{}{NBSP}{unit}", decimal(line.qty, 0, true)));
             item["price"] = json!(format!("{}{NBSP}€", decimal(line.price, 2, true)));
-            item["tax"] = json!(format!("{}% {}", line.rate, category(line.rate)));
+            item["tax"] = json!(format!("{}\u{a0}% {}", line.rate, category(line.rate)));
             item["net"] = json!(format!("{}{NBSP}€", money(line.net)));
         }
     }
@@ -395,7 +395,7 @@ pub fn prepare(
         "net": format!("{}{NBSP}€", money(net)),
         "gross": format!("{}{NBSP}€", money(gross)),
         "taxes": groups.iter().filter(|g| g.rate != 0).map(|g| json!({
-            "rate": format!("{}%", g.rate),
+            "rate": format!("{}\u{a0}%", g.rate),
             "cat": category(g.rate),
             "amount": format!("{}{NBSP}€", money(g.tax)),
         })).collect::<Vec<_>>(),

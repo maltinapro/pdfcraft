@@ -92,6 +92,7 @@ The invoice is a single Typst file: `frontend/src/template/invoice.typ` (the bac
 
 ## Extending
 
+- **DIN 5008 layout**: all templates (`invoice.typ` and `document-common.typ`, which the other types share) follow DIN 5008 Form B: margins left 25 mm / right 20 mm / bottom 20 mm, address field from 45 mm (7 pt return line, no blank line between street and city), reference line at about 98.5 mm, fold marks at 105 and 210 mm and punch mark at 148.5 mm (drawn in the page `background`, together with the watermark). Keep both files in sync; the amounts show a non-breaking space before `%` (`einvoice.rs`). Only the layout is checked by hand, not certified.
 - **New document type**: add an entry to `DOC_SPECS` in `frontend/src/lib/documents.ts` (dashboard tile and form fields), a template `frontend/src/template/<type>.typ` that builds on `document-common.typ`, and the type in `Kind` in `backend/src/documents.rs` (slug, template, validation). Add an icon in `components/icons.tsx`. Drafts of all types except invoices live in `localStorage` key `pdfcraft.documents`.
 
 - **New setting / field**: add it to `frontend/src/lib/types.ts`, validate it in `backend/src/invoice.rs`, add an input in the matching form, and handle it in `backend/src/einvoice.rs` (totals, XML) if it affects amounts or the e-invoice, and use it in `frontend/src/template/invoice.typ`.

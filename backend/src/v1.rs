@@ -616,13 +616,50 @@ mod tests {
             let s = check_settings(&settings, &mut errors);
             let doc = documents::check_document(kind, &raw, false, &mut errors);
             assert!(errors.0.is_empty(), "{:?}", errors.0);
-            let (data, assets) = documents::build(kind, &settings, s.data, &raw, doc, Vec::new());
+            for watermark in [false, true] {
+            let mut sd = s.data.clone();
+            if watermark {
+                sd.as_object_mut().unwrap().insert("watermark".into(), "Entwurf".into());
+            }
+            let (data, assets) = documents::build(kind, &settings, sd, &raw, doc.clone(), Vec::new());
             let pdf = render_pdf(&kind.template(), data, assets).await.unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details));
             assert!(pdf.starts_with(b"%PDF"));
             let has_xml = pdf.windows(12).any(|w| w == b"factur-x.xml");
             assert_eq!(has_xml, kind == Kind::CreditNote, "{}", kind.slug());
             if let Ok(dir) = std::env::var("PDF_OUT") {
-                std::fs::write(format!("{dir}/{}.pdf", kind.slug()), pdf).unwrap();
+                std::fs::write(format!("{dir}/{}{}.pdf", kind.slug(), if watermark { "-wm" } else { "" }), pdf).unwrap();
+            }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn renders_invoice_with_and_without_watermark() {
+        let settings: Settings = serde_json::from_value(json!({
+            "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt", "email": "a@b.de", "vatId": "DE123456789"},
+            "bank": {"iban": "DE89370400440532013000"},
+        }))
+        .unwrap();
+        let raw: Invoice = serde_json::from_value(json!({
+            "number": "2026-001", "date": "2026-01-31", "deliveryDate": "2026-01-30", "dueDate": "2026-02-14",
+            "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+            "items": [{"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19}],
+        }))
+        .unwrap();
+        for watermark in [false, true] {
+            let mut errors = Errors::default();
+            let s = check_settings(&settings, &mut errors);
+            let invoice = check_invoice(&raw, "invoice", &mut errors);
+            assert!(errors.0.is_empty(), "{:?}", errors.0);
+            let mut sd = s.data;
+            if watermark {
+                sd.as_object_mut().unwrap().insert("watermark".into(), "Entwurf".into());
+            }
+            let (data, assets) = document(&settings, sd, &raw, invoice, Vec::new());
+            let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await.unwrap_or_else(|e| panic!("{}", e.details));
+            assert!(pdf.starts_with(b"%PDF"));
+            if let Ok(dir) = std::env::var("PDF_OUT") {
+                std::fs::write(format!("{dir}/invoice{}.pdf", if watermark { "-wm" } else { "" }), pdf).unwrap();
             }
         }
     }
