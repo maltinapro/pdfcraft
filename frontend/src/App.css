@@ -528,6 +528,10 @@ input[type='color'] {
   overflow-y: auto;
 }
 
+.issue-summary.notes-only {
+  border-left-color: var(--warn);
+}
+
 .issue-summary-title {
   display: block;
   margin-bottom: 4px;
@@ -667,6 +671,14 @@ input[type='color'] {
   background: #ff7350;
 }
 
+.header-actions .btn-primary:disabled {
+  opacity: 1;
+  background: var(--surface2);
+  border-color: var(--border2);
+  color: var(--faint);
+  box-shadow: none;
+}
+
 .app-subtitle strong {
   font-weight: 600;
 }
@@ -786,6 +798,11 @@ input[type='color'] {
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--tile-color);
+}
+
+:root[data-theme='dark'] .tile-cta,
+:root[data-theme='dark'] .tile-icon {
+  color: color-mix(in srgb, var(--tile-color) 60%, white);
 }
 
 .tile-cta span {

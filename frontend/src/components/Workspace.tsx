@@ -83,7 +83,7 @@ function IssueSummary({ issues, kind, onJump }: SummaryProps) {
         ? tr('1 Angabe prüfen', '1 entry needs attention')
         : tr(`${errors} Angaben prüfen`, `${errors} entries need attention`)
   return (
-    <section className="issue-summary" aria-label={title}>
+    <section className={errors === 0 ? 'issue-summary notes-only' : 'issue-summary'} aria-label={title}>
       <strong className="issue-summary-title">{title}</strong>
       <ul>
         {issues.map((issue) => {
