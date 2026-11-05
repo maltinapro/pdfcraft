@@ -138,6 +138,7 @@ npm run build
 Typst/krilla writes its own XMP and cannot be extended (XMP cannot be extended from Typst). `backend/src/facturx.rs` (lopdf) adds the `fx:` extension schema + `DocumentFileName/DocumentType/Version/ConformanceLevel` to the PDF's XMP when `factur-x.xml`/`xrechnung.xml` is attached (not for `invoice-draft.xml`); on any failure the unmodified PDF is returned. Verified with Mustang 2.26.0: `Parsed PDF:valid XML:valid`.
 
 ## Notes for Next Work
+- Visual verification is mandatory: after every PDF or frontend change, look at the result yourself before reporting it done. Frontend: run `npm run dev` in `frontend/`, open the page with Playwright (also check DE and EN, light/dark and a narrow width where relevant) and take a screenshot; mock API responses by overriding `window.fetch` if the backend is not running. PDF: render with `PDF_OUT=<dir> cargo test v1::tests` (with and without watermark), rasterize (e.g. PyMuPDF) and view the pages. Do not rely on build/test output alone.
 - Do not add caches of rendered templates or generated PDFs (customer data).
 - Frontend serializer and backend template language should stay aligned.
 - Add new form fields in `types.ts` + `backend/src/invoice.rs` (validate/escape; the frontend sends raw form values) + `backend/src/einvoice.rs` (totals/XML) + the form + `invoice.typ`. User data goes only into Typst string literals (escape `\` and `"`).
