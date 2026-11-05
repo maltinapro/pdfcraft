@@ -39,14 +39,15 @@ pdfcraft/
 ├── frontend/                         # React + Vite
 │   ├── public/                       # Logo (logo.svg), favicons, icons, og-image, robots.txt, sitemap.xml
 │   └── src/
-│       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, ...), shared settings, drafts
-│       ├── components/               # Dashboard (tiles), Workspace (form + live preview + download),
+│       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/data`, ...), shared settings, drafts
+│       ├── components/               # Dashboard (tiles, latest documents), DocumentsPage (all issued documents), DataPage (backup/restore/reset), Workspace (form + live preview + download),
 │       │                             # DocumentForm (generic, driven by DocSpec), InvoiceForm, ItemsEditor, SettingsForm, Field
 │       ├── lib/
 │       │   ├── documents.ts          # DOC_SPECS (one entry per document type), drafts in localStorage
 │       │   ├── router.ts             # Tiny hash router
 │       │   ├── types.ts              # Model, defaults, whitelists (fonts, units, tax rates)
 │       │   ├── storage.ts            # Versioned localStorage + JSON export/import
+│       │   ├── backup.ts             # Complete backup file (config + drafts + archive), last-backup reminder
 │       │   ├── theme.ts              # Light/dark theme (system default, manual override)
 │       │   ├── validate.ts           # E-invoice issues shown in the sidebar
 │       │   └── api.ts                # free token handling + requestPdf() / requestDocument()
