@@ -30,14 +30,14 @@ import {
 import { tr, useLang } from './lib/i18n'
 import { routeHref, useRoute } from './lib/router'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
-import { validateInvoice } from './lib/validate'
+import { requiredIssues, validateInvoice } from './lib/validate'
 import { DEFAULT_SETTINGS, defaultInvoice, type Invoice, type Settings } from './lib/types'
 import './App.css'
 
 const fileStem = (value: string, fallback: string) => value.replace(/[^\w.-]+/g, '_') || fallback
 
 export default function App() {
-  useLang() // re-render the whole tree when the UI language changes
+  const lang = useLang() // re-render the whole tree when the UI language changes
   const route = useRoute()
   const [initial] = useState(loadConfig)
   const [settings, setSettings] = useState<Settings>(initial?.settings ?? DEFAULT_SETTINGS)
@@ -164,8 +164,12 @@ export default function App() {
     const issue = duplicateNumberIssue(archive, kind, number)
     return issue ? [issue] : []
   }
-  const issues = useMemo(() => validateInvoice(settings, invoice), [settings, invoice])
   const spec = docSpec(route)
+  const invoiceIssues = useMemo(
+    () => [...requiredIssues({ kind: 'invoice', items: 'priced' }, settings, invoice), ...validateInvoice(settings, invoice)],
+    // `lang`: the message texts depend on the UI language
+    [settings, invoice, lang],
+  )
 
   if (!spec) {
     return (
@@ -190,6 +194,7 @@ export default function App() {
     return (
       <Workspace
         key="invoice"
+        kind="invoice"
         title={spec.label}
         tabLabel={tr('Rechnung', 'Invoice')}
         fileName={`${tr('rechnung', 'invoice')}-${fileStem(invoice.number, tr('neu', 'new'))}`}
@@ -199,7 +204,7 @@ export default function App() {
         data={{ settings, invoice }}
         render={(signal) => requestPdf(settings, invoice, signal)}
         form={<InvoiceForm invoice={invoice} onChange={setInvoice} />}
-        issues={[...issues, ...duplicate(invoice.number, 'invoice')]}
+        issues={[...invoiceIssues, ...duplicate(invoice.number, 'invoice')]}
         onDownloaded={() => issue('invoice')}
       />
     )
@@ -210,13 +215,14 @@ export default function App() {
   return (
     <Workspace
       key={kind}
+      kind={kind}
       title={spec.label}
       tabLabel={spec.label}
       fileName={`${kind}-${fileStem(doc.number, tr('neu', 'new'))}`}
       settings={settings}
       onSettingsChange={setSettings}
       forInvoice={false}
-      issues={duplicate(doc.number, kind)}
+      issues={[...requiredIssues(spec, settings, doc), ...duplicate(doc.number, kind)]}
       onDownloaded={() => issue(kind)}
       data={{ kind, settings, doc }}
       render={(signal) => requestDocument(kind, settings, doc, signal)}

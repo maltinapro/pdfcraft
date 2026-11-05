@@ -79,7 +79,7 @@ export const DOC_SPECS: DocSpec[] = [
         'Enter quantities as in the original invoice – they are shown as negative automatically.',
       )
     },
-    get reference() { return { label: tr('Stornierte Rechnung (Nr.', 'Cancelled invoice (no.)') } },
+    get reference() { return { label: tr('Stornierte Rechnung (Nr.)', 'Cancelled invoice (no.)') } },
     get referenceDate() { return tr('Datum der Originalrechnung', 'Date of the original invoice') },
     get reason() { return tr('Grund der Stornierung', 'Reason for cancellation') },
     einvoice: true,

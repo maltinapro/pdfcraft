@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Field, TextAreaField, TextField } from './Field'
+import { useFieldProps } from './FormIssues'
 import { tr, useLang } from '../lib/i18n'
 import {
   FONTS,
@@ -32,6 +33,7 @@ function readFileAsBase64(file: File): Promise<string> {
 export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
   useLang()
   const [logoError, setLogoError] = useState<string | null>(null)
+  const paymentProps = useFieldProps('settings.paymentDays')
 
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) =>
     onChange({ ...settings, [key]: value })
@@ -84,29 +86,31 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
 
       <section className="form-section">
         <h3>{tr('Firma', 'Company')}</h3>
-        <TextField label={tr('Name', 'Name')} value={settings.sender.name} onChange={(v) => setSender('name', v)} />
-        <TextField label={tr('Straße / Hausnummer', 'Street / house number')} value={settings.sender.address} onChange={(v) => setSender('address', v)} />
-        <TextField label={tr('PLZ / Ort', 'Postcode / city')} value={settings.sender.city} onChange={(v) => setSender('city', v)} />
-        <TextField label={tr('E-Mail', 'E-mail')} type="email" value={settings.sender.email} onChange={(v) => setSender('email', v)} />
+        <TextField field="settings.sender.name" label={tr('Name', 'Name')} value={settings.sender.name} onChange={(v) => setSender('name', v)} />
+        <TextField field="settings.sender.address" label={tr('Straße / Hausnummer', 'Street / house number')} value={settings.sender.address} onChange={(v) => setSender('address', v)} />
+        <TextField field="settings.sender.city" label={tr('PLZ / Ort', 'Postcode / city')} value={settings.sender.city} onChange={(v) => setSender('city', v)} />
+        <TextField field="settings.sender.email" label={tr('E-Mail', 'E-mail')} type="email" value={settings.sender.email} onChange={(v) => setSender('email', v)} />
         <TextField
+          field="settings.sender.contactName"
           label={tr('Ansprechpartner', 'Contact person')}
           value={settings.sender.contactName}
           onChange={(v) => setSender('contactName', v)}
           hint={tr('Für XRechnung Pflicht (zusammen mit Telefon).', 'Required for XRechnung (together with phone).')}
         />
-        <TextField label={tr('Telefon', 'Phone')} value={settings.sender.phone} onChange={(v) => setSender('phone', v)} />
-        <TextField label={tr('Steuernummer', 'Tax number')} value={settings.sender.taxNr} onChange={(v) => setSender('taxNr', v)} />
-        <TextField label={tr('USt-IdNr.', 'VAT ID')} value={settings.sender.vatId} onChange={(v) => setSender('vatId', v)} />
+        <TextField field="settings.sender.phone" label={tr('Telefon', 'Phone')} value={settings.sender.phone} onChange={(v) => setSender('phone', v)} />
+        <TextField field="settings.sender.taxNr" label={tr('Steuernummer', 'Tax number')} value={settings.sender.taxNr} onChange={(v) => setSender('taxNr', v)} />
+        <TextField field="settings.sender.vatId" label={tr('USt-IdNr.', 'VAT ID')} value={settings.sender.vatId} onChange={(v) => setSender('vatId', v)} />
       </section>
 
       {forInvoice && (
         <section className="form-section">
           <h3>{tr('Bankverbindung', 'Bank details')}</h3>
-          <TextField label={tr('Bank', 'Bank')} value={settings.bank.name} onChange={(v) => setBank('name', v)} />
-          <TextField label="IBAN" value={settings.bank.iban} onChange={(v) => setBank('iban', v)} />
-          <TextField label="BIC" value={settings.bank.bic} onChange={(v) => setBank('bic', v)} />
-          <Field label={tr('Zahlungsziel (Tage)', 'Payment term (days)')}>
+          <TextField field="settings.bank.name" label={tr('Bank', 'Bank')} value={settings.bank.name} onChange={(v) => setBank('name', v)} />
+          <TextField field="settings.bank.iban" label="IBAN" value={settings.bank.iban} onChange={(v) => setBank('iban', v)} />
+          <TextField field="settings.bank.bic" label="BIC" value={settings.bank.bic} onChange={(v) => setBank('bic', v)} />
+          <Field field="settings.paymentDays" label={tr('Zahlungsziel (Tage)', 'Payment term (days)')}>
             <input
+              {...paymentProps}
               type="number"
               min={0}
               value={settings.paymentDays}
@@ -114,6 +118,7 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
             />
           </Field>
           <TextField
+            field="settings.exemptionReason"
             label={tr('Grund der Steuerbefreiung', 'Reason for tax exemption')}
             value={settings.exemptionReason}
             onChange={(v) => set('exemptionReason', v)}
@@ -155,11 +160,11 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
         <h3>{tr('Texte', 'Texts')}</h3>
         {forInvoice && (
           <>
-            <TextAreaField label={tr('Einleitung', 'Introduction')} value={settings.intro} onChange={(v) => set('intro', v)} />
-            <TextAreaField label={tr('Schlusstext', 'Closing text')} value={settings.closing} onChange={(v) => set('closing', v)} />
+            <TextAreaField field="settings.intro" label={tr('Einleitung', 'Introduction')} value={settings.intro} onChange={(v) => set('intro', v)} />
+            <TextAreaField field="settings.closing" label={tr('Schlusstext', 'Closing text')} value={settings.closing} onChange={(v) => set('closing', v)} />
           </>
         )}
-        <TextAreaField label={tr('Fußzeile', 'Footer')} value={settings.footer} onChange={(v) => set('footer', v)} rows={2} />
+        <TextAreaField field="settings.footer" label={tr('Fußzeile', 'Footer')} value={settings.footer} onChange={(v) => set('footer', v)} rows={2} />
       </section>
 
       {forInvoice && (
