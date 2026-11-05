@@ -32,6 +32,21 @@ Issues a free token (`pf_…`) to a browser that solved the Anubis challenge. No
 
 `GET /v1/postage/products` and `POST /v1/postage/stamps` buy a Deutsche Post stamp with the user's own Portokasse login; the PNG is passed back via the optional `invoice.postage` / `document.postage` field (`{ "base64": "<PNG>" }`) of `/v1/invoices` and `/v1/documents`. Nothing is stored. Both answer `404 postage_disabled` while `INTERNETMARKE_ENABLED=false`. Details: [Internetmarke](14-internetmarke-integration.md).
 
+API-only flow (no frontend):
+
+```bash
+# 1. list products (letter products with price in cents)
+curl -H 'Authorization: Bearer <token>' http://localhost:3000/v1/postage/products
+# 2. buy one stamp; the response contains "png" (base64)
+curl -X POST http://localhost:3000/v1/postage/stamps -H 'Authorization: Bearer <token>' \
+  -H 'content-type: application/json' \
+  -d '{"productCode":1,"expectedPriceCents":95,"requestId":"<unique per purchase>",
+       "credentials":{"username":"portokasse@example.com","password":"..."}}'
+# 3. put the PNG into the document: "postage": {"base64": "<png>"}
+```
+
+The bulk endpoints (`/v1/invoices/bulk`, `/v1/documents/bulk`) accept `postage` per entry but never buy stamps: buy one stamp per document first (one `POST /v1/postage/stamps` each, 5 rate-limit tokens per purchase) and attach it to its entry. A stamp is valid for one letter only. The 2 MB request limit applies, so split large bulk requests with stamps into several calls.
+
 ## `POST /v1/invoices`
 
 For external customers. The template lives on the server (the same `invoice.typ`, compiled into the binary), so clients send only invoice data. Input is validated and escaped by the server (`backend/src/invoice.rs`); all problems are returned together as `400 validation_error`.

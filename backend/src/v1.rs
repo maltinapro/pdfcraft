@@ -709,6 +709,38 @@ mod tests {
         }
     }
 
+    #[test]
+    fn bulk_entries_carry_their_own_stamp() {
+        let item = |n: &str, with_stamp: bool| {
+            let mut v = json!({
+                "number": n, "date": "2026-01-31",
+                "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+                "items": [{"description": "Beratung", "quantity": 1, "unit": "h", "price": 95, "taxRate": 19}],
+            });
+            if with_stamp {
+                v["postage"] = stamp();
+            }
+            v
+        };
+        let req: BulkRequest = serde_json::from_value(json!({
+            "settings": {"sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"}},
+            "invoices": [item("1", true), item("2", false)],
+        }))
+        .unwrap();
+        let mut errors = Errors::default();
+        let checked: Vec<_> = req.invoices.iter().enumerate().map(|(i, inv)| check_invoice(inv, &format!("invoices[{i}]"), &mut errors)).collect();
+        assert!(errors.0.is_empty(), "{:?}", errors.0);
+        assert_eq!(checked[0]["postage"]["widthMm"], 40.0);
+        assert!(checked[1].get("postage").is_none());
+
+        let docs: DocumentBulkRequest = serde_json::from_value(json!({
+            "settings": {"sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"}},
+            "type": "letter", "documents": [{"number": "1", "date": "2026-01-31", "recipient": {"name": "K", "address": "W 1", "city": "5 S"}, "postage": stamp()}],
+        }))
+        .unwrap();
+        assert!(docs.documents[0].postage.is_some());
+    }
+
     #[tokio::test]
     async fn renders_invoice_with_a_stamp() {
         let settings: Settings = serde_json::from_value(json!({
