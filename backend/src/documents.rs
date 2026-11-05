@@ -10,6 +10,7 @@ use crate::invoice::{
     number, one_of, text, valid_date, Errors, Invoice, Item, Recipient, Settings, MAX_ITEMS, MAX_LONG, MAX_SHORT, TAX_RATES,
     UNITS,
 };
+use crate::postage::{self, Postage};
 use serde::Deserialize;
 use serde_json::{json, Value as JsonValue};
 
@@ -84,6 +85,8 @@ pub struct Document {
     pub reason: String,
     pub intro: String,
     pub closing: String,
+    /// Franking mark (Internetmarke PNG) printed into the address field.
+    pub postage: Option<Postage>,
 }
 
 fn optional_date(e: &mut Errors, path: &str, iso: &str) -> Option<String> {
@@ -166,6 +169,9 @@ pub fn check_document(kind: Kind, doc: &Document, english: bool, e: &mut Errors)
         out["items"] = JsonValue::Array(checked_items);
         describe_items(english, &priced, kind == Kind::CreditNote, &mut out);
     }
+    if let Some(stamp) = postage::check_optional(doc.postage.as_ref(), "document", e) {
+        out["postage"] = stamp.data();
+    }
     out
 }
 
@@ -181,12 +187,14 @@ pub fn build(
     mut assets: Vec<(String, Vec<u8>)>,
 ) -> (JsonValue, Vec<(String, Vec<u8>)>) {
     let mut data = json!({ "settings": settings, "doc": checked });
+    postage::attach(doc.postage.as_ref(), &mut assets);
     if kind == Kind::CreditNote {
         let invoice = Invoice {
             number: doc.number.clone(),
             date: doc.date.clone(),
             recipient: doc.recipient.clone(),
             items: doc.items.clone(),
+            postage: None,
         };
         let prepared = einvoice::prepare(
             raw,

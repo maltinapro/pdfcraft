@@ -25,6 +25,7 @@ A full-stack **PDF Template Builder** that combines simple form-based configurat
 - 💉 **Data injection** via [minijinja](https://docs.rs/minijinja/) templating at render time
 - ⚡ **Fast PDFs** — a lean Typst template and a Rust-generated Factur-X/XRechnung XML render an invoice in under 10 ms
 - 📦 **Vendored Typst packages** — the few packages used (EPC QR code) ship in the repo; no network access at runtime
+- ✉️ **Deutsche Post stamps (optional)** — buy an Internetmarke with your own Portokasse account and print the franking mark into the address field; stateless, nothing is stored on the server (off by default, see [guide](docs/14-internetmarke-integration.md))
 - 🧾 **ZUGFeRD / Factur-X and XRechnung** — PDF/A-3b output with embedded EN 16931 or XRechnung XML (validated with Mustang), plus a sidebar that flags missing mandatory data
 
 ## Quick Start
@@ -63,6 +64,7 @@ Details: [Architecture and Extending](docs/10-architecture-and-extending.md).
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP |
 | `POST /v1/documents` | token | Credit note, offer, order confirmation, delivery note or letter → PDF |
 | `POST /v1/documents/bulk` | token | Many documents of one type → ZIP |
+| `GET /v1/postage/products`, `POST /v1/postage/stamps` | token | Deutsche Post stamps (optional, off by default) |
 | `GET /health` | none | Status |
 
 ```bash
@@ -90,6 +92,7 @@ Full reference: [API Reference](docs/09-api-reference.md).
 | [Free Token and Anubis](docs/11-free-token-and-anubis.md) | Free tokens, Anubis, watermark |
 | [Purchased Tokens (Stripe)](docs/12-paid-tokens-stripe.md) | Feature flag, Stripe webhook, renewal |
 | [Observability](docs/13-observability.md) | JSON logs for Loki, Prometheus metrics, Grafana dashboards |
+| [Internetmarke](docs/14-internetmarke-integration.md) | Buying Deutsche Post stamps and printing them onto PDFs |
 
 ## Tech Stack
 

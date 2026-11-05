@@ -59,11 +59,12 @@ export default function App() {
     (kind: DocKind) => {
       const source = kind === 'invoice' ? invoice : drafts[kind as DocDataKind]
       setArchive((current) => [makeEntry(kind, source, settings), ...current])
-      if (kind === 'invoice') setInvoice((i) => ({ ...i, number: incrementNumber(i.number) }))
+      // The stamp is used up with the download: the next document needs a new one
+      if (kind === 'invoice') setInvoice((i) => ({ ...i, number: incrementNumber(i.number), postage: null }))
       else
         setDrafts((d) => ({
           ...d,
-          [kind]: { ...d[kind as DocDataKind], number: incrementNumber(d[kind as DocDataKind].number) },
+          [kind]: { ...d[kind as DocDataKind], number: incrementNumber(d[kind as DocDataKind].number), postage: null },
         }))
     },
     [invoice, drafts, settings],

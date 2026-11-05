@@ -1,5 +1,6 @@
 import { TextAreaField, TextField } from './Field'
 import { ItemsEditor } from './ItemsEditor'
+import { PostageSection } from './PostageSection'
 import { tr, useLang } from '../lib/i18n'
 import type { Doc, DocSpec } from '../lib/documents'
 
@@ -57,6 +58,8 @@ export function DocumentForm({ spec, doc, onChange }: Props) {
           </>
         )}
       </section>
+
+      <PostageSection postage={doc.postage} onChange={(postage) => set('postage', postage)} />
 
       {spec.letter && (
         <section className="form-section">

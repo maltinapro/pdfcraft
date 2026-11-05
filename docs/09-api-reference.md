@@ -28,6 +28,10 @@ Issues a free token (`pf_…`) to a browser that solved the Anubis challenge. No
 
 `POST /v1/stripe/webhook` (called by Stripe) and `GET /v1/tokens/claim?session_id=cs_…` (called by your success page) answer `404` while `PAID_TOKENS_ENABLED=false`. Details: [Purchased Tokens (Stripe)](12-paid-tokens-stripe.md).
 
+## Postage stamps (Internetmarke)
+
+`GET /v1/postage/products` and `POST /v1/postage/stamps` buy a Deutsche Post stamp with the user's own Portokasse login; the PNG is passed back via the optional `invoice.postage` / `document.postage` field (`{ "base64": "<PNG>" }`) of `/v1/invoices` and `/v1/documents`. Nothing is stored. Both answer `404 postage_disabled` while `INTERNETMARKE_ENABLED=false`. Details: [Internetmarke](14-internetmarke-integration.md).
+
 ## `POST /v1/invoices`
 
 For external customers. The template lives on the server (the same `invoice.typ`, compiled into the binary), so clients send only invoice data. Input is validated and escaped by the server (`backend/src/invoice.rs`); all problems are returned together as `400 validation_error`.
