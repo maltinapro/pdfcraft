@@ -14,9 +14,15 @@
 #set par(leading: 0.6em, spacing: 0.9em)
 #set page(
   paper: "a4",
-  margin: (left: 25mm, right: 20mm, top: 15mm, bottom: 25mm),
+  margin: (left: 25mm, right: 20mm, top: 15mm, bottom: 20mm),
   {% if settings.footer %}footer: align(center, text(8pt, fill: luma(90), lines("{{ settings.footer }}"))),{% endif %}
-  {% if settings.watermark %}background: align(center + horizon, rotate(-35deg, text(100pt, weight: "bold", fill: luma(85%), "{{ settings.watermark }}"))),{% endif %}
+  background: [
+    // DIN 5008 fold marks (105 / 210 mm) and punch mark (148.5 mm)
+    #place(top + left, dy: 105mm, dx: 5mm, line(length: 4mm, stroke: 0.4pt + luma(120)))
+    #place(top + left, dy: 210mm, dx: 5mm, line(length: 4mm, stroke: 0.4pt + luma(120)))
+    #place(top + left, dy: 148.5mm, dx: 5mm, line(length: 8mm, stroke: 0.4pt + luma(120)))
+    {% if settings.watermark %}#align(center + horizon, rotate(-35deg, text(100pt, weight: "bold", fill: luma(85%), "{{ settings.watermark }}"))){% endif %}
+  ],
 )
 #set document(
   author: "{{ settings.sender.name }}",
@@ -36,7 +42,7 @@
   ]),
 ))
 
-#block(height: 45mm, width: 100%, [
+#block(height: 47.4mm, width: 100%, [
   #text(7pt, underline[#"{{ settings.sender.name }}", #"{{ settings.sender.address }}", #"{{ settings.sender.city }}"]) \
   #v(1mm)
   #"{{ doc.recipient.name }}" \
