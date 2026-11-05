@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Dashboard } from './components/Dashboard'
+import { DataPage } from './components/DataPage'
 import { DocumentForm } from './components/DocumentForm'
+import { DocumentsPage } from './components/DocumentsPage'
 import { InvoiceForm } from './components/InvoiceForm'
 import { Workspace } from './components/Workspace'
 import { requestBulk, requestDocument, requestPdf } from './lib/api'
@@ -11,8 +13,6 @@ import {
   followUpDraft,
   incrementNumber,
   loadArchive,
-  exportArchive,
-  importArchive,
   groupBySettings,
   makeEntry,
   saveArchive,
@@ -27,6 +27,7 @@ import {
   type DocDrafts,
   type DocKind,
 } from './lib/documents'
+import { clearLastBackup, exportBackup, loadLastBackup, readBackup, saveLastBackup, unsavedCount } from './lib/backup'
 import { tr, useLang } from './lib/i18n'
 import { routeHref, useRoute } from './lib/router'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
@@ -45,6 +46,7 @@ export default function App() {
   const [drafts, setDrafts] = useState<DocDrafts>(loadDrafts)
   const [archive, setArchive] = useState<ArchiveEntry[]>(loadArchive)
   const [notice, setNotice] = useState<string | null>(null)
+  const [lastBackup, setLastBackup] = useState<string | null>(loadLastBackup)
 
   useEffect(() => {
     if (!saveArchive(archive)) setNotice(tr('Archiv konnte nicht gespeichert werden (Speicher voll oder deaktiviert).', 'Archive could not be saved (storage full or disabled).'))
@@ -104,22 +106,39 @@ export default function App() {
     return () => window.clearTimeout(timer)
   }, [settings, invoice, drafts])
 
-  const downloadArchive = useCallback(() => {
-    const url = URL.createObjectURL(exportArchive(archive))
+  const backup = useCallback(() => {
+    const url = URL.createObjectURL(exportBackup(settings, invoice, drafts, archive))
     const link = document.createElement('a')
     link.href = url
-    link.download = 'pdfcraft-archive.json'
+    link.download = `pdfcraft-backup-${new Date().toISOString().slice(0, 10)}.json`
     link.click()
     URL.revokeObjectURL(url)
-  }, [archive])
+    const now = new Date().toISOString()
+    saveLastBackup(now)
+    setLastBackup(now)
+    setNotice(tr('Sicherung heruntergeladen. Bewahren Sie die Datei an einem sicheren Ort auf.', 'Backup downloaded. Keep the file in a safe place.'))
+  }, [settings, invoice, drafts, archive])
 
-  const uploadArchive = useCallback(
+  const restore = useCallback(
     async (file: File | undefined) => {
       if (!file) return
       try {
-        const added = await importArchive(file, archive)
+        const content = await readBackup(file)
+        if (
+          content.config &&
+          !window.confirm(tr('Aktuelle Absenderdaten und Entwürfe werden durch die Datei ersetzt. Fortfahren?', 'Current sender details and drafts will be replaced by the file. Continue?'))
+        ) {
+          return
+        }
+        if (content.config) {
+          setSettings(content.config.settings)
+          setInvoice(content.config.invoice)
+        }
+        if (content.drafts) setDrafts(content.drafts)
+        const known = new Set(archive.map((e) => e.id))
+        const added = content.archive.filter((e) => !known.has(e.id))
         setArchive((current) => [...current, ...added].sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)))
-        setNotice(tr(`${added.length} Beleg(e) importiert.`, `${added.length} document(s) imported.`))
+        setNotice(tr(`Wiederhergestellt. ${added.length} Beleg(e) ergänzt.`, `Restored. ${added.length} document(s) added.`))
       } catch (e) {
         setNotice(e instanceof Error ? e.message : String(e))
       }
@@ -149,7 +168,15 @@ export default function App() {
   }, [])
 
   const reset = useCallback(() => {
-    if (!window.confirm(tr('Alle gespeicherten Einstellungen und Dokumentdaten zurücksetzen?', 'Reset all saved settings and document data?'))) return
+    const ok = window.confirm(
+      tr(
+        'Wirklich alles löschen? Absenderdaten, Logo, Entwürfe und alle Belege werden unwiderruflich aus diesem Browser entfernt. Haben Sie vorher eine Sicherung heruntergeladen?',
+        'Really delete everything? Sender details, logo, drafts and all documents are permanently removed from this browser. Did you download a backup first?',
+      ),
+    )
+    if (!ok) return
+    clearLastBackup()
+    setLastBackup(null)
     clearConfig()
     clearDrafts()
     clearArchive()
@@ -157,7 +184,7 @@ export default function App() {
     setSettings(DEFAULT_SETTINGS)
     setInvoice(defaultInvoice())
     setDrafts(loadDrafts())
-    setNotice(tr('Zurückgesetzt.', 'Reset.'))
+    setNotice(tr('Alle Daten wurden gelöscht.', 'All data was deleted.'))
   }, [])
 
   const duplicate = (number: string, kind: DocKind) => {
@@ -171,21 +198,52 @@ export default function App() {
     [settings, invoice, lang],
   )
 
+  const unsaved = unsavedCount(archive, lastBackup)
+  const cancelled = cancelledNumbers(archive)
+  const dismiss = () => setNotice(null)
+
+  if (route === 'documents') {
+    return (
+      <DocumentsPage
+        notice={notice}
+        onDismissNotice={dismiss}
+        archive={archive}
+        cancelled={cancelled}
+        onFollowUp={followUp}
+        onBulk={bulk}
+        onDeleteEntries={(ids) => setArchive((a) => a.filter((e) => !ids.includes(e.id)))}
+        unsaved={unsaved}
+        onBackup={backup}
+      />
+    )
+  }
+
+  if (route === 'data') {
+    return (
+      <DataPage
+        notice={notice}
+        onDismissNotice={dismiss}
+        lastBackup={lastBackup}
+        unsaved={unsaved}
+        onBackup={backup}
+        onRestore={(file) => void restore(file)}
+        onExportConfig={exportJson}
+        onImportConfig={(file) => void onImport(file)}
+        onReset={reset}
+      />
+    )
+  }
+
   if (!spec) {
     return (
       <Dashboard
         notice={notice}
-        onDismissNotice={() => setNotice(null)}
-        onImport={(file) => void onImport(file)}
-        onExport={exportJson}
-        onReset={reset}
+        onDismissNotice={dismiss}
         archive={archive}
-        cancelled={cancelledNumbers(archive)}
-        onExportArchive={downloadArchive}
-        onImportArchive={(file) => void uploadArchive(file)}
+        cancelled={cancelled}
         onFollowUp={followUp}
-        onBulk={bulk}
-        onDeleteEntries={(ids) => setArchive((a) => a.filter((e) => !ids.includes(e.id)))}
+        unsaved={unsaved}
+        onBackup={backup}
       />
     )
   }

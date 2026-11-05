@@ -94,7 +94,7 @@ export const DOC_SPECS: DocSpec[] = [
     numberPrefix: 'AN-',
     get dateLabel() { return tr('Angebotsdatum', 'Offer date') },
     items: 'priced',
-    get reference() { return { label: tr('Ihre Anfrage (optional', 'Your enquiry (optional)') } },
+    get reference() { return { label: tr('Ihre Anfrage (optional)', 'Your enquiry (optional)') } },
     get validUntil() { return tr('Gültig bis', 'Valid until') },
     intro: 'vielen Dank für Ihre Anfrage. Gerne unterbreiten wir Ihnen folgendes Angebot:',
     closing: 'Wir freuen uns auf Ihre Rückmeldung.',
@@ -108,7 +108,7 @@ export const DOC_SPECS: DocSpec[] = [
     numberPrefix: 'AB-',
     get dateLabel() { return tr('Datum', 'Date') },
     items: 'priced',
-    get reference() { return { label: tr('Ihre Bestellung / Angebot (optional', 'Your order / offer (optional)') } },
+    get reference() { return { label: tr('Ihre Bestellung / Angebot (optional)', 'Your order / offer (optional)') } },
     get deliveryDate() { return tr('Voraussichtliche Lieferung', 'Expected delivery') },
     intro: 'vielen Dank für Ihren Auftrag, den wir hiermit wie folgt bestätigen:',
     closing: 'Bei Rückfragen melden Sie sich gerne bei uns.',
@@ -122,7 +122,7 @@ export const DOC_SPECS: DocSpec[] = [
     numberPrefix: 'LS-',
     get dateLabel() { return tr('Ausstellungsdatum', 'Issue date') },
     items: 'quantities',
-    get reference() { return { label: tr('Ihre Bestellung (optional', 'Your order (optional)') } },
+    get reference() { return { label: tr('Ihre Bestellung (optional)', 'Your order (optional)') } },
     get deliveryDate() { return tr('Lieferdatum', 'Delivery date') },
     intro: 'wir liefern Ihnen folgende Positionen:',
     closing: 'Bitte prüfen Sie die Lieferung auf Vollständigkeit und Unversehrtheit.',
@@ -135,7 +135,7 @@ export const DOC_SPECS: DocSpec[] = [
     numberPrefix: '',
     get dateLabel() { return tr('Datum', 'Date') },
     items: 'none',
-    get reference() { return { label: tr('Ihr Zeichen (optional', 'Your reference (optional)') } },
+    get reference() { return { label: tr('Ihr Zeichen (optional)', 'Your reference (optional)') } },
     letter: true,
     closing: 'Mit freundlichen Grüßen',
   },
@@ -197,24 +197,30 @@ function parseDoc(kind: DocDataKind, raw: unknown): Doc {
   return doc
 }
 
-export function loadDrafts(): DocDrafts {
+/** Validates stored or imported drafts and fills missing document types with defaults. */
+export function parseDrafts(parsed: unknown): DocDrafts {
   const drafts = defaultDrafts()
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
-    if (isObj(parsed) && parsed.schemaVersion === DRAFT_SCHEMA_VERSION && isObj(parsed.documents)) {
-      for (const kind of Object.keys(drafts) as DocDataKind[]) {
-        if (kind in parsed.documents) drafts[kind] = parseDoc(kind, parsed.documents[kind])
-      }
+  if (isObj(parsed) && parsed.schemaVersion === DRAFT_SCHEMA_VERSION && isObj(parsed.documents)) {
+    for (const kind of Object.keys(drafts) as DocDataKind[]) {
+      if (kind in parsed.documents) drafts[kind] = parseDoc(kind, parsed.documents[kind])
     }
-  } catch {
-    // unreadable storage: start with the defaults
   }
   return drafts
 }
 
+export const serializeDrafts = (drafts: DocDrafts) => ({ schemaVersion: DRAFT_SCHEMA_VERSION, documents: drafts })
+
+export function loadDrafts(): DocDrafts {
+  try {
+    return parseDrafts(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null'))
+  } catch {
+    return defaultDrafts()
+  }
+}
+
 export function saveDrafts(drafts: DocDrafts): boolean {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ schemaVersion: DRAFT_SCHEMA_VERSION, documents: drafts }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeDrafts(drafts)))
     return true
   } catch {
     return false

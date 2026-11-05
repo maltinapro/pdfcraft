@@ -7,6 +7,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { ValidationError } from '../lib/api'
 import { fieldTitle } from '../lib/apiErrors'
 import { tr, useLang } from '../lib/i18n'
+import { routeHref } from '../lib/router'
 import type { Issue } from '../lib/validate'
 import type { Settings } from '../lib/types'
 
@@ -125,6 +126,7 @@ export function Workspace({
   const [serverIssues, setServerIssues] = useState<Issue[]>([])
   const [touched, setTouched] = useState<ReadonlySet<string>>(new Set())
   const [showAll, setShowAll] = useState(false)
+  const [downloaded, setDownloaded] = useState(false)
   const sidebarRef = useRef<HTMLElement>(null)
   const [pendingUrl, setPendingUrl] = useState<string | null>(null)
   const previewUrlRef = useRef<string | null>(null)
@@ -272,6 +274,7 @@ export function Workspace({
     link.click()
     URL.revokeObjectURL(url)
     onDownloaded?.()
+    setDownloaded(true)
   }
 
   return (
@@ -282,6 +285,16 @@ export function Workspace({
           {tr('⬇ PDF herunterladen', '⬇ Download PDF')}
         </button>
       </AppHeader>
+
+      {downloaded && (
+        <div className="notice notice-success" role="status">
+          <span>
+            {tr('✓ PDF heruntergeladen und unter „Meine Belege“ vermerkt. Die Belege liegen nur in diesem Browser – ', '✓ PDF downloaded and listed under “My documents”. Your documents are only stored in this browser – ')}
+            <a href={routeHref('data')}>{tr('Sicherung herunterladen', 'download a backup')}</a>
+          </span>
+          <button type="button" className="notice-close" onClick={() => setDownloaded(false)} aria-label={tr('Schließen', 'Close')}>×</button>
+        </div>
+      )}
 
       <div className="mobile-switch" role="tablist">
         <button

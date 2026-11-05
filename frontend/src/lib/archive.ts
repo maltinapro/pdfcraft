@@ -29,7 +29,7 @@ export function grossTotal(items: InvoiceItem[]): number {
   return items.reduce((sum, i) => sum + i.quantity * i.price * (1 + i.taxRate / 100), 0)
 }
 
-function validEntries(parsed: unknown): ArchiveEntry[] {
+export function validEntries(parsed: unknown): ArchiveEntry[] {
   if (!Array.isArray(parsed)) return []
   return parsed.filter(
     (e): e is ArchiveEntry =>
@@ -48,27 +48,6 @@ export function loadArchive(): ArchiveEntry[] {
   } catch {
     return []
   }
-}
-
-/** Archive backup file (`pdfcraft-archive.json`); sender settings are not part of it. */
-export function exportArchive(entries: ArchiveEntry[]): Blob {
-  return new Blob([JSON.stringify({ archiveVersion: 1, entries }, null, 2)], { type: 'application/json' })
-}
-
-/** Entries of a backup file that are not yet in `existing` (matched by id). */
-export async function importArchive(file: File, existing: ArchiveEntry[]): Promise<ArchiveEntry[]> {
-  if (file.size > 4 * 1024 * 1024) throw new Error(tr('Datei ist zu groß.', 'File is too large.'))
-  let json: unknown
-  try {
-    json = JSON.parse(await file.text())
-  } catch {
-    throw new Error(tr('Datei ist kein gültiges JSON.', 'File is not valid JSON.'))
-  }
-  if (!isObj(json) || json.archiveVersion !== 1) {
-    throw new Error(tr('Keine Archiv-Datei.', 'Not an archive file.'))
-  }
-  const known = new Set(existing.map((e) => e.id))
-  return validEntries(json.entries).filter((e) => !known.has(e.id))
 }
 
 export function saveArchive(entries: ArchiveEntry[]): boolean {
