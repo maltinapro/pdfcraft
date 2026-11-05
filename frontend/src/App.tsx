@@ -31,8 +31,9 @@ import { clearLastBackup, exportBackup, loadLastBackup, readBackup, saveLastBack
 import { tr, useLang } from './lib/i18n'
 import { routeHref, useRoute } from './lib/router'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
-import { requiredIssues, validateInvoice } from './lib/validate'
+import { exampleDataIssues, hasExampleSender, requiredIssues, validateInvoice } from './lib/validate'
 import { DEFAULT_SETTINGS, defaultInvoice, type Invoice, type Settings } from './lib/types'
+import type { SaveState } from './components/Workspace'
 import './App.css'
 
 const fileStem = (value: string, fallback: string) => value.replace(/[^\w.-]+/g, '_') || fallback
@@ -46,6 +47,7 @@ export default function App() {
   const [drafts, setDrafts] = useState<DocDrafts>(loadDrafts)
   const [archive, setArchive] = useState<ArchiveEntry[]>(loadArchive)
   const [notice, setNotice] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<SaveState>('saved')
   const [lastBackup, setLastBackup] = useState<string | null>(loadLastBackup)
 
   useEffect(() => {
@@ -98,8 +100,11 @@ export default function App() {
   )
 
   useEffect(() => {
+    setSaveState('saving')
     const timer = window.setTimeout(() => {
-      if (!saveConfig(settings, invoice) || !saveDrafts(drafts)) {
+      const ok = saveConfig(settings, invoice) && saveDrafts(drafts)
+      setSaveState(ok ? 'saved' : 'error')
+      if (!ok) {
         setNotice(tr('Speichern im Browser fehlgeschlagen (Speicher voll oder deaktiviert).', 'Saving in the browser failed (storage full or disabled).'))
       }
     }, 400)
@@ -191,9 +196,14 @@ export default function App() {
     const issue = duplicateNumberIssue(archive, kind, number)
     return issue ? [issue] : []
   }
-  const spec = docSpec(route)
+  const onSender = route === 'sender'
+  const spec = docSpec(onSender ? 'invoice' : route)
   const invoiceIssues = useMemo(
-    () => [...requiredIssues({ kind: 'invoice', items: 'priced' }, settings, invoice), ...validateInvoice(settings, invoice)],
+    () => [
+      ...requiredIssues({ kind: 'invoice', items: 'priced' }, settings, invoice),
+      ...validateInvoice(settings, invoice),
+      ...exampleDataIssues(settings, true),
+    ],
     // `lang`: the message texts depend on the UI language
     [settings, invoice, lang],
   )
@@ -244,6 +254,7 @@ export default function App() {
         onFollowUp={followUp}
         unsaved={unsaved}
         onBackup={backup}
+        showWelcome={hasExampleSender(settings)}
       />
     )
   }
@@ -251,7 +262,9 @@ export default function App() {
   if (spec.kind === 'invoice') {
     return (
       <Workspace
-        key="invoice"
+        key={onSender ? 'sender' : 'invoice'}
+        initialTab={onSender ? 'settings' : 'document'}
+        saveState={saveState}
         kind="invoice"
         title={spec.label}
         tabLabel={tr('Rechnung', 'Invoice')}
@@ -280,7 +293,8 @@ export default function App() {
       settings={settings}
       onSettingsChange={setSettings}
       forInvoice={false}
-      issues={[...requiredIssues(spec, settings, doc), ...duplicate(doc.number, kind)]}
+      issues={[...requiredIssues(spec, settings, doc), ...exampleDataIssues(settings, false), ...duplicate(doc.number, kind)]}
+      saveState={saveState}
       onDownloaded={() => issue(kind)}
       data={{ kind, settings, doc }}
       render={(signal) => requestDocument(kind, settings, doc, signal)}

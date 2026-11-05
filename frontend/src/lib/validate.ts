@@ -1,6 +1,6 @@
 import { tr } from './i18n'
 import type { DocSpec } from './documents'
-import type { Invoice, InvoiceItem, Settings } from './types'
+import { DEFAULT_SETTINGS, type Invoice, type InvoiceItem, type Settings } from './types'
 
 export interface Issue {
   level: 'error' | 'warning'
@@ -96,5 +96,28 @@ export function requiredIssues(
   if (blank(settings.sender.name)) missing('settings.sender.name')
   if (blank(settings.sender.address)) missing('settings.sender.address')
   if (blank(settings.sender.city)) missing('settings.sender.city')
+  return issues
+}
+
+/** The sender still shows the built-in example (first visit): the dashboard then offers a start step. */
+export const hasExampleSender = (settings: Settings) => settings.sender.name.trim() === DEFAULT_SETTINGS.sender.name
+
+/** Non-blocking reminders while example data would end up on a real document. */
+export function exampleDataIssues(settings: Settings, forInvoice: boolean): Issue[] {
+  const issues: Issue[] = []
+  if (hasExampleSender(settings)) {
+    issues.push({
+      level: 'warning',
+      field: 'settings.sender.name',
+      message: tr('Noch das Beispiel „Muster GmbH“ – bitte Ihre Firmendaten eintragen', 'Still the example “Muster GmbH” – please enter your company details'),
+    })
+  }
+  if (forInvoice && settings.bank.iban.replace(/\s+/g, '').toUpperCase() === DEFAULT_SETTINGS.bank.iban) {
+    issues.push({
+      level: 'warning',
+      field: 'settings.bank.iban',
+      message: tr('Noch die Beispiel-IBAN – bitte Ihre Bankverbindung eintragen', 'Still the example IBAN – please enter your bank details'),
+    })
+  }
   return issues
 }

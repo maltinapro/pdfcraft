@@ -33,9 +33,15 @@ interface Props {
   issues?: Issue[]
   /** Called after the PDF was downloaded (the document counts as issued). */
   onDownloaded?: () => void
+  /** Tab shown first (`settings` when coming from the start step). */
+  initialTab?: Tab
+  /** Result of the automatic save in the browser. */
+  saveState?: SaveState
 }
 
 type Tab = 'document' | 'settings'
+
+export type SaveState = 'saving' | 'saved' | 'error'
 
 function PreviewError({ message }: { message: string }) {
   return (
@@ -114,9 +120,11 @@ export function Workspace({
   tabLabel,
   issues = [],
   onDownloaded,
+  initialTab = 'document',
+  saveState = 'saved',
 }: Props) {
   useLang()
-  const [tab, setTab] = useState<Tab>('document')
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [mobileView, setMobileView] = useState<'form' | 'preview'>('form')
   const [inlineSupported] = useState(inlinePdfSupported)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -335,6 +343,21 @@ export function Workspace({
               <SettingsForm settings={settings} onChange={onSettingsChange} forInvoice={forInvoice} />
             )}
           </FormIssuesContext.Provider>
+          <div className="save-status" data-state={saveState} role="status">
+            {saveState === 'saving' && tr('Speichere …', 'Saving …')}
+            {saveState === 'saved' && (
+              <>
+                {tr('✓ Automatisch in diesem Browser gespeichert · ', '✓ Saved automatically in this browser · ')}
+                <a href={routeHref('data')}>{tr('Daten sichern', 'Back up data')}</a>
+              </>
+            )}
+            {saveState === 'error' && (
+              <>
+                {tr('⚠ Speichern im Browser nicht möglich – ', '⚠ Saving in the browser is not possible – ')}
+                <a href={routeHref('data')}>{tr('bitte Daten sichern', 'please back up your data')}</a>
+              </>
+            )}
+          </div>
         </aside>
 
         <main className={`preview${paused ? ' is-paused' : ''}`}>

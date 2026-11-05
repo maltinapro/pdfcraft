@@ -75,11 +75,21 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
             </button>
           </div>
         ) : (
-          <input
-            type="file"
-            accept={ACCEPTED_LOGO_TYPES.join(',')}
-            onChange={(e) => void onLogoSelected(e.target.files?.[0])}
-          />
+          <label className="logo-upload">
+            <span className="btn">{tr('Logo auswählen …', 'Choose logo …')}</span>
+            <input
+              type="file"
+              hidden
+              accept={ACCEPTED_LOGO_TYPES.join(',')}
+              onChange={(e) => {
+                void onLogoSelected(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+            <span className="field-hint">
+              {tr(`PNG, JPG oder SVG, höchstens ${MAX_LOGO_BYTES / 1024} KB. Erscheint oben auf jedem Dokument.`, `PNG, JPG or SVG, at most ${MAX_LOGO_BYTES / 1024} KB. Shown at the top of every document.`)}
+            </span>
+          </label>
         )}
         {logoError && <p className="form-error">{logoError}</p>}
       </section>
@@ -98,8 +108,20 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
           hint={tr('Für XRechnung Pflicht (zusammen mit Telefon).', 'Required for XRechnung (together with phone).')}
         />
         <TextField field="settings.sender.phone" label={tr('Telefon', 'Phone')} value={settings.sender.phone} onChange={(v) => setSender('phone', v)} />
-        <TextField field="settings.sender.taxNr" label={tr('Steuernummer', 'Tax number')} value={settings.sender.taxNr} onChange={(v) => setSender('taxNr', v)} />
-        <TextField field="settings.sender.vatId" label={tr('USt-IdNr.', 'VAT ID')} value={settings.sender.vatId} onChange={(v) => setSender('vatId', v)} />
+        <TextField
+          field="settings.sender.taxNr"
+          label={tr('Steuernummer', 'Tax number')}
+          value={settings.sender.taxNr}
+          onChange={(v) => setSender('taxNr', v)}
+          hint={tr('Auf einer Rechnung muss Ihre Steuernummer oder USt-IdNr. stehen – eine von beiden genügt.', 'An invoice must show your tax number or VAT ID – one of the two is enough.')}
+        />
+        <TextField
+          field="settings.sender.vatId"
+          label={tr('USt-IdNr.', 'VAT ID')}
+          value={settings.sender.vatId}
+          onChange={(v) => setSender('vatId', v)}
+          hint={tr('Beginnt mit „DE“, falls Sie eine haben.', 'Starts with “DE” if you have one.')}
+        />
       </section>
 
       {forInvoice && (
@@ -176,10 +198,19 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
               checked={settings.zugferd}
               onChange={(e) => set('zugferd', e.target.checked)}
             />
-            {tr('ZUGFeRD / Factur-X einbetten (experimentell)', 'Embed ZUGFeRD / Factur-X (experimental)')}
+            {tr('E-Rechnung (ZUGFeRD / Factur-X) einbetten', 'Embed e-invoice (ZUGFeRD / Factur-X)')}
           </label>
+          <p className="field-hint">
+            {tr(
+              'Legt die Rechnungsdaten zusätzlich maschinenlesbar im PDF ab. Für Geschäftskunden wird das zunehmend vorgeschrieben, für Privatkunden ist es nicht nötig.',
+              'Also stores the invoice data in machine-readable form inside the PDF. Increasingly required for business customers, not needed for private customers.',
+            )}
+          </p>
           {settings.zugferd && (
-            <Field label={tr('Profil', 'Profile')}>
+            <Field
+              label={tr('Profil', 'Profile')}
+              hint={tr('Im Zweifel „ZUGFeRD“. „XRechnung“ nur, wenn Ihr Kunde eine Behörde ist.', 'If in doubt choose “ZUGFeRD”. Choose “XRechnung” only if your customer is a public authority.')}
+            >
               <select value={settings.einvoiceProfile} onChange={(e) => set('einvoiceProfile', e.target.value)}>
                 {EINVOICE_PROFILES.map((p) => (
                   <option key={p.value} value={p.value}>

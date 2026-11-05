@@ -27,13 +27,13 @@ export function InvoiceForm({ invoice, onChange }: Props) {
         <TextField field="recipient.address" label={tr('Straße / Hausnummer', 'Street / house number')} value={invoice.recipient.address} onChange={(v) => setRecipient('address', v)} />
         <TextField field="recipient.city" label={tr('PLZ / Ort', 'Postcode / city')} value={invoice.recipient.city} onChange={(v) => setRecipient('city', v)} />
         <TextField field="recipient.email" label={tr('E-Mail', 'E-mail')} type="email" value={invoice.recipient.email} onChange={(v) => setRecipient('email', v)} />
-        <TextField field="recipient.vatId" label={tr('USt-IdNr.', 'VAT ID')} value={invoice.recipient.vatId} onChange={(v) => setRecipient('vatId', v)} />
+        <TextField field="recipient.vatId" label={tr('USt-IdNr.', 'VAT ID')} value={invoice.recipient.vatId} onChange={(v) => setRecipient('vatId', v)} hint={tr('Optional – bei Geschäftskunden, z. B. innerhalb der EU.', 'Optional – for business customers, e.g. within the EU.')} />
         <TextField
           field="recipient.buyerReference"
           label={tr('Leitweg-ID / Käuferreferenz', 'Leitweg ID / buyer reference')}
           value={invoice.recipient.buyerReference}
           onChange={(v) => setRecipient('buyerReference', v)}
-          hint={tr('Nur für Behörden (XRechnung) erforderlich.', 'Only required for public authorities (XRechnung).')}
+          hint={tr('Nur bei Behörden nötig (Stadt, Land, Bund): Die Nummer erhalten Sie von Ihrem Kunden. Sonst leer lassen.', 'Only needed for public authorities: you get the number from your customer. Otherwise leave empty.')}
         />
       </section>
 

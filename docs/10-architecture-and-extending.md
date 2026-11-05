@@ -39,7 +39,7 @@ pdfcraft/
 ├── frontend/                         # React + Vite
 │   ├── public/                       # Logo (logo.svg), favicons, icons, og-image, robots.txt, sitemap.xml
 │   └── src/
-│       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/data`, ...), shared settings, drafts
+│       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/data`, `#/sender` = invoice with the sender tab open, ...), shared settings, drafts
 │       ├── components/               # Dashboard (tiles, latest documents), DocumentsPage (all issued documents), DataPage (backup/restore/reset), Workspace (form + live preview + download),
 │       │                             # DocumentForm (generic, driven by DocSpec), InvoiceForm, ItemsEditor, SettingsForm, Field
 │       ├── lib/
