@@ -105,6 +105,20 @@ All fit the 85 x 40 mm limit in `postage.rs` (a unit test pins these sizes). Sta
 
 ## Open points
 
+Summary, ordered by risk (details below):
+
+| # | Open point | Blocks go-live? | How to close it |
+| --- | --- | --- | --- |
+| 1 | Does Deutsche Post allow partner apps to use end-customer Portokasse logins? (else reseller model) | yes | Ask Deutsche Post during onboarding |
+| 2 | Is a franking mark inside the address window (top right of the address field) accepted for window envelopes? Fallback: `ADDRESS_ZONE` (85 x 43 mm label with address), which would send the recipient address to Deutsche Post and must be weighed against "no customer data in the backend" | yes | Physical print test, ask the business customer service |
+| 3 | Official rules (clear zone, placement, size) not read; sizes come from a third-party dataset | yes | Read the Deutsche Post documentation, compare with a printed stamp |
+| 4 | Live behaviour: product filter, download host, ZIP image/voucher pairing, real PNG size/dpi | yes | Run the flow against the sandbox ("Trying it out") |
+| 5 | A stamp that was paid but not downloaded (`postage_download_failed`): can it be fetched again in the Portokasse? | no | Test in the sandbox/Portokasse |
+| 6 | Privacy policy and Impressum wording for Deutsche Post and the login pass-through | yes | Operator/legal review |
+| 7 | Browser UI buys single stamps only; archive entries are reproduced without a stamp | no | By design, bulk via the API |
+| 8 | `docker compose` itself was not run (plugin missing in the development environment); only the mock's network setup was verified | no | Run the Compose example in "Trying it out" |
+
+
 - **Onboarding:** production credentials come with a Deutsche Post partner onboarding. Whether a partner app may log in with *end-customer* Portokasse credentials in production must be clarified with Deutsche Post. If not, a reseller model (users pay PDFCraft via Stripe, PDFCraft pays from its own wallet) would replace the credentials dialog; the stamp handling in templates and browser stays the same.
 - **Spec check (v1.30):** the request/response shapes were compared with the official OpenAPI file `pp-post-internetmarke.yaml` v1.30 (`POST /user` form fields incl. `grant_type=client_credentials`, `access_token`, `walletBalance`; `POST /app/shoppingcart`; `POST /app/shoppingcart/png?directCheckout=true` with `type`, `shopOrderId`, required `total`, `dpi`, `optimizePNG`, positions with `positionType`/`productCode`/`voucherLayout`; response `link`, `shoppingCart`, `walletBallance`). Everything matches. The spec describes the app resource as selling stamps from "an individual cash account assigned to the end customer", which fits the Portokasse-login model; it also states that the production username/password come with the onboarding and that sandbox defaults exist. The Portokasse password is limited to 22 characters (longer ones are rejected upstream as a failed login). The spec says nothing about stamp size or clear zones.
 - **Portokasse app authorization (secondhand):** users reportedly have to authorize the business application once in the Portokasse under "Meine Daten -> Geschäftsanwendungen"; otherwise the login fails with 401. Tell users this in onboarding material; a failed login already shows the friendly "login rejected" message. Sandbox test wallets are reportedly arranged through Deutsche Post support.
