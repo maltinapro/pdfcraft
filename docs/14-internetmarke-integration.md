@@ -51,6 +51,28 @@ Helm: `backend.env.INTERNETMARKE_ENABLED: "true"` plus `backend.internetmarkeSec
 
 Metric: `pdfcraft_postage_stamps_total{result}` (dashboard "Internetmarke purchases by result", see [Observability](13-observability.md)).
 
+## Trying it out
+
+Three ways, from safest to real money. All need the feature flag `INTERNETMARKE_ENABLED=true`, Valkey, and client credentials (any value for the mock).
+
+| | Mock (no Post account) | Deutsche Post sandbox | Production |
+| --- | --- | --- | --- |
+| Needs | nothing | developer portal app + sandbox Portokasse/test wallet | onboarding, real Portokasse |
+| Cost | free | test money | real postage |
+| `INTERNETMARKE_SHIPPING_URL` | `http://127.0.0.1:9100/im/v1` | sandbox URL from the portal | empty (default) |
+| `INTERNETMARKE_PRODUCTS_URL` | `http://127.0.0.1:9100/products` | sandbox URL if given | empty (default) |
+| Login in the form | any e-mail, password `secret` | sandbox login | your own Portokasse login |
+| Result | checkerboard placeholder | sandbox stamp | valid, billed stamp |
+
+**Real stamps (sandbox first):**
+
+1. Register at the DHL developer portal, create an app and subscribe to "Deutsche Post INTERNETMARKE"; the app's client id/secret are `INTERNETMARKE_CLIENT_ID`/`INTERNETMARKE_CLIENT_SECRET`.
+2. Have a Portokasse with credit (or a sandbox test wallet via Deutsche Post support) and authorize the application there ("Meine Daten -> Geschäftsanwendungen", secondhand information); otherwise the login is rejected with 401.
+3. Start the backend (or Compose, see below) with the variables above, buy a stamp in the form, download the PDF and print it at 100 % into a window envelope. Check size, position and that the code scans before sending real mail.
+4. Report anything that differs from the spec (product list, download link, ZIP pairing; see "Open points").
+
+**Where to run it:** natively (`cargo run` + `npm run dev`, see [Local development](02-local-development.md)) or with Docker Compose (see [Docker](03-docker-local.md)). Compose passes the four `INTERNETMARKE_*` variables to the backend; the optional `mock-post` service (profile `mock`) is the mock below. Without `--profile mock`, Compose talks to the real URLs you configured.
+
 ## Testing without Deutsche Post
 
 `backend/tools/mock_internetmarke.py` is a local stand-in for both Deutsche Post APIs (products, login, cart, PNG checkout, ZIP download; password `secret`, `poor@example.com` has only 1 EUR). Start it, point `INTERNETMARKE_SHIPPING_URL=http://127.0.0.1:9100/im/v1` and `INTERNETMARKE_PRODUCTS_URL=http://127.0.0.1:9100/products` at it, and set `INTERNETMARKE_ENABLED=true` with any client id/secret (see the header of the script). Plain `http://` is accepted **only** for `localhost`/`127.0.0.1`; any other shipping URL requires https for the API and the download link. The unit tests start a similar mock server in-process (`cargo test internetmarke`).
