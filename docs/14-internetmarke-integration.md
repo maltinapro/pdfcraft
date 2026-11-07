@@ -88,7 +88,7 @@ INTERNETMARKE_PRODUCTS_URL=http://127.0.0.1:9100/products \
 docker compose --profile mock up --build
 ```
 
-Open http://localhost:8080/app/ (solve the Anubis challenge), pick a document and use any e-mail with the password `secret` in the "Internetmarke" section. For the real sandbox or production API, set the same variables with real credentials (and the sandbox URL) and leave out `--profile mock`. Verified: the mock is reachable from the backend's namespace; `docker compose` itself was not run (plugin missing in the development environment).
+Open http://localhost:8080/app/ (solve the Anubis challenge), pick a document and use any e-mail with the password `secret` in the "Internetmarke" section. For the real sandbox or production API, set the same variables with real credentials (and the sandbox URL) and leave out `--profile mock`. Verified with `docker compose --profile mock up --build`: products, purchase, login failure and routing through the edge proxy (not the browser flow behind the Anubis challenge).
 
 ## Stamp dimensions
 
@@ -116,7 +116,7 @@ Summary, ordered by risk (details below):
 | 5 | A stamp that was paid but not downloaded (`postage_download_failed`): can it be fetched again in the Portokasse? | no | Test in the sandbox/Portokasse |
 | 6 | Privacy policy and Impressum wording for Deutsche Post and the login pass-through | yes | Operator/legal review |
 | 7 | Browser UI buys single stamps only; archive entries are reproduced without a stamp | no | By design, bulk via the API |
-| 8 | `docker compose` itself was not run (plugin missing in the development environment); only the mock's network setup was verified | no | Run the Compose example in "Trying it out" |
+| 8 | ~~`docker compose` not run~~ Closed: `docker compose --profile mock up --build` (Compose v2.29.7) was run; product list, purchase (stamp, wallet balance), wrong password (`postage_login_failed`) and `/v1` routing through the edge worked, no password in the backend log. Not covered: the browser flow through the Anubis challenge | no | - |
 
 
 - **Onboarding:** production credentials come with a Deutsche Post partner onboarding. Whether a partner app may log in with *end-customer* Portokasse credentials in production must be clarified with Deutsche Post. If not, a reseller model (users pay PDFCraft via Stripe, PDFCraft pays from its own wallet) would replace the credentials dialog; the stamp handling in templates and browser stays the same.
