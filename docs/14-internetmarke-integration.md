@@ -53,6 +53,8 @@ Metric: `pdfcraft_postage_stamps_total{result}` (dashboard "Internetmarke purcha
 
 ## Trying it out
 
+For the production setup and go-live checklist see [Production](06-production.md#internetmarke-deutsche-post-stamps-optional).
+
 Three ways, from safest to real money. All need the feature flag `INTERNETMARKE_ENABLED=true`, Valkey, and client credentials (any value for the mock).
 
 | | Mock (no Post account) | Deutsche Post sandbox | Production |
