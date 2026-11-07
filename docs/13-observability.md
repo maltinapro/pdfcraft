@@ -66,7 +66,7 @@ Labels are bounded: `kind` (`free`/`paid`), `plan` (`free` + the configured `PAI
 | `pdfcraft_auth_failures_total` | counter | `reason` | `invalid_token`, `paid_disabled`, `store_unavailable` |
 | `pdfcraft_tokens_created_total` | counter | `kind`, `plan` | tokens created (free tokens via Anubis, paid via Stripe/CLI) |
 | `pdfcraft_free_token_requests_total` | counter | `result` | `issued`, `challenge_required`, `already_issued`, `free_token_disabled`, `store_unavailable` |
-| `pdfcraft_postage_stamps_total` | counter | `result` | Internetmarke purchases: `bought` or the API error code (`postage_login_failed`, `postage_wallet_insufficient`, `postage_price_changed`, `postage_download_failed`, ...) |
+| `pdfcraft_postage_stamps_total` | counter | `result` | Internetmarke purchases: `bought`, `recovered` (paid order fetched again) or the API error code (`postage_login_failed`, `postage_wallet_insufficient`, `postage_price_changed`, `postage_download_failed`, ...) |
 | `pdfcraft_tokens_active` | gauge | `kind`, `plan` | currently valid tokens (scanned from Valkey every minute; every replica reports the same value, use `max`) |
 | `pdfcraft_invoices_total` | counter | `kind`, `plan`, `endpoint` | generated PDFs (`single`/`bulk`/document type) |
 | `pdfcraft_paid_token_invoices_total` | counter | `token_id`, `plan` | PDFs per paid token |

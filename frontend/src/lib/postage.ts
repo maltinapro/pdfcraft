@@ -72,3 +72,28 @@ export async function buyStamp(product: PostageProduct, username: string, passwo
     },
   }
 }
+
+/** Fetches the stamp of an order that was paid but not delivered again; costs no postage. */
+export async function recoverStamp(
+  shopOrderId: string,
+  product: Pick<PostageProduct, 'name' | 'priceCents'>,
+  username: string,
+  password: string,
+): Promise<Purchase> {
+  const response = await requestJson<{ stamps: PurchaseResponse[] }>('POST', '/v1/postage/stamps/recover', {
+    shopOrderId,
+    credentials: { username: username.trim(), password },
+  })
+  const first = response.stamps[0]
+  return {
+    walletBalanceCents: null,
+    stamp: {
+      base64: first.png,
+      voucherId: first.voucherId,
+      shopOrderId: first.shopOrderId,
+      productName: product.name,
+      priceCents: product.priceCents,
+      boughtAt: new Date().toISOString(),
+    },
+  }
+}

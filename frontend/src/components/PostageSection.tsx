@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Field } from './Field'
 import { tr, uiLocale, useLang } from '../lib/i18n'
-import { buyStamp, forgetProducts, loadProducts, type PostageProduct } from '../lib/postage'
+import { ApiError } from '../lib/api'
+import { buyStamp, forgetProducts, loadProducts, recoverStamp, type PostageProduct } from '../lib/postage'
 import type { PostageStamp } from '../lib/types'
 
 interface Props {
@@ -25,6 +26,7 @@ export function PostageSection({ postage, onChange }: Props) {
   const [buying, setBuying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [balance, setBalance] = useState<number | null>(null)
+  const [lostOrder, setLostOrder] = useState<string | null>(null)
 
   const load = () => {
     setLoadError(null)
@@ -54,6 +56,7 @@ export function PostageSection({ postage, onChange }: Props) {
     if (!ok) return
     setBuying(true)
     setError(null)
+    setLostOrder(null)
     try {
       const purchase = await buyStamp(product, username, password)
       onChange(purchase.stamp)
@@ -61,10 +64,29 @@ export function PostageSection({ postage, onChange }: Props) {
       setPassword('')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+      if (e instanceof ApiError && e.code === 'postage_download_failed') {
+        setLostOrder(/order (\S+)/.exec(e.details ?? '')?.[1] ?? null)
+      }
       if (e instanceof Error && /price has changed|Preis hat sich/.test(e.message)) {
         forgetProducts()
         load()
       }
+    } finally {
+      setBuying(false)
+    }
+  }
+
+  const recover = async () => {
+    if (!product || !lostOrder || buying) return
+    setBuying(true)
+    setError(null)
+    try {
+      const purchase = await recoverStamp(lostOrder, product, username, password)
+      onChange(purchase.stamp)
+      setLostOrder(null)
+      setPassword('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBuying(false)
     }
@@ -161,6 +183,11 @@ export function PostageSection({ postage, onChange }: Props) {
                 <div className="postage-error" role="alert">
                   {error}
                 </div>
+              )}
+              {lostOrder && (
+                <button type="button" className="btn" disabled={buying || !username.trim() || !password} onClick={() => void recover()}>
+                  {tr('Bezahlte Marke erneut laden', 'Fetch paid stamp again')}
+                </button>
               )}
               <button type="submit" className="btn btn-primary" disabled={buying || !product || !username.trim() || !password}>
                 {buying
