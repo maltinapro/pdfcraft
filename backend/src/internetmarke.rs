@@ -40,6 +40,8 @@ const DOWNLOAD_ATTEMPTS: u32 = 3;
 const REQUEST_MARKER_TTL_SECS: u64 = 900;
 /// A purchase also costs rate-limit tokens: it is a login oracle for the Portokasse otherwise.
 const PURCHASE_COST: usize = 5;
+/// Rate-limit tokens for fetching a paid order again.
+const RECOVER_COST: usize = 2;
 /// Stamps per bulk purchase (one cart; keeps the response well below any size limit).
 pub const MAX_STAMPS: usize = 25;
 const LETTERS: &[&str] = &["standardbrief", "kompaktbrief", "großbrief", "grossbrief", "maxibrief"];
@@ -314,15 +316,14 @@ impl Client {
             .map(|i| checkout["shoppingCart"]["voucherList"][i]["voucherId"].as_str().unwrap_or_default().to_string())
             .collect();
         let wallet_balance_cents = num(&checkout["walletBalance"]).or_else(|| num(&checkout["walletBallance"])).map(|v| v as i64);
-        // From here on the stamp is paid; a failed download must say so and name the order.
-        let lost = |why: &str| {
-            error(
-                StatusCode::BAD_GATEWAY,
-                "postage_download_failed",
-                format!("the stamps were bought but could not be downloaded ({why}); find order {shop_order_id} in your Portokasse"),
-            )
-        };
-        let Some(link) = checkout["link"].as_str() else { return Err(lost("no download link")) };
+        let Some(link) = checkout["link"].as_str() else { return Err(lost_download(&shop_order_id, "no download link")) };
+        self.fetch_stamps(link, &voucher_ids, &shop_order_id, wallet_balance_cents).await
+    }
+
+    /// Downloads the images of a paid order and pairs them with the voucher ids. From here on the
+    /// stamps are paid, so a failure must say so and name the order.
+    async fn fetch_stamps(&self, link: &str, voucher_ids: &[String], shop_order_id: &str, wallet_balance_cents: Option<i64>) -> Result<Vec<Stamp>, ApiError> {
+        let count = voucher_ids.len();
         let mut last = None;
         for attempt in 0..DOWNLOAD_ATTEMPTS {
             if attempt > 0 {
@@ -336,7 +337,7 @@ impl Client {
                         .map(|(png, voucher_id)| Stamp {
                             png,
                             voucher_id: voucher_id.clone(),
-                            shop_order_id: shop_order_id.clone(),
+                            shop_order_id: shop_order_id.to_string(),
                             wallet_balance_cents,
                         })
                         .collect());
@@ -345,8 +346,45 @@ impl Client {
                 Err(e) => last = Some(e.details),
             }
         }
-        Err(lost(last.as_deref().unwrap_or("unknown error")))
+        Err(lost_download(shop_order_id, last.as_deref().unwrap_or("unknown error")))
     }
+
+    /// Fetches the stamps of an already paid order again (`GET /app/shoppingcart/{shopOrderId}`), e.g. after
+    /// `postage_download_failed`. Costs no postage.
+    pub async fn recover(&self, shop_order_id: &str, creds: &Credentials) -> Result<Vec<Stamp>, ApiError> {
+        let (token, wallet) = self.login(creds).await?;
+        let response = self
+            .http
+            .get(format!("{}/app/shoppingcart/{shop_order_id}", self.settings.shipping_url))
+            .bearer_auth(&token)
+            .header("dhl-api-key", &self.settings.client_id)
+            .send()
+            .await
+            .map_err(|e| unreachable_upstream(&e))?;
+        let status = response.status();
+        let body: Value = response.json().await.unwrap_or(Value::Null);
+        if matches!(status.as_u16(), 400 | 404) {
+            return Err(error(StatusCode::NOT_FOUND, "postage_order_not_found", "this order does not exist in the Portokasse of this login"));
+        }
+        if !status.is_success() {
+            return Err(upstream(format!("order lookup rejected ({status}): {}", upstream_message(&body))));
+        }
+        let voucher_ids: Vec<String> = body["shoppingCart"]["voucherList"]
+            .as_array()
+            .map(|list| list.iter().filter_map(|v| v["voucherId"].as_str().map(str::to_string)).collect())
+            .unwrap_or_default();
+        let link = body["link"].as_str().filter(|_| !voucher_ids.is_empty());
+        let Some(link) = link else { return Err(lost_download(shop_order_id, "the order has no stamps or no download link")) };
+        self.fetch_stamps(link, &voucher_ids, shop_order_id, wallet).await
+    }
+}
+
+fn lost_download(shop_order_id: &str, why: &str) -> ApiError {
+    error(
+        StatusCode::BAD_GATEWAY,
+        "postage_download_failed",
+        format!("the stamps were bought but could not be downloaded ({why}); find order {shop_order_id} in your Portokasse"),
+    )
 }
 
 /// Only a local mock server (development, tests) may be reached without TLS.
@@ -511,6 +549,40 @@ pub async fn buy_stamps_bulk(
     })))
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoverRequest {
+    shop_order_id: String,
+    credentials: Credentials,
+}
+
+/// `POST /v1/postage/stamps/recover`: downloads the stamps of an order that was paid but not delivered
+/// (`postage_download_failed`) again. Buys nothing; nothing is stored.
+pub async fn recover_stamps(
+    Extension(token): Extension<TokenClient>,
+    payload: Result<Json<RecoverRequest>, JsonRejection>,
+) -> Result<Json<Value>, ApiError> {
+    let client = ensure_enabled()?;
+    let Json(req) = payload.map_err(bad_body)?;
+    let invalid = |details: &str| ApiError::new(StatusCode::BAD_REQUEST, "invalid_request", details.to_string());
+    let (user, pass) = (&req.credentials.username, &req.credentials.password);
+    if user.trim().is_empty() || pass.is_empty() || user.len() > 200 || pass.len() > 200 {
+        return Err(invalid("credentials.username and credentials.password are required"));
+    }
+    let id = &req.shop_order_id;
+    if !(1..=18).contains(&id.len()) || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+        return Err(invalid("shopOrderId must be 1 to 18 letters, digits or dashes"));
+    }
+    take_tokens(&token, RECOVER_COST).await?;
+    let result = client.recover(id, &req.credentials).await;
+    crate::metrics::postage_stamp(match &result {
+        Ok(_) => "recovered",
+        Err(e) => e.code,
+    });
+    let stamps = result?;
+    Ok(Json(json!({ "stamps": stamps.iter().map(stamp_json).collect::<Vec<_>>() })))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -590,7 +662,17 @@ mod tests {
             assert!(headers.get("authorization").is_none());
             zipped(&m.pngs)
         }
+        async fn order(headers: axum::http::HeaderMap, axum::extract::Path(id): axum::extract::Path<String>) -> Result<Json<Value>, StatusCode> {
+            if id != "4711" {
+                return Err(StatusCode::NOT_FOUND);
+            }
+            Ok(Json(json!({
+                "link": format!("http://{}/download/0.zip", headers["host"].to_str().unwrap()),
+                "shoppingCart": {"shopOrderId": id, "voucherList": [{"voucherId": "A0001"}, {"voucherId": "A0002"}]},
+            })))
+        }
         let app = Router::new()
+            .route("/app/shoppingcart/{id}", get(order))
             .route("/user", post(user))
             .route("/app/shoppingcart", post(cart))
             .route("/app/shoppingcart/png", post(png))
@@ -660,6 +742,20 @@ mod tests {
         let base = serve(mock).await;
         let Err(err) = client_for(&base).buy(&product(), 2, &creds()).await else { panic!("must fail") };
         assert_eq!(err.code, "postage_wallet_insufficient");
+    }
+
+    #[tokio::test]
+    async fn fetches_a_paid_order_again_without_buying() {
+        let pngs: Vec<Vec<u8>> = (1..=2).map(|i| postage::test_png(400 + i * 10, 283, None)).collect();
+        let mock = Mock { pngs: Arc::new(pngs.clone()), wallet: 1000, seen_password: Default::default() };
+        let base = serve(mock).await;
+        let stamps = client_for(&base).recover("4711", &creds()).await.ok().expect("recover");
+        assert_eq!(stamps.iter().map(|s| s.png.clone()).collect::<Vec<_>>(), pngs);
+        assert_eq!(stamps.iter().map(|s| s.voucher_id.as_str()).collect::<Vec<_>>(), vec!["A0001", "A0002"]);
+        assert!(stamps.iter().all(|s| s.shop_order_id == "4711"));
+
+        let Err(err) = client_for(&base).recover("999", &creds()).await else { panic!("must fail") };
+        assert_eq!((err.code, err.status), ("postage_order_not_found", StatusCode::NOT_FOUND));
     }
 
     #[test]

@@ -52,11 +52,13 @@ export class ValidationError extends Error {
 /** Error of the backend with its stable error code (`postage_disabled`, `validation_error`, …). */
 export class ApiError extends Error {
   readonly code: string | undefined
+  readonly details: string | undefined
 
-  constructor(message: string, code?: string) {
+  constructor(message: string, code?: string, details?: string) {
     super(message)
     this.name = 'ApiError'
     this.code = code
+    this.details = details
   }
 }
 
@@ -70,7 +72,7 @@ async function apiError(response: Response, kind: string): Promise<Error> {
   const message = friendlyApiError(response.status, payload.error, payload.details, kind)
   return payload.error === 'validation_error'
     ? new ValidationError(message, parseValidationDetails(payload.details ?? ''))
-    : new ApiError(message, payload.error)
+    : new ApiError(message, payload.error, payload.details)
 }
 
 let pendingToken: Promise<string> | null = null

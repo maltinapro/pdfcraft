@@ -31,10 +31,11 @@ If the payment succeeded but the download failed, the error `postage_download_fa
 | Endpoint | Purpose |
 | --- | --- |
 | `GET /v1/postage/products` | `{ "products": [{ "productCode", "name", "priceCents" }] }` |
+| `POST /v1/postage/stamps/recover` | body `{ "shopOrderId", "credentials": { "username", "password" } }`; fetches the stamps of an order that was **paid but not delivered** (`postage_download_failed` names the order id) again via `GET /app/shoppingcart/{shopOrderId}` + download. Buys nothing, costs no postage, 2 rate-limit tokens. Response `{ "stamps": [...] }` like the bulk endpoint; `404 postage_order_not_found` if the login has no such order. The configurator offers it as "Fetch paid stamp again" |
 | `POST /v1/postage/stamps/bulk` | same body plus `quantity` (1 to 25); buys all stamps in **one cart with one login** (all or nothing). Response `{ "stamps": [{ "png", "widthMm", "heightMm", "voucherId", "shopOrderId" }], "productCode", "productName", "priceCents" (each), "totalCents", "walletBalanceCents" }`. Costs `4 + quantity` rate-limit tokens, so a free token (20 per minute) can buy at most 16 at once |
 | `POST /v1/postage/stamps` | body `{ "productCode", "expectedPriceCents", "requestId", "credentials": { "username", "password" } }`; response `{ "png" (base64), "widthMm", "heightMm", "voucherId", "shopOrderId", "productCode", "productName", "priceCents", "walletBalanceCents" }` |
 
-Both need a token (free or paid) and answer `404 postage_disabled` while the feature is off. Error codes: `postage_login_failed` (422, deliberately not 401), `postage_wallet_insufficient` (402), `postage_price_changed` / `postage_duplicate` (409), `postage_unknown_product` (400), `postage_download_failed`, `postage_upstream_error` (502). The frontend translates them in `frontend/src/lib/apiErrors.ts`.
+Both need a token (free or paid) and answer `404 postage_disabled` while the feature is off. Error codes: `postage_login_failed` (422, deliberately not 401), `postage_wallet_insufficient` (402), `postage_price_changed` / `postage_duplicate` (409), `postage_unknown_product` (400), `postage_download_failed` (502, recover with `/recover`), `postage_order_not_found` (404), `postage_upstream_error` (502). The frontend translates them in `frontend/src/lib/apiErrors.ts`.
 
 `POST /v1/invoices` and `POST /v1/documents` accept the optional `postage` field (`invoice.postage` / `document.postage`).
 
@@ -112,8 +113,8 @@ Summary, ordered by risk (details below):
 | 1 | Does Deutsche Post allow partner apps to use end-customer Portokasse logins? (else reseller model) | yes | Ask Deutsche Post during onboarding |
 | 2 | Is a franking mark inside the address window (top right of the address field) accepted for window envelopes? Fallback: `ADDRESS_ZONE` (85 x 43 mm label with address), which would send the recipient address to Deutsche Post and must be weighed against "no customer data in the backend" | yes | Physical print test, ask the business customer service |
 | 3 | Official rules (clear zone, placement, size) not read; sizes come from a third-party dataset | yes | Read the Deutsche Post documentation, compare with a printed stamp |
-| 4 | Live behaviour: product filter, download host, ZIP image/voucher pairing, real PNG size/dpi | yes | Run the flow against the sandbox ("Trying it out") |
-| 5 | A stamp that was paid but not downloaded (`postage_download_failed`): can it be fetched again in the Portokasse? | no | Test in the sandbox/Portokasse |
+| 4 | Live behaviour: product filter, download host (the spec example shows `pcf-next.tcb.deutschepost.de`; the client accepts any https host), ZIP image/voucher pairing, real PNG size/dpi | yes | Run the flow against the sandbox ("Trying it out") |
+| 5 | ~~A stamp that was paid but not downloaded~~ Closed per spec v1.30: `GET /app/shoppingcart/{shopOrderId}` returns the link and voucher list again; implemented as `POST /v1/postage/stamps/recover` and a button in the configurator, tested against the mock (unit tests, compose run, browser). Not verified against the live service | no | - |
 | 6 | Privacy policy and Impressum wording for Deutsche Post and the login pass-through | yes | Operator/legal review |
 | 7 | Browser UI buys single stamps only; archive entries are reproduced without a stamp | no | By design, bulk via the API |
 | 8 | ~~`docker compose` not run~~ Closed: `docker compose --profile mock up --build` (Compose v2.29.7) was run; product list, purchase (stamp, wallet balance), wrong password (`postage_login_failed`) and `/v1` routing through the edge worked, no password in the backend log. Not covered: the browser flow through the Anubis challenge | no | - |

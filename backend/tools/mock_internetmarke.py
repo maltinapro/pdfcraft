@@ -10,7 +10,9 @@ Backend settings to use it:
     INTERNETMARKE_PRODUCTS_URL=http://127.0.0.1:9100/products
 
 Portokasse login: any e-mail with password `secret` (other passwords are rejected with 401);
-`poor@example.com` has a balance of 1,00 EUR, everybody else 50,00 EUR. The mock answers the way the
+`poor@example.com` has a balance of 1,00 EUR, everybody else 50,00 EUR. `lost@example.com` pays but the
+download fails until the order is fetched again (`GET /app/shoppingcart/{shopOrderId}`), which tests the
+"fetch paid stamp again" flow. The mock answers the way the
 OpenAPI spec describes it (the real service was not available for development) and keeps its
 balances in memory only. Stamps are checkerboard placeholders, not valid franking marks.
 """
@@ -31,7 +33,7 @@ PRODUCTS = [
     {"extProductid": 5, "extProductname": "Einschreiben Einwurf", "grossprice": 3.35, "transport": "national"},
     {"extProductid": 9, "extProductname": "Standardbrief International", "grossprice": 1.25, "transport": "international"},
 ]
-wallets, files = {}, {}
+wallets, files, broken, orders = {}, {}, set(), {}
 counter = {"order": 4700, "voucher": 0}
 PASSWORD = "secret"
 
@@ -82,7 +84,19 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/products":
             return self.send(200, {"shortSalesProducts": PRODUCTS})
         if path.startswith("/download/") and path[10:] in files:
+            if path[10:] in broken:
+                return self.send(500, {"title": "temporarily unavailable"})
             return self.send(200, files[path[10:]], "application/zip")
+        order_path = path.removeprefix("/im/v1/app/shoppingcart/")
+        if order_path != path:
+            auth = self.headers.get("authorization", "")
+            if not auth.startswith("Bearer token-"):
+                return self.send(401, {"title": "unauthorized"})
+            order = orders.get(order_path)
+            if order is None or order["user"] != auth.removeprefix("Bearer token-"):
+                return self.send(404, {"title": "order not found"})
+            broken.discard(order_path + ".zip")
+            return self.send(200, {"link": f"http://{self.headers['host']}/download/{order_path}.zip", "shoppingCart": {"shopOrderId": order_path, "voucherList": order["vouchers"]}})
         self.send(404, {"title": "not found"})
 
     def do_POST(self):
@@ -114,6 +128,9 @@ class Handler(BaseHTTPRequestHandler):
                     zf.writestr("%d.png" % i, png(counter["voucher"]))
             name = req["shopOrderId"] + ".zip"
             files[name] = images.getvalue()
+            orders[req["shopOrderId"]] = {"user": user, "vouchers": vouchers}
+            if user.startswith("lost@"):
+                broken.add(name)
             return self.send(
                 200,
                 {
