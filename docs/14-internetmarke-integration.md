@@ -55,6 +55,17 @@ Metric: `pdfcraft_postage_stamps_total{result}` (dashboard "Internetmarke purcha
 
 `backend/tools/mock_internetmarke.py` is a local stand-in for both Deutsche Post APIs (products, login, cart, PNG checkout, ZIP download; password `secret`, `poor@example.com` has only 1 EUR). Start it, point `INTERNETMARKE_SHIPPING_URL=http://127.0.0.1:9100/im/v1` and `INTERNETMARKE_PRODUCTS_URL=http://127.0.0.1:9100/products` at it, and set `INTERNETMARKE_ENABLED=true` with any client id/secret (see the header of the script). Plain `http://` is accepted **only** for `localhost`/`127.0.0.1`; any other shipping URL requires https for the API and the download link. The unit tests start a similar mock server in-process (`cargo test internetmarke`).
 
+With Docker Compose the mock is the optional `mock-post` service (profile `mock`). It shares the backend's network namespace, because plain http is only accepted for loopback addresses:
+
+```bash
+INTERNETMARKE_ENABLED=true INTERNETMARKE_CLIENT_ID=id INTERNETMARKE_CLIENT_SECRET=secret \
+INTERNETMARKE_SHIPPING_URL=http://127.0.0.1:9100/im/v1 \
+INTERNETMARKE_PRODUCTS_URL=http://127.0.0.1:9100/products \
+docker compose --profile mock up --build
+```
+
+Open http://localhost:8080/app/ (solve the Anubis challenge), pick a document and use any e-mail with the password `secret` in the "Internetmarke" section. For the real sandbox or production API, set the same variables with real credentials (and the sandbox URL) and leave out `--profile mock`. Verified: the mock is reachable from the backend's namespace; `docker compose` itself was not run (plugin missing in the development environment).
+
 ## Stamp dimensions
 
 The stamp (`voucherLayout=FRANKING_ZONE`, 300 dpi PNG) is placed 1:1: width/height in mm = pixels / dpi x 25.4 (dpi from the PNG `pHYs` chunk when it is plausible, otherwise 300), never rescaled. Reference sizes measured from real purchases by the public dataset [gruncellka/porto-data](https://github.com/gruncellka/porto-data) (`marks.json`; third-party, not an official Deutsche Post specification):
