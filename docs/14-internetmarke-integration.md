@@ -55,10 +55,23 @@ Metric: `pdfcraft_postage_stamps_total{result}` (dashboard "Internetmarke purcha
 
 `backend/tools/mock_internetmarke.py` is a local stand-in for both Deutsche Post APIs (products, login, cart, PNG checkout, ZIP download; password `secret`, `poor@example.com` has only 1 EUR). Start it, point `INTERNETMARKE_SHIPPING_URL=http://127.0.0.1:9100/im/v1` and `INTERNETMARKE_PRODUCTS_URL=http://127.0.0.1:9100/products` at it, and set `INTERNETMARKE_ENABLED=true` with any client id/secret (see the header of the script). Plain `http://` is accepted **only** for `localhost`/`127.0.0.1`; any other shipping URL requires https for the API and the download link. The unit tests start a similar mock server in-process (`cargo test internetmarke`).
 
+## Stamp dimensions
+
+The stamp (`voucherLayout=FRANKING_ZONE`, 300 dpi PNG) is placed 1:1: width/height in mm = pixels / dpi x 25.4 (dpi from the PNG `pHYs` chunk when it is plausible, otherwise 300), never rescaled. Reference sizes measured from real purchases by the public dataset [gruncellka/porto-data](https://github.com/gruncellka/porto-data) (`marks.json`; third-party, not an official Deutsche Post specification):
+
+| Stamp | Pixels | Size |
+|---|---|---|
+| domestic | 437 x 236 | 37 x 20 mm |
+| international, registered | 732 x 236 | 62 x 20 mm |
+| registered international | 732 x 384 | 62 x 32.5 mm |
+| `ADDRESS_ZONE` label (not used) | 1004 x 508 | 85 x 43 mm |
+
+All fit the 85 x 40 mm limit in `postage.rs` (a unit test pins these sizes). Stamps up to 20 mm high fit the DIN 5008 franking zone; the 32.5 mm high one is taller, so the templates grow the address block (`max(47.4 mm, height + 20 mm)`) instead of letting the recipient overlap the reference line; the content below moves down accordingly. The official Deutsche Post rules (clear zone, placement) could not be read from the development environment and are still to be compared with a physical print.
+
 ## Open points
 
 - **Onboarding:** production credentials come with a Deutsche Post partner onboarding. Whether a partner app may log in with *end-customer* Portokasse credentials in production must be clarified with Deutsche Post. If not, a reseller model (users pay PDFCraft via Stripe, PDFCraft pays from its own wallet) would replace the credentials dialog; the stamp handling in templates and browser stays the same.
 - **Live check:** run the flow against the sandbox. The product filter (letter names), the response fields (`walletBalance`/`walletBallance`, `voucherList`) and the download link host are derived from the spec and sample code.
-- **Print test:** the layout rules of the franking mark are binding. Print the PDF at 100 % and test it in a window envelope; the placement in the address field was checked visually only.
+- **Print test:** the layout rules of the franking mark are binding. Print the PDF at 100 % and test it in a window envelope; the placement in the address field was checked visually only (with the reference sizes above rasterized, not printed).
 - **Bulk / API-only use:** the document bulk endpoints accept a `postage` per entry but never buy stamps themselves. API clients buy `n` stamps with `POST /v1/postage/stamps/bulk` and attach one to each entry (example in the [API reference](09-api-reference.md)). The images are paired with the voucher ids by their file number in the download (`0.png`, `1.png`, ...); this pairing follows the spec and is not verified against the live service. If the number of images differs from the number of stamps, the call fails with `postage_download_failed` and the shop order id. The browser UI buys single stamps only; reproduced archive entries have no stamp.
 - **Legal:** the privacy policy names Deutsche Post as an external service and describes the pass-through of the login. The operator must verify the wording.
