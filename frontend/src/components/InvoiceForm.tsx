@@ -1,5 +1,6 @@
 import { TextField } from './Field'
 import { ItemsEditor } from './ItemsEditor'
+import { PostageSection } from './PostageSection'
 import { tr, useLang } from '../lib/i18n'
 import type { Invoice, Recipient } from '../lib/types'
 
@@ -36,6 +37,8 @@ export function InvoiceForm({ invoice, onChange }: Props) {
           hint={tr('Nur bei Behörden nötig (Stadt, Land, Bund): Die Nummer erhalten Sie von Ihrem Kunden. Sonst leer lassen.', 'Only needed for public authorities: you get the number from your customer. Otherwise leave empty.')}
         />
       </section>
+
+      <PostageSection postage={invoice.postage} onChange={(postage) => onChange({ ...invoice, postage })} />
 
       <ItemsEditor items={invoice.items} onChange={(items) => onChange({ ...invoice, items })} />
     </div>

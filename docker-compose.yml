@@ -17,6 +17,10 @@ services:
       # Feature flag for purchased tokens (off by default)
       PAID_TOKENS_ENABLED: ${PAID_TOKENS_ENABLED:-false}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      # Feature flag: buying Deutsche Post stamps with the user's own Portokasse (off by default)
+      INTERNETMARKE_ENABLED: ${INTERNETMARKE_ENABLED:-false}
+      INTERNETMARKE_CLIENT_ID: ${INTERNETMARKE_CLIENT_ID:-}
+      INTERNETMARKE_CLIENT_SECRET: ${INTERNETMARKE_CLIENT_SECRET:-}
     depends_on:
       - valkey
   frontend:

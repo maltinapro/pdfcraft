@@ -14,6 +14,10 @@ backend:
   # Name of a Secret with the key STRIPE_WEBHOOK_SECRET (only needed for purchased tokens,
   # together with backend.env.PAID_TOKENS_ENABLED="true"; see docs/12-paid-tokens-stripe.md)
   stripeSecret: ""
+  # Name of a Secret with the keys INTERNETMARKE_CLIENT_ID and INTERNETMARKE_CLIENT_SECRET (app
+  # credentials of the DHL developer portal). Only needed together with
+  # backend.env.INTERNETMARKE_ENABLED="true"; see docs/14-internetmarke-integration.md
+  internetmarkeSecret: ""
   # Name of a Secret with the key VALKEY_URL (e.g. redis://:PASSWORD@host:6379, rediss:// for TLS).
   # Use with valkey.enabled=false when an operator-managed Valkey requires authentication.
   valkeySecret: ""

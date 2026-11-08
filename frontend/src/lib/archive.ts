@@ -2,7 +2,7 @@ import { isObj } from './storage'
 import { tr } from './i18n'
 import type { Issue } from './validate'
 import { docSpec, type Doc, type DocDataKind, type DocKind } from './documents'
-import { newItem, type Invoice, type InvoiceItem, type Settings } from './types'
+import { newItem, type Invoice, type InvoiceItem, type Settings, type StampInfo } from './types'
 
 /** A document that was downloaded. Issued documents are final: they are never edited, only cancelled or copied. */
 export interface ArchiveEntry {
@@ -20,6 +20,8 @@ export interface ArchiveEntry {
   doc?: Doc
   /** Sender and design at issue time, without the logo (entries from older versions have none). */
   settings?: Omit<Settings, 'logo'>
+  /** Internetmarke that was printed on this document (used up; the image is not kept). */
+  stamp?: StampInfo
 }
 
 const STORAGE_KEY = 'pdfcraft.archive'
@@ -72,7 +74,8 @@ export function makeEntry(kind: DocKind, source: Invoice | Doc, settings: Settin
   void _logo
   const items = 'items' in source ? source.items : []
   const priced = docSpec(kind)?.items === 'priced'
-  const snapshot = JSON.parse(JSON.stringify(source)) as Invoice | Doc
+  const { postage, ...rest } = JSON.parse(JSON.stringify(source)) as Invoice | Doc
+  const snapshot = rest as Invoice | Doc
   return {
     id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
     kind,
@@ -82,6 +85,7 @@ export function makeEntry(kind: DocKind, source: Invoice | Doc, settings: Settin
     total: priced ? Math.round(grossTotal(items) * 100) / 100 : null,
     issuedAt: new Date().toISOString(),
     settings: JSON.parse(JSON.stringify(snapshotSettings)) as Omit<Settings, 'logo'>,
+    ...(postage ? { stamp: { voucherId: postage.voucherId, productName: postage.productName, priceCents: postage.priceCents } } : {}),
     ...(kind === 'invoice' ? { invoice: snapshot as Invoice } : { doc: snapshot as Doc }),
   }
 }

@@ -33,6 +33,7 @@ fn document(
     mut checked: serde_json::Value,
     mut assets: Vec<(String, Vec<u8>)>,
 ) -> (serde_json::Value, Vec<(String, Vec<u8>)>) {
+    crate::postage::attach(invoice.postage.as_ref(), &mut assets);
     let prepared = einvoice::prepare(raw, &settings, invoice, &mut checked, None);
     let mut data = json!({ "settings": settings, "invoice": checked });
     if let (Some(data), Some(extra)) = (data.as_object_mut(), prepared.extra.as_object()) {
@@ -139,6 +140,8 @@ pub fn router() -> Router {
         .route("/invoices/bulk", post(bulk))
         .route("/documents", post(document_single))
         .route("/documents/bulk", post(document_bulk))
+        .route("/postage/products", get(crate::internetmarke::list_products))
+        .route("/postage/stamps", post(crate::internetmarke::buy_stamp))
         .layer(middleware::from_fn(auth));
     // Free tokens are issued against an Anubis pass instead of a token
     // Purchase hand-over (Stripe): only answers while PAID_TOKENS_ENABLED
@@ -221,7 +224,7 @@ fn limited(capacity: u32, wait: Option<u64>) -> ApiError {
 
 /// Token bucket per token (`limit` invoices per minute, refilled continuously; every
 /// invoice costs one). The state lives in Valkey, so it is shared across instances.
-async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiError> {
+pub(crate) async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiError> {
     if cost > client.limit as usize {
         return Err(ApiError::new(
             StatusCode::TOO_MANY_REQUESTS,
@@ -666,6 +669,101 @@ mod tests {
             times.remove(0);
             times.sort_by(|a, b| a.0.total_cmp(&b.0));
             println!("BENCH items={count} median={:.1}ms min={:.1}ms max={:.1}ms size={}", times[times.len() / 2].0, times[0].0, times[times.len() - 1].0, times[0].1);
+        }
+    }
+
+    fn stamp() -> serde_json::Value {
+        use base64::Engine as _;
+        json!({"base64": base64::engine::general_purpose::STANDARD.encode(crate::postage::test_png(472, 283, None))})
+    }
+
+    #[tokio::test]
+    async fn renders_every_document_type_with_a_stamp() {
+        for kind in Kind::ALL {
+            let settings: Settings = serde_json::from_value(json!({
+                "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt", "email": "a@b.de", "vatId": "DE123456789"},
+                "bank": {"iban": "DE89370400440532013000"},
+            }))
+            .unwrap();
+            let raw: Document = serde_json::from_value(json!({
+                "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
+                "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff",
+                "body": "Zeile 1\nZeile 2", "reason": "Falsche Menge", "intro": "Hallo", "closing": "Gruß",
+                "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+                "items": [{"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19}],
+                "postage": stamp(),
+            }))
+            .unwrap();
+            let mut errors = Errors::default();
+            let s = check_settings(&settings, &mut errors);
+            let doc = documents::check_document(kind, &raw, false, &mut errors);
+            assert!(errors.0.is_empty(), "{:?}", errors.0);
+            assert_eq!(doc["postage"]["widthMm"], 40.0);
+            let (data, assets) = documents::build(kind, &settings, s.data.clone(), &raw, doc, Vec::new());
+            assert!(assets.iter().any(|(name, _)| name == "postage"), "{}", kind.slug());
+            let pdf = render_pdf(&kind.template(), data, assets).await.unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details));
+            assert!(pdf.starts_with(b"%PDF"));
+            if let Ok(dir) = std::env::var("PDF_OUT") {
+                std::fs::write(format!("{dir}/{}-stamp.pdf", kind.slug()), pdf).unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn bulk_entries_carry_their_own_stamp() {
+        let item = |n: &str, with_stamp: bool| {
+            let mut v = json!({
+                "number": n, "date": "2026-01-31",
+                "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+                "items": [{"description": "Beratung", "quantity": 1, "unit": "h", "price": 95, "taxRate": 19}],
+            });
+            if with_stamp {
+                v["postage"] = stamp();
+            }
+            v
+        };
+        let req: BulkRequest = serde_json::from_value(json!({
+            "settings": {"sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"}},
+            "invoices": [item("1", true), item("2", false)],
+        }))
+        .unwrap();
+        let mut errors = Errors::default();
+        let checked: Vec<_> = req.invoices.iter().enumerate().map(|(i, inv)| check_invoice(inv, &format!("invoices[{i}]"), &mut errors)).collect();
+        assert!(errors.0.is_empty(), "{:?}", errors.0);
+        assert_eq!(checked[0]["postage"]["widthMm"], 40.0);
+        assert!(checked[1].get("postage").is_none());
+
+        let docs: DocumentBulkRequest = serde_json::from_value(json!({
+            "settings": {"sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"}},
+            "type": "letter", "documents": [{"number": "1", "date": "2026-01-31", "recipient": {"name": "K", "address": "W 1", "city": "5 S"}, "postage": stamp()}],
+        }))
+        .unwrap();
+        assert!(docs.documents[0].postage.is_some());
+    }
+
+    #[tokio::test]
+    async fn renders_invoice_with_a_stamp() {
+        let settings: Settings = serde_json::from_value(json!({
+            "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt", "email": "a@b.de", "vatId": "DE123456789"},
+            "bank": {"iban": "DE89370400440532013000"},
+        }))
+        .unwrap();
+        let raw: Invoice = serde_json::from_value(json!({
+            "number": "2026-001", "date": "2026-01-31", "deliveryDate": "2026-01-30", "dueDate": "2026-02-14",
+            "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+            "items": [{"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19}],
+            "postage": stamp(),
+        }))
+        .unwrap();
+        let mut errors = Errors::default();
+        let s = check_settings(&settings, &mut errors);
+        let invoice = check_invoice(&raw, "invoice", &mut errors);
+        assert!(errors.0.is_empty(), "{:?}", errors.0);
+        let (data, assets) = document(&settings, s.data, &raw, invoice, Vec::new());
+        let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await.unwrap_or_else(|e| panic!("{}", e.details));
+        assert!(pdf.starts_with(b"%PDF"));
+        if let Ok(dir) = std::env::var("PDF_OUT") {
+            std::fs::write(format!("{dir}/invoice-stamp.pdf"), pdf).unwrap();
         }
     }
 

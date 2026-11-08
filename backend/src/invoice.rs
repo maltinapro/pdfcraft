@@ -5,6 +5,7 @@
 //! text so it can be placed into Typst string literals. This is the only
 //! validation layer: the frontend sends its raw form values.
 
+use crate::postage::{self, Postage};
 use serde::Deserialize;
 use serde_json::{json, Value as JsonValue};
 
@@ -104,6 +105,8 @@ pub struct Invoice {
     pub date: String,
     pub recipient: Recipient,
     pub items: Vec<Item>,
+    /// Franking mark (Internetmarke PNG) printed into the address field.
+    pub postage: Option<Postage>,
 }
 
 /// Collects all validation problems so the client sees them at once.
@@ -291,12 +294,16 @@ pub fn check_invoice(inv: &Invoice, path: &str, e: &mut Errors) -> JsonValue {
             })
         })
         .collect();
-    json!({
+    let mut out = json!({
         "number": text(e, &format!("{path}.number"), &inv.number, MAX_SHORT, true),
         "date": { "year": date.0, "month": date.1, "day": date.2 },
         "recipient": recipient,
         "items": items,
-    })
+    });
+    if let Some(stamp) = postage::check_optional(inv.postage.as_ref(), path, e) {
+        out["postage"] = stamp.data();
+    }
+    out
 }
 
 /// File name stem for an invoice number: letters, digits, `.`, `_` and `-` only.

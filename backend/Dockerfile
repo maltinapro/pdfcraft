@@ -16,7 +16,7 @@ FROM debian:stable-slim
 # packages. Without them Typst silently falls back to Libertinus Serif.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       fonts-liberation fonts-crosextra-carlito fonts-open-sans fonts-roboto fonts-lato fonts-dejavu-core \
+       fonts-liberation fonts-crosextra-carlito fonts-open-sans fonts-roboto fonts-lato fonts-dejavu-core ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/backend/target/release/pdfcraft-backend /app/pdfcraft-backend

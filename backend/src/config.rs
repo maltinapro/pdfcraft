@@ -14,6 +14,10 @@
 //! | `STRIPE_WEBHOOK_SECRET` | empty | Signing secret (`whsec_…`) of the Stripe webhook endpoint |
 //! | `PAID_GRACE_DAYS` | `3` | Extra days after a paid subscription period before the token expires |
 //! | `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey (renewable by its id) |
+//! | `INTERNETMARKE_ENABLED` | `false` | Feature flag: buy Deutsche Post stamps with the user's own Portokasse (`/v1/postage/*`) |
+//! | `INTERNETMARKE_CLIENT_ID` / `_SECRET` | – | App credentials from the DHL developer portal (Internetmarke API) |
+//! | `INTERNETMARKE_SHIPPING_URL` | production | Base URL of the Internetmarke API (override for tests) |
+//! | `INTERNETMARKE_PRODUCTS_URL` | production | URL of the Deutsche Post product list (`profile=IM-PARTNER`) |
 //! | `BULK_MAX_INVOICES` | `100` | Maximum invoices per bulk request |
 //! | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations |
 //! | `METRICS_ADDR` | `0.0.0.0:9090` | Listen address of `GET /metrics` (OpenMetrics); `off` disables it |
@@ -36,6 +40,11 @@ pub struct Config {
     pub paid_retention_days: u64,
     pub stripe_webhook_secret: Option<String>,
     pub paid_grace_days: u64,
+    pub internetmarke_enabled: bool,
+    pub internetmarke_client_id: Option<String>,
+    pub internetmarke_client_secret: Option<String>,
+    pub internetmarke_shipping_url: String,
+    pub internetmarke_products_url: String,
     pub bulk_max_invoices: usize,
     pub max_concurrent_compiles: usize,
     pub cors_origins: Option<Vec<String>>,
@@ -106,6 +115,17 @@ impl Config {
             paid_retention_days: env_parse("PAID_TOKEN_RETENTION_DAYS", 365u64),
             stripe_webhook_secret: std::env::var("STRIPE_WEBHOOK_SECRET").ok().filter(|v| !v.trim().is_empty()),
             paid_grace_days: env_parse("PAID_GRACE_DAYS", 3u64),
+            internetmarke_enabled: env_parse("INTERNETMARKE_ENABLED", false),
+            internetmarke_client_id: std::env::var("INTERNETMARKE_CLIENT_ID").ok().filter(|v| !v.trim().is_empty()),
+            internetmarke_client_secret: std::env::var("INTERNETMARKE_CLIENT_SECRET").ok().filter(|v| !v.trim().is_empty()),
+            internetmarke_shipping_url: std::env::var("INTERNETMARKE_SHIPPING_URL")
+                .ok()
+                .filter(|v| !v.trim().is_empty())
+                .unwrap_or_else(|| crate::internetmarke::DEFAULT_SHIPPING_URL.into()),
+            internetmarke_products_url: std::env::var("INTERNETMARKE_PRODUCTS_URL")
+                .ok()
+                .filter(|v| !v.trim().is_empty())
+                .unwrap_or_else(|| crate::internetmarke::DEFAULT_PRODUCTS_URL.into()),
             bulk_max_invoices: env_parse("BULK_MAX_INVOICES", 100usize).max(1),
             max_concurrent_compiles: env_parse("MAX_CONCURRENT_COMPILES", cpus).max(1),
             cors_origins,

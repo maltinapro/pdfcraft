@@ -6,6 +6,7 @@ import {
   newItem,
   type Invoice,
   type Logo,
+  type PostageStamp,
   type Settings,
 } from './types'
 
@@ -43,6 +44,21 @@ function parseLogo(input: unknown): Logo | null {
   return { fileName, base64, mimeType }
 }
 
+/** A stored stamp or `null`; keeps what a purchase paid for even after a reload or import. */
+export function parsePostage(input: unknown): PostageStamp | null {
+  if (!isObj(input)) return null
+  const { base64, voucherId, shopOrderId, productName, priceCents, boughtAt } = input
+  if (typeof base64 !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64) || (base64.length * 3) / 4 > 300 * 1024) return null
+  return {
+    base64,
+    voucherId: typeof voucherId === 'string' ? voucherId : '',
+    shopOrderId: typeof shopOrderId === 'string' ? shopOrderId : '',
+    productName: typeof productName === 'string' ? productName : '',
+    priceCents: typeof priceCents === 'number' ? priceCents : 0,
+    boughtAt: typeof boughtAt === 'string' ? boughtAt : '',
+  }
+}
+
 /** Validates unknown JSON and migrates older schema versions. Throws on unusable input. */
 export function parseConfig(raw: unknown): AppConfig {
   if (!isObj(raw)) throw new Error(tr('Ungültige Konfigurationsdatei.', 'Invalid configuration file.'))
@@ -66,6 +82,7 @@ export function parseConfig(raw: unknown): AppConfig {
     void _id
     return newItem(rest as Partial<typeof base>)
   })
+  invoice.postage = parsePostage(rawInvoice.postage)
   return { schemaVersion: SCHEMA_VERSION, settings, invoice }
 }
 
