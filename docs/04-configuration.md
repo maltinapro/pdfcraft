@@ -16,6 +16,9 @@
 | `INTERNETMARKE_ENABLED` | `false` | Feature flag for buying Deutsche Post stamps with the user's own Portokasse ([guide](14-internetmarke-integration.md)) |
 | `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET` | empty | DHL developer portal app credentials; needed when `INTERNETMARKE_ENABLED=true` |
 | `INTERNETMARKE_SHIPPING_URL`, `INTERNETMARKE_PRODUCTS_URL` | Deutsche Post production URLs | Override for the sandbox |
+| `INTERNETMARKE_SANDBOX_SHIPPING_URL` | empty | Test API for **free** tokens (watermarked drafts); paid tokens keep the main API ([guide](14-internetmarke-integration.md#test-stamps-for-free-tokens)) |
+| `INTERNETMARKE_SANDBOX_PRODUCTS_URL`, `INTERNETMARKE_SANDBOX_CLIENT_ID`, `INTERNETMARKE_SANDBOX_CLIENT_SECRET` | main values | Optional overrides for the test API |
+| `INTERNETMARKE_SANDBOX_USERNAME`, `INTERNETMARKE_SANDBOX_PASSWORD` | empty | Shared test Portokasse login; free-token users then need no login of their own |
 | `PAID_GRACE_DAYS` | `3` | Days a subscription token stays valid after the paid period end |
 | `PAID_PLANS` | `starter=60,business=300,pro=1000` | Paid plans as `name=invoices_per_minute` |
 | `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey so it can be renewed by id |
@@ -55,7 +58,7 @@ The configurator offers the fonts listed in `FONTS` (`backend/src/invoice.rs` an
 
 | Variable | Used for |
 | --- | --- |
-| `CORS_ALLOWED_ORIGINS`, `PAID_TOKENS_ENABLED`, `STRIPE_WEBHOOK_SECRET`, `INTERNETMARKE_ENABLED`, `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET`, `ANUBIS_PUBLIC_KEY_HEX` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
+| `CORS_ALLOWED_ORIGINS`, `PAID_TOKENS_ENABLED`, `STRIPE_WEBHOOK_SECRET`, `INTERNETMARKE_ENABLED`, `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET`, `INTERNETMARKE_SANDBOX_*`, `ANUBIS_PUBLIC_KEY_HEX` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
 
 ## Valkey data
 
