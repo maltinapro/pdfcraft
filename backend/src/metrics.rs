@@ -122,8 +122,8 @@ struct State {
 
 static STATE: OnceLock<State> = OnceLock::new();
 
-fn buckets(values: &[f64]) -> impl Iterator<Item = f64> {
-    values.to_vec().into_iter()
+fn buckets(values: &[f64]) -> impl Iterator<Item = f64> + '_ {
+    values.iter().copied()
 }
 
 /// Latency buckets (seconds).

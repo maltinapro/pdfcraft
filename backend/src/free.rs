@@ -67,7 +67,7 @@ pub fn verify_jwt(jwt: &str, key: &VerifyingKey, now: u64) -> Option<u64> {
     key.verify_strict(format!("{header_b64}.{payload_b64}").as_bytes(), &sig).ok()?;
     let claims: Value = serde_json::from_slice(&URL_SAFE_NO_PAD.decode(payload_b64).ok()?).ok()?;
     let exp = claims.get("exp")?.as_u64()?;
-    let nbf_ok = claims.get("nbf").and_then(Value::as_u64).map_or(true, |nbf| nbf <= now + 5);
+    let nbf_ok = claims.get("nbf").and_then(Value::as_u64).is_none_or(|nbf| nbf <= now + 5);
     (exp > now && nbf_ok).then_some(exp)
 }
 
