@@ -47,6 +47,9 @@ Both need a token (free or paid) and answer `404 postage_disabled` while the fea
 | `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET` | empty | App credentials of the DHL developer portal (Internetmarke API enabled). Secrets: keep them out of images and values files |
 | `INTERNETMARKE_SHIPPING_URL` | `https://api-eu.dhl.com/post/de/shipping/im/v1` | Shipping API base URL (set the sandbox URL for tests) |
 | `INTERNETMARKE_PRODUCTS_URL` | DP products API | Products API URL |
+| `INTERNETMARKE_SANDBOX_SHIPPING_URL` | empty | Test API URL. When set, **free** tokens (whose PDFs carry the draft watermark) buy test stamps there; paid tokens keep using the main API (see "Test stamps for free tokens") |
+| `INTERNETMARKE_SANDBOX_PRODUCTS_URL`, `_CLIENT_ID`, `_CLIENT_SECRET` | main values | Optional overrides for the test API |
+| `INTERNETMARKE_SANDBOX_USERNAME`, `_PASSWORD` | empty | Shared test Portokasse login. When set, free-token users need no login of their own |
 
 Helm: `backend.env.INTERNETMARKE_ENABLED: "true"` plus `backend.internetmarkeSecret` (a Secret with the keys `INTERNETMARKE_CLIENT_ID` and `INTERNETMARKE_CLIENT_SECRET`). The backend needs outbound HTTPS to `api-eu.dhl.com` (the image contains `ca-certificates`).
 
@@ -75,6 +78,15 @@ Three ways, from safest to real money. All need the feature flag `INTERNETMARKE_
 4. Report anything that differs from the spec (product list, download link, ZIP pairing; see "Open points").
 
 **Where to run it:** natively (`cargo run` + `npm run dev`, see [Local development](02-local-development.md)) or with Docker Compose (see [Docker](03-docker-local.md)). Compose passes the four `INTERNETMARKE_*` variables to the backend; the optional `mock-post` service (profile `mock`) is the mock below. Without `--profile mock`, Compose talks to the real URLs you configured.
+
+## Test stamps for free tokens
+
+Free-token PDFs are watermarked "Entwurf"/"Draft", so they are drafts anyway. With `INTERNETMARKE_SANDBOX_SHIPPING_URL` set, free tokens therefore talk to the Deutsche Post **test API** instead of production: no real money, no Portokasse of the user. With the shared test login (`INTERNETMARKE_SANDBOX_USERNAME`/`_PASSWORD`, a test account you get from the Post for the sandbox) the user does not enter any login; the configurator hides the login fields, the button reads "Create test stamp" and a hint says the stamp is not valid. Without the shared login, free-token users still enter a (sandbox) login. Paid tokens always use the main API.
+
+- `GET /v1/postage/products` answers `sandbox` and `loginRequired`; purchase and recover responses carry `sandbox`. API users with a free token may omit `credentials` when `loginRequired` is `false` (a sent login is ignored then).
+- Rate limits, the single-use request marker and the metrics work the same. The shared test login lives only in the server environment (Helm: optional keys `INTERNETMARKE_SANDBOX_USERNAME`/`_PASSWORD` of `backend.internetmarkeSecret`).
+- Open: whether the Post's sandbox hands out stamps with a real-looking but invalid code, and whether it needs the application to be released for the sandbox first. Verified with the local mock only (compose, API and browser).
+- Without `INTERNETMARKE_SANDBOX_SHIPPING_URL` nothing changes: free tokens use the main API like paid ones.
 
 ## Testing without Deutsche Post
 

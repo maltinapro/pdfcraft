@@ -24,7 +24,15 @@ export interface Purchase {
   walletBalanceCents: number | null
 }
 
-type Products = PostageProduct[] | 'disabled'
+export interface ProductList {
+  products: PostageProduct[]
+  /** Test stamps from the Deutsche Post test API (free tokens): not valid for postage, no real money. */
+  sandbox: boolean
+  /** `false` when the server uses a shared test login, so the user needs no Portokasse. */
+  loginRequired: boolean
+}
+
+type Products = ProductList | 'disabled'
 
 const CACHE_MS = 10 * 60 * 1000
 let cache: { at: number; result: Promise<Products> } | null = null
@@ -32,8 +40,8 @@ let cache: { at: number; result: Promise<Products> } | null = null
 /** `'disabled'` when the server does not offer stamps (then the form hides the section). */
 export function loadProducts(): Promise<Products> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.result
-  const result = requestJson<{ products: PostageProduct[] }>('GET', '/v1/postage/products').then(
-    ({ products }): Products => products,
+  const result = requestJson<Partial<ProductList>>('GET', '/v1/postage/products').then(
+    (r): Products => ({ products: r.products ?? [], sandbox: r.sandbox ?? false, loginRequired: r.loginRequired ?? true }),
     (e: unknown): Products => {
       if (e instanceof ApiError && e.code === 'postage_disabled') return 'disabled'
       throw e
@@ -51,6 +59,9 @@ export function forgetProducts(): void {
   cache = null
 }
 
+const credentials = (username: string, password: string) =>
+  username.trim() && password ? { username: username.trim(), password } : undefined
+
 /** Buys one stamp. A fresh `requestId` per click makes a repeated request a no-op on the server. */
 export async function buyStamp(product: PostageProduct, username: string, password: string): Promise<Purchase> {
   const requestId = crypto.randomUUID()
@@ -58,7 +69,7 @@ export async function buyStamp(product: PostageProduct, username: string, passwo
     productCode: product.productCode,
     expectedPriceCents: product.priceCents,
     requestId,
-    credentials: { username: username.trim(), password },
+    credentials: credentials(username, password),
   })
   return {
     walletBalanceCents: response.walletBalanceCents,
@@ -82,7 +93,7 @@ export async function recoverStamp(
 ): Promise<Purchase> {
   const response = await requestJson<{ stamps: PurchaseResponse[] }>('POST', '/v1/postage/stamps/recover', {
     shopOrderId,
-    credentials: { username: username.trim(), password },
+    credentials: credentials(username, password),
   })
   const first = response.stamps[0]
   return {

@@ -17,6 +17,8 @@ backend:
   # Name of a Secret with the keys INTERNETMARKE_CLIENT_ID and INTERNETMARKE_CLIENT_SECRET (app
   # credentials of the DHL developer portal). Only needed together with
   # backend.env.INTERNETMARKE_ENABLED="true"; see docs/14-internetmarke-integration.md
+  # Optional keys INTERNETMARKE_SANDBOX_USERNAME/_PASSWORD: shared test Portokasse login for free tokens
+  # (together with backend.env.INTERNETMARKE_SANDBOX_SHIPPING_URL).
   internetmarkeSecret: ""
   # Name of a Secret with the key VALKEY_URL (e.g. redis://:PASSWORD@host:6379, rediss:// for TLS).
   # Use with valkey.enabled=false when an operator-managed Valkey requires authentication.

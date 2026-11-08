@@ -408,20 +408,70 @@ fn client() -> &'static Client {
     })
 }
 
-fn ensure_enabled() -> Result<&'static Client, ApiError> {
+static SANDBOX_CLIENT: OnceLock<Client> = OnceLock::new();
+
+fn sandbox_client() -> &'static Client {
+    SANDBOX_CLIENT.get_or_init(|| {
+        let cfg = config::get();
+        let url = cfg.internetmarke_sandbox_shipping_url.clone().unwrap_or_default();
+        Client::new(Settings {
+            require_https: !is_loopback(&url),
+            shipping_url: url.trim_end_matches('/').to_string(),
+            products_url: cfg.internetmarke_sandbox_products_url.clone().unwrap_or_else(|| cfg.internetmarke_products_url.clone()),
+            client_id: cfg.internetmarke_sandbox_client_id.clone().or_else(|| cfg.internetmarke_client_id.clone()).unwrap_or_default(),
+            client_secret: cfg.internetmarke_sandbox_client_secret.clone().or_else(|| cfg.internetmarke_client_secret.clone()).unwrap_or_default(),
+        })
+    })
+}
+
+/// Which Post API a token talks to: free tokens (draft watermark) use the test API when one is configured.
+struct Mode {
+    client: &'static Client,
+    sandbox: bool,
+    /// The server supplies the Portokasse login (shared test account); the caller sends none.
+    shared_login: bool,
+}
+
+fn mode_for(token: &TokenClient) -> Result<Mode, ApiError> {
     let cfg = config::get();
-    if cfg.internetmarke_enabled && cfg.internetmarke_client_id.is_some() && cfg.internetmarke_client_secret.is_some() {
-        Ok(client())
-    } else {
-        Err(error(StatusCode::NOT_FOUND, "postage_disabled", "buying postage stamps is not enabled on this server"))
+    if !(cfg.internetmarke_enabled && cfg.internetmarke_client_id.is_some() && cfg.internetmarke_client_secret.is_some()) {
+        return Err(error(StatusCode::NOT_FOUND, "postage_disabled", "buying postage stamps is not enabled on this server"));
+    }
+    if token.kind == store::Kind::Free && cfg.internetmarke_sandbox_shipping_url.is_some() {
+        let shared_login = cfg.internetmarke_sandbox_username.is_some() && cfg.internetmarke_sandbox_password.is_some();
+        return Ok(Mode { client: sandbox_client(), sandbox: true, shared_login });
+    }
+    Ok(Mode { client: client(), sandbox: false, shared_login: false })
+}
+
+impl Mode {
+    /// The login to use: the shared test login, or the caller's after a sanity check.
+    fn credentials(&self, given: Option<&Credentials>) -> Result<Credentials, ApiError> {
+        if self.shared_login {
+            let cfg = config::get();
+            return Ok(Credentials {
+                username: cfg.internetmarke_sandbox_username.clone().unwrap_or_default(),
+                password: cfg.internetmarke_sandbox_password.clone().unwrap_or_default(),
+            });
+        }
+        match given {
+            Some(c) if !c.username.trim().is_empty() && !c.password.is_empty() && c.username.len() <= 200 && c.password.len() <= 200 => {
+                Ok(Credentials { username: c.username.clone(), password: c.password.clone() })
+            }
+            _ => Err(ApiError::new(StatusCode::BAD_REQUEST, "invalid_request", "credentials.username and credentials.password are required".to_string())),
+        }
     }
 }
 
 /// `GET /v1/postage/products`
 pub async fn list_products(Extension(token): Extension<TokenClient>) -> Result<Json<Value>, ApiError> {
-    let client = ensure_enabled()?;
+    let mode = mode_for(&token)?;
     take_tokens(&token, 1).await?;
-    Ok(Json(json!({ "products": client.products().await? })))
+    Ok(Json(json!({
+        "products": mode.client.products().await?,
+        "sandbox": mode.sandbox,
+        "loginRequired": !mode.shared_login,
+    })))
 }
 
 fn one() -> usize {
@@ -434,7 +484,8 @@ pub struct PurchaseRequest {
     product_code: u32,
     expected_price_cents: u32,
     request_id: String,
-    credentials: Credentials,
+    #[serde(default)]
+    credentials: Option<Credentials>,
     #[serde(default = "one")]
     quantity: usize,
 }
@@ -452,12 +503,10 @@ fn stamp_json(stamp: &Stamp) -> Value {
 
 /// Validates the request, buys `req.quantity` stamps in one cart and returns them. Nothing is stored.
 async fn purchase(token: &TokenClient, req: &PurchaseRequest) -> Result<(Product, Vec<Stamp>), ApiError> {
-    let client = ensure_enabled()?;
+    let mode = mode_for(token)?;
+    let client = mode.client;
+    let credentials = mode.credentials(req.credentials.as_ref())?;
     let invalid = |details: &str| ApiError::new(StatusCode::BAD_REQUEST, "invalid_request", details.to_string());
-    let (user, pass) = (&req.credentials.username, &req.credentials.password);
-    if user.trim().is_empty() || pass.is_empty() || user.len() > 200 || pass.len() > 200 {
-        return Err(invalid("credentials.username and credentials.password are required"));
-    }
     if !(8..=64).contains(&req.request_id.len()) || !req.request_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
         return Err(invalid("requestId must be 8 to 64 letters, digits or dashes"));
     }
@@ -489,7 +538,7 @@ async fn purchase(token: &TokenClient, req: &PurchaseRequest) -> Result<(Product
         Err(_) => return Err(error(StatusCode::SERVICE_UNAVAILABLE, "store_unavailable", "the token store (Valkey) is not reachable")),
     }
 
-    let result = client.buy(product, req.quantity, &req.credentials).await;
+    let result = client.buy(product, req.quantity, &credentials).await;
     let outcome = match &result {
         Ok(_) => "bought",
         Err(e) => e.code,
@@ -516,7 +565,7 @@ pub async fn buy_stamp(
     Extension(token): Extension<TokenClient>,
     payload: Result<Json<PurchaseRequest>, JsonRejection>,
 ) -> Result<Json<Value>, ApiError> {
-    ensure_enabled()?;
+    let sandbox = mode_for(&token)?.sandbox;
     let Json(req) = payload.map_err(bad_body)?;
     if req.quantity != 1 {
         return Err(ApiError::new(StatusCode::BAD_REQUEST, "invalid_request", "use /v1/postage/stamps/bulk for several stamps".to_string()));
@@ -528,6 +577,7 @@ pub async fn buy_stamp(
     out["productName"] = json!(product.name);
     out["priceCents"] = json!(product.price_cents);
     out["walletBalanceCents"] = json!(stamp.wallet_balance_cents);
+    out["sandbox"] = json!(sandbox);
     Ok(Json(out))
 }
 
@@ -536,10 +586,11 @@ pub async fn buy_stamps_bulk(
     Extension(token): Extension<TokenClient>,
     payload: Result<Json<PurchaseRequest>, JsonRejection>,
 ) -> Result<Json<Value>, ApiError> {
-    ensure_enabled()?;
+    let sandbox = mode_for(&token)?.sandbox;
     let Json(req) = payload.map_err(bad_body)?;
     let (product, stamps) = purchase(&token, &req).await?;
     Ok(Json(json!({
+        "sandbox": sandbox,
         "stamps": stamps.iter().map(stamp_json).collect::<Vec<_>>(),
         "productCode": product.product_code,
         "productName": product.name,
@@ -553,7 +604,8 @@ pub async fn buy_stamps_bulk(
 #[serde(rename_all = "camelCase")]
 pub struct RecoverRequest {
     shop_order_id: String,
-    credentials: Credentials,
+    #[serde(default)]
+    credentials: Option<Credentials>,
 }
 
 /// `POST /v1/postage/stamps/recover`: downloads the stamps of an order that was paid but not delivered
@@ -562,25 +614,22 @@ pub async fn recover_stamps(
     Extension(token): Extension<TokenClient>,
     payload: Result<Json<RecoverRequest>, JsonRejection>,
 ) -> Result<Json<Value>, ApiError> {
-    let client = ensure_enabled()?;
+    let mode = mode_for(&token)?;
     let Json(req) = payload.map_err(bad_body)?;
+    let credentials = mode.credentials(req.credentials.as_ref())?;
     let invalid = |details: &str| ApiError::new(StatusCode::BAD_REQUEST, "invalid_request", details.to_string());
-    let (user, pass) = (&req.credentials.username, &req.credentials.password);
-    if user.trim().is_empty() || pass.is_empty() || user.len() > 200 || pass.len() > 200 {
-        return Err(invalid("credentials.username and credentials.password are required"));
-    }
     let id = &req.shop_order_id;
     if !(1..=18).contains(&id.len()) || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
         return Err(invalid("shopOrderId must be 1 to 18 letters, digits or dashes"));
     }
     take_tokens(&token, RECOVER_COST).await?;
-    let result = client.recover(id, &req.credentials).await;
+    let result = mode.client.recover(id, &credentials).await;
     crate::metrics::postage_stamp(match &result {
         Ok(_) => "recovered",
         Err(e) => e.code,
     });
     let stamps = result?;
-    Ok(Json(json!({ "stamps": stamps.iter().map(stamp_json).collect::<Vec<_>>() })))
+    Ok(Json(json!({ "stamps": stamps.iter().map(stamp_json).collect::<Vec<_>>(), "sandbox": mode.sandbox })))
 }
 
 #[cfg(test)]
@@ -756,6 +805,15 @@ mod tests {
 
         let Err(err) = client_for(&base).recover("999", &creds()).await else { panic!("must fail") };
         assert_eq!((err.code, err.status), ("postage_order_not_found", StatusCode::NOT_FOUND));
+    }
+
+    #[test]
+    fn a_caller_login_is_required_without_a_shared_test_login() {
+        let mode = Mode { client: Box::leak(Box::new(client_for("http://127.0.0.1:1"))), sandbox: false, shared_login: false };
+        assert!(mode.credentials(None).is_err());
+        assert!(mode.credentials(Some(&Credentials { username: " ".into(), password: "pw".into() })).is_err());
+        assert!(mode.credentials(Some(&Credentials { username: "a@b.de".into(), password: String::new() })).is_err());
+        assert_eq!(mode.credentials(Some(&creds())).ok().expect("valid").username, "me@example.com");
     }
 
     #[test]

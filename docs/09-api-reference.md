@@ -47,6 +47,8 @@ curl -X POST http://localhost:3000/v1/postage/stamps -H 'Authorization: Bearer <
 
 `POST /v1/postage/stamps/bulk` buys up to 25 stamps with one login in one cart (all or nothing); the body is the same as above plus `"quantity": n`, the response has a `stamps` array (`png`, `voucherId`, ...). It costs `4 + quantity` rate-limit tokens (a single purchase costs 5).
 
+With a free token and a configured test API (`INTERNETMARKE_SANDBOX_*`), the products response has `"sandbox": true` and `"loginRequired": false` and `credentials` may be omitted: you get a test stamp, nothing is charged (see [guide 14](14-internetmarke-integration.md)).
+
 If a purchase answers `postage_download_failed` (the money was spent, the image could not be downloaded), `POST /v1/postage/stamps/recover` with `{ "shopOrderId": "<id from the error details>", "credentials": {...} }` returns the stamps again without buying anything (2 rate-limit tokens).
 
 The document bulk endpoints (`/v1/invoices/bulk`, `/v1/documents/bulk`) accept `postage` per entry but never buy stamps: buy the stamps first and attach one to each entry. A stamp is valid for one letter only. The 2 MB request limit applies, so split large bulk requests with stamps into several calls.

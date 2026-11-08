@@ -24,6 +24,10 @@ services:
       # Empty = the Deutsche Post production URLs; set them for the sandbox or the mock below
       INTERNETMARKE_SHIPPING_URL: ${INTERNETMARKE_SHIPPING_URL:-}
       INTERNETMARKE_PRODUCTS_URL: ${INTERNETMARKE_PRODUCTS_URL:-}
+      # Optional test API for free tokens (draft watermark), see docs/14-internetmarke-integration.md
+      INTERNETMARKE_SANDBOX_SHIPPING_URL: ${INTERNETMARKE_SANDBOX_SHIPPING_URL:-}
+      INTERNETMARKE_SANDBOX_USERNAME: ${INTERNETMARKE_SANDBOX_USERNAME:-}
+      INTERNETMARKE_SANDBOX_PASSWORD: ${INTERNETMARKE_SANDBOX_PASSWORD:-}
     depends_on:
       - valkey
   frontend:
