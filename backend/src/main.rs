@@ -15,21 +15,10 @@ mod v1;
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use axum::{
-    extract::{
-        DefaultBodyLimit,
-        Json,
-    },
-    http::{
-        header,
-        StatusCode,
-    },
-    response::{
-        IntoResponse,
-        Response,
-    },
-    routing::{
-        get,
-    },
+    extract::{DefaultBodyLimit, Json},
+    http::{header, StatusCode},
+    response::{IntoResponse, Response},
+    routing::get,
     Router,
 };
 use minijinja::{Environment, Value};
@@ -156,6 +145,44 @@ fn asset_path(request_id: u64, key: &str) -> String {
     format!("/req-{request_id}-{key}")
 }
 
+/// The request's template and assets as virtual files in the shared compiler. They hold
+/// customer data, so they are removed on drop, also when compiling panics.
+struct VirtualFiles {
+    source: FileId,
+    assets: Vec<FileId>,
+}
+
+fn locked<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+impl VirtualFiles {
+    fn register(c: &Compiler, request_id: u64, rendered: String, assets: Vec<(String, Vec<u8>)>) -> Self {
+        let source = format!("/req-{request_id}.typ").as_str().into_file_id();
+        locked(&c.sources).insert(source, Source::new(source, rendered));
+        let assets = assets
+            .into_iter()
+            .map(|(key, bytes)| {
+                let id = asset_path(request_id, &key).as_str().into_file_id();
+                locked(&c.assets).insert(id, Bytes::new(bytes));
+                id
+            })
+            .collect();
+        Self { source, assets }
+    }
+}
+
+impl Drop for VirtualFiles {
+    fn drop(&mut self) {
+        let c = compiler();
+        locked(&c.sources).remove(&self.source);
+        let mut assets = locked(&c.assets);
+        for id in &self.assets {
+            assets.remove(id);
+        }
+    }
+}
+
 fn compile_pdf(
     rendered: String,
     request_id: u64,
@@ -163,22 +190,9 @@ fn compile_pdf(
 ) -> Result<Vec<u8>, String> {
     let started = std::time::Instant::now();
     let c = compiler();
-    let name = format!("/req-{request_id}.typ");
-    let id = name.as_str().into_file_id();
-    let asset_ids: Vec<FileId> = assets
-        .into_iter()
-        .map(|(key, bytes)| {
-            let asset_id = asset_path(request_id, &key).as_str().into_file_id();
-            c.assets.lock().unwrap().insert(asset_id, Bytes::new(bytes));
-            asset_id
-        })
-        .collect();
-    c.sources
-        .lock()
-        .unwrap()
-        .insert(id, Source::new(id, rendered));
+    let files = VirtualFiles::register(c, request_id, rendered, assets);
 
-    let result = c.engine.with_world(id, |world| {
+    let result = c.engine.with_world(files.source, |world| {
         let doc = typst::compile(world)
             .output
             .map_err(|e| format!("Typst compilation error: {e:?}"))?;
@@ -193,16 +207,9 @@ fn compile_pdf(
         );
         Ok(pdf)
     });
-
-    c.sources.lock().unwrap().remove(&id);
-    for asset_id in asset_ids {
-        c.assets.lock().unwrap().remove(&asset_id);
-    }
+    drop(files);
     tracing::debug!(event = "typst_compile", duration_ms = started.elapsed().as_secs_f64() * 1000.0);
-    match result {
-        Ok(r) => r,
-        Err(e) => Err(format!("Typst world setup error: {e}")),
-    }
+    result.unwrap_or_else(|e| Err(format!("Typst world setup error: {e}")))
 }
 
 #[derive(Serialize)]
@@ -284,73 +291,58 @@ fn compile_slots() -> &'static tokio::sync::Semaphore {
     COMPILE_SLOTS.get_or_init(|| tokio::sync::Semaphore::new(config::get().max_concurrent_compiles))
 }
 
-/// Renders the minijinja template and compiles it to a PDF. At most
-/// `MAX_CONCURRENT_COMPILES` compilations run at the same time.
-pub(crate) async fn render_pdf(
+/// Fills the minijinja template with `data`; `assets` become `assets.<key>` paths of virtual files.
+fn fill_template(
     template: &str,
     mut data: JsonValue,
-    assets: Vec<(String, Vec<u8>)>,
-) -> Result<Vec<u8>, ApiError> {
-    let request_id = REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed);
-
+    request_id: u64,
+    assets: &[(String, Vec<u8>)],
+) -> Result<String, ApiError> {
     if !assets.is_empty() {
         let paths: serde_json::Map<String, JsonValue> = assets
             .iter()
             .map(|(key, _)| (key.clone(), JsonValue::String(asset_path(request_id, key))))
             .collect();
-        match data.as_object_mut() {
-            Some(obj) => {
-                obj.insert("assets".into(), JsonValue::Object(paths));
-            }
-            None => {
-                return Err(ApiError::new(
-                    StatusCode::BAD_REQUEST,
-                    "invalid_request",
-                    "`data` must be an object when assets are used",
-                ));
-            }
-        }
+        let Some(obj) = data.as_object_mut() else {
+            return Err(ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "invalid_request",
+                "`data` must be an object when assets are used",
+            ));
+        };
+        obj.insert("assets".into(), JsonValue::Object(paths));
     }
 
-    let mut env = Environment::new();
-    env.add_template("doc", template).map_err(|e| {
-        ApiError::new(StatusCode::BAD_REQUEST, "template_parse_error", e.to_string())
-    })?;
-    let tmpl = env.get_template("doc").map_err(|e| {
-        ApiError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "template_load_error",
-            e.to_string(),
-        )
-    })?;
-    let rendered = tmpl.render(Value::from_serialize(&data)).map_err(|e| {
-        ApiError::new(StatusCode::BAD_REQUEST, "template_render_error", e.to_string())
-    })?;
+    let env = Environment::new();
+    let template = env
+        .template_from_str(template)
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, "template_parse_error", e.to_string()))?;
+    template
+        .render(Value::from_serialize(&data))
+        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, "template_render_error", e.to_string()))
+}
 
+/// Renders the minijinja template and compiles it to a PDF. At most
+/// `MAX_CONCURRENT_COMPILES` compilations run at the same time.
+pub(crate) async fn render_pdf(
+    template: &str,
+    data: JsonValue,
+    assets: Vec<(String, Vec<u8>)>,
+) -> Result<Vec<u8>, ApiError> {
+    let request_id = REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let rendered = fill_template(template, data, request_id, &assets)?;
+
+    let internal = |e: String| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "task_join_error", e);
     let queued = std::time::Instant::now();
-    let _slot = compile_slots().acquire().await.map_err(|e| {
-        ApiError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "task_join_error",
-            e.to_string(),
-        )
-    })?;
+    let _slot = compile_slots().acquire().await.map_err(|e| internal(e.to_string()))?;
     metrics::get().queue_wait.observe(queued.elapsed().as_secs_f64());
     let compiling = std::time::Instant::now();
     let compiled = tokio::task::spawn_blocking(move || compile_pdf(rendered, request_id, assets)).await;
     metrics::get().typst_compile.observe(compiling.elapsed().as_secs_f64());
     match compiled {
         Ok(Ok(bytes)) => Ok(bytes),
-        Ok(Err(e)) => Err(ApiError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "typst_compile_error",
-            e,
-        )),
-        Err(e) => Err(ApiError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "task_join_error",
-            e.to_string(),
-        )),
+        Ok(Err(e)) => Err(ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "typst_compile_error", e)),
+        Err(e) => Err(internal(e.to_string())),
     }
 }
 

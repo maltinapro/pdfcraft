@@ -13,6 +13,7 @@ use crate::invoice::{
 use crate::postage::{self, Postage};
 use serde::Deserialize;
 use serde_json::{json, Value as JsonValue};
+use std::sync::LazyLock;
 
 const MAX_BODY: usize = 10_000;
 
@@ -54,9 +55,12 @@ impl Kind {
         }
     }
 
-    /// Complete Typst source: shared preamble plus the type's own layout.
-    pub fn template(self) -> String {
-        format!("{COMMON}\n{}", self.body())
+    /// Complete Typst source: shared preamble plus the type's own layout (built once).
+    pub fn template(self) -> &'static str {
+        static TEMPLATES: LazyLock<Vec<String>> =
+            LazyLock::new(|| Kind::ALL.iter().map(|k| format!("{COMMON}\n{}", k.body())).collect());
+        let position = Kind::ALL.iter().position(|k| *k == self).expect("every kind is in Kind::ALL");
+        &TEMPLATES[position]
     }
 
     fn has_items(self) -> bool {
@@ -214,7 +218,7 @@ pub fn build(
     (data, assets)
 }
 
-/// File name stem for the download: `<type>-<number>`.
+/// File name for the download: `<type>-<number>.pdf`.
 pub fn file_name(kind: Kind, doc: &Document) -> String {
     let stem: String = doc
         .number
@@ -229,33 +233,17 @@ pub fn file_name(kind: Kind, doc: &Document) -> String {
     }
 }
 
-/// Name inside a bulk ZIP: the download name, made unique by the position when it repeats.
-pub fn zip_name(kind: Kind, doc: &Document, index: usize, used: &mut std::collections::HashSet<String>) -> String {
-    let name = file_name(kind, doc);
-    if used.insert(name.clone()) {
-        name
-    } else {
-        let alt = format!("{}-{}.pdf", name.trim_end_matches(".pdf"), index + 1);
-        used.insert(alt.clone());
-        alt
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn sample(kind: Kind) -> Document {
+    fn sample(_kind: Kind) -> Document {
         serde_json::from_value(json!({
             "number": "G-1", "date": "2026-01-31", "reference": "R-1",
             "subject": "Hallo", "body": "Text",
             "recipient": {"name": "A", "address": "B", "city": "12345 C"},
             "items": [{"description": "x", "quantity": 2, "unit": "h", "price": 10.5, "taxRate": 19}],
         }))
-        .map(|d: Document| {
-            let _ = kind;
-            d
-        })
         .unwrap()
     }
 
@@ -279,12 +267,10 @@ mod tests {
     }
 
     #[test]
-    fn zip_names_stay_unique() {
-        let doc = sample(Kind::Offer);
-        let mut used = std::collections::HashSet::new();
-        let a = zip_name(Kind::Offer, &doc, 0, &mut used);
-        let b = zip_name(Kind::Offer, &doc, 1, &mut used);
-        assert_ne!(a, b);
+    fn template_is_shared_preamble_plus_layout() {
+        for k in Kind::ALL {
+            assert!(k.template().starts_with(COMMON) && k.template().ends_with(k.body()));
+        }
     }
 
     #[test]

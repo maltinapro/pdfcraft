@@ -57,7 +57,8 @@ pdfcraft/
     ├── Cargo.toml
     ├── src/main.rs                   # Router, Typst engine
     ├── src/free.rs                   # POST /v1/free-token (Anubis cookie check), anubis-keygen
-    ├── src/v1.rs                     # POST /v1/invoices[/bulk]: token auth, rate limit, ZIP
+    ├── src/v1.rs                     # /v1 handlers (invoices, documents, bulk ZIP): token auth, rate limit, parallel rendering
+    ├── src/v1/warm_up.rs             # start-up compile of sample documents (fonts, templates)
     ├── src/invoice.rs                # Validation/escaping of the /v1 input
     ├── src/documents.rs              # POST /v1/documents[/bulk]: types, validation, template assembly, credit-note XML
     ├── src/internetmarke.rs          # Deutsche Post stamps (optional): /v1/postage/* (products, stamps, bulk, recover), test API for free tokens, nothing stored
@@ -78,7 +79,7 @@ The invoice template no longer uses invoice-pro/loom (they cost ~65 ms per PDF);
 
 The invoice is a single Typst file: `frontend/src/template/invoice.typ` (the backend embeds it with `include_str!` in `backend/src/v1.rs`; there is no copy in `backend/`). It is rendered with minijinja, then compiled by Typst. Rebuild the backend after editing it.
 
-**Data available in the template** (see `backend/src/einvoice.rs::prepare` and `v1.rs::document`):
+**Data available in the template** (see `backend/src/einvoice.rs::prepare` and `v1.rs::invoice_data`):
 - `settings.*` (checked settings: `accentColor`, `font`, `locale`, `footer`, `intro`, `closing`, `watermark`, sender data ...) and `invoice.*` (number, recipient, items).
 - Ready-made display strings from Rust: `invoice.items[*].pos/qty/price/tax/net`, `invoice.dateText`, `invoice.totals` (`net`, `gross`, `taxes[]`, `exempt`).
 - `pay.*` (`sum`, `days`, `iban`, `bic`, `qr`, `amount`, `place`), `einvoice.*` (`file`, `relationship`, `description`) and the assets `assets.logo`, `assets.signature` (only set when a signature was sent; always guard with `{% if assets and assets.signature %}`) and `assets.xml`. `backend/src/signature.rs` turns a signature PDF into a cropped SVG before it becomes `assets.signature`.

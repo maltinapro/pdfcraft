@@ -22,17 +22,23 @@ use std::{
     io::{Cursor, Write},
 };
 
+mod warm_up;
+pub use warm_up::warm_up;
+
 /// The same template the frontend ships; compiled into the binary.
 const INVOICE_TEMPLATE: &str = include_str!("../../frontend/src/template/invoice.typ");
 
+/// Virtual files of one render job (logo, signature, stamp, e-invoice XML) by name.
+type Assets = Vec<(String, Vec<u8>)>;
+
 /// Template data and virtual files (logo, e-invoice XML) of one invoice.
-fn document(
+fn invoice_data(
     raw: &Settings,
     settings: serde_json::Value,
     invoice: &Invoice,
     mut checked: serde_json::Value,
-    mut assets: Vec<(String, Vec<u8>)>,
-) -> (serde_json::Value, Vec<(String, Vec<u8>)>) {
+    mut assets: Assets,
+) -> (serde_json::Value, Assets) {
     crate::postage::attach(invoice.postage.as_ref(), &mut assets);
     let prepared = einvoice::prepare(raw, &settings, invoice, &mut checked, None);
     let mut data = json!({ "settings": settings, "invoice": checked });
@@ -46,92 +52,6 @@ fn document(
         assets.push(("xml".to_string(), xml.bytes));
     }
     (data, assets)
-}
-
-/// Compiles a sample invoice once at startup so fonts, package modules and the
-/// template's constant parts are cached before the first real request.
-pub async fn warm_up() {
-    for font in crate::invoice::FONTS {
-        check_font(font).await;
-    }
-    sample_render(None).await;
-    for kind in Kind::ALL {
-        sample_document(kind).await;
-    }
-}
-
-async fn sample_document(kind: Kind) {
-    let raw_settings: Settings = serde_json::from_value(json!({
-        "sender": {"name": "Warm-up", "address": "Street 1", "city": "12345 City"},
-    }))
-    .expect("valid warm-up settings");
-    let raw_doc: Document = serde_json::from_value(json!({
-        "number": "0", "date": "2026-01-01", "reference": "0", "subject": "Warm-up", "body": "Text",
-        "recipient": {"name": "Warm-up", "address": "Street 2", "city": "12345 City"},
-        "items": [{"description": "Item", "quantity": 1, "unit": "pcs", "price": 1, "taxRate": 19}],
-    }))
-    .expect("valid warm-up document");
-    let mut errors = Errors::default();
-    let settings = check_settings(&raw_settings, &mut errors);
-    let doc = documents::check_document(kind, &raw_doc, false, &mut errors);
-    if !errors.0.is_empty() {
-        tracing::warn!(event = "warm_up_skipped", document = kind.slug(), errors = ?errors.0);
-        return;
-    }
-    let (data, assets) = documents::build(kind, &raw_settings, settings.data, &raw_doc, doc, Vec::new());
-    if let Err(e) = render_pdf(&kind.template(), data, assets).await {
-        tracing::warn!(event = "warm_up_failed", document = kind.slug(), error = ?e.details);
-    }
-}
-
-/// Renders the sample invoice; `font` overrides `settings.font` and the PDF bytes are returned.
-async fn sample_render(font: Option<&str>) -> Option<Vec<u8>> {
-    let raw_settings: Settings = serde_json::from_value(json!({
-        "font": font,
-        "sender": {"name": "Warm-up", "address": "Street 1", "city": "12345 City"},
-        "bank": {"name": "Bank", "iban": "DE89370400440532013000", "bic": "COBADEFFXXX"},
-        "zugferd": true,
-    }))
-    .expect("valid warm-up settings");
-    let raw_invoice: Invoice = serde_json::from_value(json!({
-        "number": "0",
-        "date": "2026-01-01",
-        "recipient": {"name": "Warm-up", "address": "Street 2", "city": "12345 City"},
-        "items": [{"description": "Item", "quantity": 1, "unit": "pcs", "price": 1, "taxRate": 19}],
-    }))
-    .expect("valid warm-up invoice");
-    let mut errors = Errors::default();
-    let settings = check_settings(&raw_settings, &mut errors);
-    let invoice = check_invoice(&raw_invoice, "invoice", &mut errors);
-    if !errors.0.is_empty() {
-        tracing::warn!(event = "warm_up_skipped", errors = ?errors.0);
-        return None;
-    }
-    let (data, assets) = document(&raw_settings, settings.data, &raw_invoice, invoice, Vec::new());
-    let started = std::time::Instant::now();
-    match render_pdf(INVOICE_TEMPLATE, data, assets).await {
-        Ok(pdf) => {
-            if font.is_none() {
-                tracing::info!(event = "warm_up", duration_ms = started.elapsed().as_secs_f64() * 1000.0);
-            }
-            Some(pdf)
-        }
-        Err(e) => {
-            tracing::warn!(event = "warm_up_failed", error = ?e.details);
-            None
-        }
-    }
-}
-
-/// Typst silently falls back to another font when a family is not installed; warn at startup
-/// if a selectable font does not end up embedded in the PDF.
-async fn check_font(font: &str) {
-    let Some(pdf) = sample_render(Some(font)).await else { return };
-    // The PDF names the embedded font by its PostScript name (NewCM10-Regular for New Computer Modern).
-    let needle = if font == "New Computer Modern" { "NewCM".to_string() } else { font.replace(' ', "") };
-    if !pdf.windows(needle.len()).any(|w| w == needle.as_bytes()) {
-        tracing::warn!(event = "font_missing", font, "selectable font is not installed; PDFs fall back to another font");
-    }
 }
 
 pub fn router() -> Router {
@@ -282,7 +202,7 @@ struct BulkRequest {
 }
 
 /// The logo and the signature of the settings as virtual files (`assets.logo`, `assets.signature`).
-fn settings_assets(settings: &crate::invoice::CheckedSettings) -> Result<Vec<(String, Vec<u8>)>, ApiError> {
+fn settings_assets(settings: &crate::invoice::CheckedSettings) -> Result<Assets, ApiError> {
     let mut map = HashMap::new();
     for (key, value) in [("logo", &settings.logo), ("signature", &settings.signature)] {
         if let Some(encoded) = value {
@@ -306,31 +226,12 @@ async fn single(
         return Err(validation_error(errors));
     }
     let assets = settings_assets(&settings)?;
-    let (data, assets) = document(&req.settings, with_watermark(&client, settings.data), &req.invoice, invoice, assets);
+    let (data, assets) = invoice_data(&req.settings, with_watermark(&client, settings.data), &req.invoice, invoice, assets);
     let started = std::time::Instant::now();
     let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await?;
     crate::metrics::observe_pdf(&client, started.elapsed().as_secs_f64(), pdf.len());
-    crate::metrics::invoices_generated(&client, "single", 1);
-    tracing::info!(
-        event = "invoice_generated",
-        endpoint = "single",
-        invoices = 1,
-        token_id = %client.id,
-        token_kind = client.kind.label(),
-        token_plan = %client.plan,
-        duration_ms = started.elapsed().as_secs_f64() * 1000.0,
-        size_bytes = pdf.len(),
-    );
-    let disposition = format!("attachment; filename=\"invoice-{}.pdf\"", file_stem(&req.invoice.number));
-    Ok((
-        StatusCode::OK,
-        [
-            (header::CONTENT_TYPE, "application/pdf".to_string()),
-            (header::CONTENT_DISPOSITION, disposition),
-        ],
-        pdf,
-    )
-        .into_response())
+    log_generated(&client, "single", 1, started, pdf.len());
+    Ok(pdf_response(pdf, &format!("invoice-{}.pdf", file_stem(&req.invoice.number))))
 }
 
 #[derive(Deserialize)]
@@ -341,17 +242,18 @@ struct DocumentRequest {
     document: Document,
 }
 
-/// Validates one document and renders it to PDF.
-async fn render_document(
-    client: &Client,
+/// Validates one document and builds its template data. Problems are added to `errors`
+/// with `path` (e.g. `documents[2]`) instead of `document`.
+fn prepare_document(
     kind: Kind,
     raw: &Settings,
-    settings: &crate::invoice::CheckedSettings,
+    settings: serde_json::Value,
+    assets: Assets,
     doc: &Document,
     path: &str,
     errors: &mut Errors,
-) -> Option<Result<Vec<u8>, ApiError>> {
-    let english = settings.data["locale"] == "en-de";
+) -> Option<(serde_json::Value, Assets)> {
+    let english = settings["locale"] == "en-de";
     let before = errors.0.len();
     let checked = documents::check_document(kind, doc, english, errors);
     if errors.0.len() > before {
@@ -360,12 +262,7 @@ async fn render_document(
         }
         return None;
     }
-    let assets = match settings_assets(settings) {
-        Ok(a) => a,
-        Err(e) => return Some(Err(e)),
-    };
-    let (data, assets) = documents::build(kind, raw, with_watermark(client, settings.data.clone()), doc, checked, assets);
-    Some(render_pdf(&kind.template(), data, assets).await)
+    Some(documents::build(kind, raw, settings, doc, checked, assets))
 }
 
 fn parse_kind(value: &str) -> Result<Kind, ApiError> {
@@ -393,6 +290,99 @@ fn log_generated(client: &Client, endpoint: &str, count: usize, started: std::ti
     );
 }
 
+/// Bulk requests need between 1 and `bulk_max_invoices` entries.
+fn check_bulk_size(count: usize, field: &str) -> Result<(), ApiError> {
+    let max = config::get().bulk_max_invoices;
+    if count == 0 || count > max {
+        return Err(ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "invalid_request",
+            format!("`{field}` needs 1 to {max} entries"),
+        ));
+    }
+    Ok(())
+}
+
+fn pdf_response(pdf: Vec<u8>, file_name: &str) -> Response {
+    (
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/pdf".to_string()),
+            (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{file_name}\"")),
+        ],
+        pdf,
+    )
+        .into_response()
+}
+
+/// Makes `name` unique within one ZIP by inserting the position before `.pdf` when it repeats.
+fn unique_name(name: String, index: usize, used: &mut HashSet<String>) -> String {
+    let mut candidate = name.clone();
+    let mut n = index + 1;
+    while !used.insert(candidate.clone()) {
+        candidate = format!("{}-{n}.pdf", name.trim_end_matches(".pdf"));
+        n += 1;
+    }
+    candidate
+}
+
+/// Stores the PDFs uncompressed (they are compressed already) in a ZIP; `names` has one entry per PDF.
+fn zip_response(pdfs: &[Vec<u8>], names: Vec<String>, archive: &str) -> Result<Response, ApiError> {
+    let zip_err = |e: String| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "zip_error", e);
+    let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+    let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    let mut used = HashSet::new();
+    for (i, (pdf, name)) in pdfs.iter().zip(names).enumerate() {
+        zip.start_file(unique_name(name, i, &mut used), options)
+            .map_err(|e| zip_err(e.to_string()))?;
+        zip.write_all(pdf).map_err(|e| zip_err(e.to_string()))?;
+    }
+    let bytes = zip.finish().map_err(|e| zip_err(e.to_string()))?.into_inner();
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/zip".to_string()),
+            (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{archive}.zip\"")),
+        ],
+        bytes,
+    )
+        .into_response())
+}
+
+/// Renders all jobs at the same time (the compile semaphore limits the real parallelism) and
+/// returns the PDFs in job order. The first failure is reported with its position, e.g. `invoices[2]`.
+async fn render_all(
+    client: &Client,
+    template: &'static str,
+    label: &str,
+    jobs: Vec<(serde_json::Value, Assets)>,
+) -> Result<Vec<Vec<u8>>, ApiError> {
+    let mut tasks = tokio::task::JoinSet::new();
+    for (i, (data, assets)) in jobs.into_iter().enumerate() {
+        tasks.spawn(async move {
+            let started = std::time::Instant::now();
+            let result = render_pdf(template, data, assets).await;
+            (i, result, started.elapsed().as_secs_f64())
+        });
+    }
+    let mut pdfs: Vec<Vec<u8>> = vec![Vec::new(); tasks.len()];
+    while let Some(joined) = tasks.join_next().await {
+        let (i, result, seconds) = joined
+            .map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "task_join_error", e.to_string()))?;
+        match result {
+            Ok(pdf) => {
+                crate::metrics::observe_pdf(client, seconds, pdf.len());
+                pdfs[i] = pdf;
+            }
+            Err(mut e) => {
+                e.details = format!("{label}[{i}]: {}", e.details);
+                return Err(e);
+            }
+        }
+    }
+    Ok(pdfs)
+}
+
 /// Credit note, offer, order confirmation, delivery note or letter (`type` selects the template).
 async fn document_single(
     Extension(client): Extension<Client>,
@@ -407,25 +397,23 @@ async fn document_single(
     if !errors.0.is_empty() {
         return Err(validation_error(errors));
     }
-    let started = std::time::Instant::now();
-    let result = render_document(&client, kind, &req.settings, &settings, &req.document, "document", &mut errors).await;
-    let Some(result) = result else { return Err(validation_error(errors)) };
-    if !errors.0.is_empty() {
+    let assets = settings_assets(&settings)?;
+    let Some((data, assets)) = prepare_document(
+        kind,
+        &req.settings,
+        with_watermark(&client, settings.data),
+        assets,
+        &req.document,
+        "document",
+        &mut errors,
+    ) else {
         return Err(validation_error(errors));
-    }
-    let pdf = result?;
+    };
+    let started = std::time::Instant::now();
+    let pdf = render_pdf(kind.template(), data, assets).await?;
     crate::metrics::observe_pdf(&client, started.elapsed().as_secs_f64(), pdf.len());
     log_generated(&client, kind.slug(), 1, started, pdf.len());
-    let disposition = format!("attachment; filename=\"{}\"", documents::file_name(kind, &req.document));
-    Ok((
-        StatusCode::OK,
-        [
-            (header::CONTENT_TYPE, "application/pdf".to_string()),
-            (header::CONTENT_DISPOSITION, disposition),
-        ],
-        pdf,
-    )
-        .into_response())
+    Ok(pdf_response(pdf, &documents::file_name(kind, &req.document)))
 }
 
 #[derive(Deserialize)]
@@ -443,14 +431,7 @@ async fn document_bulk(
 ) -> Result<Response, ApiError> {
     let Json(req) = payload.map_err(bad_json)?;
     let kind = parse_kind(&req.kind)?;
-    let max = config::get().bulk_max_invoices;
-    if req.documents.is_empty() || req.documents.len() > max {
-        return Err(ApiError::new(
-            StatusCode::BAD_REQUEST,
-            "invalid_request",
-            format!("`documents` needs 1 to {max} entries"),
-        ));
-    }
+    check_bulk_size(req.documents.len(), "documents")?;
     take_tokens(&client, req.documents.len()).await?;
 
     let mut errors = Errors::default();
@@ -458,45 +439,27 @@ async fn document_bulk(
     if !errors.0.is_empty() {
         return Err(validation_error(errors));
     }
-    let started = std::time::Instant::now();
-    let mut pdfs = Vec::new();
-    for (i, doc) in req.documents.iter().enumerate() {
-        let path = format!("documents[{i}]");
-        match render_document(&client, kind, &req.settings, &settings, doc, &path, &mut errors).await {
-            Some(Ok(pdf)) => pdfs.push(pdf),
-            Some(Err(mut e)) => {
-                e.details = format!("{path}: {}", e.details);
-                return Err(e);
-            }
-            None => {}
-        }
-    }
+    let assets = settings_assets(&settings)?;
+    let jobs: Vec<_> = req
+        .documents
+        .iter()
+        .enumerate()
+        .filter_map(|(i, doc)| {
+            let path = format!("documents[{i}]");
+            let settings_data = with_watermark(&client, settings.data.clone());
+            prepare_document(kind, &req.settings, settings_data, assets.clone(), doc, &path, &mut errors)
+        })
+        .collect();
     if !errors.0.is_empty() {
         return Err(validation_error(errors));
     }
 
-    let size = pdfs.iter().map(Vec::len).sum::<usize>();
-    log_generated(&client, &format!("{}-bulk", kind.slug()), pdfs.len(), started, size);
+    let started = std::time::Instant::now();
+    let pdfs = render_all(&client, kind.template(), "documents", jobs).await?;
+    let names = req.documents.iter().map(|doc| documents::file_name(kind, doc)).collect();
+    log_generated(&client, &format!("{}-bulk", kind.slug()), pdfs.len(), started, pdfs.iter().map(Vec::len).sum());
     crate::metrics::get().bulk_size.observe(pdfs.len() as f64);
-    let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
-    let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
-    let mut used = HashSet::new();
-    let zip_err = |e: String| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "zip_error", e);
-    for (i, pdf) in pdfs.iter().enumerate() {
-        zip.start_file(documents::zip_name(kind, &req.documents[i], i, &mut used), options)
-            .map_err(|e| zip_err(e.to_string()))?;
-        zip.write_all(pdf).map_err(|e| zip_err(e.to_string()))?;
-    }
-    let bytes = zip.finish().map_err(|e| zip_err(e.to_string()))?.into_inner();
-    Ok((
-        StatusCode::OK,
-        [
-            (header::CONTENT_TYPE, "application/zip".to_string()),
-            (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}.zip\"", kind.slug())),
-        ],
-        bytes,
-    )
-        .into_response())
+    zip_response(&pdfs, names, kind.slug())
 }
 
 async fn bulk(
@@ -504,14 +467,7 @@ async fn bulk(
     payload: Result<Json<BulkRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let Json(req) = payload.map_err(bad_json)?;
-    let max = config::get().bulk_max_invoices;
-    if req.invoices.is_empty() || req.invoices.len() > max {
-        return Err(ApiError::new(
-            StatusCode::BAD_REQUEST,
-            "invalid_request",
-            format!("`invoices` needs 1 to {max} entries"),
-        ));
-    }
+    check_bulk_size(req.invoices.len(), "invoices")?;
     take_tokens(&client, req.invoices.len()).await?;
 
     let mut errors = Errors::default();
@@ -526,82 +482,58 @@ async fn bulk(
         return Err(validation_error(errors));
     }
     let assets = settings_assets(&settings)?;
+    let jobs: Vec<_> = checked
+        .into_iter()
+        .zip(&req.invoices)
+        .map(|(checked, invoice)| {
+            invoice_data(&req.settings, with_watermark(&client, settings.data.clone()), invoice, checked, assets.clone())
+        })
+        .collect();
 
     let started = std::time::Instant::now();
-    let mut tasks = tokio::task::JoinSet::new();
-    for (i, invoice) in checked.into_iter().enumerate() {
-        let (data, assets) = document(
-            &req.settings,
-            with_watermark(&client, settings.data.clone()),
-            &req.invoices[i],
-            invoice,
-            assets.clone(),
-        );
-        tasks.spawn(async move {
-            let started = std::time::Instant::now();
-            let result = render_pdf(INVOICE_TEMPLATE, data, assets).await;
-            (i, result, started.elapsed().as_secs_f64())
-        });
-    }
-    let mut pdfs: Vec<Option<Vec<u8>>> = vec![None; req.invoices.len()];
-    while let Some(joined) = tasks.join_next().await {
-        let (i, result, seconds) = joined.map_err(|e| {
-            ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "task_join_error", e.to_string())
-        })?;
-        match result {
-            Ok(pdf) => {
-                crate::metrics::observe_pdf(&client, seconds, pdf.len());
-                pdfs[i] = Some(pdf);
-            }
-            Err(mut e) => {
-                e.details = format!("invoices[{i}]: {}", e.details);
-                return Err(e);
-            }
-        }
-    }
-
-    crate::metrics::invoices_generated(&client, "bulk", pdfs.len());
+    let pdfs = render_all(&client, INVOICE_TEMPLATE, "invoices", jobs).await?;
+    let names = req.invoices.iter().map(|inv| format!("invoice-{}.pdf", file_stem(&inv.number))).collect();
+    log_generated(&client, "bulk", pdfs.len(), started, pdfs.iter().map(Vec::len).sum());
     crate::metrics::get().bulk_size.observe(pdfs.len() as f64);
-    tracing::info!(
-        event = "invoice_generated",
-        endpoint = "bulk",
-        invoices = pdfs.len(),
-        token_id = %client.id,
-        token_kind = client.kind.label(),
-        token_plan = %client.plan,
-        duration_ms = started.elapsed().as_secs_f64() * 1000.0,
-        size_bytes = pdfs.iter().flatten().map(Vec::len).sum::<usize>(),
-    );
-    let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
-    let options = zip::write::SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Stored);
-    let mut used = HashSet::new();
-    let zip_err = |e: String| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "zip_error", e);
-    for (i, pdf) in pdfs.into_iter().enumerate() {
-        let stem = file_stem(&req.invoices[i].number);
-        let name = if used.insert(stem.clone()) {
-            format!("invoice-{stem}.pdf")
-        } else {
-            format!("invoice-{stem}-{}.pdf", i + 1)
-        };
-        zip.start_file(name, options).map_err(|e| zip_err(e.to_string()))?;
-        zip.write_all(&pdf.unwrap()).map_err(|e| zip_err(e.to_string()))?;
-    }
-    let bytes = zip.finish().map_err(|e| zip_err(e.to_string()))?.into_inner();
-    Ok((
-        StatusCode::OK,
-        [
-            (header::CONTENT_TYPE, "application/zip"),
-            (header::CONTENT_DISPOSITION, "attachment; filename=\"invoices.zip\""),
-        ],
-        bytes,
-    )
-        .into_response())
+    zip_response(&pdfs, names, "invoices")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn render_all_keeps_order_and_names_the_failing_entry() {
+        let client = Client { id: "t".into(), kind: store::Kind::Free, plan: "free".into(), limit: 10, created: None };
+        const PAGE: &str = "#set document(date: datetime(year: 2026, month: 1, day: 1))\n#set page(width: 40mm, height: 20mm)\n{% if n == 1 %}#panic(\"boom\")\n{% endif %}Nr {{ n }}";
+        let jobs = |ns: &[u32]| ns.iter().map(|n| (json!({ "n": n }), Vec::new())).collect::<Vec<_>>();
+
+        let pdfs = render_all(&client, PAGE, "docs", jobs(&[0, 2, 3])).await.unwrap_or_else(|e| panic!("{}", e.details));
+        assert_eq!(pdfs.len(), 3);
+        assert!(pdfs.iter().all(|p| p.starts_with(b"%PDF")));
+
+        let err = render_all(&client, PAGE, "docs", jobs(&[0, 1, 2])).await.err().expect("entry 1 fails");
+        assert!(err.details.starts_with("docs[1]: "), "{}", err.details);
+
+        let response = zip_response(&pdfs, vec!["a.pdf".into(); 3], "docs").unwrap_or_else(|e| panic!("{}", e.details));
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "application/zip");
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let archive = zip::ZipArchive::new(Cursor::new(body)).unwrap();
+        let mut names: Vec<_> = archive.file_names().map(|n| n.unwrap().to_string()).collect();
+        names.sort();
+        assert_eq!(names, ["a-2.pdf", "a-3.pdf", "a.pdf"]);
+    }
+
+    #[test]
+    fn zip_names_stay_unique() {
+        let mut used = HashSet::new();
+        let names: Vec<String> = ["a.pdf", "a.pdf", "a-2.pdf", "a.pdf"]
+            .into_iter()
+            .enumerate()
+            .map(|(i, name)| unique_name(name.to_string(), i, &mut used))
+            .collect();
+        assert_eq!(used.len(), 4, "{names:?}");
+    }
 
     #[tokio::test]
     async fn renders_every_document_type() {
@@ -633,7 +565,7 @@ mod tests {
                 sd.as_object_mut().unwrap().insert("watermark".into(), "Entwurf".into());
             }
             let (data, assets) = documents::build(kind, &settings, sd, &raw, doc.clone(), Vec::new());
-            let pdf = render_pdf(&kind.template(), data, assets).await.unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details));
+            let pdf = render_pdf(kind.template(), data, assets).await.unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details));
             assert!(pdf.starts_with(b"%PDF"));
             let has_xml = pdf.windows(12).any(|w| w == b"factur-x.xml");
             assert_eq!(has_xml, kind == Kind::CreditNote, "{}", kind.slug());
@@ -669,7 +601,7 @@ mod tests {
             assert!(errors.0.is_empty(), "{:?}", errors.0);
             let mut times = Vec::new();
             for _ in 0..25 {
-                let (data, assets) = document(&settings, s.data.clone(), &raw, invoice.clone(), Vec::new());
+                let (data, assets) = invoice_data(&settings, s.data.clone(), &raw, invoice.clone(), Vec::new());
                 let started = std::time::Instant::now();
                 let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await.unwrap_or_else(|e| panic!("{}", e.details));
                 times.push((started.elapsed().as_secs_f64() * 1000.0, pdf.len()));
@@ -677,6 +609,17 @@ mod tests {
             times.remove(0);
             times.sort_by(|a, b| a.0.total_cmp(&b.0));
             println!("BENCH items={count} median={:.1}ms min={:.1}ms max={:.1}ms size={}", times[times.len() / 2].0, times[0].0, times[times.len() - 1].0, times[0].1);
+
+            let client = Client { id: "bench".into(), kind: store::Kind::Paid, plan: "bench".into(), limit: 1000, created: None };
+            let jobs = || (0..20).map(|_| invoice_data(&settings, s.data.clone(), &raw, invoice.clone(), Vec::new())).collect::<Vec<_>>();
+            let started = std::time::Instant::now();
+            for (data, assets) in jobs() {
+                render_pdf(INVOICE_TEMPLATE, data, assets).await.unwrap_or_else(|e| panic!("{}", e.details));
+            }
+            let sequential = started.elapsed().as_secs_f64() * 1000.0;
+            let started = std::time::Instant::now();
+            render_all(&client, INVOICE_TEMPLATE, "invoices", jobs()).await.unwrap_or_else(|e| panic!("{}", e.details));
+            println!("BENCH bulk 20 x items={count}: sequential={sequential:.0}ms parallel={:.0}ms", started.elapsed().as_secs_f64() * 1000.0);
         }
     }
 
@@ -724,7 +667,7 @@ mod tests {
                 let assets = settings_assets(&s).unwrap_or_else(|e| panic!("{}", e.details));
                 assert!(assets.iter().any(|(name, _)| name == "signature"));
                 let (data, assets) = documents::build(kind, &settings, s.data.clone(), &raw, doc, assets);
-                let pdf = render_pdf(&kind.template(), data, assets)
+                let pdf = render_pdf(kind.template(), data, assets)
                     .await
                     .unwrap_or_else(|e| panic!("{format} {}: {}", kind.slug(), e.details));
                 assert!(pdf.starts_with(b"%PDF"));
@@ -755,7 +698,7 @@ mod tests {
         let s = check_settings(&settings, &mut errors);
         let checked = check_invoice(&invoice, "invoice", &mut errors);
         assert!(errors.0.is_empty(), "{:?}", errors.0);
-        let (data, assets) = document(&settings, s.data.clone(), &invoice, checked, settings_assets(&s).unwrap_or_else(|e| panic!("{}", e.details)));
+        let (data, assets) = invoice_data(&settings, s.data.clone(), &invoice, checked, settings_assets(&s).unwrap_or_else(|e| panic!("{}", e.details)));
         let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await.unwrap_or_else(|e| panic!("{}", e.details));
         assert!(pdf.starts_with(b"%PDF"));
         if let Ok(dir) = std::env::var("PDF_OUT") {
@@ -811,7 +754,7 @@ mod tests {
             assert_eq!(doc["postage"]["widthMm"], 40.0);
             let (data, assets) = documents::build(kind, &settings, s.data.clone(), &raw, doc, Vec::new());
             assert!(assets.iter().any(|(name, _)| name == "postage"), "{}", kind.slug());
-            let pdf = render_pdf(&kind.template(), data, assets).await.unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details));
+            let pdf = render_pdf(kind.template(), data, assets).await.unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details));
             assert!(pdf.starts_with(b"%PDF"));
             if let Ok(dir) = std::env::var("PDF_OUT") {
                 std::fs::write(format!("{dir}/{}-stamp.pdf", kind.slug()), pdf).unwrap();
@@ -869,7 +812,7 @@ mod tests {
         let s = check_settings(&settings, &mut errors);
         let invoice = check_invoice(&raw, "invoice", &mut errors);
         assert!(errors.0.is_empty(), "{:?}", errors.0);
-        let (data, assets) = document(&settings, s.data, &raw, invoice, Vec::new());
+        let (data, assets) = invoice_data(&settings, s.data, &raw, invoice, Vec::new());
         let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await.unwrap_or_else(|e| panic!("{}", e.details));
         assert!(pdf.starts_with(b"%PDF"));
         if let Ok(dir) = std::env::var("PDF_OUT") {
@@ -899,7 +842,7 @@ mod tests {
             if watermark {
                 sd.as_object_mut().unwrap().insert("watermark".into(), "Entwurf".into());
             }
-            let (data, assets) = document(&settings, sd, &raw, invoice, Vec::new());
+            let (data, assets) = invoice_data(&settings, sd, &raw, invoice, Vec::new());
             let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await.unwrap_or_else(|e| panic!("{}", e.details));
             assert!(pdf.starts_with(b"%PDF"));
             if let Ok(dir) = std::env::var("PDF_OUT") {

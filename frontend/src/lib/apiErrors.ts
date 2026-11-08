@@ -191,7 +191,6 @@ export function friendlyApiError(status: number, code: string | undefined, detai
     case 'typst_compile_error':
     case 'template_parse_error':
     case 'template_render_error':
-    case 'template_load_error':
     case 'task_join_error':
     case 'zip_error':
       return tr('Das PDF konnte nicht erstellt werden. Bitte Eingaben prüfen oder später erneut versuchen.', 'The PDF could not be created. Please check your input or try again later.')

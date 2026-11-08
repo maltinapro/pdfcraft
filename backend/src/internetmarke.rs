@@ -120,8 +120,8 @@ fn parse_products(body: &Value) -> Vec<Product> {
             let code = u32::try_from(num(&p["extProductid"])? as i64).ok().filter(|c| *c > 0)?;
             let name = p["extProductname"].as_str()?.trim().to_string();
             let price = (num(&p["grossprice"])? * 100.0).round();
-            let national = p["transport"].as_str().map_or(true, |t| t.eq_ignore_ascii_case("national"));
-            (letter(&name) && national && price > 0.0 && price < 100_000.0).then(|| Product {
+            let national = p["transport"].as_str().is_none_or(|t| t.eq_ignore_ascii_case("national"));
+            (letter(&name) && national && price > 0.0 && price < 100_000.0).then_some(Product {
                 product_code: code,
                 name,
                 price_cents: price as u32,
@@ -670,7 +670,7 @@ mod tests {
     fn extracts_a_png_from_a_zip_or_a_bare_png() {
         let png = postage::test_png(40, 20, None);
         assert_eq!(extract_pngs(&png).unwrap(), vec![png.clone()]);
-        assert_eq!(extract_pngs(&zipped(&[png.clone()])).unwrap(), vec![png]);
+        assert_eq!(extract_pngs(&zipped(std::slice::from_ref(&png))).unwrap(), vec![png]);
         assert!(extract_pngs(b"<html>").is_none());
     }
 
