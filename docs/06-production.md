@@ -46,6 +46,19 @@ BIND_ADDR=0.0.0.0:3000
 - **Secrets**: provide `VALKEY_URL` through your secret store, not in images or the repository.
 - **Packages**: the image bundles `vendor/typst-packages`; no outbound network is required at runtime.
 
+### Internetmarke (Deutsche Post stamps, optional)
+
+Off by default. Before enabling it in production:
+
+1. **Onboarding with Deutsche Post:** production credentials (client id/secret of the DHL developer portal app) come with the partner onboarding. Clarify with Deutsche Post that the app may log in with *end-customer* Portokasse credentials; if not, a reseller model is needed (see [Internetmarke](14-internetmarke-integration.md), open points).
+2. **Configuration:** `INTERNETMARKE_ENABLED=true`, `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET` from your secret store (Helm: `backend.internetmarkeSecret` plus `backend.env.INTERNETMARKE_ENABLED: "true"`). Leave `INTERNETMARKE_SHIPPING_URL`/`INTERNETMARKE_PRODUCTS_URL` empty for production (sandbox URLs only for tests).
+3. **Network:** the backend needs outbound HTTPS to `api-eu.dhl.com` (and the stamp download host the API returns). With a NetworkPolicy or egress filter, allow it; the stamp download link must be https.
+4. **Privacy:** the backend stores nothing of the purchase (login, token and PNG exist only in the request; Valkey keeps a hashed 15 minute marker). Do not log request or response bodies at the proxy for `/v1/postage/*`, they contain the Portokasse password and the stamp. Update and verify the privacy policy (`datenschutz.html` already has an "Internetmarke" section).
+5. **Rate limits:** a purchase costs 5 rate-limit tokens (bulk: `4 + n`, max 25 stamps). A free token (20/min) can buy at most 16 stamps in bulk.
+6. **Monitoring:** metric `pdfcraft_postage_stamps_total{result}` and the dashboard panel "Internetmarke purchases by result" ([Observability](13-observability.md)). Watch `postage_download_failed` (paid but not downloaded; the response names the shop order id, the message points the user to the order in the Portokasse; the client can fetch the stamp again via `POST /v1/postage/stamps/recover`, which is unverified against the live service) and `postage_upstream_error`.
+7. **Optional test stamps for free tokens:** set `INTERNETMARKE_SANDBOX_SHIPPING_URL` (and the shared test login) so draft/watermark PDFs never spend real postage; see [Internetmarke](14-internetmarke-integration.md).
+8. **Acceptance test before go-live:** run the flow once against the sandbox, then buy one real stamp, print the PDF at 100 % into a window envelope and check size, position and that the code scans (the placement was verified visually only).
+
 ### Operations
 
 - Purchased tokens are normally created by the Stripe webhook; manually with `pdfcraft-backend tokens create --plan ... --days ...` (see [Tokens](05-tokens-and-rate-limiting.md)).

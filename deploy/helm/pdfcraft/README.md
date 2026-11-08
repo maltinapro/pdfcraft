@@ -13,7 +13,7 @@ Anubis (`templates/anubis.yaml`, policy in `files/botPolicy.yaml`) needs an Ed25
 
 Purchased tokens stay off until you set `backend.env.PAID_TOKENS_ENABLED: "true"` and `backend.stripeSecret` (a Secret with the key `STRIPE_WEBHOOK_SECRET`); see [Purchased Tokens (Stripe)](../../../docs/12-paid-tokens-stripe.md).
 
-Buying Deutsche Post stamps (Internetmarke) stays off until you set `backend.env.INTERNETMARKE_ENABLED: "true"` and `backend.internetmarkeSecret` (a Secret with the keys `INTERNETMARKE_CLIENT_ID` and `INTERNETMARKE_CLIENT_SECRET`); see [Internetmarke](../../../docs/14-internetmarke-integration.md).
+Buying Deutsche Post stamps (Internetmarke) stays off until you set `backend.env.INTERNETMARKE_ENABLED: "true"` and `backend.internetmarkeSecret` (a Secret with the keys `INTERNETMARKE_CLIENT_ID` and `INTERNETMARKE_CLIENT_SECRET`); see [Internetmarke](../../../docs/14-internetmarke-integration.md). Optional: `backend.env.INTERNETMARKE_SANDBOX_SHIPPING_URL` lets free tokens (watermarked drafts) buy test stamps from the Post test API; the shared test login goes into the same Secret as the optional keys `INTERNETMARKE_SANDBOX_USERNAME` and `INTERNETMARKE_SANDBOX_PASSWORD`.
 
 ## Releasing (images and chart)
 

@@ -178,10 +178,15 @@ export function friendlyApiError(status: number, code: string | undefined, detai
     case 'postage_download_failed': {
       const order = /order (\S+)/.exec(details ?? '')?.[1]
       return tr(
-        `Die Marke wurde bezahlt, konnte aber nicht geladen werden.${order ? ` Bitte in der Portokasse die Bestellung ${order} ansehen.` : ''}`,
-        `The stamp was paid for but could not be downloaded.${order ? ` Please look up order ${order} in your Portokasse.` : ''}`,
+        `Die Marke wurde bezahlt, konnte aber nicht geladen werden. Mit „Bezahlte Marke erneut laden“ holen Sie sie ohne neue Kosten ab${order ? ` (Bestellung ${order} in der Portokasse)` : ''}.`,
+        `The stamp was paid for but could not be downloaded. Use "Fetch paid stamp again" to get it at no extra cost${order ? ` (order ${order} in your Portokasse)` : ''}.`,
       )
     }
+    case 'postage_order_not_found':
+      return tr(
+        'Diese Bestellung gibt es in der Portokasse dieses Logins nicht. Bitte Zugangsdaten prüfen.',
+        'This order does not exist in the Portokasse of this login. Please check the login.',
+      )
     case 'typst_compile_error':
     case 'template_parse_error':
     case 'template_render_error':

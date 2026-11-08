@@ -65,6 +65,18 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.backend.internetmarkeSecret }}
                   key: INTERNETMARKE_CLIENT_SECRET
+            - name: INTERNETMARKE_SANDBOX_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.internetmarkeSecret }}
+                  key: INTERNETMARKE_SANDBOX_USERNAME
+                  optional: true
+            - name: INTERNETMARKE_SANDBOX_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.internetmarkeSecret }}
+                  key: INTERNETMARKE_SANDBOX_PASSWORD
+                  optional: true
             {{- end }}
             {{- range $k, $v := .Values.backend.env }}
             - name: {{ $k }}

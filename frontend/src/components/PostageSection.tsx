@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Field } from './Field'
 import { tr, uiLocale, useLang } from '../lib/i18n'
-import { buyStamp, forgetProducts, loadProducts, type PostageProduct } from '../lib/postage'
+import { ApiError } from '../lib/api'
+import { buyStamp, forgetProducts, loadProducts, recoverStamp, type PostageProduct } from '../lib/postage'
 import type { PostageStamp } from '../lib/types'
 
 interface Props {
@@ -18,6 +19,8 @@ const euro = (cents: number) => (cents / 100).toLocaleString(uiLocale(), { style
 export function PostageSection({ postage, onChange }: Props) {
   useLang()
   const [products, setProducts] = useState<PostageProduct[] | 'disabled' | null>(null)
+  const [sandbox, setSandbox] = useState(false)
+  const [loginRequired, setLoginRequired] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [productCode, setProductCode] = useState<number | null>(null)
   const [username, setUsername] = useState('')
@@ -25,13 +28,20 @@ export function PostageSection({ postage, onChange }: Props) {
   const [buying, setBuying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [balance, setBalance] = useState<number | null>(null)
+  const [lostOrder, setLostOrder] = useState<string | null>(null)
 
   const load = () => {
     setLoadError(null)
     loadProducts()
       .then((list) => {
-        setProducts(list)
-        if (list !== 'disabled') setProductCode((current) => current ?? list[0]?.productCode ?? null)
+        if (list === 'disabled') {
+          setProducts('disabled')
+          return
+        }
+        setProducts(list.products)
+        setSandbox(list.sandbox)
+        setLoginRequired(list.loginRequired)
+        setProductCode((current) => current ?? list.products[0]?.productCode ?? null)
       })
       .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : String(e)))
   }
@@ -46,7 +56,12 @@ export function PostageSection({ postage, onChange }: Props) {
   const buy = async () => {
     if (!product || buying) return
     const ok = window.confirm(
-      tr(
+      sandbox
+        ? tr(
+            `Test-Marke erzeugen?\n\n${product.name}: Es wird nichts abgebucht. Die Test-Marke ist nicht gültig und nur für den Entwurf gedacht.`,
+            `Create a test stamp?\n\n${product.name}: nothing is charged. The test stamp is not valid and only meant for the draft.`,
+          )
+        : tr(
         `Jetzt kostenpflichtig kaufen?\n\n${product.name} für ${euro(product.priceCents)} wird von Ihrer Portokasse abgebucht. Die Marke ist nur für einen Brief gültig.`,
         `Buy now for a fee?\n\n${product.name} for ${euro(product.priceCents)} will be charged to your Portokasse. The stamp is valid for one letter only.`,
       ),
@@ -54,6 +69,7 @@ export function PostageSection({ postage, onChange }: Props) {
     if (!ok) return
     setBuying(true)
     setError(null)
+    setLostOrder(null)
     try {
       const purchase = await buyStamp(product, username, password)
       onChange(purchase.stamp)
@@ -61,10 +77,29 @@ export function PostageSection({ postage, onChange }: Props) {
       setPassword('')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+      if (e instanceof ApiError && e.code === 'postage_download_failed') {
+        setLostOrder(/order (\S+)/.exec(e.details ?? '')?.[1] ?? null)
+      }
       if (e instanceof Error && /price has changed|Preis hat sich/.test(e.message)) {
         forgetProducts()
         load()
       }
+    } finally {
+      setBuying(false)
+    }
+  }
+
+  const recover = async () => {
+    if (!product || !lostOrder || buying) return
+    setBuying(true)
+    setError(null)
+    try {
+      const purchase = await recoverStamp(lostOrder, product, username, password)
+      onChange(purchase.stamp)
+      setLostOrder(null)
+      setPassword('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBuying(false)
     }
@@ -97,7 +132,13 @@ export function PostageSection({ postage, onChange }: Props) {
               <span className="field-hint">
                 {tr('Die Marke wird in das Adressfeld gedruckt. Mit dem Herunterladen ist sie verbraucht.', 'The stamp is printed into the address field. It is used up when you download the PDF.')}
               </span>
-              {balance !== null && (
+              {sandbox && (
+                <>
+                  <br />
+                  <span className="field-hint">{tr('Test-Marke – nicht gültig, nur für den Entwurf.', 'Test stamp – not valid, for the draft only.')}</span>
+                </>
+              )}
+              {balance !== null && !sandbox && (
                 <>
                   <br />
                   <span className="field-hint">{tr(`Restguthaben Portokasse: ${euro(balance)}`, `Portokasse balance left: ${euro(balance)}`)}</span>
@@ -116,12 +157,22 @@ export function PostageSection({ postage, onChange }: Props) {
         </>
       ) : (
         <>
-          <p className="field-hint">
-            {tr(
-              'Optional: Kaufen Sie eine Internetmarke der Deutschen Post mit Ihrer eigenen Portokasse. Sie wird direkt in das Adressfeld gedruckt. Ihre Zugangsdaten werden nur für diesen Kauf übertragen und nicht gespeichert.',
-              'Optional: buy a Deutsche Post Internetmarke with your own Portokasse. It is printed directly into the address field. Your login is only sent for this purchase and is not stored.',
-            )}
-          </p>
+          {sandbox && (
+            <p className="field-hint postage-sandbox">
+              {tr(
+                'Testmodus: Im Entwurfsmodus (kostenloser Zugang) werden Test-Marken der Deutschen Post erzeugt – es wird nichts abgebucht, und die Marken sind nicht gültig.',
+                'Test mode: in draft mode (free access) test stamps from Deutsche Post are created – nothing is charged and the stamps are not valid.',
+              )}
+            </p>
+          )}
+          {!sandbox && (
+            <p className="field-hint">
+              {tr(
+                'Optional: Kaufen Sie eine Internetmarke der Deutschen Post mit Ihrer eigenen Portokasse. Sie wird direkt in das Adressfeld gedruckt. Ihre Zugangsdaten werden nur für diesen Kauf übertragen und nicht gespeichert.',
+                'Optional: buy a Deutsche Post Internetmarke with your own Portokasse. It is printed directly into the address field. Your login is only sent for this purchase and is not stored.',
+              )}
+            </p>
+          )}
           {loadError && (
             <div className="postage-error" role="alert">
               {loadError}{' '}
@@ -151,22 +202,33 @@ export function PostageSection({ postage, onChange }: Props) {
                   ))}
                 </select>
               </Field>
-              <Field label={tr('Portokasse: E-Mail-Adresse', 'Portokasse: e-mail address')}>
-                <input type="email" autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} />
-              </Field>
-              <Field label={tr('Portokasse: Passwort', 'Portokasse: password')}>
-                <input type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
-              </Field>
+              {loginRequired && (
+                <>
+                  <Field label={tr('Portokasse: E-Mail-Adresse', 'Portokasse: e-mail address')}>
+                    <input type="email" autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} />
+                  </Field>
+                  <Field label={tr('Portokasse: Passwort', 'Portokasse: password')}>
+                    <input type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </Field>
+                </>
+              )}
               {error && (
                 <div className="postage-error" role="alert">
                   {error}
                 </div>
               )}
-              <button type="submit" className="btn btn-primary" disabled={buying || !product || !username.trim() || !password}>
+              {lostOrder && (
+                <button type="button" className="btn" disabled={buying || (loginRequired && (!username.trim() || !password))} onClick={() => void recover()}>
+                  {tr('Bezahlte Marke erneut laden', 'Fetch paid stamp again')}
+                </button>
+              )}
+              <button type="submit" className="btn btn-primary" disabled={buying || !product || (loginRequired && (!username.trim() || !password))}>
                 {buying
                   ? tr('Kaufe …', 'Buying …')
                   : product
-                    ? tr(`Marke kaufen (${euro(product.priceCents)})`, `Buy stamp (${euro(product.priceCents)})`)
+                    ? sandbox
+                      ? tr('Test-Marke erzeugen', 'Create test stamp')
+                      : tr(`Marke kaufen (${euro(product.priceCents)})`, `Buy stamp (${euro(product.priceCents)})`)
                     : tr('Marke kaufen', 'Buy stamp')}
               </button>
             </form>

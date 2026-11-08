@@ -18,6 +18,9 @@
 //! | `INTERNETMARKE_CLIENT_ID` / `_SECRET` | – | App credentials from the DHL developer portal (Internetmarke API) |
 //! | `INTERNETMARKE_SHIPPING_URL` | production | Base URL of the Internetmarke API (override for tests) |
 //! | `INTERNETMARKE_PRODUCTS_URL` | production | URL of the Deutsche Post product list (`profile=IM-PARTNER`) |
+//! | `INTERNETMARKE_SANDBOX_SHIPPING_URL` | – | Test API: when set, **free** tokens (watermarked PDFs) buy test stamps there, paid tokens keep using the main API |
+//! | `INTERNETMARKE_SANDBOX_PRODUCTS_URL` / `_CLIENT_ID` / `_CLIENT_SECRET` | main values | Overrides for the test API |
+//! | `INTERNETMARKE_SANDBOX_USERNAME` / `_PASSWORD` | – | Shared test Portokasse login; free-token users then need no login of their own |
 //! | `BULK_MAX_INVOICES` | `100` | Maximum invoices per bulk request |
 //! | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations |
 //! | `METRICS_ADDR` | `0.0.0.0:9090` | Listen address of `GET /metrics` (OpenMetrics); `off` disables it |
@@ -45,9 +48,21 @@ pub struct Config {
     pub internetmarke_client_secret: Option<String>,
     pub internetmarke_shipping_url: String,
     pub internetmarke_products_url: String,
+    /// Test API for free tokens (their PDFs carry the draft watermark): none = free tokens use the main API.
+    pub internetmarke_sandbox_shipping_url: Option<String>,
+    pub internetmarke_sandbox_products_url: Option<String>,
+    pub internetmarke_sandbox_client_id: Option<String>,
+    pub internetmarke_sandbox_client_secret: Option<String>,
+    /// Shared test Portokasse login: free-token users then need no login of their own.
+    pub internetmarke_sandbox_username: Option<String>,
+    pub internetmarke_sandbox_password: Option<String>,
     pub bulk_max_invoices: usize,
     pub max_concurrent_compiles: usize,
     pub cors_origins: Option<Vec<String>>,
+}
+
+fn env_opt(name: &str) -> Option<String> {
+    std::env::var(name).ok().filter(|v| !v.trim().is_empty())
 }
 
 fn env_parse<T: std::str::FromStr>(name: &str, default: T) -> T {
@@ -126,6 +141,12 @@ impl Config {
                 .ok()
                 .filter(|v| !v.trim().is_empty())
                 .unwrap_or_else(|| crate::internetmarke::DEFAULT_PRODUCTS_URL.into()),
+            internetmarke_sandbox_shipping_url: env_opt("INTERNETMARKE_SANDBOX_SHIPPING_URL"),
+            internetmarke_sandbox_products_url: env_opt("INTERNETMARKE_SANDBOX_PRODUCTS_URL"),
+            internetmarke_sandbox_client_id: env_opt("INTERNETMARKE_SANDBOX_CLIENT_ID"),
+            internetmarke_sandbox_client_secret: env_opt("INTERNETMARKE_SANDBOX_CLIENT_SECRET"),
+            internetmarke_sandbox_username: env_opt("INTERNETMARKE_SANDBOX_USERNAME"),
+            internetmarke_sandbox_password: env_opt("INTERNETMARKE_SANDBOX_PASSWORD"),
             bulk_max_invoices: env_parse("BULK_MAX_INVOICES", 100usize).max(1),
             max_concurrent_compiles: env_parse("MAX_CONCURRENT_COMPILES", cpus).max(1),
             cors_origins,

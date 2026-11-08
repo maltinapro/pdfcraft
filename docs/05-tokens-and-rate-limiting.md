@@ -50,6 +50,7 @@ From source: `cargo run -- tokens ...`; in Docker: `docker compose run --rm back
 
 - Algorithm: token bucket per token id. Capacity equals the per-minute limit; it refills continuously (limit / 60 per second).
 - Cost: **1 per invoice**. A bulk request of 50 invoices costs 50 and is accepted or rejected as a whole. A bulk request larger than the limit is rejected immediately.
+- Stamp purchases (Internetmarke, optional) cost more: **5** per `POST /v1/postage/stamps`, **2** per `POST /v1/postage/stamps/recover` (fetching a paid order again), and `4 + n` per bulk purchase of `n` stamps (see [Internetmarke](14-internetmarke-integration.md)).
 - Too many requests: `429 rate_limited` with a `Retry-After` header (seconds).
 - The bucket lives in Valkey (atomic Lua script), so any number of backend instances share it.
 - The free limit is read from the configuration on every request, so changing `FREE_RATE_LIMIT_PER_MINUTE` applies to existing free tokens.

@@ -151,6 +151,10 @@ java -jar Mustang-CLI-2.26.0.jar --action validate --source invoice.pdf
 
 Expected: `Parsed PDF:valid XML:valid`, PDF/A-3b compliant. For the EN 16931 profile, XRechnung-only rules (BR-DE-*) appear as notices; with the XRechnung profile and contact, phone and buyer reference filled in they disappear.
 
+## Internetmarke (optional)
+
+Stamp purchase with the mock service or the Deutsche Post sandbox: see [Internetmarke](14-internetmarke-integration.md#trying-it-out).
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |

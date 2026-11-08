@@ -194,6 +194,17 @@ mod tests {
     }
 
     #[test]
+    fn real_stamp_sizes_are_placed_one_to_one() {
+        // Pixel sizes of FRANKING_ZONE / DPI300 stamps measured by gruncellka/porto-data (marks.json)
+        for (w, h, mm_w, mm_h) in [(437, 236, 37.0, 20.0), (732, 236, 62.0, 20.0), (732, 384, 62.0, 32.5)] {
+            let mut e = Errors::default();
+            let checked = check(&encoded(&test_png(w, h, None)), "invoice", &mut e).unwrap();
+            assert!(e.0.is_empty());
+            assert_eq!((checked.width_mm, checked.height_mm), (mm_w, mm_h));
+        }
+    }
+
+    #[test]
     fn uses_the_resolution_stored_in_the_png() {
         let mut e = Errors::default();
         let checked = check(&encoded(&test_png(203, 120, Some(203))), "invoice", &mut e).unwrap();

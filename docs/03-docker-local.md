@@ -58,8 +58,23 @@ curl -s -X POST localhost:3002/v1/invoices \
 docker stop pcbe pcvk
 ```
 
+## Internetmarke (optional)
+
+`docker-compose.yml` passes `INTERNETMARKE_ENABLED`, `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET`, `INTERNETMARKE_SHIPPING_URL` and `INTERNETMARKE_PRODUCTS_URL` to the backend (all empty/off by default). The profile `mock` adds a local stand-in for the Deutsche Post API:
+
+```bash
+INTERNETMARKE_ENABLED=true INTERNETMARKE_CLIENT_ID=id INTERNETMARKE_CLIENT_SECRET=secret \
+INTERNETMARKE_SHIPPING_URL=http://127.0.0.1:9100/im/v1 \
+INTERNETMARKE_PRODUCTS_URL=http://127.0.0.1:9100/products \
+docker compose --profile mock up --build
+```
+
+To let free tokens (watermarked drafts) buy test stamps without any login, also set `INTERNETMARKE_SANDBOX_SHIPPING_URL=http://127.0.0.1:9100/im/v1` plus `INTERNETMARKE_SANDBOX_USERNAME` and `INTERNETMARKE_SANDBOX_PASSWORD=secret` (compose passes these through too; see [Test stamps for free tokens](14-internetmarke-integration.md#test-stamps-for-free-tokens)).
+
+Details, real sandbox/production setup and test logins: [Internetmarke](14-internetmarke-integration.md#trying-it-out).
+
 ## Notes
 
 - The current Dockerfile runs the binary as root; for production consider adding a non-root user.
-- The backend image needs no network access at runtime.
+- The backend image needs no network access at runtime, except `api-eu.dhl.com` when `INTERNETMARKE_ENABLED=true` (not with the mock).
 - Healthcheck target: `GET /health` on port 3000.
