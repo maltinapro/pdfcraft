@@ -18,8 +18,8 @@ export interface ArchiveEntry {
   /** Invoice data when `kind` is `invoice`, otherwise `doc`. */
   invoice?: Invoice
   doc?: Doc
-  /** Sender and design at issue time, without the logo (entries from older versions have none). */
-  settings?: Omit<Settings, 'logo'>
+  /** Sender and design at issue time, without logo and signature (entries from older versions have none). */
+  settings?: Omit<Settings, 'logo' | 'signature'>
   /** Internetmarke that was printed on this document (used up; the image is not kept). */
   stamp?: StampInfo
 }
@@ -70,8 +70,9 @@ export function clearArchive(): void {
 }
 
 export function makeEntry(kind: DocKind, source: Invoice | Doc, settings: Settings): ArchiveEntry {
-  const { logo: _logo, ...snapshotSettings } = settings
+  const { logo: _logo, signature: _signature, ...snapshotSettings } = settings
   void _logo
+  void _signature
   const items = 'items' in source ? source.items : []
   const priced = docSpec(kind)?.items === 'priced'
   const { postage, ...rest } = JSON.parse(JSON.stringify(source)) as Invoice | Doc
@@ -84,7 +85,7 @@ export function makeEntry(kind: DocKind, source: Invoice | Doc, settings: Settin
     recipient: source.recipient.name,
     total: priced ? Math.round(grossTotal(items) * 100) / 100 : null,
     issuedAt: new Date().toISOString(),
-    settings: JSON.parse(JSON.stringify(snapshotSettings)) as Omit<Settings, 'logo'>,
+    settings: JSON.parse(JSON.stringify(snapshotSettings)) as Omit<Settings, 'logo' | 'signature'>,
     ...(postage ? { stamp: { voucherId: postage.voucherId, productName: postage.productName, priceCents: postage.priceCents } } : {}),
     ...(kind === 'invoice' ? { invoice: snapshot as Invoice } : { doc: snapshot as Doc }),
   }
@@ -143,11 +144,11 @@ export function followUpDraft(
 
 export type { DocDataKind }
 
-/** Entries grouped by their issue-time settings (one bulk request per group); the logo is always the current one. */
+/** Entries grouped by their issue-time settings (one bulk request per group); logo and signature are always the current ones. */
 export function groupBySettings(entries: ArchiveEntry[], current: Settings): { settings: Settings; entries: ArchiveEntry[] }[] {
   const groups = new Map<string, { settings: Settings; entries: ArchiveEntry[] }>()
   for (const entry of entries) {
-    const settings: Settings = entry.settings ? { ...current, ...entry.settings, logo: current.logo } : current
+    const settings: Settings = entry.settings ? { ...current, ...entry.settings, logo: current.logo, signature: current.signature } : current
     const key = JSON.stringify(entry.settings ?? null)
     const group = groups.get(key) ?? { settings, entries: [] }
     group.entries.push(entry)

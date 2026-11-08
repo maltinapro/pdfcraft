@@ -31,6 +31,7 @@ function settingsField(path: string): Field | null {
     'settings.bank.iban': () => ({ label: 'IBAN', area: bank() }),
     'settings.bank.bic': () => ({ label: 'BIC', area: bank() }),
     'settings.paymentDays': () => ({ label: tr('Zahlungsziel (Tage)', 'Payment term (days)'), area: bank() }),
+    'settings.signature': () => ({ label: tr('Unterschrift', 'Signature'), area: tr('Absender & Design › Unterschrift', 'Sender & design › Signature') }),
     'settings.exemptionReason': () => ({ label: tr('Grund der Steuerbefreiung', 'Reason for tax exemption'), area: bank() }),
     'settings.accentColor': () => ({ label: tr('Akzentfarbe', 'Accent color'), area: design() }),
     'settings.font': () => ({ label: tr('Schriftart', 'Font'), area: design() }),

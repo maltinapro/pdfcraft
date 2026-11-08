@@ -79,8 +79,18 @@
 
 #let intro-text = [{% if doc.intro %}#lines("{{ doc.intro }}")
 #v(1em){% endif %}]
-#let closing-text = [{% if doc.closing %}#v(1em)
+#let closing-only = [{% if doc.closing %}#v(1em)
 #lines("{{ doc.closing }}"){% endif %}]
+
+// Handwritten signature (image, SVG or PDF): at most 15 mm high and 60 mm wide
+#let signature-image = [{% if assets and assets.signature %}#context {
+  let img(..size) = image("{{ assets.signature }}", ..size, alt: t("Unterschrift", "Signature"))
+  let natural = measure(img())
+  if natural.width * (15mm / natural.height) > 60mm { img(width: 60mm) } else { img(height: 15mm) }
+}{% endif %}]
+#let closing-text = [#closing-only{% if assets and assets.signature %}
+#v(4mm)
+#signature-image{% endif %}]
 
 #let item-rows = (
 {% if doc.items %}{% for item in doc.items %}  ("{{ item.pos }}", "{{ item.description }}", "{{ item.qty }}", "{{ item.price }}", "{{ item.tax }}", "{{ item.net }}"),

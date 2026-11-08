@@ -16,6 +16,10 @@ typst-kit = { version = "0.15.1", default-features = false, features = ["scan-fo
 tower-http = { version = "0.7", features = ["cors"] }
 base64 = "0.23.1"
 lopdf = "0.46.0"
+hayro-svg = { version = "0.7", default-features = false }
+usvg = { version = "0.47", default-features = false }
+resvg = { version = "0.47", default-features = false }
+tiny-skia = "0.12"
 zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager", "cluster-async"] }
 sha2 = "0.11.1"

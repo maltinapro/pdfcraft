@@ -7,6 +7,7 @@ mod internetmarke;
 mod invoice;
 mod metrics;
 mod postage;
+mod signature;
 mod stripe;
 mod store;
 mod telemetry;

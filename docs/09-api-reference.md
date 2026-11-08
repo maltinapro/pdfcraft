@@ -68,6 +68,7 @@ For external customers. The template lives on the server (the same `invoice.typ`
 - Allowed values (fonts, locales, units, tax rates `19/7/0`, profiles `en16931`/`xrechnung`): see `frontend/src/lib/types.ts`.
 - Do **not** escape text yourself.
 - The logo is `settings.logo.base64` (max 1 MB decoded).
+- The optional handwritten signature is `settings.signature.base64` (PNG, JPEG, SVG or PDF recognised by content, max 300 KB decoded; invalid files give `400 validation_error` for `settings.signature`). It is printed below the closing text of every document type (letters: between closing and sender name). A PDF is converted to SVG (first page) and cropped to its visible content, because Typst cannot embed PDFs in PDF/A exports. It is an image, not a cryptographic signature.
 
 ```bash
 curl -X POST http://localhost:3000/v1/invoices \
