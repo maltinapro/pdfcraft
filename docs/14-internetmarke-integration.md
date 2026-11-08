@@ -88,6 +88,19 @@ Free-token PDFs are watermarked "Entwurf"/"Draft", so they are drafts anyway. Wi
 - Open: whether the Post's sandbox hands out stamps with a real-looking but invalid code, and whether it needs the application to be released for the sandbox first. Verified with the local mock only (compose, API and browser).
 - Without `INTERNETMARKE_SANDBOX_SHIPPING_URL` nothing changes: free tokens use the main API like paid ones.
 
+Try it locally with Docker Compose (the mock plays the Post test API; mock login password is `secret`):
+
+```bash
+INTERNETMARKE_ENABLED=true INTERNETMARKE_CLIENT_ID=id INTERNETMARKE_CLIENT_SECRET=s \
+INTERNETMARKE_SHIPPING_URL=http://127.0.0.1:9100/im/v1 \
+INTERNETMARKE_PRODUCTS_URL=http://127.0.0.1:9100/products \
+INTERNETMARKE_SANDBOX_SHIPPING_URL=http://127.0.0.1:9100/im/v1 \
+INTERNETMARKE_SANDBOX_USERNAME=test@example.com INTERNETMARKE_SANDBOX_PASSWORD=secret \
+docker compose --profile mock up --build
+```
+
+Open http://localhost:8080/app/ (solve the Anubis challenge, which issues a free token): the postage section shows "Create test stamp" without a login. Leave the two `*_SANDBOX_USERNAME/_PASSWORD` variables out to see the normal login form with a free token.
+
 ## Testing without Deutsche Post
 
 `backend/tools/mock_internetmarke.py` is a local stand-in for both Deutsche Post APIs (products, login, cart, PNG checkout, ZIP download; password `secret`, `poor@example.com` has only 1 EUR). Start it, point `INTERNETMARKE_SHIPPING_URL=http://127.0.0.1:9100/im/v1` and `INTERNETMARKE_PRODUCTS_URL=http://127.0.0.1:9100/products` at it, and set `INTERNETMARKE_ENABLED=true` with any client id/secret (see the header of the script). Plain `http://` is accepted **only** for `localhost`/`127.0.0.1`; any other shipping URL requires https for the API and the download link. The unit tests start a similar mock server in-process (`cargo test internetmarke`).
