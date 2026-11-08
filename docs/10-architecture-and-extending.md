@@ -60,7 +60,7 @@ pdfcraft/
     ├── src/v1.rs                     # POST /v1/invoices[/bulk]: token auth, rate limit, ZIP
     ├── src/invoice.rs                # Validation/escaping of the /v1 input
     ├── src/documents.rs              # POST /v1/documents[/bulk]: types, validation, template assembly, credit-note XML
-    ├── src/internetmarke.rs          # Deutsche Post stamps (optional): /v1/postage/* proxy, nothing stored
+    ├── src/internetmarke.rs          # Deutsche Post stamps (optional): /v1/postage/* (products, stamps, bulk, recover), test API for free tokens, nothing stored
     ├── src/postage.rs                # stamp PNG validation and 1:1 sizing for the templates
     ├── src/store.rs                  # tokens + rate limit (Valkey), `tokens` CLI
     ├── src/config.rs                 # Environment configuration
@@ -95,6 +95,7 @@ The invoice is a single Typst file: `frontend/src/template/invoice.typ` (the bac
 
 ## Extending
 
+- **Postage (Internetmarke)**: backend `internetmarke.rs` (`mode_for` picks the main or the test API by token kind), UI `frontend/src/components/PostageSection.tsx` + `lib/postage.ts`; new `postage_*` error codes need a translation in `apiErrors.ts`, new mock behaviour goes into `backend/tools/mock_internetmarke.py` and the in-process mock of the `internetmarke.rs` tests; see [Internetmarke](14-internetmarke-integration.md).
 - **Error messages**: the API keeps stable English `{error, details}` responses; `frontend/src/lib/apiErrors.ts` (`friendlyApiError`, used by `lib/api.ts`) turns them into plain German/English sentences. When you add a validation message or error code in the backend, add its translation and field label there.
 - **Form validation UX**: inputs get a `field` key (the backend path without `invoice.`/`document.`, e.g. `recipient.name`, `items[0].price`, `settings.bank.iban`). `lib/validate.ts` produces `Issue`s (`requiredIssues` = blocking rules mirrored from the backend, `validateInvoice` = non-blocking e-invoice hints); backend `validation_error` responses arrive as a `ValidationError` with the same field keys (`lib/api.ts`). `Workspace` merges them (client findings win), shows one clickable summary that jumps to the input (switching tab/mobile view), marks inputs with a red border and an inline message only once they were touched, after a backend rejection or after a download attempt, and pauses the preview while required fields are missing. New inputs need a `field` prop and a label entry in `apiErrors.ts`; keep `requiredIssues` in line with `backend/src/invoice.rs` / `documents.rs`.
 - **DIN 5008 layout**: all templates (`invoice.typ` and `document-common.typ`, which the other types share) follow DIN 5008 Form B: margins left 25 mm / right 20 mm / bottom 20 mm, address field from 45 mm (7 pt return line, no blank line between street and city), reference line at about 98.5 mm, fold marks at 105 and 210 mm and punch mark at 148.5 mm (drawn in the page `background`, together with the watermark). Keep both files in sync; the amounts show a non-breaking space before `%` (`einvoice.rs`). Only the layout is checked by hand, not certified.

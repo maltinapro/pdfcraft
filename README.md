@@ -64,7 +64,7 @@ Details: [Architecture and Extending](docs/10-architecture-and-extending.md).
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP |
 | `POST /v1/documents` | token | Credit note, offer, order confirmation, delivery note or letter → PDF |
 | `POST /v1/documents/bulk` | token | Many documents of one type → ZIP |
-| `GET /v1/postage/products`, `POST /v1/postage/stamps`, `POST /v1/postage/stamps/bulk` | token | Deutsche Post stamps (optional, off by default) |
+| `GET /v1/postage/products`, `POST /v1/postage/stamps`, `POST /v1/postage/stamps/bulk`, `POST /v1/postage/stamps/recover` | token | Deutsche Post stamps (optional, off by default) |
 | `GET /health` | none | Status |
 
 ```bash

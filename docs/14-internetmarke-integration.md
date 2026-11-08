@@ -116,6 +116,27 @@ docker compose --profile mock up --build
 
 Open http://localhost:8080/app/ (solve the Anubis challenge), pick a document and use any e-mail with the password `secret` in the "Internetmarke" section. For the real sandbox or production API, set the same variables with real credentials (and the sandbox URL) and leave out `--profile mock`. Verified with `docker compose --profile mock up --build`: products, purchase, login failure and routing through the edge proxy (not the browser flow behind the Anubis challenge).
 
+### Mock reference
+
+| What | Behaviour |
+| --- | --- |
+| Password | `secret` for every e-mail; other passwords answer 401 (`postage_login_failed`) |
+| `poor@example.com` | wallet 1,00 EUR, so purchases fail with `postage_wallet_insufficient` |
+| `lost@example.com` | the purchase is paid but the download answers 500 (`postage_download_failed`); "Fetch paid stamp again" (`/recover`) then works, because the mock serves `GET /im/v1/app/shoppingcart/{shopOrderId}` for the login that bought the order. Another login gets 404 (`postage_order_not_found`) |
+| any other e-mail | wallet 50,00 EUR, purchases work; the stamp is a 40 x 24 mm checkerboard placeholder, not a valid franking mark (so it does not look like a real Post stamp) |
+| State | balances and orders live in memory only and reset when the mock restarts |
+
+Maintenance: the mock follows the official OpenAPI spec v1.30. When the client in `internetmarke.rs` changes, adjust the mock and the in-process mock of the unit tests (`cargo test internetmarke`) together.
+
+### Test scenarios (manual)
+
+1. **Normal purchase** (own login): any e-mail, password `secret`, "Buy stamp"; the stamp appears in the address field, the balance is shown.
+2. **Wrong password / empty wallet:** a friendly message, nothing bought (`poor@example.com` for the wallet).
+3. **Paid but not delivered:** `lost@example.com`, then "Fetch paid stamp again".
+4. **Free token with test API:** set `INTERNETMARKE_SANDBOX_*` (see above); the form shows "Create test stamp" without login fields and the PDF carries the draft watermark.
+5. **API only:** `curl` against `/v1/postage/*` with a token (see [API reference](09-api-reference.md)); bulk with `quantity`.
+6. **Privacy check:** `docker compose logs backend | grep -c secret` must print `0`.
+
 ## Stamp dimensions
 
 The stamp (`voucherLayout=FRANKING_ZONE`, 300 dpi PNG) is placed 1:1: width/height in mm = pixels / dpi x 25.4 (dpi from the PNG `pHYs` chunk when it is plausible, otherwise 300), never rescaled. Reference sizes measured from real purchases by the public dataset [gruncellka/porto-data](https://github.com/gruncellka/porto-data) (`marks.json`; third-party, not an official Deutsche Post specification):

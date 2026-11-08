@@ -13,6 +13,9 @@ See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key man
 | `POST /v1/invoices` | token | One invoice → PDF |
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP of PDFs |
 | `POST /v1/documents/bulk` | token | Many documents of one type → ZIP of PDFs |
+| `GET /v1/postage/products` | token | Deutsche Post products and prices (optional feature, see [guide 14](14-internetmarke-integration.md)) |
+| `POST /v1/postage/stamps`, `/stamps/bulk` | token | Buy one or up to 25 stamps with the user's own Portokasse login (free tokens may use test stamps) |
+| `POST /v1/postage/stamps/recover` | token | Fetch a paid but undelivered stamp again, no new charge |
 
 ## `GET /health`
 
