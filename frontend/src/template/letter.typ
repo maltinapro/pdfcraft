@@ -9,6 +9,8 @@
 #text(11pt, weight: "bold", "{{ doc.subject }}")
 #v(4mm)
 #lines("{{ doc.body }}")
-#closing-text
-#v(14mm)
+#closing-only
+{% if assets and assets.signature %}#v(2mm)
+#signature-image
+#v(1mm){% else %}#v(14mm){% endif %}
 #"{{ settings.sender.name }}"

@@ -26,6 +26,8 @@ export interface Logo {
 
 export interface Settings {
   logo: Logo | null
+  /** Handwritten signature as PNG, JPEG, SVG or one-page PDF; printed below the closing text. */
+  signature: Logo | null
   sender: Sender
   accentColor: string
   font: string
@@ -125,6 +127,7 @@ export const MAX_LOGO_BYTES = 300 * 1024
 
 export const DEFAULT_SETTINGS: Settings = {
   logo: null,
+  signature: null,
   sender: {
     name: 'Muster GmbH',
     address: 'Musterstraße 1',

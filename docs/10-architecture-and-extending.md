@@ -81,7 +81,7 @@ The invoice is a single Typst file: `frontend/src/template/invoice.typ` (the bac
 **Data available in the template** (see `backend/src/einvoice.rs::prepare` and `v1.rs::document`):
 - `settings.*` (checked settings: `accentColor`, `font`, `locale`, `footer`, `intro`, `closing`, `watermark`, sender data ...) and `invoice.*` (number, recipient, items).
 - Ready-made display strings from Rust: `invoice.items[*].pos/qty/price/tax/net`, `invoice.dateText`, `invoice.totals` (`net`, `gross`, `taxes[]`, `exempt`).
-- `pay.*` (`sum`, `days`, `iban`, `bic`, `qr`, `amount`, `place`), `einvoice.*` (`file`, `relationship`, `description`) and the assets `assets.logo` / `assets.xml`.
+- `pay.*` (`sum`, `days`, `iban`, `bic`, `qr`, `amount`, `place`), `einvoice.*` (`file`, `relationship`, `description`) and the assets `assets.logo`, `assets.signature` (only set when a signature was sent; always guard with `{% if assets and assets.signature %}`) and `assets.xml`. `backend/src/signature.rs` turns a signature PDF into a cropped SVG before it becomes `assets.signature`.
 
 **Rules**
 - Interpolate user text only as Typst string literals (`#"{{ x }}"` in content mode, `"{{ x }}"` in code mode); never as markup/code. The backend escapes `\` and `"` only.

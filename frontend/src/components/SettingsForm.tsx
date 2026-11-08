@@ -8,6 +8,7 @@ import {
   LOCALES,
   MAX_LOGO_BYTES,
   type Bank,
+  type Logo,
   type Sender,
   type Settings,
 } from '../lib/types'
@@ -20,6 +21,7 @@ interface Props {
 }
 
 const ACCEPTED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml']
+const ACCEPTED_SIGNATURE_TYPES = [...ACCEPTED_LOGO_TYPES, 'application/pdf']
 
 function readFileAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -33,6 +35,7 @@ function readFileAsBase64(file: File): Promise<string> {
 export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
   useLang()
   const [logoError, setLogoError] = useState<string | null>(null)
+  const [signatureError, setSignatureError] = useState<string | null>(null)
   const paymentProps = useFieldProps('settings.paymentDays')
 
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) =>
@@ -42,24 +45,43 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
   const setBank = (key: keyof Bank, value: string) =>
     set('bank', { ...settings.bank, [key]: value })
 
-  const onLogoSelected = async (file: File | undefined) => {
-    setLogoError(null)
-    if (!file) return
-    if (!ACCEPTED_LOGO_TYPES.includes(file.type)) {
-      setLogoError(tr('Nur PNG, JPEG oder SVG erlaubt.', 'Only PNG, JPEG or SVG allowed.'))
-      return
+  const pickFile = async (
+    file: File | undefined,
+    accepted: string[],
+    onError: (message: string | null) => void,
+    what: { de: string; en: string; typesDe: string; typesEn: string },
+  ): Promise<Logo | null> => {
+    onError(null)
+    if (!file) return null
+    if (!accepted.includes(file.type)) {
+      onError(tr(`Nur ${what.typesDe} erlaubt.`, `Only ${what.typesEn} allowed.`))
+      return null
     }
     if (file.size > MAX_LOGO_BYTES) {
-      setLogoError(
-        tr(`Das Logo darf maximal ${MAX_LOGO_BYTES / 1024} KB groß sein.`, `The logo must not exceed ${MAX_LOGO_BYTES / 1024} KB.`),
-      )
-      return
+      onError(tr(`${what.de} darf maximal ${MAX_LOGO_BYTES / 1024} KB groß sein.`, `The ${what.en} must not exceed ${MAX_LOGO_BYTES / 1024} KB.`))
+      return null
     }
-    set('logo', {
-      fileName: file.name,
-      mimeType: file.type,
-      base64: await readFileAsBase64(file),
+    return { fileName: file.name, mimeType: file.type, base64: await readFileAsBase64(file) }
+  }
+
+  const onLogoSelected = async (file: File | undefined) => {
+    const logo = await pickFile(file, ACCEPTED_LOGO_TYPES, setLogoError, {
+      de: 'Das Logo',
+      en: 'logo',
+      typesDe: 'PNG, JPEG oder SVG',
+      typesEn: 'PNG, JPEG or SVG',
     })
+    if (logo) set('logo', logo)
+  }
+
+  const onSignatureSelected = async (file: File | undefined) => {
+    const signature = await pickFile(file, ACCEPTED_SIGNATURE_TYPES, setSignatureError, {
+      de: 'Die Unterschrift',
+      en: 'signature',
+      typesDe: 'PNG, JPEG, SVG oder PDF',
+      typesEn: 'PNG, JPEG, SVG or PDF',
+    })
+    if (signature) set('signature', signature)
   }
 
   return (
@@ -92,6 +114,43 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
           </label>
         )}
         {logoError && <p className="form-error">{logoError}</p>}
+      </section>
+
+      <section className="form-section">
+        <h3>{tr('Unterschrift', 'Signature')}</h3>
+        {settings.signature ? (
+          <div className="logo-preview">
+            {settings.signature.mimeType === 'application/pdf' ? (
+              <span className="file-badge">PDF</span>
+            ) : (
+              <img src={`data:${settings.signature.mimeType};base64,${settings.signature.base64}`} alt={tr('Unterschrift', 'Signature')} />
+            )}
+            <span>{settings.signature.fileName}</span>
+            <button type="button" className="btn btn-small" onClick={() => set('signature', null)}>
+              {tr('Entfernen', 'Remove')}
+            </button>
+          </div>
+        ) : (
+          <label className="logo-upload">
+            <span className="btn">{tr('Unterschrift auswählen …', 'Choose signature …')}</span>
+            <input
+              type="file"
+              hidden
+              accept={ACCEPTED_SIGNATURE_TYPES.join(',')}
+              onChange={(e) => {
+                void onSignatureSelected(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+            <span className="field-hint">
+              {tr(
+                `Eingescannte Unterschrift als PNG, JPG, SVG oder PDF (erste Seite, wird zugeschnitten), höchstens ${MAX_LOGO_BYTES / 1024} KB. Wird unter dem Schlusstext gedruckt. Das ist ein Bild und keine digitale Signatur.`,
+                `Scanned signature as PNG, JPG, SVG or PDF (first page, cropped automatically), at most ${MAX_LOGO_BYTES / 1024} KB. Printed below the closing text. This is an image, not a digital signature.`,
+              )}
+            </span>
+          </label>
+        )}
+        {signatureError && <p className="form-error">{signatureError}</p>}
       </section>
 
       <section className="form-section">

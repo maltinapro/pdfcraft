@@ -6,6 +6,7 @@
 //! validation layer: the frontend sends its raw form values.
 
 use crate::postage::{self, Postage};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use serde::Deserialize;
 use serde_json::{json, Value as JsonValue};
 
@@ -63,6 +64,7 @@ pub struct Logo {
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub logo: Option<Logo>,
+    pub signature: Option<Logo>,
     pub sender: Sender,
     pub accent_color: Option<String>,
     pub font: Option<String>,
@@ -179,10 +181,60 @@ pub fn valid_date(iso: &str) -> Option<(i32, u32, u32)> {
     ((1970..=2200).contains(&y) && (1..=days).contains(&d)).then_some((y, m, d))
 }
 
-/// Validated settings: the template data plus the optional logo (base64).
+/// Validated settings: the template data plus the optional logo and signature (base64).
 pub struct CheckedSettings {
     pub data: JsonValue,
     pub logo: Option<String>,
+    pub signature: Option<String>,
+}
+
+const MAX_SIGNATURE_BYTES: usize = 300 * 1024;
+
+/// What the signature file is, judged by its content (never by the client's file name).
+fn signature_kind(bytes: &[u8]) -> Option<&'static str> {
+    let head = &bytes[..bytes.len().min(2048)];
+    if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]) {
+        Some("PNG")
+    } else if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        Some("JPEG")
+    } else if head.starts_with(b"%PDF-") {
+        Some("PDF")
+    } else if String::from_utf8_lossy(head).contains("<svg") {
+        Some("SVG")
+    } else {
+        None
+    }
+}
+
+/// The signature is an image (PNG, JPEG, SVG) or a PDF; returns it as base64 for the template.
+/// A PDF becomes an SVG of its first page because Typst cannot embed PDFs in PDF/A exports.
+fn check_signature(sig: Option<&Logo>, e: &mut Errors) -> Option<String> {
+    let encoded = sig?.base64.trim();
+    let bytes = match BASE64.decode(encoded) {
+        Ok(b) => b,
+        Err(_) => {
+            e.add("settings.signature", "must be valid base64");
+            return None;
+        }
+    };
+    if bytes.len() > MAX_SIGNATURE_BYTES {
+        e.add("settings.signature", "must not exceed 300 KB");
+        return None;
+    }
+    match signature_kind(&bytes) {
+        None => {
+            e.add("settings.signature", "must be a PNG, JPEG, SVG or PDF file");
+            None
+        }
+        Some("PDF") => match crate::signature::pdf_to_svg(&bytes) {
+            Some(svg) => Some(BASE64.encode(svg)),
+            None => {
+                e.add("settings.signature", "the PDF could not be read");
+                None
+            }
+        },
+        Some(_) => Some(encoded.to_string()),
+    }
 }
 
 pub fn check_settings(s: &Settings, e: &mut Errors) -> CheckedSettings {
@@ -246,6 +298,7 @@ pub fn check_settings(s: &Settings, e: &mut Errors) -> CheckedSettings {
     CheckedSettings {
         data,
         logo: s.logo.as_ref().map(|l| l.base64.clone()),
+        signature: check_signature(s.signature.as_ref(), e),
     }
 }
 

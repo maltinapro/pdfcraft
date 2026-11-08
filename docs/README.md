@@ -18,6 +18,7 @@ Detailed guides for running, testing and deploying PDFCraft. The top-level [READ
 | 12 | [Purchased Tokens (Stripe)](12-paid-tokens-stripe.md) | enable and operate purchased tokens |
 | 13 | [Observability](13-observability.md) | JSON logs (Loki), Prometheus metrics, PodMonitor/alerts, Grafana dashboards |
 | 14 | [Internetmarke](14-internetmarke-integration.md) | buy Deutsche Post stamps with the user's own Portokasse and print them onto PDFs (stateless, off by default) |
+| 15 | [PDF Signatures](15-pdf-signatures.md) | signature image on documents (implemented) and what a digital PDF signature needs (research: TLS/domain certificates do not work) |
 
 ## Status legend
 

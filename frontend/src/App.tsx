@@ -176,8 +176,8 @@ export default function App() {
   const reset = useCallback(() => {
     const ok = window.confirm(
       tr(
-        'Wirklich alles löschen? Absenderdaten, Logo, Entwürfe und alle Belege werden unwiderruflich aus diesem Browser entfernt. Haben Sie vorher eine Sicherung heruntergeladen?',
-        'Really delete everything? Sender details, logo, drafts and all documents are permanently removed from this browser. Did you download a backup first?',
+        'Wirklich alles löschen? Absenderdaten, Logo, Unterschrift, Entwürfe und alle Belege werden unwiderruflich aus diesem Browser entfernt. Haben Sie vorher eine Sicherung heruntergeladen?',
+        'Really delete everything? Sender details, logo, signature, drafts and all documents are permanently removed from this browser. Did you download a backup first?',
       ),
     )
     if (!ok) return

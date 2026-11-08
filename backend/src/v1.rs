@@ -281,8 +281,14 @@ struct BulkRequest {
     invoices: Vec<Invoice>,
 }
 
-fn logo_assets(logo: Option<String>) -> Result<Vec<(String, Vec<u8>)>, ApiError> {
-    let map: HashMap<String, String> = logo.into_iter().map(|b| ("logo".to_string(), b)).collect();
+/// The logo and the signature of the settings as virtual files (`assets.logo`, `assets.signature`).
+fn settings_assets(settings: &crate::invoice::CheckedSettings) -> Result<Vec<(String, Vec<u8>)>, ApiError> {
+    let mut map = HashMap::new();
+    for (key, value) in [("logo", &settings.logo), ("signature", &settings.signature)] {
+        if let Some(encoded) = value {
+            map.insert(key.to_string(), encoded.clone());
+        }
+    }
     decode_assets(&map)
 }
 
@@ -299,7 +305,7 @@ async fn single(
     if !errors.0.is_empty() {
         return Err(validation_error(errors));
     }
-    let assets = logo_assets(settings.logo)?;
+    let assets = settings_assets(&settings)?;
     let (data, assets) = document(&req.settings, with_watermark(&client, settings.data), &req.invoice, invoice, assets);
     let started = std::time::Instant::now();
     let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await?;
@@ -354,7 +360,7 @@ async fn render_document(
         }
         return None;
     }
-    let assets = match logo_assets(settings.logo.clone()) {
+    let assets = match settings_assets(settings) {
         Ok(a) => a,
         Err(e) => return Some(Err(e)),
     };
@@ -519,7 +525,7 @@ async fn bulk(
     if !errors.0.is_empty() {
         return Err(validation_error(errors));
     }
-    let assets = logo_assets(settings.logo)?;
+    let assets = settings_assets(&settings)?;
 
     let started = std::time::Instant::now();
     let mut tasks = tokio::task::JoinSet::new();
@@ -677,6 +683,108 @@ mod tests {
     fn stamp() -> serde_json::Value {
         use base64::Engine as _;
         json!({"base64": base64::engine::general_purpose::STANDARD.encode(crate::postage::test_png(472, 283, None))})
+    }
+
+    /// PNG, SVG and PDF signatures are all printed on every document type and are not rejected.
+    #[tokio::test]
+    async fn renders_every_document_type_with_a_signature() {
+        use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+        let svg = r##"<svg xmlns="http://www.w3.org/2000/svg" width="300" height="80"><path d="M5 60 C 40 0, 70 90, 110 30 S 200 70, 290 20" stroke="#123" fill="none" stroke-width="3"/></svg>"##;
+        let pdf_signature = render_pdf(
+            "#set document(date: datetime(year: 2026, month: 1, day: 1))\n#set page(width: 60mm, height: 15mm, margin: 0pt)\n#curve(stroke: 1.5pt, curve.move((2mm, 10mm)), curve.cubic((15mm, 0mm), (30mm, 14mm), (58mm, 3mm)))",
+            json!({}),
+            Vec::new(),
+        )
+        .await
+        .unwrap_or_else(|e| panic!("{}", e.details));
+        let signatures = [
+            ("png", crate::postage::test_png(300, 80, None)),
+            ("svg", svg.as_bytes().to_vec()),
+            ("pdf", pdf_signature),
+        ];
+        for (format, bytes) in signatures {
+            for kind in Kind::ALL {
+                let settings: Settings = serde_json::from_value(json!({
+                    "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"},
+                    "signature": {"base64": B64.encode(&bytes)},
+                }))
+                .unwrap();
+                let raw: Document = serde_json::from_value(json!({
+                    "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
+                    "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff", "body": "Text",
+                    "reason": "Falsche Menge", "closing": "Mit freundlichen Grüßen",
+                    "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+                    "items": [{"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19}],
+                }))
+                .unwrap();
+                let mut errors = Errors::default();
+                let s = check_settings(&settings, &mut errors);
+                let doc = documents::check_document(kind, &raw, false, &mut errors);
+                assert!(errors.0.is_empty(), "{format} {:?}", errors.0);
+                let assets = settings_assets(&s).unwrap_or_else(|e| panic!("{}", e.details));
+                assert!(assets.iter().any(|(name, _)| name == "signature"));
+                let (data, assets) = documents::build(kind, &settings, s.data.clone(), &raw, doc, assets);
+                let pdf = render_pdf(&kind.template(), data, assets)
+                    .await
+                    .unwrap_or_else(|e| panic!("{format} {}: {}", kind.slug(), e.details));
+                assert!(pdf.starts_with(b"%PDF"));
+                if let Ok(dir) = std::env::var("PDF_OUT") {
+                    std::fs::write(format!("{dir}/{}-signature-{format}.pdf", kind.slug()), pdf).unwrap();
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn renders_an_invoice_with_a_signature() {
+        use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+        let png = crate::postage::test_png(300, 80, None);
+        let settings: Settings = serde_json::from_value(json!({
+            "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"},
+            "closing": "Danke!",
+            "signature": {"base64": B64.encode(&png)},
+        }))
+        .unwrap();
+        let invoice: Invoice = serde_json::from_value(json!({
+            "number": "2026-001", "date": "2026-01-31",
+            "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+            "items": [{"description": "Beratung", "quantity": 1, "unit": "h", "price": 95, "taxRate": 19}],
+        }))
+        .unwrap();
+        let mut errors = Errors::default();
+        let s = check_settings(&settings, &mut errors);
+        let checked = check_invoice(&invoice, "invoice", &mut errors);
+        assert!(errors.0.is_empty(), "{:?}", errors.0);
+        let (data, assets) = document(&settings, s.data.clone(), &invoice, checked, settings_assets(&s).unwrap_or_else(|e| panic!("{}", e.details)));
+        let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await.unwrap_or_else(|e| panic!("{}", e.details));
+        assert!(pdf.starts_with(b"%PDF"));
+        if let Ok(dir) = std::env::var("PDF_OUT") {
+            std::fs::write(format!("{dir}/invoice-signature.pdf"), pdf).unwrap();
+        }
+    }
+
+    #[test]
+    fn rejects_signatures_that_are_not_images_or_pdfs() {
+        use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+        for (bytes, ok) in [
+            (b"hello world".to_vec(), false),
+            (b"MZ\x90\x00 binary".to_vec(), false),
+            (vec![b'a'; 301 * 1024], false),
+            (b"<?xml version=\"1.0\"?><svg xmlns=\"http://www.w3.org/2000/svg\"/>".to_vec(), true),
+        ] {
+            let settings: Settings = serde_json::from_value(json!({
+                "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"},
+                "signature": {"base64": B64.encode(&bytes)},
+            }))
+            .unwrap();
+            let mut errors = Errors::default();
+            check_settings(&settings, &mut errors);
+            assert_eq!(errors.0.is_empty(), ok, "{:?}", errors.0);
+        }
+        let settings: Settings = serde_json::from_value(json!({"signature": {"base64": "***"}})).unwrap();
+        let mut errors = Errors::default();
+        check_settings(&settings, &mut errors);
+        assert!(errors.0.iter().any(|m| m.starts_with("settings.signature")));
     }
 
     #[tokio::test]

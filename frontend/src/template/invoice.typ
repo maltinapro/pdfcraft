@@ -32,7 +32,13 @@
     {% if settings.watermark %}#align(center + horizon, rotate(-35deg, text(100pt, weight: "bold", fill: luma(85%), "{{ settings.watermark }}"))){% endif %}
   ],
 )
-{% if einvoice %}#pdf.attach("/{{ einvoice.file }}", read("{{ assets.xml }}", encoding: none), relationship: "{{ einvoice.relationship }}", mime-type: "text/xml", description: "{{ einvoice.description }}")
+// Handwritten signature (image, SVG or PDF): at most 15 mm high and 60 mm wide
+{% if assets and assets.signature %}#let signature-image = context {
+  let img(..size) = image("{{ assets.signature }}", ..size, alt: t("Unterschrift", "Signature"))
+  let natural = measure(img())
+  if natural.width * (15mm / natural.height) > 60mm { img(width: 60mm) } else { img(height: 15mm) }
+}
+{% endif %}{% if einvoice %}#pdf.attach("/{{ einvoice.file }}", read("{{ assets.xml }}", encoding: none), relationship: "{{ einvoice.relationship }}", mime-type: "text/xml", description: "{{ einvoice.description }}")
 {% endif %}
 // Header: logo and sender (DIN 5008, window envelope: address starts at 45 mm)
 #block(height: 30mm, width: 100%, grid(
@@ -137,4 +143,7 @@
 {% if settings.closing %}
 #v(1em)
 #lines("{{ settings.closing }}")
+{% endif %}
+{% if assets and assets.signature %}#v(4mm)
+#signature-image
 {% endif %}

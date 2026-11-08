@@ -71,6 +71,7 @@ export function parseConfig(raw: unknown): AppConfig {
 
   const settings = mergeObject(DEFAULT_SETTINGS as unknown as Obj, raw.settings) as unknown as Settings
   settings.logo = isObj(raw.settings) ? parseLogo(raw.settings.logo) : null
+  settings.signature = isObj(raw.settings) ? parseLogo(raw.settings.signature) : null
 
   const defaults = defaultInvoice()
   const rawInvoice = isObj(raw.invoice) ? raw.invoice : {}
