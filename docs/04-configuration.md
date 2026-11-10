@@ -63,7 +63,7 @@ The configurator offers the fonts listed in `FONTS` (`backend/src/invoice.rs` an
 
 | Variable | Used for |
 | --- | --- |
-| `CORS_ALLOWED_ORIGINS`, `PAID_TOKENS_ENABLED`, `MOLLIE_API_KEY`, `PUBLIC_URL`, `MOLLIE_REDIRECT_URL`, `PAID_PRICES`, `INTERNETMARKE_ENABLED`, `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET`, `INTERNETMARKE_SANDBOX_*`, `ANUBIS_PUBLIC_KEY_HEX` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
+| `CORS_ALLOWED_ORIGINS`, `PAID_TOKENS_ENABLED`, `MOLLIE_API_KEY`, `PUBLIC_URL`, `MOLLIE_REDIRECT_URL`, `MOLLIE_API_URL`, `PAID_PRICES`, `PAID_PLANS`, `INTERNETMARKE_ENABLED`, `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET`, `INTERNETMARKE_SANDBOX_*`, `ANUBIS_PUBLIC_KEY_HEX` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
 
 ## Valkey data
 

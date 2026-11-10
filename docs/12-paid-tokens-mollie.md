@@ -81,6 +81,20 @@ curl -XPOST localhost:9200/renew/<subscription id>    # a recurring charge exten
 
 `MOLLIE_API_URL` may only point to a non-https URL on loopback.
 
+### With Docker Compose (full flow in the browser)
+
+The Compose profile `mock` starts `mock-mollie` next to the stack. It shares the backend's network namespace (plain http is only allowed on loopback, same trick as `mock-post`) and is exposed through the `edge` proxy under `/mock-mollie/`. `deploy/compose/mock-mollie.env` switches on the purchase flow with the mock:
+
+```bash
+docker compose --env-file deploy/compose/mock-mollie.env --profile mock up --build
+```
+
+1. Open http://localhost:8080/app/ and click "Buy a token" (the link only appears when Mollie is enabled).
+2. Pick an offer, tick both consent boxes and buy. You land on the mock checkout (`http://localhost:8080/mock-mollie/checkout/<id>`); "Pay" calls the webhook like Mollie and redirects back to the app, which claims and shows the token.
+3. For subscriptions tick the subscription box, pay, then press "Simulate renewal" on http://localhost:8080/mock-mollie/ (a recurring charge extends the token). Cancel in the buy page.
+
+Prices come from `PAID_PRICES` in the env file; `PAID_PLANS` (rate limits) can be overridden the same way. Use `docker compose ... down -v` to reset Valkey.
+
 ## Without Mollie
 
 Tokens can always be managed by hand: `pdfcraft-backend tokens create --plan starter --days 30`, `tokens extend <id> --days 30` ([Tokens and Rate Limiting](05-tokens-and-rate-limiting.md)).
