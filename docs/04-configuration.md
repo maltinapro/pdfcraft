@@ -25,7 +25,7 @@
 | `INTERNETMARKE_SANDBOX_PRODUCTS_URL`, `INTERNETMARKE_SANDBOX_CLIENT_ID`, `INTERNETMARKE_SANDBOX_CLIENT_SECRET` | main values | Optional overrides for the test API |
 | `INTERNETMARKE_SANDBOX_USERNAME`, `INTERNETMARKE_SANDBOX_PASSWORD` | empty | Shared test Portokasse login; free-token users then need no login of their own |
 | `PAID_GRACE_DAYS` | `3` | Days a subscription token stays valid after the paid period end |
-| `PAID_PLANS` | `starter=60,business=300,pro=1000` | Paid plans as `name=invoices_per_minute` |
+| `PAID_PLANS` | `starter=30,business=100,pro=300` | Paid plans as `name=invoices_per_minute` |
 | `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey so it can be renewed by id |
 | `BULK_MAX_INVOICES` | `100` | Maximum invoices in one bulk request. A bulk request costs one token per invoice, so it must not exceed the token's limit |
 | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations across all endpoints; further requests wait |

@@ -28,7 +28,7 @@ A paid token is **invalid after `until`** but stays in Valkey for the retention 
 
 ## Plans
 
-A **plan** is only a name for a rate limit of purchased tokens. `--plan starter` gives the token the limit that `PAID_PLANS` assigns to `starter`. Default: `PAID_PLANS=starter=60,business=300,pro=1000` (`name=invoices_per_minute`, so `starter` = 60 invoices per minute). Add or change plans in that variable; the limit is stored with the token when it is created. `--days N` is the lifetime (the previous example in the PR description had a typo: it is `--days 30`). Free tokens have no plan; their limit is `FREE_RATE_LIMIT_PER_MINUTE`.
+A **plan** is only a name for a rate limit of purchased tokens. `--plan starter` gives the token the limit that `PAID_PLANS` assigns to `starter`. Default: `PAID_PLANS=starter=30,business=100,pro=300` (`name=invoices_per_minute`, so `starter` = 30 invoices per minute). Add or change plans in that variable; the limit is stored with the token when it is created. `--days N` is the lifetime (the previous example in the PR description had a typo: it is `--days 30`). Free tokens have no plan; their limit is `FREE_RATE_LIMIT_PER_MINUTE`.
 
 ## Operator commands
 
@@ -48,6 +48,7 @@ From source: `cargo run -- tokens ...`; in Docker: `docker compose run --rm back
 
 ## Rate limit semantics
 
+- Sizing: one PDF takes about 100 ms of one CPU core (about 600 per minute and core, see `MAX_CONCURRENT_COMPILES`). The live preview renders with the same token, so a limit below about 20 per minute makes editing feel stuck; this is why free = 20 and Starter = 30. Size the limits so that the sum over all active tokens fits the available cores. The limit of a paid token is stored when the token is created: changing `PAID_PLANS` does not affect existing paid tokens (create a new one or extend/replace it).
 - Algorithm: token bucket per token id. Capacity equals the per-minute limit; it refills continuously (limit / 60 per second).
 - Cost: **1 per invoice**. A bulk request of 50 invoices costs 50 and is accepted or rejected as a whole. A bulk request larger than the limit is rejected immediately.
 - Stamp purchases (Internetmarke, optional) cost more: **5** per `POST /v1/postage/stamps`, **2** per `POST /v1/postage/stamps/recover` (fetching a paid order again), and `4 + n` per bulk purchase of `n` stamps (see [Internetmarke](14-internetmarke-integration.md)).

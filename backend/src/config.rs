@@ -10,7 +10,7 @@
 //! | `ANUBIS_PUBLIC_KEY_HEX` | – | Ed25519 public key (hex) of Anubis; enables `POST /v1/free-token` |
 //! | `ANUBIS_COOKIE_NAME` | `techaro.lol-anubis-auth` | Name of the Anubis pass cookie |
 //! | `PAID_TOKENS_ENABLED` | `false` | Feature flag: accept purchased tokens |
-//! | `PAID_PLANS` | `starter=60,business=300,pro=1000` | Paid plans as `name=invoices_per_minute` |
+//! | `PAID_PLANS` | `starter=30,business=100,pro=300` | Paid plans as `name=invoices_per_minute` |
 //! | `MOLLIE_API_KEY` | empty | Mollie API key (`test_…` / `live_…`); needed for checkout and the webhook |
 //! | `MOLLIE_API_URL` | `https://api.mollie.com/v2` | Mollie API base URL (override for tests; plain http only for loopback) |
 //! | `PUBLIC_URL` | empty | Public base URL of this backend; Mollie calls `<PUBLIC_URL>/v1/mollie/webhook` |
@@ -143,7 +143,7 @@ impl Config {
         let plans_raw = std::env::var("PAID_PLANS")
             .ok()
             .filter(|v| !v.trim().is_empty())
-            .unwrap_or_else(|| "starter=60,business=300,pro=1000".into());
+            .unwrap_or_else(|| "starter=30,business=100,pro=300".into());
         Self {
             bind_addr: std::env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into()),
             metrics_addr: Some(std::env::var("METRICS_ADDR").unwrap_or_else(|_| "0.0.0.0:9090".into()))

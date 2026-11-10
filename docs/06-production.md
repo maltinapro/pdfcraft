@@ -22,7 +22,7 @@ Customer systems ──HTTPS──> Reverse proxy / load balancer (TLS, body lim
 ```bash
 VALKEY_URL=redis://...               # tokens and shared rate limit (persistent Valkey)
 PAID_TOKENS_ENABLED=true             # feature flag, see 12-paid-tokens-mollie.md
-PAID_PLANS=starter=60,business=300,pro=1000
+PAID_PLANS=starter=30,business=100,pro=300
 BULK_MAX_INVOICES=100
 MAX_CONCURRENT_COMPILES=<CPU cores>
 BIND_ADDR=0.0.0.0:3000
