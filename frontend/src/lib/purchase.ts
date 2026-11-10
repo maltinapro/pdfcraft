@@ -29,6 +29,8 @@ export interface TokenInfo {
   id: string
   plan: string
   limitPerMinute: number
+  /** Documents per bulk request for this token's plan. */
+  bulkMax: number
   expiresAt: number | null
   subscription: boolean
 }

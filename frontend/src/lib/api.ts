@@ -172,6 +172,13 @@ async function send(method: string, path: string, token: string, body?: string, 
   }
 }
 
+/** The rate limit was hit; `retryAfter` is the wait in seconds that the server suggests. */
+export class RateLimitedError extends Error {
+  constructor(message: string, readonly retryAfter: number) {
+    super(message)
+  }
+}
+
 /** Calls the API with a free token (fetched on demand, renewed once on 401); returns the successful response. */
 async function request(method: string, path: string, payload?: unknown, signal?: AbortSignal): Promise<Response> {
   const body = payload === undefined ? undefined : JSON.stringify(payload)
@@ -185,8 +192,9 @@ async function request(method: string, path: string, payload?: unknown, signal?:
 
   if (response.status === 429) {
     const wait = response.headers.get('Retry-After')
-    throw new Error(
+    throw new RateLimitedError(
       tr(`Zu viele Anfragen${wait ? `, bitte ${wait} s warten` : ''}.`, `Too many requests${wait ? `, please wait ${wait} s` : ''}.`),
+      Number(wait) || 10,
     )
   }
   if (!response.ok) throw await apiError(response, (payload as { type?: string } | undefined)?.type ?? 'invoice')
@@ -232,6 +240,16 @@ export function requestDocument(
   signal?: AbortSignal,
 ): Promise<Blob> {
   return requestBlob('/v1/documents', { type: kind, settings, document: forBackend(document) }, signal)
+}
+
+/** Documents per bulk request that the active token's plan allows (small fallback if the server cannot say). */
+export async function fetchBulkMax(): Promise<number> {
+  try {
+    const info = await requestJson<{ bulkMax?: number }>('GET', '/v1/token')
+    return info.bulkMax && info.bulkMax > 0 ? info.bulkMax : 5
+  } catch {
+    return 5
+  }
 }
 
 /** Renders many documents of one type into a ZIP (`/v1/invoices/bulk` or `/v1/documents/bulk`). */

@@ -28,7 +28,8 @@
 //! | `INTERNETMARKE_SANDBOX_SHIPPING_URL` | – | Test API: when set, **free** tokens (watermarked PDFs) buy test stamps there, paid tokens keep using the main API |
 //! | `INTERNETMARKE_SANDBOX_PRODUCTS_URL` / `_CLIENT_ID` / `_CLIENT_SECRET` | main values | Overrides for the test API |
 //! | `INTERNETMARKE_SANDBOX_USERNAME` / `_PASSWORD` | – | Shared test Portokasse login; free-token users then need no login of their own |
-//! | `BULK_MAX_INVOICES` | `100` | Maximum invoices per bulk request |
+//! | `BULK_MAX_INVOICES` | `100` | Maximum invoices per bulk request (upper bound for every plan) |
+//! | `BULK_MAX_BY_PLAN` | `free=5,starter=25,business=100,pro=100` | Maximum documents per bulk request by plan (`name=count`); plans not listed use `BULK_MAX_INVOICES` |
 //! | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations |
 //! | `COMPILE_QUEUE_TIMEOUT_SECS` | `10` | How long a request waits for a free compile slot before it is answered with `503 server_busy` |
 //! | `METRICS_ADDR` | `0.0.0.0:9090` | Listen address of `GET /metrics` (OpenMetrics); `off` disables it |
@@ -70,6 +71,7 @@ pub struct Config {
     pub internetmarke_sandbox_username: Option<String>,
     pub internetmarke_sandbox_password: Option<String>,
     pub bulk_max_invoices: usize,
+    pub bulk_max_by_plan: Vec<(String, u32)>,
     pub max_concurrent_compiles: usize,
     pub compile_queue_timeout_secs: u64,
     pub cors_origins: Option<Vec<String>>,
@@ -193,6 +195,12 @@ impl Config {
             internetmarke_sandbox_username: env_opt("INTERNETMARKE_SANDBOX_USERNAME"),
             internetmarke_sandbox_password: env_opt("INTERNETMARKE_SANDBOX_PASSWORD"),
             bulk_max_invoices: env_parse("BULK_MAX_INVOICES", 100usize).max(1),
+            bulk_max_by_plan: parse_plans(
+                &std::env::var("BULK_MAX_BY_PLAN")
+                    .ok()
+                    .filter(|v| !v.trim().is_empty())
+                    .unwrap_or_else(|| "free=5,starter=25,business=100,pro=100".into()),
+            ),
             max_concurrent_compiles: env_parse("MAX_CONCURRENT_COMPILES", cpus).max(1),
             compile_queue_timeout_secs: env_parse("COMPILE_QUEUE_TIMEOUT_SECS", 10u64).max(1),
             cors_origins,
@@ -211,6 +219,12 @@ impl Config {
 
     pub fn price(&self, plan: &str, days: u64) -> Option<&Price> {
         self.paid_prices.iter().find(|p| p.plan == plan && p.days == days)
+    }
+
+    /// Documents allowed in one bulk request for a token of `plan`.
+    pub fn bulk_max(&self, plan: &str) -> usize {
+        let by_plan = self.bulk_max_by_plan.iter().find(|(n, _)| n == plan).map(|(_, m)| *m as usize);
+        by_plan.map_or(self.bulk_max_invoices, |m| m.min(self.bulk_max_invoices))
     }
 
     pub fn plan_limit(&self, plan: &str) -> Option<u32> {
@@ -237,6 +251,17 @@ pub fn cors_layer() -> CorsLayer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bulk_maximum_follows_the_plan_and_never_exceeds_the_global_cap() {
+        let mut cfg = Config::from_env();
+        cfg.bulk_max_invoices = 40;
+        cfg.bulk_max_by_plan = parse_plans("free=5,starter=25,business=100");
+        assert_eq!(cfg.bulk_max("free"), 5);
+        assert_eq!(cfg.bulk_max("starter"), 25);
+        assert_eq!(cfg.bulk_max("business"), 40);
+        assert_eq!(cfg.bulk_max("pro"), 40);
+    }
 
     #[test]
     fn prices_accept_only_well_formed_offers() {

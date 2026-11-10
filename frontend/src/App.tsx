@@ -6,7 +6,7 @@ import { DocumentForm } from './components/DocumentForm'
 import { DocumentsPage } from './components/DocumentsPage'
 import { InvoiceForm } from './components/InvoiceForm'
 import { Workspace } from './components/Workspace'
-import { requestBulk, requestDocument, requestPdf } from './lib/api'
+import { RateLimitedError, fetchBulkMax, requestBulk, requestDocument, requestPdf } from './lib/api'
 import {
   cancelledNumbers,
   duplicateNumberIssue,
@@ -92,12 +92,31 @@ export default function App() {
     async (kind: DocKind, entries: ArchiveEntry[]) => {
       // One ZIP per distinct sender/design snapshot, so every document keeps its issue-time data
       const groups = groupBySettings(entries, settings)
-      for (const [index, group] of groups.entries()) {
-        const blob = await requestBulk(kind, group.settings, group.entries.map((e) => (e.invoice ?? e.doc)!))
+      // The plan limits the size of one request: split into several ZIP files if needed
+      const max = await fetchBulkMax()
+      const parts = groups.flatMap((group) =>
+        Array.from({ length: Math.ceil(group.entries.length / max) }, (_, i) => ({
+          settings: group.settings,
+          entries: group.entries.slice(i * max, (i + 1) * max),
+        })),
+      )
+      for (const [index, part] of parts.entries()) {
+        const documents = part.entries.map((e) => (e.invoice ?? e.doc)!)
+        let blob: Blob
+        // Every document costs one rate-limit unit: wait for the bucket to refill between the parts
+        for (let attempt = 0; ; attempt++) {
+          try {
+            blob = await requestBulk(kind, part.settings, documents)
+            break
+          } catch (e) {
+            if (!(e instanceof RateLimitedError) || attempt >= 3) throw e
+            await new Promise((resolve) => setTimeout(resolve, Math.min(e.retryAfter, 60) * 1000))
+          }
+        }
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
-        link.download = groups.length > 1 ? `${kind}-bulk-${index + 1}.zip` : `${kind}-bulk.zip`
+        link.download = parts.length > 1 ? `${kind}-bulk-${index + 1}.zip` : `${kind}-bulk.zip`
         link.click()
         URL.revokeObjectURL(url)
       }

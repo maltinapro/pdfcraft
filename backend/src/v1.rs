@@ -294,9 +294,9 @@ fn log_generated(client: &Client, endpoint: &str, count: usize, started: std::ti
     );
 }
 
-/// Bulk requests need between 1 and `bulk_max_invoices` entries.
-fn check_bulk_size(count: usize, field: &str) -> Result<(), ApiError> {
-    let max = config::get().bulk_max_invoices;
+/// Bulk requests need between 1 and the plan's maximum (`BULK_MAX_BY_PLAN`) entries.
+fn check_bulk_size(client: &Client, count: usize, field: &str) -> Result<(), ApiError> {
+    let max = config::get().bulk_max(&client.plan);
     if count == 0 || count > max {
         return Err(ApiError::new(
             StatusCode::BAD_REQUEST,
@@ -435,7 +435,7 @@ async fn document_bulk(
 ) -> Result<Response, ApiError> {
     let Json(req) = payload.map_err(bad_json)?;
     let kind = parse_kind(&req.kind)?;
-    check_bulk_size(req.documents.len(), "documents")?;
+    check_bulk_size(&client, req.documents.len(), "documents")?;
     take_tokens(&client, req.documents.len()).await?;
 
     let mut errors = Errors::default();
@@ -471,7 +471,7 @@ async fn bulk(
     payload: Result<Json<BulkRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let Json(req) = payload.map_err(bad_json)?;
-    check_bulk_size(req.invoices.len(), "invoices")?;
+    check_bulk_size(&client, req.invoices.len(), "invoices")?;
     take_tokens(&client, req.invoices.len()).await?;
 
     let mut errors = Errors::default();

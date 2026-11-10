@@ -39,7 +39,9 @@ Prices are pure configuration (`PAID_PRICES`, `PAID_PLANS`); no code change is n
 | --- | --- | --- | --- |
 | Starter, 31 days (one-off or subscription) | `starter:31=` | 2.90 | 4.90 |
 | Starter, year (365 days) | `starter:365=` | 24.00 | 39.00 |
-| Business, 31 days (100 documents/min), later for heavy API use | `business:31=` | 9.90 | 14.90 |
+| Business, 31 days (100 documents/min, bulk up to 100 documents), for API/bulk use | `business:31=` | 9.90 | 14.90 |
+
+**Browser vs. API/bulk:** Starter is meant for the browser (editor, preview, archive ZIP; the archive download splits into several ZIP files when it exceeds the plan's bulk size and waits for the rate limit between parts). Business is the plan for scripts and software integrations (higher limit, bulk up to 100 documents); sell it as an extra offer once there is demand. Very large customers (`pro`) get a token manually with `pdfcraft-backend tokens create --plan pro`.
 
 There is no day pass: the free token covers trying it out, and Mollie's fees (a fixed amount plus a percentage) make very small one-off payments unattractive. The `pro` plan is defined in `PAID_PLANS` but not sold. A running subscription keeps the amount it was created with (the Mollie subscription holds it, see the terms, item 5); one-off renewals pay the price valid at that time, so raising the prices later does not affect existing subscribers. The subscription interval is sent to Mollie as `<days> days`. Mollie's API allows up to one year (`365 days`, per the `interval` field description of the official SDK), so the yearly offer also works as a subscription; longer terms would be rejected.
 
