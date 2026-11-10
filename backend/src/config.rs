@@ -17,6 +17,8 @@
 //! | `MOLLIE_REDIRECT_URL` | empty | Success page the customer returns to; `?order=<id>` is appended for `GET /v1/tokens/claim` |
 //! | `PAID_PRICES` | empty | Offers as `plan:days=amount`, e.g. `starter:31=19.00,business:31=49.00`; `POST /v1/checkout` only sells these |
 //! | `PAID_CURRENCY` | `EUR` | Currency of `PAID_PRICES` |
+//!
+//! Purchases are active only if `PAID_TOKENS_ENABLED=true` and `MOLLIE_API_KEY`, `PUBLIC_URL`, `MOLLIE_REDIRECT_URL` and `PAID_PRICES` are all set (`Config::mollie_enabled`).
 //! | `PAID_GRACE_DAYS` | `3` | Extra days after a paid subscription period before the token expires |
 //! | `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey (renewable by its id) |
 //! | `INTERNETMARKE_ENABLED` | `false` | Feature flag: buy Deutsche Post stamps with the user's own Portokasse (`/v1/postage/*`) |
@@ -192,6 +194,16 @@ impl Config {
             max_concurrent_compiles: env_parse("MAX_CONCURRENT_COMPILES", cpus).max(1),
             cors_origins,
         }
+    }
+
+    /// Purchases through Mollie are offered only when the feature flag and everything the
+    /// checkout needs are configured; otherwise every purchase endpoint answers 404.
+    pub fn mollie_enabled(&self) -> bool {
+        self.paid_tokens_enabled
+            && self.mollie_api_key.is_some()
+            && self.public_url.is_some()
+            && self.mollie_redirect_url.is_some()
+            && !self.paid_prices.is_empty()
     }
 
     pub fn price(&self, plan: &str, days: u64) -> Option<&Price> {

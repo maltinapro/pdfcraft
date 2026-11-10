@@ -91,7 +91,7 @@ Full reference: [API Reference](docs/09-api-reference.md).
 | [API Reference](docs/09-api-reference.md) | Endpoints, bodies, examples |
 | [Architecture and Extending](docs/10-architecture-and-extending.md) | Structure, how it works, adding fields |
 | [Free Token and Anubis](docs/11-free-token-and-anubis.md) | Free tokens, Anubis, watermark |
-| [Purchased Tokens (Mollie)](docs/12-paid-tokens-mollie.md) | Feature flag, checkout, Mollie webhook, renewal |
+| [Purchased Tokens (Mollie)](docs/12-paid-tokens-mollie.md) | Feature flag, purchase page, checkout, Mollie webhook, renewal, cancelling |
 | [Observability](docs/13-observability.md) | JSON logs for Loki, Prometheus metrics, Grafana dashboards |
 | [Internetmarke](docs/14-internetmarke-integration.md) | Buying Deutsche Post stamps and printing them onto PDFs |
 

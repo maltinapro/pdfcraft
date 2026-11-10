@@ -909,3 +909,15 @@ a.btn { text-decoration: none; display: inline-block; }
 .postage-actions a.btn { text-decoration: none; color: inherit; }
 .postage-form { display: flex; flex-direction: column; gap: 12px; }
 .postage-error { padding: 8px 10px; border-radius: 8px; font-size: 0.85rem; background: color-mix(in srgb, #dc2626 14%, var(--surface)); border: 1px solid color-mix(in srgb, #dc2626 45%, transparent); white-space: pre-line; }
+
+/* Purchase page */
+.offer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0.75rem; margin: 0.75rem 0; }
+.offer-card { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface, transparent); }
+.offer-card .btn { margin-top: auto; }
+.offer-price { font-size: 1.4rem; font-weight: 700; }
+.offer-limit { font-size: 0.85rem; opacity: 0.75; }
+.check-row { display: flex; gap: 0.5rem; align-items: flex-start; margin: 0.25rem 0; }
+.token-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
+.token-value { flex: 1 1 260px; min-width: 0; font-family: ui-monospace, monospace; }
+.buy-sub { margin-top: 1.25rem; }
+.buy-note { font-size: 0.85rem; opacity: 0.75; }

@@ -3,7 +3,7 @@ import { tr } from './i18n'
 import type { Doc, DocKind } from './documents'
 import type { Invoice, PostageStamp, Settings } from './types'
 
-const API_BASE_URL =
+export const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ??
   'http://localhost:3000'
 
@@ -17,8 +17,47 @@ interface StoredToken {
   expiresAt: number
 }
 
+const PAID_TOKEN_KEY = 'pdfcraft.paidToken'
+
+/** A purchased token (`pk_…`); it is used instead of the free token while it is valid. */
+export interface PaidToken {
+  token: string
+  expiresAt: number
+  plan: string
+  limitPerMinute: number
+}
+
+export function loadPaidToken(): PaidToken | null {
+  try {
+    const raw = localStorage.getItem(PAID_TOKEN_KEY)
+    const stored = raw ? (JSON.parse(raw) as PaidToken) : null
+    return stored && typeof stored.token === 'string' && stored.token.startsWith('pk_') ? stored : null
+  } catch {
+    return null
+  }
+}
+
+export function savePaidToken(token: PaidToken | null) {
+  try {
+    if (token) localStorage.setItem(PAID_TOKEN_KEY, JSON.stringify(token))
+    else localStorage.removeItem(PAID_TOKEN_KEY)
+  } catch {
+    // storage unavailable
+  }
+}
+
+// Set when the server rejected the purchased token (revoked or expired early): use the free token
+let paidRejected = false
+
+function activePaidToken(): string | null {
+  const paid = paidRejected ? null : loadPaidToken()
+  return paid && paid.expiresAt * 1000 > Date.now() + 5000 ? paid.token : null
+}
+
 function loadToken(): string | null {
   if (DEV_TOKEN) return DEV_TOKEN
+  const paid = activePaidToken()
+  if (paid) return paid
   try {
     const raw = localStorage.getItem(TOKEN_KEY)
     if (!raw) return null
@@ -62,7 +101,7 @@ export class ApiError extends Error {
   }
 }
 
-async function apiError(response: Response, kind: string): Promise<Error> {
+export async function apiError(response: Response, kind: string): Promise<Error> {
   let payload: { error?: string; details?: string } = {}
   try {
     payload = (await response.json()) as typeof payload
@@ -134,6 +173,7 @@ async function request(method: string, path: string, payload?: unknown, signal?:
   let response = await send(method, path, loadToken() ?? (await fetchFreeToken()), body, signal)
 
   if (response.status === 401 && !DEV_TOKEN) {
+    if (activePaidToken()) paidRejected = true
     clearToken()
     response = await send(method, path, await fetchFreeToken(), body, signal)
   }
@@ -150,6 +190,18 @@ async function request(method: string, path: string, payload?: unknown, signal?:
 
 const requestBlob = async (path: string, payload: unknown, signal?: AbortSignal): Promise<Blob> =>
   (await request('POST', path, payload, signal)).blob()
+
+/** Calls an endpoint with the purchased token only (no fallback to a free token). */
+export async function requestWithPaidToken<T>(method: 'GET' | 'POST', path: string, token: string): Promise<T> {
+  const response = await send(method, path, token)
+  if (!response.ok) throw await apiError(response, 'invoice')
+  return response.json() as Promise<T>
+}
+
+/** Forget that the purchased token was rejected (after a purchase or renewal). */
+export function resetPaidRejection() {
+  paidRejected = false
+}
 
 /** JSON call for endpoints that do not return a PDF (`/v1/postage/*`). */
 export async function requestJson<T>(method: 'GET' | 'POST', path: string, payload?: unknown): Promise<T> {

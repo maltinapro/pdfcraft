@@ -79,7 +79,7 @@ Labels are bounded: `kind` (`free`/`paid`), `plan` (`free` + the configured `PAI
 | `pdfcraft_typst_compile_seconds` | histogram | – | Typst compile + PDF export (without queueing) |
 | `pdfcraft_compile_slots`, `pdfcraft_compile_slots_in_use` | gauge | – | `MAX_CONCURRENT_COMPILES` and slots in use |
 | `pdfcraft_store_errors_total` | counter | – | failed Valkey operations |
-| `pdfcraft_mollie_events_total` | counter | `event`, `result` | Mollie webhook events (`event`: `purchase`, `renewal`, `other`; `result`: `ok`/`error`) |
+| `pdfcraft_mollie_events_total` | counter | `event`, `result` | Mollie webhook events (`event`: `purchase`, `renewal`, `cancel`, `other`; `result`: `ok`/`error`) |
 | `pdfcraft_build_info` | gauge | `version`, `commit` | always 1; `version` is the release tag (build arg `APP_VERSION`, falls back to the crate version), `commit` the git SHA (`APP_COMMIT`, `unknown` for local builds). Shown as "Version" on the technical dashboard |
 
 Counters reset when a pod restarts; always use `rate()`/`increase()`.

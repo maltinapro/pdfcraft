@@ -64,12 +64,15 @@ pub fn router() -> Router {
         .route("/postage/stamps", post(crate::internetmarke::buy_stamp))
         .route("/postage/stamps/bulk", post(crate::internetmarke::buy_stamps_bulk))
         .route("/postage/stamps/recover", post(crate::internetmarke::recover_stamps))
+        .route("/token", get(crate::mollie::token_info))
+        .route("/subscription/cancel", post(crate::mollie::cancel_subscription))
         .layer(middleware::from_fn(auth));
     // Free tokens are issued against an Anubis pass instead of a token
-    // Purchases (Mollie): only answer while PAID_TOKENS_ENABLED
+    // Purchases (Mollie): only answer while `Config::mollie_enabled`
     Router::new()
         .route("/free-token", post(crate::free::issue))
         .route("/checkout", post(crate::mollie::checkout))
+        .route("/checkout/offers", get(crate::mollie::offers))
         .route("/mollie/webhook", post(crate::mollie::webhook))
         .route("/tokens/claim", get(crate::mollie::claim))
         .merge(protected)

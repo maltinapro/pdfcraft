@@ -73,6 +73,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200, sub)
         self.reply(404, {"status": 404, "title": "Not Found", "detail": "No such resource"})
 
+    def do_DELETE(self):
+        if not self.authorized():
+            return
+        parts = self.path.split("?")[0].strip("/").split("/")
+        if parts[:2] == ["v2", "customers"] and len(parts) == 5 and parts[3] == "subscriptions":
+            sub = subscriptions.get(parts[4])
+            if sub and sub["customerId"] == parts[2] and sub["status"] == "active":
+                sub["status"] = "canceled"
+                return self.reply(200, sub)
+        self.reply(404, {"status": 404, "title": "Not Found", "detail": "No such subscription"})
+
     def do_POST(self):
         path = self.path.split("?")[0]
         parts = path.strip("/").split("/")
@@ -115,6 +126,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, {"webhook": call_webhook(payment["webhookUrl"], payment["id"])})
         if parts[0] == "renew" and parts[1] in subscriptions:
             sub = subscriptions[parts[1]]
+            if sub["status"] != "active":
+                return self.reply(409, {"detail": "subscription is canceled"})
             pid = new_id("tr")
             payments[pid] = {
                 "resource": "payment", "id": pid, "status": "paid", "mode": "test", "sequenceType": "recurring",

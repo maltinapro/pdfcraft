@@ -162,6 +162,15 @@ export function friendlyApiError(status: number, code: string | undefined, detai
       return tr('Das Logo konnte nicht verarbeitet werden. Bitte eine andere Bilddatei verwenden.', 'The logo could not be processed. Please use a different image file.')
     case 'invalid_request':
       return tr('Die Anfrage war unvollständig oder zu groß. Bitte Eingaben und Logo prüfen.', 'The request was incomplete or too large. Please check your input and logo.')
+    case 'unknown_offer':
+      return tr('Dieses Angebot gibt es nicht (mehr). Bitte die Seite neu laden.', 'This offer does not exist (any more). Please reload the page.')
+    case 'unknown_token':
+      return tr('Dieses Token ist unbekannt oder schon zu lange abgelaufen, um es zu verlängern.', 'This token is unknown or expired too long ago to be renewed.')
+    case 'mollie_not_configured':
+    case 'payment_upstream_error':
+      return tr('Der Zahlungsdienst ist gerade nicht erreichbar. Es wurde nichts berechnet. Bitte später erneut versuchen.', 'The payment service is not reachable right now. You were not charged. Please try again later.')
+    case 'no_subscription':
+      return tr('Zu diesem Token läuft kein Abonnement.', 'This token has no running subscription.')
     case 'postage_disabled':
       return tr('Der Kauf von Briefmarken ist auf diesem Server nicht aktiviert.', 'Buying postage stamps is not enabled on this server.')
     case 'postage_login_failed':

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { BuyPage } from './components/BuyPage'
 import { Dashboard } from './components/Dashboard'
 import { DataPage } from './components/DataPage'
 import { DocumentForm } from './components/DocumentForm'
@@ -29,6 +30,7 @@ import {
 } from './lib/documents'
 import { clearLastBackup, exportBackup, loadLastBackup, readBackup, saveLastBackup, unsavedCount } from './lib/backup'
 import { tr, useLang } from './lib/i18n'
+import { handlePaymentReturn, useOffers } from './lib/purchase'
 import { routeHref, useRoute } from './lib/router'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
 import { exampleDataIssues, hasExampleSender, requiredIssues, validateInvoice } from './lib/validate'
@@ -38,9 +40,12 @@ import './App.css'
 
 const fileStem = (value: string, fallback: string) => value.replace(/[^\w.-]+/g, '_') || fallback
 
+handlePaymentReturn()
+
 export default function App() {
   const lang = useLang() // re-render the whole tree when the UI language changes
   const route = useRoute()
+  const purchases = useOffers().enabled
   const [initial] = useState(loadConfig)
   const [settings, setSettings] = useState<Settings>(initial?.settings ?? DEFAULT_SETTINGS)
   const [invoice, setInvoice] = useState<Invoice>(initial?.invoice ?? defaultInvoice)
@@ -228,6 +233,8 @@ export default function App() {
       />
     )
   }
+
+  if (route === 'buy' && purchases) return <BuyPage unsaved={unsaved} />
 
   if (route === 'data') {
     return (
