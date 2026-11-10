@@ -54,6 +54,11 @@ function activePaidToken(): string | null {
   return paid && paid.expiresAt * 1000 > Date.now() + 5000 ? paid.token : null
 }
 
+/** True while a purchased token that has not expired is stored (then PDFs carry no watermark). */
+export function hasActivePaidToken(): boolean {
+  return activePaidToken() !== null
+}
+
 function loadToken(): string | null {
   if (DEV_TOKEN) return DEV_TOKEN
   const paid = activePaidToken()
