@@ -171,6 +171,69 @@ export function BuyPage({ unsaved }: Props) {
   const until = expiresAt ? new Date(expiresAt * 1000).toLocaleString(uiLocale(), { dateStyle: 'medium', timeStyle: 'short' }) : null
   const renewOffers = paid ? offers.filter((o) => o.plan === (info?.plan ?? paid.plan)) : []
 
+  const restoreForm = (
+    <>
+      <p>
+        {tr(
+          'Haben Sie Ihr Token gespeichert (z. B. nach dem Löschen der Browserdaten), tragen Sie es hier wieder ein.',
+          'If you saved your token (e.g. after browser data was deleted), enter it here again.',
+        )}
+      </p>
+      <form
+        className="token-row"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void restore()
+        }}
+      >
+        <input
+          className="token-value"
+          type="password"
+          autoComplete="off"
+          placeholder="pk_…"
+          value={entered}
+          aria-label={tr('Token', 'Token')}
+          onChange={(e) => setEntered(e.target.value)}
+        />
+        <button className="btn" type="submit" disabled={busy !== null || !entered.trim()}>
+          {busy === 'restore' ? '…' : tr('Token eintragen', 'Use this token')}
+        </button>
+      </form>
+    </>
+  )
+
+  const restoreCard = (
+    <section className="data-card">
+      <h2>{tr('Token bereits gekauft?', 'Already bought a token?')}</h2>
+      {restoreForm}
+    </section>
+  )
+
+  const subscriptionToggle = (
+    <label className="check-row">
+      <input type="checkbox" checked={subscription} onChange={(e) => setSubscription(e.target.checked)} />
+      <span>
+        {tr(
+          'Als Abonnement: automatisch nach Ablauf erneut zahlen (jederzeit hier kündbar)',
+          'As a subscription: pay again automatically when it runs out (cancel here at any time)',
+        )}
+      </span>
+    </label>
+  )
+
+  const offerCards = offers.map((offer) => (
+    <OfferCard key={`${offer.plan}:${offer.days}`} offer={offer} currency={currency} busy={busy} label={tr('Zahlungspflichtig kaufen', 'Buy with obligation to pay')} disabled={!consent} onBuy={() => void buy(offer)} />
+  ))
+
+  const purchaseNote = (
+    <p className="buy-note">
+      {tr(
+        'Mit dem Klick auf den Button geben Sie ein verbindliches Angebot ab und werden zu Mollie weitergeleitet, danach hierher zurückgebracht. Auf unseren Servern werden weder Namen noch Zahlungsdaten gespeichert, nur das Token (als Prüfwert) mit Tarif und Ablaufdatum. Das Token wird nicht per E-Mail zugesandt: Nach der Zahlung wird es einmalig hier angezeigt, bitte sofort sichern.',
+        'Clicking the button places a binding order; you are sent to Mollie and brought back here afterwards. Our servers store no names or payment data, only the token (as a check value) with its plan and expiry date. The token is not sent by e-mail: it is shown once here after payment, so save it right away.',
+      )}
+    </p>
+  )
+
   return (
     <div className="app app-scroll">
       <AppHeader title={tr('Token kaufen', 'Buy a token')}>
@@ -299,69 +362,42 @@ export function BuyPage({ unsaved }: Props) {
                     'After a successful payment the period is added to the existing token.',
                   )}
                 </p>
+                {!info?.subscription && subscriptionToggle}
                 <div className="offer-grid">
                   {renewOffers.map((offer) => (
                     <OfferCard key={`r-${offer.days}`} offer={offer} currency={currency} busy={busy} label={tr('Zahlungspflichtig verlängern', 'Renew with obligation to pay')} disabled={!consent} onBuy={() => void buy(offer, paid)} />
                   ))}
                 </div>
+                {purchaseNote}
               </>
             )}
           </section>
         )}
 
-        <section className="data-card">
-          <h2>{tr('Token bereits gekauft?', 'Already bought a token?')}</h2>
-          <p>
-            {tr(
-              'Haben Sie Ihr Token gespeichert (z. B. nach dem Löschen der Browserdaten), tragen Sie es hier wieder ein.',
-              'If you saved your token (e.g. after browser data was deleted), enter it here again.',
-            )}
-          </p>
-          <form
-            className="token-row"
-            onSubmit={(e) => {
-              e.preventDefault()
-              void restore()
-            }}
-          >
-            <input
-              className="token-value"
-              type="password"
-              autoComplete="off"
-              placeholder="pk_…"
-              value={entered}
-              aria-label={tr('Token', 'Token')}
-              onChange={(e) => setEntered(e.target.value)}
-            />
-            <button className="btn" type="submit" disabled={busy !== null || !entered.trim()}>
-              {busy === 'restore' ? '…' : tr('Token eintragen', 'Use this token')}
-            </button>
-          </form>
-        </section>
 
-        <section className="data-card">
-          <h2>{paid ? tr('Weiteres Token kaufen', 'Buy another token') : tr('Angebote', 'Offers')}</h2>
-          <label className="check-row">
-            <input type="checkbox" checked={subscription} onChange={(e) => setSubscription(e.target.checked)} />
-            <span>
+        {!paid ? (
+          <section className="data-card">
+            <h2>{tr('Angebote', 'Offers')}</h2>
+            {subscriptionToggle}
+            <div className="offer-grid">{offerCards}</div>
+            {purchaseNote}
+          </section>
+        ) : (
+          <details className="data-card other-token">
+            <summary>{tr('Anderen Tarif oder neues Token kaufen', 'Buy another plan or a new token')}</summary>
+            <p>
               {tr(
-                'Als Abonnement: automatisch nach Ablauf erneut zahlen (jederzeit hier kündbar)',
-                'As a subscription: pay again automatically when it runs out (cancel here at any time)',
+                'Achtung: Ein neu gekauftes Token ersetzt das in diesem Browser gespeicherte. Das bisherige bleibt gültig, wenn Sie es gesichert haben.',
+                'Note: a newly bought token replaces the one stored in this browser. The current one stays valid if you saved it.',
               )}
-            </span>
-          </label>
-          <div className="offer-grid">
-            {offers.map((offer) => (
-              <OfferCard key={`${offer.plan}:${offer.days}`} offer={offer} currency={currency} busy={busy} label={tr('Zahlungspflichtig kaufen', 'Buy with obligation to pay')} disabled={!consent} onBuy={() => void buy(offer)} />
-            ))}
-          </div>
-          <p className="buy-note">
-            {tr(
-              'Mit dem Klick auf den Button geben Sie ein verbindliches Angebot ab und werden zu Mollie weitergeleitet, danach hierher zurückgebracht. Auf unseren Servern werden weder Namen noch Zahlungsdaten gespeichert, nur das Token (als Prüfwert) mit Tarif und Ablaufdatum. Das Token wird nicht per E-Mail zugesandt: Nach der Zahlung wird es einmalig hier angezeigt, bitte sofort sichern.',
-              'Clicking the button places a binding order; you are sent to Mollie and brought back here afterwards. Our servers store no names or payment data, only the token (as a check value) with its plan and expiry date. The token is not sent by e-mail: it is shown once here after payment, so save it right away.',
-            )}
-          </p>
-        </section>
+            </p>
+            {subscriptionToggle}
+            <div className="offer-grid">{offerCards}</div>
+            {purchaseNote}
+            {restoreForm}
+          </details>
+        )}
+        {!paid && restoreCard}
       </main>
     </div>
   )
