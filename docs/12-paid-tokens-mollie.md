@@ -17,7 +17,7 @@ Customer pays on Mollie ──> Mollie ── POST /v1/mollie/webhook (id=tr_…
 Customer lands on MOLLIE_REDIRECT_URL?order=… ── GET /v1/tokens/claim?order=… ──> token (once)
 ```
 
-1. `POST /v1/checkout` accepts only offers from `PAID_PRICES` (`plan:days=amount`, for example `starter:31=19.00`). It creates a Mollie payment with the metadata `plan`, `days`, `order` (a random secret for the claim) and optionally `token_id`, and returns Mollie's `checkoutUrl`. Redirect the customer there. The endpoint is public (no token) so that customers with an expired token can renew; put a rate limit in front of it (Ingress) if it is reachable from the internet.
+1. `POST /v1/checkout` accepts only offers from `PAID_PRICES` (`plan:days=amount`, for example `starter:31=2.90`). It creates a Mollie payment with the metadata `plan`, `days`, `order` (a random secret for the claim) and optionally `token_id`, and returns Mollie's `checkoutUrl`. Redirect the customer there. The endpoint is public (no token) so that customers with an expired token can renew; put a rate limit in front of it (Ingress) if it is reachable from the internet.
 2. Mollie calls `POST /v1/mollie/webhook` with only `id=tr_…`; there is **no signature**. The backend therefore never trusts the request itself: it fetches the payment from the Mollie API and acts only on `status=paid` and the metadata written by the checkout. Unknown payments and payments without PDFCraft metadata are ignored. Every payment is handled once; repeated calls are harmless. If handling fails the backend answers with an error and Mollie retries.
 3. The plain token exists only at this moment. It is kept for one hour under the `order` id and handed out **once** by `GET /v1/tokens/claim?order=…` (`{token, expiresAt, plan, limitPerMinute}`). Your success page (`MOLLIE_REDIRECT_URL`, Mollie sends the customer there; `?order=<id>` is appended) calls it and shows the token. The order id is the secret; do not log it.
 
@@ -30,6 +30,18 @@ Customer lands on MOLLIE_REDIRECT_URL?order=… ── GET /v1/tokens/claim?orde
 `POST /v1/checkout` with `"subscription": true` creates an empty Mollie customer and a *first* payment (`sequenceType=first`), which gives the mandate. After that payment is paid and the token is created, the backend creates a Mollie subscription that charges the same amount every `days` days, starting `days` days later. The subscription metadata keeps the token id (no customer data). Each paid `recurring` charge arrives at the webhook; the backend reads the token id from the subscription and moves the token's end to **now + `days` + `PAID_GRACE_DAYS`** (default 3). The grace period covers late payments and retries. If a charge fails, the token simply runs out after the grace period. Customers cancel in the frontend (**Buy a token** page, authenticated with their token) or via `POST /v1/subscription/cancel`; the backend then deletes the Mollie subscription (the id is kept in Valkey as `pdfcraft:mollie:sub-of:<token id>`, no customer data). The token stays valid until its end. You can also cancel in the Mollie dashboard.
 
 Plans and limits are server config (`PAID_PLANS=starter=60,business=300,pro=1000`, invoices per minute), not part of the request.
+
+## Pricing
+
+Prices are pure configuration (`PAID_PRICES`, `PAID_PLANS`); no code change is needed to change them. Suggested launch offers (prices incl. VAT, EUR):
+
+| Offer | `PAID_PRICES` | Launch price | Later price |
+| --- | --- | --- | --- |
+| Starter, 31 days (one-off or subscription) | `starter:31=` | 2.90 | 4.90 |
+| Starter, year (365 days) | `starter:365=` | 24.00 | 39.00 |
+| Business, 31 days (300 documents/min) | `business:31=` | 9.90 | 14.90 |
+
+There is no day pass: the free token covers trying it out, and Mollie's fees (a fixed amount plus a percentage) make very small one-off payments unattractive. The `pro` plan is defined in `PAID_PLANS` but not sold. A running subscription keeps the amount it was created with (the Mollie subscription holds it, see the terms, item 5); one-off renewals pay the price valid at that time, so raising the prices later does not affect existing subscribers. The subscription interval is sent to Mollie as `<days> days`; check in test mode that Mollie accepts `365 days` before offering a yearly subscription.
 
 ## Frontend purchase page
 
@@ -51,7 +63,7 @@ These texts are drafts based on common German templates and the facts in this re
    MOLLIE_API_KEY=test_...
    PUBLIC_URL=https://<your-host>             # Mollie must reach <PUBLIC_URL>/v1/mollie/webhook
    MOLLIE_REDIRECT_URL=https://<your-host>/app/   # success page, calls the claim endpoint
-   PAID_PRICES=starter:1=2.50,starter:31=19.00,business:31=49.00
+   PAID_PRICES=starter:31=2.90,starter:365=24.00,business:31=9.90
    PAID_PLANS=starter=60,business=300,pro=1000
    PAID_GRACE_DAYS=3
    ```
@@ -66,7 +78,7 @@ These texts are drafts based on common German templates and the facts in this re
 python3 backend/tools/mock_mollie.py 9200 &
 export VALKEY_URL=redis://localhost:6379 PAID_TOKENS_ENABLED=true MOLLIE_API_KEY=test_mock \
   MOLLIE_API_URL=http://127.0.0.1:9200/v2 PUBLIC_URL=http://127.0.0.1:3000 \
-  MOLLIE_REDIRECT_URL=http://127.0.0.1:3000/app/ PAID_PRICES=starter:31=19.00
+  MOLLIE_REDIRECT_URL=http://127.0.0.1:3000/app/ PAID_PRICES=starter:31=2.90
 cd backend && cargo run
 ```
 

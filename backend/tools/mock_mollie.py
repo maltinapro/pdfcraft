@@ -10,7 +10,7 @@ Backend settings to use it:
 
     PAID_TOKENS_ENABLED=true MOLLIE_API_KEY=test_mock MOLLIE_API_URL=http://127.0.0.1:9200/v2 \\
     PUBLIC_URL=http://127.0.0.1:3000 MOLLIE_REDIRECT_URL=http://127.0.0.1:3000/app/ \\
-    PAID_PRICES=starter:31=19.00
+    PAID_PRICES=starter:31=2.90
 
 Browser: the `checkoutUrl` of `POST /v1/checkout` points to a fake checkout page of this mock (buttons "Pay"
 and "Cancel", then it redirects back like Mollie); `GET /` lists payments and subscriptions with a "renew"
