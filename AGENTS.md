@@ -139,6 +139,7 @@ Typst/krilla writes its own XMP and cannot be extended (XMP cannot be extended f
 
 ## Notes for Next Work
 - Visual verification is mandatory: after every PDF or frontend change, look at the result yourself before reporting it done. Frontend: run `npm run dev` in `frontend/`, open the page with Playwright (also check DE and EN, light/dark and a narrow width where relevant) and take a screenshot; mock API responses by overriding `window.fetch` if the backend is not running. PDF: render with `PDF_OUT=<dir> cargo test v1::tests` (with and without watermark), rasterize (e.g. PyMuPDF) and view the pages. Do not rely on build/test output alone.
+- Everything must be startable locally with `docker compose` (`docker-compose.yml`, `deploy/compose/`): every feature and every external dependency (e.g. Valkey, Anubis, Mollie, Internetmarke) needs a Compose service or a mock (profile `mock`) plus a documented command, so it can be tried end to end without real accounts. Update Compose and the docs in the same PR when adding such a feature.
 - Do not add caches of rendered templates or generated PDFs (customer data).
 - Frontend serializer and backend template language should stay aligned.
 - Add new form fields in `types.ts` + `backend/src/invoice.rs` (validate/escape; the frontend sends raw form values) + `backend/src/einvoice.rs` (totals/XML) + the form + `invoice.typ`. User data goes only into Typst string literals (escape `\` and `"`).
