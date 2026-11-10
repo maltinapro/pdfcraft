@@ -878,7 +878,7 @@
     {
       "id": 24,
       "type": "timeseries",
-      "title": "Stripe webhook events",
+      "title": "Mollie webhook events",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -891,7 +891,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (event, result) (increase(pdfcraft_stripe_events_total{namespace=~\"$namespace\"}[1h]))",
+          "expr": "sum by (event, result) (increase(pdfcraft_mollie_events_total{namespace=~\"$namespace\"}[1h]))",
           "legendFormat": "{{event}} / {{result}}",
           "datasource": {
             "type": "prometheus",

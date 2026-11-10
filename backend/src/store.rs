@@ -118,7 +118,7 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-fn random_hex(len: usize) -> String {
+pub fn random_hex(len: usize) -> String {
     let mut bytes = vec![0u8; len];
     rand::fill(&mut bytes);
     hex(&bytes)
@@ -289,6 +289,20 @@ pub async fn extend_paid_token(id: &str, add_secs: u64) -> Result<Option<u64>, U
     pipe.cmd("EXPIREAT").arg(&key).arg(expire_at(Kind::Paid, new_until)).ignore();
     pipe.query_async::<()>(&mut c).await.map_err(unavailable)?;
     Ok(Some(new_until))
+}
+
+/// True if `id` names an existing paid token (also an expired one still in retention).
+pub async fn paid_token_exists(id: &str) -> Result<bool, Unavailable> {
+    if parse_token(&format!("pk_{id}_00")).is_none() {
+        return Ok(false);
+    }
+    let kind: Option<String> = redis::cmd("HGET")
+        .arg(format!("{TOKEN_PREFIX}{id}"))
+        .arg("kind")
+        .query_async(&mut conn()?)
+        .await
+        .map_err(unavailable)?;
+    Ok(kind.as_deref() == Some("paid"))
 }
 
 /// Moves a paid token's end to `until` if that is later than the current end.

@@ -68,7 +68,7 @@ pub struct CodeLabels {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
-pub struct StripeLabels {
+pub struct MollieLabels {
     pub event: String,
     pub result: String,
 }
@@ -112,7 +112,7 @@ pub struct Metrics {
     pub slots_total: Gauge,
     pub slots_in_use: Gauge,
     pub store_errors: Counter,
-    pub stripe_events: Family<StripeLabels, Counter>,
+    pub mollie_events: Family<MollieLabels, Counter>,
 }
 
 struct State {
@@ -158,7 +158,7 @@ fn build() -> State {
         slots_total: Gauge::default(),
         slots_in_use: Gauge::default(),
         store_errors: Counter::default(),
-        stripe_events: Family::default(),
+        mollie_events: Family::default(),
     };
 
     let mut r = Registry::with_prefix("pdfcraft");
@@ -182,7 +182,7 @@ fn build() -> State {
     r.register("compile_slots", "Configured simultaneous compilations (MAX_CONCURRENT_COMPILES)", m.slots_total.clone());
     r.register("compile_slots_in_use", "Compilations running right now", m.slots_in_use.clone());
     r.register("store_errors", "Failed Valkey operations", m.store_errors.clone());
-    r.register("stripe_events", "Stripe webhook events by type and result", m.stripe_events.clone());
+    r.register("mollie_events", "Mollie webhook events by type and result", m.mollie_events.clone());
 
     let info: Family<VersionLabels, Gauge> = Family::default();
     info.get_or_create(&VersionLabels { version: VERSION.into(), commit: COMMIT.into() }).set(1);
@@ -263,8 +263,8 @@ pub fn token_created(kind: Kind, plan: &str) {
     get().tokens_created.get_or_create(&TokenLabels { kind: kind.label().into(), plan: plan.into() }).inc();
 }
 
-pub fn stripe_event(event: &str, result: &str) {
-    get().stripe_events.get_or_create(&StripeLabels { event: event.into(), result: result.into() }).inc();
+pub fn mollie_event(event: &str, result: &str) {
+    get().mollie_events.get_or_create(&MollieLabels { event: event.into(), result: result.into() }).inc();
 }
 
 fn render() -> String {

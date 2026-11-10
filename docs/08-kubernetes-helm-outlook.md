@@ -108,7 +108,7 @@ ingress:
 ## Open design points
 
 1. **Frontend `VITE_API_BASE_URL` is a build-time value.** The image needs either a rebuild per environment or a small change so the URL is read at container start (for example generating a `config.js` from an environment variable in the nginx entrypoint). Recommended: same-origin via the ingress with an empty base URL, which needs no per-environment build.
-2. **Token management.** `tokens create` is a CLI command of the backend binary. Use `kubectl exec` into a backend pod (tokens are shown only once, so a Job's log is a fragile place to keep them); purchased tokens are normally created by the Stripe webhook.
+2. **Token management.** `tokens create` is a CLI command of the backend binary. Use `kubectl exec` into a backend pod (tokens are shown only once, so a Job's log is a fragile place to keep them); purchased tokens are normally created by the Mollie webhook.
 3. **Database migrations.** The schema is created idempotently at start; a future migration tool (for example sqlx migrations) would need an init container or hook.
 4. **Rate limiting at the ingress.** The backend limits per key; add ingress limits (per IP) for the demo and as a safety net in production.
 5. **Non-root image.** The Dockerfile should drop root before it is used with a restrictive `securityContext` (`runAsNonRoot`, `readOnlyRootFilesystem`).

@@ -11,9 +11,10 @@ nodeSelector: {}
 backend:
   replicaCount: 1
   nodeSelector: {}
-  # Name of a Secret with the key STRIPE_WEBHOOK_SECRET (only needed for purchased tokens,
-  # together with backend.env.PAID_TOKENS_ENABLED="true"; see docs/12-paid-tokens-stripe.md)
-  stripeSecret: ""
+  # Name of a Secret with the key MOLLIE_API_KEY (only needed for purchased tokens, together with
+  # backend.env.PAID_TOKENS_ENABLED="true", PUBLIC_URL, MOLLIE_REDIRECT_URL and PAID_PRICES;
+  # see docs/12-paid-tokens-mollie.md)
+  mollieSecret: ""
   # Name of a Secret with the keys INTERNETMARKE_CLIENT_ID and INTERNETMARKE_CLIENT_SECRET (app
   # credentials of the DHL developer portal). Only needed together with
   # backend.env.INTERNETMARKE_ENABLED="true"; see docs/14-internetmarke-integration.md

@@ -8,8 +8,9 @@ See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key man
 | --- | --- | --- |
 | `GET /health` | none | Server status |
 | `POST /v1/free-token` | Anubis pass | Issue a free token (used by the frontend), see [guide 11](11-free-token-and-anubis.md) |
-| `POST /v1/stripe/webhook` | Stripe signature | Creates/extends purchased tokens (only with `PAID_TOKENS_ENABLED`), see [guide 12](12-paid-tokens-stripe.md) |
-| `GET /v1/tokens/claim` | session id | Hands out a purchased token once after payment |
+| `POST /v1/checkout` | none | Starts a Mollie payment for an offer from `PAID_PRICES` (only with `PAID_TOKENS_ENABLED`), see [guide 12](12-paid-tokens-mollie.md) |
+| `POST /v1/mollie/webhook` | none (payment is fetched from Mollie) | Creates/extends purchased tokens (only with `PAID_TOKENS_ENABLED`) |
+| `GET /v1/tokens/claim` | order id | Hands out a purchased token once after payment |
 | `POST /v1/invoices` | token | One invoice → PDF |
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP of PDFs |
 | `POST /v1/documents/bulk` | token | Many documents of one type → ZIP of PDFs |
@@ -29,7 +30,9 @@ Issues a free token (`pf_…`) to a browser that solved the Anubis challenge. No
 
 ## Purchased tokens
 
-`POST /v1/stripe/webhook` (called by Stripe) and `GET /v1/tokens/claim?session_id=cs_…` (called by your success page) answer `404` while `PAID_TOKENS_ENABLED=false`. Details: [Purchased Tokens (Stripe)](12-paid-tokens-stripe.md).
+`POST /v1/checkout`, `POST /v1/mollie/webhook` (called by Mollie) and `GET /v1/tokens/claim?order=…` (called by your success page) answer `404` while `PAID_TOKENS_ENABLED=false`.
+
+`POST /v1/checkout` takes `{ "plan", "days", "subscription"?, "tokenId"?, "locale"? }` and answers `200 { "checkoutUrl", "order" }`; redirect the customer to `checkoutUrl`. Errors: `400 unknown_offer` (not in `PAID_PRICES`), `400 unknown_token` (`tokenId` does not exist), `503 mollie_not_configured`, `502 payment_upstream_error`. Details: [Purchased Tokens (Mollie)](12-paid-tokens-mollie.md).
 
 ## Postage stamps (Internetmarke)
 

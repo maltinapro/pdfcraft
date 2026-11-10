@@ -12,7 +12,12 @@
 | `ANUBIS_PUBLIC_KEY_HEX` | empty | Public key of the Anubis instance; free tokens are disabled without it ([guide](11-free-token-and-anubis.md)) |
 | `ANUBIS_COOKIE_NAME` | `techaro.lol-anubis-auth` | Anubis cookie to read |
 | `PAID_TOKENS_ENABLED` | `false` | Feature flag for purchased tokens; off = they are rejected |
-| `STRIPE_WEBHOOK_SECRET` | empty | Signing secret of the Stripe webhook; needed when `PAID_TOKENS_ENABLED=true` ([guide](12-paid-tokens-stripe.md)) |
+| `MOLLIE_API_KEY` | empty | Mollie API key (`test_…`/`live_…`); needed when `PAID_TOKENS_ENABLED=true` ([guide](12-paid-tokens-mollie.md)) |
+| `PUBLIC_URL` | empty | Public base URL of the backend; Mollie calls `<PUBLIC_URL>/v1/mollie/webhook` |
+| `MOLLIE_REDIRECT_URL` | empty | Success page of the customer; `?order=<id>` is appended for `GET /v1/tokens/claim` |
+| `PAID_PRICES` | empty | Offers as `plan:days=amount`, for example `starter:31=19.00,business:31=49.00`; `POST /v1/checkout` only sells these |
+| `PAID_CURRENCY` | `EUR` | Currency of `PAID_PRICES` |
+| `MOLLIE_API_URL` | `https://api.mollie.com/v2` | Override for tests (plain http only on loopback), see `backend/tools/mock_mollie.py` |
 | `INTERNETMARKE_ENABLED` | `false` | Feature flag for buying Deutsche Post stamps with the user's own Portokasse ([guide](14-internetmarke-integration.md)) |
 | `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET` | empty | DHL developer portal app credentials; needed when `INTERNETMARKE_ENABLED=true` |
 | `INTERNETMARKE_SHIPPING_URL`, `INTERNETMARKE_PRODUCTS_URL` | Deutsche Post production URLs | Override for the sandbox |
@@ -58,7 +63,7 @@ The configurator offers the fonts listed in `FONTS` (`backend/src/invoice.rs` an
 
 | Variable | Used for |
 | --- | --- |
-| `CORS_ALLOWED_ORIGINS`, `PAID_TOKENS_ENABLED`, `STRIPE_WEBHOOK_SECRET`, `INTERNETMARKE_ENABLED`, `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET`, `INTERNETMARKE_SANDBOX_*`, `ANUBIS_PUBLIC_KEY_HEX` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
+| `CORS_ALLOWED_ORIGINS`, `PAID_TOKENS_ENABLED`, `MOLLIE_API_KEY`, `PUBLIC_URL`, `MOLLIE_REDIRECT_URL`, `PAID_PRICES`, `INTERNETMARKE_ENABLED`, `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET`, `INTERNETMARKE_SANDBOX_*`, `ANUBIS_PUBLIC_KEY_HEX` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
 
 ## Valkey data
 

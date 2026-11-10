@@ -64,7 +64,7 @@ Labels are bounded: `kind` (`free`/`paid`), `plan` (`free` + the configured `PAI
 | `pdfcraft_http_request_duration_seconds` | histogram | `method`, `route` | request latency |
 | `pdfcraft_api_errors_total` | counter | `code` | error responses by API error code (`validation_error`, `rate_limited`, `typst_compile_error`, ...) |
 | `pdfcraft_auth_failures_total` | counter | `reason` | `invalid_token`, `paid_disabled`, `store_unavailable` |
-| `pdfcraft_tokens_created_total` | counter | `kind`, `plan` | tokens created (free tokens via Anubis, paid via Stripe/CLI) |
+| `pdfcraft_tokens_created_total` | counter | `kind`, `plan` | tokens created (free tokens via Anubis, paid via Mollie/CLI) |
 | `pdfcraft_free_token_requests_total` | counter | `result` | `issued`, `challenge_required`, `already_issued`, `free_token_disabled`, `store_unavailable` |
 | `pdfcraft_postage_stamps_total` | counter | `result` | Internetmarke purchases: `bought`, `recovered` (paid order fetched again) or the API error code (`postage_login_failed`, `postage_wallet_insufficient`, `postage_price_changed`, `postage_download_failed`, ...) |
 | `pdfcraft_tokens_active` | gauge | `kind`, `plan` | currently valid tokens (scanned from Valkey every minute; every replica reports the same value, use `max`) |
@@ -79,7 +79,7 @@ Labels are bounded: `kind` (`free`/`paid`), `plan` (`free` + the configured `PAI
 | `pdfcraft_typst_compile_seconds` | histogram | – | Typst compile + PDF export (without queueing) |
 | `pdfcraft_compile_slots`, `pdfcraft_compile_slots_in_use` | gauge | – | `MAX_CONCURRENT_COMPILES` and slots in use |
 | `pdfcraft_store_errors_total` | counter | – | failed Valkey operations |
-| `pdfcraft_stripe_events_total` | counter | `event`, `result` | Stripe webhook events (`ok`/`error`) |
+| `pdfcraft_mollie_events_total` | counter | `event`, `result` | Mollie webhook events (`event`: `purchase`, `renewal`, `other`; `result`: `ok`/`error`) |
 | `pdfcraft_build_info` | gauge | `version`, `commit` | always 1; `version` is the release tag (build arg `APP_VERSION`, falls back to the crate version), `commit` the git SHA (`APP_COMMIT`, `unknown` for local builds). Shown as "Version" on the technical dashboard |
 
 Counters reset when a pod restarts; always use `rate()`/`increase()`.
@@ -132,7 +132,7 @@ grafana:
 
 | Dashboard | Datasource | Content |
 | --- | --- | --- |
-| `PDFCraft / Business` | Prometheus | customers (valid paid tokens), tokens created, free → paid, PDFs per kind/plan, PDFs per free token and per paid token, token age at use (lifetime usage), rate limits, generation time per plan, Stripe events |
+| `PDFCraft / Business` | Prometheus | customers (valid paid tokens), tokens created, free → paid, PDFs per kind/plan, PDFs per free token and per paid token, token age at use (lifetime usage), rate limits, generation time per plan, Mollie events |
 | `PDFCraft / Technical` | Prometheus | request rate, 5xx, latency per route, API errors, compile slots/queue/Typst time, PDF size, pod CPU/memory/restarts |
 | `PDFCraft / Logs` | Loki (+ Prometheus for the namespace variable) | log volume by level, events, rate limits per token, errors, generated invoices, page views from the nginx log |
 
