@@ -49,6 +49,9 @@ export function BuyPage({ unsaved }: Props) {
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [shown, setShown] = useState(false)
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [waiver, setWaiver] = useState(false)
+  const consent = acceptTerms && waiver
 
   const refresh = useCallback(async () => {
     const current = await fetchTokenInfo()
@@ -195,6 +198,35 @@ export function BuyPage({ unsaved }: Props) {
           </section>
         )}
 
+        <section className="data-card">
+          <h2>{tr('Vor dem Kauf', 'Before you buy')}</h2>
+          <p>
+            {tr(
+              'Preise in Euro, inklusive gesetzlicher Umsatzsteuer, soweit diese anfällt. Beide Kästchen sind für Kauf und Verlängerung nötig.',
+              'Prices in euro, including statutory VAT where applicable. Both boxes are required to buy or renew.',
+            )}
+          </p>
+          <label className="check-row">
+            <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
+            <span>
+              {tr('Ich habe die ', 'I have read the ')}
+              <a href="/agb.html" target="_blank" rel="noreferrer">{tr('AGB', 'terms (AGB, German)')}</a>
+              {tr(' und die ', ' and the ')}
+              <a href="/widerruf.html" target="_blank" rel="noreferrer">{tr('Widerrufsbelehrung', 'withdrawal policy (German)')}</a>
+              {tr(' gelesen und akzeptiere die AGB.', ' and accept the terms.')}
+            </span>
+          </label>
+          <label className="check-row">
+            <input type="checkbox" checked={waiver} onChange={(e) => setWaiver(e.target.checked)} />
+            <span>
+              {tr(
+                'Ich verlange ausdrücklich, dass die Leistung sofort nach dem Kauf beginnt. Mir ist bekannt, dass ich mein Widerrufsrecht bei vollständiger Vertragserfüllung verliere und bei einem Widerruf vor vollständiger Erfüllung Wertersatz für die bereits erbrachte Leistung zahle (nur für Verbraucher).',
+                'I expressly request that the service starts immediately after purchase. I know that I lose my right of withdrawal once the contract is fully performed, and that I pay compensation for the service already provided if I withdraw before (consumers only).',
+              )}
+            </span>
+          </label>
+        </section>
+
         {paid && (
           <section className="data-card data-card-main">
             <h2>{fresh ? tr('Ihr neues Token', 'Your new token') : tr('Ihr Token', 'Your token')}</h2>
@@ -251,7 +283,7 @@ export function BuyPage({ unsaved }: Props) {
                 </p>
                 <div className="offer-grid">
                   {renewOffers.map((offer) => (
-                    <OfferCard key={`r-${offer.days}`} offer={offer} currency={currency} busy={busy} label={tr('Verlängern', 'Renew')} onBuy={() => void buy(offer, paid)} />
+                    <OfferCard key={`r-${offer.days}`} offer={offer} currency={currency} busy={busy} label={tr('Zahlungspflichtig verlängern', 'Renew with obligation to pay')} disabled={!consent} onBuy={() => void buy(offer, paid)} />
                   ))}
                 </div>
               </>
@@ -272,13 +304,13 @@ export function BuyPage({ unsaved }: Props) {
           </label>
           <div className="offer-grid">
             {offers.map((offer) => (
-              <OfferCard key={`${offer.plan}:${offer.days}`} offer={offer} currency={currency} busy={busy} label={tr('Kaufen', 'Buy')} onBuy={() => void buy(offer)} />
+              <OfferCard key={`${offer.plan}:${offer.days}`} offer={offer} currency={currency} busy={busy} label={tr('Zahlungspflichtig kaufen', 'Buy with obligation to pay')} disabled={!consent} onBuy={() => void buy(offer)} />
             ))}
           </div>
           <p className="buy-note">
             {tr(
-              'Sie werden zu Mollie weitergeleitet und danach hierher zurückgebracht. Auf unseren Servern werden weder Namen noch Zahlungsdaten gespeichert, nur das Token (als Prüfwert) mit Tarif und Ablaufdatum.',
-              'You are sent to Mollie and brought back here afterwards. Our servers store no names or payment data, only the token (as a check value) with its plan and expiry date.',
+              'Mit dem Klick auf den Button geben Sie ein verbindliches Angebot ab und werden zu Mollie weitergeleitet, danach hierher zurückgebracht. Auf unseren Servern werden weder Namen noch Zahlungsdaten gespeichert, nur das Token (als Prüfwert) mit Tarif und Ablaufdatum.',
+              'Clicking the button places a binding order; you are sent to Mollie and brought back here afterwards. Our servers store no names or payment data, only the token (as a check value) with its plan and expiry date.',
             )}
           </p>
         </section>
@@ -287,7 +319,7 @@ export function BuyPage({ unsaved }: Props) {
   )
 }
 
-function OfferCard({ offer, currency, busy, label, onBuy }: { offer: Offer; currency: string; busy: string | null; label: string; onBuy: () => void }) {
+function OfferCard({ offer, currency, busy, label, disabled, onBuy }: { offer: Offer; currency: string; busy: string | null; label: string; disabled: boolean; onBuy: () => void }) {
   const id = `${offer.plan}:${offer.days}`
   return (
     <div className="offer-card">
@@ -295,7 +327,7 @@ function OfferCard({ offer, currency, busy, label, onBuy }: { offer: Offer; curr
       <span>{duration(offer.days)}</span>
       <span className="offer-price">{price(offer.amount, currency)}</span>
       <span className="offer-limit">{tr(`${offer.limitPerMinute} Belege/Minute`, `${offer.limitPerMinute} documents/minute`)}</span>
-      <button className="btn btn-primary" disabled={busy !== null} onClick={onBuy}>
+      <button className="btn btn-primary" disabled={disabled || busy !== null} onClick={onBuy}>
         {busy === id ? '…' : label}
       </button>
     </div>
