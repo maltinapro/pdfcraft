@@ -29,7 +29,7 @@ Customer lands on MOLLIE_REDIRECT_URL?order=… ── GET /v1/tokens/claim?orde
 
 `POST /v1/checkout` with `"subscription": true` creates an empty Mollie customer and a *first* payment (`sequenceType=first`), which gives the mandate. After that payment is paid and the token is created, the backend creates a Mollie subscription that charges the same amount every `days` days, starting `days` days later. The subscription metadata keeps the token id (no customer data). Each paid `recurring` charge arrives at the webhook; the backend reads the token id from the subscription and moves the token's end to **now + `days` + `PAID_GRACE_DAYS`** (default 3). The grace period covers late payments and retries. If a charge fails, the token simply runs out after the grace period. Customers cancel in the frontend (**Buy a token** page, authenticated with their token) or via `POST /v1/subscription/cancel`; the backend then deletes the Mollie subscription (the id is kept in Valkey as `pdfcraft:mollie:sub-of:<token id>`, no customer data). The token stays valid until its end. You can also cancel in the Mollie dashboard.
 
-Plans and limits are server config (`PAID_PLANS=starter=60,business=300,pro=1000`, invoices per minute), not part of the request.
+Plans and limits are server config (`PAID_PLANS=starter=30,business=100,pro=300`, invoices per minute), not part of the request.
 
 ## Pricing
 
@@ -39,7 +39,9 @@ Prices are pure configuration (`PAID_PRICES`, `PAID_PLANS`); no code change is n
 | --- | --- | --- | --- |
 | Starter, 31 days (one-off or subscription) | `starter:31=` | 2.90 | 4.90 |
 | Starter, year (365 days) | `starter:365=` | 24.00 | 39.00 |
-| Business, 31 days (300 documents/min), later for heavy API use | `business:31=` | 9.90 | 14.90 |
+| Business, 31 days (100 documents/min, bulk up to 100 documents), for API/bulk use | `business:31=` | 9.90 | 14.90 |
+
+**Browser vs. API/bulk:** Starter is meant for the browser (editor, preview, archive ZIP; the archive download splits into several ZIP files when it exceeds the plan's bulk size and waits for the rate limit between parts). Business is the plan for scripts and software integrations (higher limit, bulk up to 100 documents); sell it as an extra offer once there is demand. Very large customers (`pro`) get a token manually with `pdfcraft-backend tokens create --plan pro`.
 
 There is no day pass: the free token covers trying it out, and Mollie's fees (a fixed amount plus a percentage) make very small one-off payments unattractive. The `pro` plan is defined in `PAID_PLANS` but not sold. A running subscription keeps the amount it was created with (the Mollie subscription holds it, see the terms, item 5); one-off renewals pay the price valid at that time, so raising the prices later does not affect existing subscribers. The subscription interval is sent to Mollie as `<days> days`. Mollie's API allows up to one year (`365 days`, per the `interval` field description of the official SDK), so the yearly offer also works as a subscription; longer terms would be rejected.
 
@@ -66,7 +68,7 @@ These texts are drafts based on common German templates and the facts in this re
    PUBLIC_URL=https://<your-host>             # Mollie must reach <PUBLIC_URL>/v1/mollie/webhook
    MOLLIE_REDIRECT_URL=https://<your-host>/app/   # success page, calls the claim endpoint
    PAID_PRICES=starter:31=2.90,starter:365=24.00
-   PAID_PLANS=starter=60,business=300,pro=1000
+   PAID_PLANS=starter=30,business=100,pro=300
    PAID_GRACE_DAYS=3
    ```
 3. Try it with a public URL (Mollie cannot call `localhost`; use a tunnel such as `cloudflared` or `ngrok` for `PUBLIC_URL`) and a Mollie test payment.

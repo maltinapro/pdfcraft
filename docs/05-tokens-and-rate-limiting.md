@@ -28,7 +28,7 @@ A paid token is **invalid after `until`** but stays in Valkey for the retention 
 
 ## Plans
 
-A **plan** is only a name for a rate limit of purchased tokens. `--plan starter` gives the token the limit that `PAID_PLANS` assigns to `starter`. Default: `PAID_PLANS=starter=60,business=300,pro=1000` (`name=invoices_per_minute`, so `starter` = 60 invoices per minute). Add or change plans in that variable; the limit is stored with the token when it is created. `--days N` is the lifetime (the previous example in the PR description had a typo: it is `--days 30`). Free tokens have no plan; their limit is `FREE_RATE_LIMIT_PER_MINUTE`.
+A **plan** is only a name for a rate limit of purchased tokens. `--plan starter` gives the token the limit that `PAID_PLANS` assigns to `starter`. Default: `PAID_PLANS=starter=30,business=100,pro=300` (`name=invoices_per_minute`, so `starter` = 30 invoices per minute). Add or change plans in that variable; the limit is stored with the token when it is created. `--days N` is the lifetime (the previous example in the PR description had a typo: it is `--days 30`). Free tokens have no plan; their limit is `FREE_RATE_LIMIT_PER_MINUTE`.
 
 ## Operator commands
 
@@ -48,6 +48,9 @@ From source: `cargo run -- tokens ...`; in Docker: `docker compose run --rm back
 
 ## Rate limit semantics
 
+- Sizing: measure with `cd backend && cargo test --release bench_render -- --ignored --nocapture` (3 items ≈ 5 ms, 60 items ≈ 27 ms of CPU on a 2-core dev machine); the demo server needs about **100 ms** per PDF end to end, so plan with that: **~600 PDFs per minute and core**, and keep the sustained load at about half of it (**~300 per minute and core**) so that latency stays low. The live preview renders with the same token (every pause of 600 ms while typing), a working editor produces about 5–10 renders per minute and a limit below about 20 per minute makes editing stall; this is why free = 20 and Starter = 30. Rule of thumb: ~40–50 users editing at the same time per core.
+- The per-token limit protects against a single heavy user, **not** against many users together: 15 tokens that all use their full 20 per minute already fill one core. Scale with `MAX_CONCURRENT_COMPILES` = CPU limit of the pod (Helm: `backend.resources.limits.cpu`) or more replicas (the limits live in Valkey and are shared). If all compile slots stay busy for `COMPILE_QUEUE_TIMEOUT_SECS` (default 10 s), the request is answered with `503 server_busy` (+ `Retry-After`) instead of queueing without bound; watch `pdfcraft_compile_queue_wait_seconds` and `pdfcraft_compile_slots_in_use` (docs/13) and raise CPU before that happens.
+- The limit of a paid token is stored when the token is created: changing `PAID_PLANS` does not affect existing paid tokens (create a new one or extend/replace it). A bulk request costs one limit unit per document, so the limit is also the largest bulk a token can request per minute.
 - Algorithm: token bucket per token id. Capacity equals the per-minute limit; it refills continuously (limit / 60 per second).
 - Cost: **1 per invoice**. A bulk request of 50 invoices costs 50 and is accepted or rejected as a whole. A bulk request larger than the limit is rejected immediately.
 - Stamp purchases (Internetmarke, optional) cost more: **5** per `POST /v1/postage/stamps`, **2** per `POST /v1/postage/stamps/recover` (fetching a paid order again), and `4 + n` per bulk purchase of `n` stamps (see [Internetmarke](14-internetmarke-integration.md)).
@@ -70,6 +73,7 @@ All errors are JSON: `{"error": "<code>", "details": "<text>"}`.
 | 422 | `typst_compile_error` | Template compile problem (should not happen with validated input; report it) |
 | 429 | `rate_limited` | Limit reached; see `Retry-After` |
 | 503 | `store_unavailable` | Valkey missing or unreachable |
+| 503 | `server_busy` | All compile slots stayed busy for `COMPILE_QUEUE_TIMEOUT_SECS`; retry after `Retry-After` |
 
 ## Security notes
 

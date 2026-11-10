@@ -25,10 +25,12 @@
 | `INTERNETMARKE_SANDBOX_PRODUCTS_URL`, `INTERNETMARKE_SANDBOX_CLIENT_ID`, `INTERNETMARKE_SANDBOX_CLIENT_SECRET` | main values | Optional overrides for the test API |
 | `INTERNETMARKE_SANDBOX_USERNAME`, `INTERNETMARKE_SANDBOX_PASSWORD` | empty | Shared test Portokasse login; free-token users then need no login of their own |
 | `PAID_GRACE_DAYS` | `3` | Days a subscription token stays valid after the paid period end |
-| `PAID_PLANS` | `starter=60,business=300,pro=1000` | Paid plans as `name=invoices_per_minute` |
+| `PAID_PLANS` | `starter=30,business=100,pro=300` | Paid plans as `name=invoices_per_minute` |
 | `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey so it can be renewed by id |
-| `BULK_MAX_INVOICES` | `100` | Maximum invoices in one bulk request. A bulk request costs one token per invoice, so it must not exceed the token's limit |
+| `BULK_MAX_INVOICES` | `100` | Upper bound for documents in one bulk request (all plans) |
+| `BULK_MAX_BY_PLAN` | `free=5,starter=25,business=100,pro=100` | Documents per bulk request by plan (`name=count`); unlisted plans use `BULK_MAX_INVOICES`. A bulk request costs one rate-limit unit per document, so keep it at or below the plan's per-minute limit |
 | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations across all endpoints; further requests wait |
+| `COMPILE_QUEUE_TIMEOUT_SECS` | `10` | How long a request waits for a free compile slot; then it gets `503 server_busy` with `Retry-After: 5` (load shedding instead of an ever longer queue) |
 | `CORS_ALLOWED_ORIGINS` | any | Comma-separated browser origins (for example `https://demo.example.com`). `*` or unset allows any |
 | `METRICS_ADDR` | `0.0.0.0:9090` | Separate listener for `GET /metrics` (OpenMetrics); `off` disables it. Never expose it through an ingress ([Observability](13-observability.md)) |
 | `RUST_LOG` | `info` | Log level/filter (`tracing` env filter syntax, e.g. `info,pdfcraft_backend=debug`); see [Observability](13-observability.md) |

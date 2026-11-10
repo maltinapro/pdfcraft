@@ -35,7 +35,7 @@ Issues a free token (`pf_…`) to a browser that solved the Anubis challenge. No
 
 `POST /v1/checkout`, `POST /v1/mollie/webhook` (called by Mollie) and `GET /v1/tokens/claim?order=…` (called by your success page) answer `404` unless purchases are enabled (`PAID_TOKENS_ENABLED=true` plus `MOLLIE_API_KEY`, `PUBLIC_URL`, `MOLLIE_REDIRECT_URL` and `PAID_PRICES`); `GET /v1/checkout/offers` then answers `{"enabled": false}` and `POST /v1/subscription/cancel` answers `404`.
 
-`GET /v1/token` answers `{ kind, id, plan, limitPerMinute, expiresAt, subscription }`. `POST /v1/subscription/cancel` answers `{ "cancelled": true }`, `404 no_subscription` if none runs, `502 payment_upstream_error` if Mollie fails.
+`GET /v1/token` answers `{ kind, id, plan, limitPerMinute, bulkMax, expiresAt, subscription }` (`bulkMax` = documents per bulk request). `POST /v1/subscription/cancel` answers `{ "cancelled": true }`, `404 no_subscription` if none runs, `502 payment_upstream_error` if Mollie fails.
 
 `POST /v1/checkout` takes `{ "plan", "days", "subscription"?, "tokenId"?, "locale"? }` and answers `200 { "checkoutUrl", "order" }`; redirect the customer to `checkoutUrl`. Errors: `400 unknown_offer` (not in `PAID_PRICES`), `400 unknown_token` (`tokenId` does not exist), `503 mollie_not_configured`, `502 payment_upstream_error`. Details: [Purchased Tokens (Mollie)](12-paid-tokens-mollie.md).
 
@@ -128,4 +128,4 @@ curl -X POST http://localhost:3000/v1/invoices/bulk \
   "invoices": [ { "number": "...", "date": "2026-10-29", "recipient": { "...": "..." }, "items": [ "..." ] } ] }
 ```
 
-The ZIP contains `invoice-<number>.pdf` per invoice. If one invoice fails, nothing is returned and the error names it (`invoices[3]: ...`). At most `BULK_MAX_INVOICES` invoices per request; each costs one rate-limit token.
+The ZIP contains `invoice-<number>.pdf` per invoice. If one invoice fails, nothing is returned and the error names it (`invoices[3]: ...`). At most `BULK_MAX_BY_PLAN` invoices per request for the token's plan (default free 5, starter 25, business/pro 100, never above `BULK_MAX_INVOICES`), otherwise `400 invalid_request`; each costs one rate-limit token, so a bulk request also has to fit into the token's per-minute limit.

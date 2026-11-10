@@ -156,6 +156,8 @@ export function friendlyApiError(status: number, code: string | undefined, detai
       return tr('Zu viele Anfragen. Bitte kurz warten und es erneut versuchen.', 'Too many requests. Please wait a moment and try again.')
     case 'unauthorized':
       return tr('Die Sitzung ist abgelaufen. Bitte die Seite neu laden.', 'Your session has expired. Please reload the page.')
+    case 'server_busy':
+      return tr('Der Server ist gerade ausgelastet. Bitte in ein paar Sekunden erneut versuchen.', 'The server is busy right now. Please try again in a few seconds.')
     case 'store_unavailable':
       return tr('Der Dienst ist vorübergehend nicht erreichbar. Bitte später erneut versuchen.', 'The service is temporarily unavailable. Please try again later.')
     case 'invalid_asset':

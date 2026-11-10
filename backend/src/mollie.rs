@@ -417,7 +417,8 @@ pub async fn token_info(Extension(client): Extension<Client>) -> Result<Response
         [("cache-control", "no-store")],
         Json(json!({
             "kind": client.kind.label(), "id": client.id, "plan": client.plan,
-            "limitPerMinute": client.limit, "expiresAt": until, "subscription": subscription,
+            "limitPerMinute": client.limit, "bulkMax": config::get().bulk_max(&client.plan),
+            "expiresAt": until, "subscription": subscription,
         })),
     )
         .into_response())
