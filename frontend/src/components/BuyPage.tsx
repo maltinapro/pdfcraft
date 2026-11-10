@@ -228,8 +228,8 @@ export function BuyPage({ unsaved }: Props) {
   const purchaseNote = (
     <p className="buy-note">
       {tr(
-        'Mit dem Klick auf den Button geben Sie ein verbindliches Angebot ab und werden zu Mollie weitergeleitet, danach hierher zurückgebracht. Auf unseren Servern werden weder Namen noch Zahlungsdaten gespeichert, nur das Token (als Prüfwert) mit Tarif und Ablaufdatum. Das Token wird nicht per E-Mail zugesandt: Nach der Zahlung wird es einmalig hier angezeigt, bitte sofort sichern.',
-        'Clicking the button places a binding order; you are sent to Mollie and brought back here afterwards. Our servers store no names or payment data, only the token (as a check value) with its plan and expiry date. The token is not sent by e-mail: it is shown once here after payment, so save it right away.',
+        'Mit dem Klick auf den Button geben Sie ein verbindliches Angebot ab und werden zu Mollie (europäischer Zahlungsdienstleister, Sitz in den Niederlanden) weitergeleitet, danach hierher zurückgebracht. Auf unseren Servern werden weder Namen noch Zahlungsdaten gespeichert, nur das Token (als Prüfwert) mit Tarif und Ablaufdatum. Das Token wird nicht per E-Mail zugesandt: Nach der Zahlung wird es einmalig hier angezeigt, bitte sofort sichern.',
+        'Clicking the button places a binding order; you are sent to Mollie (a European payment provider based in the Netherlands) and brought back here afterwards. Our servers store no names or payment data, only the token (as a check value) with its plan and expiry date. The token is not sent by e-mail: it is shown once here after payment, so save it right away.',
       )}
     </p>
   )

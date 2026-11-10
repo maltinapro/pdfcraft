@@ -55,6 +55,8 @@ Users without a valid purchased token see a dismissible hint on the dashboard an
 
 `frontend/agb.html` (terms), `frontend/widerruf.html` (withdrawal policy with the model form) and the Mollie section of `frontend/datenschutz.html` belong to the shop; they are linked in the landing page footer and on the purchase page. The purchase page requires two checkboxes (accept terms; request immediate start and acknowledge the loss of the withdrawal right) and labels the buttons "Zahlungspflichtig kaufen/verlängern" (§ 312j BGB button solution). The terms (items 3 and 6) and the purchase page state that no e-mail with the order confirmation or the token is sent: the token is shown once after payment and must be saved at once. The cancel button on the purchase page serves as the cancellation button (§ 312k BGB).
 
+The texts point out that the payment provider Mollie B.V. is a European company based in Amsterdam (Netherlands, EU) and therefore subject to the GDPR; keep this statement in sync with the provider.
+
 These texts are drafts based on common German templates and the facts in this repository, **not legal advice**. Before go-live have them reviewed and check in particular: the seller (maltina.pro UG (haftungsbeschränkt) i. G., Düsseldorf; Vorneweg only supports and hosts the cluster), the missing imprint details (managing director, register data once entered, VAT ID), VAT wording (small-business rule or not), willingness to take part in consumer arbitration, the address for the withdrawal, and the order confirmation on a durable medium (§ 312f BGB; PDFCraft collects no e-mail address, so Mollie's payment receipt or an own confirmation must cover this).
 
 ## Enable it (checklist)
