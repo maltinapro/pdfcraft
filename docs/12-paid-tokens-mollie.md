@@ -1,6 +1,6 @@
 # Purchased Tokens (Mollie)
 
-Purchased tokens (`pk_…`) are for productive use: higher limits (by plan), no "Entwurf" watermark, a lifetime that follows what was bought. The feature is **off** by default (`PAID_TOKENS_ENABLED=false`): purchased tokens are rejected with `401`, and the checkout, webhook and claim endpoints answer `404`. Enable it when the product goes live.
+Purchased tokens (`pk_…`) are for productive use: higher limits (by plan), no "Entwurf" watermark, a lifetime that follows what was bought. The feature is **off** by default. Purchases are active only when **all** of `PAID_TOKENS_ENABLED=true`, `MOLLIE_API_KEY`, `PUBLIC_URL`, `MOLLIE_REDIRECT_URL` and at least one `PAID_PRICES` offer are set. If one is missing, the checkout, webhook, claim, offers and cancel endpoints answer `404` and the frontend shows no purchase page (purchased tokens are then rejected with `401`). Enable it when the product goes live.
 
 Only the token is stored by PDFCraft (SHA-256 hash of the secret, plan, limit, end date). No names, companies, e-mail addresses or payment data; Mollie keeps the payments (and an empty customer object for subscriptions). After a token ran out it stays in Valkey for `PAID_TOKEN_RETENTION_DAYS` (default 365, so customers can renew it by its id) and is then deleted by Valkey itself.
 
@@ -27,9 +27,13 @@ Customer lands on MOLLIE_REDIRECT_URL?order=… ── GET /v1/tokens/claim?orde
 
 ## Subscriptions
 
-`POST /v1/checkout` with `"subscription": true` creates an empty Mollie customer and a *first* payment (`sequenceType=first`), which gives the mandate. After that payment is paid and the token is created, the backend creates a Mollie subscription that charges the same amount every `days` days, starting `days` days later. The subscription metadata keeps the token id (no customer data). Each paid `recurring` charge arrives at the webhook; the backend reads the token id from the subscription and moves the token's end to **now + `days` + `PAID_GRACE_DAYS`** (default 3). The grace period covers late payments and retries. If a charge fails, the token simply runs out after the grace period. A cancelled subscription needs no action; the token expires on its own. Cancel subscriptions in the Mollie dashboard.
+`POST /v1/checkout` with `"subscription": true` creates an empty Mollie customer and a *first* payment (`sequenceType=first`), which gives the mandate. After that payment is paid and the token is created, the backend creates a Mollie subscription that charges the same amount every `days` days, starting `days` days later. The subscription metadata keeps the token id (no customer data). Each paid `recurring` charge arrives at the webhook; the backend reads the token id from the subscription and moves the token's end to **now + `days` + `PAID_GRACE_DAYS`** (default 3). The grace period covers late payments and retries. If a charge fails, the token simply runs out after the grace period. Customers cancel in the frontend (**Buy a token** page, authenticated with their token) or via `POST /v1/subscription/cancel`; the backend then deletes the Mollie subscription (the id is kept in Valkey as `pdfcraft:mollie:sub-of:<token id>`, no customer data). The token stays valid until its end. You can also cancel in the Mollie dashboard.
 
 Plans and limits are server config (`PAID_PLANS=starter=60,business=300,pro=1000`, invoices per minute), not part of the request.
+
+## Frontend purchase page
+
+`GET /v1/checkout/offers` (public) returns `{"enabled": false}` or `{enabled, currency, offers:[{plan, days, amount, limitPerMinute}]}`. The frontend (`#/buy`, link "Buy a token") appears only when `enabled` is true. It lists the offers (optionally as subscription), sends the customer to Mollie, and after the redirect (`MOLLIE_REDIRECT_URL?order=…`) polls `GET /v1/tokens/claim` until the webhook arrived. The token is shown once and kept in the browser (`localStorage` `pdfcraft.paidToken`); it is used instead of the free token while valid. The page also shows plan, limit and end date (`GET /v1/token`, authenticated), renews the token (`tokenId` checkout), and cancels the subscription. Set `MOLLIE_REDIRECT_URL` to the app URL (`https://<your-host>/app/`).
 
 ## Enable it (checklist)
 

@@ -291,6 +291,11 @@ pub async fn extend_paid_token(id: &str, add_secs: u64) -> Result<Option<u64>, U
     Ok(Some(new_until))
 }
 
+/// End of a token (unix seconds), also for an expired one still in retention.
+pub async fn token_until(id: &str) -> Result<Option<u64>, Unavailable> {
+    redis::cmd("HGET").arg(format!("{TOKEN_PREFIX}{id}")).arg("until").query_async(&mut conn()?).await.map_err(unavailable)
+}
+
 /// True if `id` names an existing paid token (also an expired one still in retention).
 pub async fn paid_token_exists(id: &str) -> Result<bool, Unavailable> {
     if parse_token(&format!("pk_{id}_00")).is_none() {

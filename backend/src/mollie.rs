@@ -18,11 +18,11 @@
 //! customer, company or payment data (Mollie keeps the payment and the customer).
 
 use crate::config;
-use crate::store::{self, Kind};
+use crate::store::{self, Client, Kind};
 use crate::ApiError;
 use axum::{
     body::Bytes,
-    extract::{rejection::JsonRejection, Json, Query},
+    extract::{rejection::JsonRejection, Extension, Json, Query},
     http::StatusCode,
     response::{IntoResponse, Response},
 };
@@ -35,11 +35,16 @@ const CLAIM_PREFIX: &str = "pdfcraft:claim:";
 const PAYMENT_PREFIX: &str = "pdfcraft:mollie:payment:";
 const TOKEN_PREFIX: &str = "pdfcraft:mollie:token:";
 const SUBSCRIBED_PREFIX: &str = "pdfcraft:mollie:subscribed:";
+const SUBSCRIPTION_OF_PREFIX: &str = "pdfcraft:mollie:sub-of:";
 const PRODUCT: &str = "pdfcraft-token";
 const DAY: u64 = 86_400;
 
 fn disabled() -> ApiError {
-    ApiError::new(StatusCode::NOT_FOUND, "not_found", "purchased tokens are not enabled")
+    ApiError::new(StatusCode::NOT_FOUND, "not_found", "purchases are not enabled")
+}
+
+fn ensure_enabled() -> Result<(), ApiError> {
+    config::get().mollie_enabled().then_some(()).ok_or_else(disabled)
 }
 
 fn store_unavailable() -> ApiError {
@@ -80,6 +85,11 @@ fn ymd(ts: u64) -> String {
     let month = if mp < 10 { mp + 3 } else { mp - 9 };
     let year = yoe + era * 400 + i64::from(month <= 2);
     format!("{year:04}-{month:02}-{day:02}")
+}
+
+/// Mollie ids (`cst_…`, `sub_…`) go into URL paths, so only plain characters are allowed.
+fn valid_ref(id: &str) -> bool {
+    (1..=64).contains(&id.len()) && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
 }
 
 fn valid_payment_id(id: &str) -> bool {
@@ -160,10 +170,8 @@ fn redirect_url(base: &str, order: &str) -> Result<String, ApiError> {
 
 /// `POST /v1/checkout`: `{plan, days, subscription?, tokenId?, locale?}` -> `{checkoutUrl, order}`
 pub async fn checkout(payload: Result<Json<CheckoutRequest>, JsonRejection>) -> Result<Response, ApiError> {
+    ensure_enabled()?;
     let cfg = config::get();
-    if !cfg.paid_tokens_enabled {
-        return Err(disabled());
-    }
     let Json(req) = payload.map_err(|e| ApiError::new(e.status(), "invalid_request", e.body_text()))?;
     let plan = req.plan.trim().to_ascii_lowercase();
     let price = cfg
@@ -171,9 +179,6 @@ pub async fn checkout(payload: Result<Json<CheckoutRequest>, JsonRejection>) -> 
         .ok_or_else(|| ApiError::new(StatusCode::BAD_REQUEST, "unknown_offer", "no offer for this plan and number of days"))?;
     let public = cfg.public_url.as_deref().ok_or_else(|| not_configured("PUBLIC_URL"))?;
     let success = cfg.mollie_redirect_url.as_deref().ok_or_else(|| not_configured("MOLLIE_REDIRECT_URL"))?;
-    if cfg.mollie_api_key.is_none() {
-        return Err(not_configured("MOLLIE_API_KEY"));
-    }
 
     if let Some(id) = &req.token_id {
         if !store::paid_token_exists(id).await.map_err(|_| store_unavailable())? {
@@ -221,6 +226,25 @@ pub async fn checkout(payload: Result<Json<CheckoutRequest>, JsonRejection>) -> 
         Json(json!({ "checkoutUrl": url, "order": order })),
     )
         .into_response())
+}
+
+/// `GET /v1/checkout/offers`: what the frontend may sell; `{"enabled": false}` while purchases are off.
+pub async fn offers() -> Response {
+    let cfg = config::get();
+    let body = if cfg.mollie_enabled() {
+        let offers: Vec<Value> = cfg
+            .paid_prices
+            .iter()
+            .filter_map(|p| {
+                let limit = cfg.plan_limit(&p.plan)?;
+                Some(json!({ "plan": p.plan, "days": p.days, "amount": p.amount, "limitPerMinute": limit }))
+            })
+            .collect();
+        json!({ "enabled": !offers.is_empty(), "currency": cfg.paid_currency, "offers": offers })
+    } else {
+        json!({ "enabled": false })
+    };
+    ([("cache-control", "no-store")], Json(body)).into_response()
 }
 
 // ------------------------------------------------------------------ webhook
@@ -300,8 +324,15 @@ async fn start_subscription(payment: &Value, payment_id: &str, plan: &str, days:
     });
     let path = format!("/customers/{customer_id}/subscriptions");
     match call_ok(Method::POST, &path, Some(body), Some(&format!("pdfcraft-subscription-{payment_id}"))).await {
-        Ok(_) => {
+        Ok(created) => {
             tracing::info!(event = "subscription_created", token_id = %token_id, token_plan = plan);
+            // Lets the token holder cancel it later; only Mollie ids, no customer data
+            if let Some(subscription_id) = str_at(&created, &["id"]).filter(|id| valid_ref(id)) {
+                let ttl = cfg.paid_retention_days.max(1) * 2 * DAY;
+                store::put(&format!("{SUBSCRIPTION_OF_PREFIX}{token_id}"), &format!("{customer_id}/{subscription_id}"), ttl)
+                    .await
+                    .map_err(|_| store_unavailable())?;
+            }
             Ok(())
         }
         Err(e) => {
@@ -315,7 +346,7 @@ async fn start_subscription(payment: &Value, payment_id: &str, plan: &str, days:
 async fn renewal_paid(payment: &Value, payment_id: &str) -> Result<(), ApiError> {
     let customer_id = str_at(payment, &["customerId"]).ok_or_else(|| bad("customerId missing"))?;
     let subscription_id = str_at(payment, &["subscriptionId"]).ok_or_else(|| bad("subscriptionId missing"))?;
-    if !subscription_id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') || !customer_id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_') {
+    if !valid_ref(subscription_id) || !valid_ref(customer_id) {
         return Err(bad("invalid customer or subscription id"));
     }
 
@@ -350,9 +381,7 @@ async fn extend_for_subscription(customer_id: &str, subscription_id: &str) -> Re
 
 /// `POST /v1/mollie/webhook` (form body `id=tr_…`, no signature: the payment is fetched from Mollie)
 pub async fn webhook(body: Bytes) -> Result<Response, ApiError> {
-    if !config::get().paid_tokens_enabled {
-        return Err(disabled());
-    }
+    ensure_enabled()?;
     let id = payment_id(&body).ok_or_else(|| ApiError::new(StatusCode::BAD_REQUEST, "invalid_request", "form field `id` (tr_…) missing"))?;
     let (status, payment) = call(Method::GET, &format!("/payments/{id}"), None, None).await?;
     if status == StatusCode::NOT_FOUND {
@@ -377,6 +406,47 @@ pub async fn webhook(body: Bytes) -> Result<Response, ApiError> {
     Ok(StatusCode::OK.into_response())
 }
 
+// ----------------------------------------------------- the holder's token
+
+/// `GET /v1/token` (with the token): kind, plan, limit, end and whether a subscription is running.
+pub async fn token_info(Extension(client): Extension<Client>) -> Result<Response, ApiError> {
+    let until = store::token_until(&client.id).await.map_err(|_| store_unavailable())?;
+    let subscription = client.kind == Kind::Paid
+        && store::get_value(&format!("{SUBSCRIPTION_OF_PREFIX}{}", client.id)).await.map_err(|_| store_unavailable())?.is_some();
+    Ok((
+        [("cache-control", "no-store")],
+        Json(json!({
+            "kind": client.kind.label(), "id": client.id, "plan": client.plan,
+            "limitPerMinute": client.limit, "expiresAt": until, "subscription": subscription,
+        })),
+    )
+        .into_response())
+}
+
+/// `POST /v1/subscription/cancel` (with the token): stops the Mollie subscription of this token.
+/// The token stays valid until its current end; there will be no further charge.
+pub async fn cancel_subscription(Extension(client): Extension<Client>) -> Result<Response, ApiError> {
+    ensure_enabled()?;
+    let no_subscription = || ApiError::new(StatusCode::NOT_FOUND, "no_subscription", "this token has no running subscription");
+    if client.kind != Kind::Paid {
+        return Err(no_subscription());
+    }
+    let key = format!("{SUBSCRIPTION_OF_PREFIX}{}", client.id);
+    let stored = store::get_value(&key).await.map_err(|_| store_unavailable())?.ok_or_else(no_subscription)?;
+    let (customer_id, subscription_id) = stored.split_once('/').filter(|(c, s)| valid_ref(c) && valid_ref(s)).ok_or_else(no_subscription)?;
+    let (status, json) = call(Method::DELETE, &format!("/customers/{customer_id}/subscriptions/{subscription_id}"), None, None).await?;
+    // 404: Mollie no longer knows it (already cancelled); either way nothing is charged any more
+    if !status.is_success() && status != StatusCode::NOT_FOUND {
+        crate::metrics::mollie_event("cancel", "error");
+        tracing::warn!(event = "mollie_error", status = status.as_u16(), detail = str_at(&json, &["detail"]).unwrap_or(""));
+        return Err(upstream("Mollie could not cancel the subscription"));
+    }
+    store::delete_key(&key).await.map_err(|_| store_unavailable())?;
+    crate::metrics::mollie_event("cancel", "ok");
+    tracing::info!(event = "subscription_cancelled", token_id = %client.id, token_plan = %client.plan);
+    Ok(Json(json!({ "cancelled": true })).into_response())
+}
+
 // -------------------------------------------------------------------- claim
 
 #[derive(Deserialize)]
@@ -386,9 +456,7 @@ pub struct ClaimQuery {
 
 /// `GET /v1/tokens/claim?order=…`: returns the token of a finished purchase once.
 pub async fn claim(Query(q): Query<ClaimQuery>) -> Result<Response, ApiError> {
-    if !config::get().paid_tokens_enabled {
-        return Err(disabled());
-    }
+    ensure_enabled()?;
     let valid_id = q.order.len() <= 64 && q.order.bytes().all(|b| b.is_ascii_alphanumeric());
     let found = if valid_id {
         store::take_value(&format!("{CLAIM_PREFIX}{}", q.order)).await.map_err(|_| store_unavailable())?

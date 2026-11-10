@@ -11,7 +11,7 @@
 | `FREE_TOKEN_TTL_SECONDS` | `43200` | Lifetime of a free token (12 h) |
 | `ANUBIS_PUBLIC_KEY_HEX` | empty | Public key of the Anubis instance; free tokens are disabled without it ([guide](11-free-token-and-anubis.md)) |
 | `ANUBIS_COOKIE_NAME` | `techaro.lol-anubis-auth` | Anubis cookie to read |
-| `PAID_TOKENS_ENABLED` | `false` | Feature flag for purchased tokens; off = they are rejected |
+| `PAID_TOKENS_ENABLED` | `false` | Feature flag for purchased tokens; off = they are rejected. Purchases (checkout, purchase page) are active only when this and the four Mollie variables below are set |
 | `MOLLIE_API_KEY` | empty | Mollie API key (`test_…`/`live_…`); needed when `PAID_TOKENS_ENABLED=true` ([guide](12-paid-tokens-mollie.md)) |
 | `PUBLIC_URL` | empty | Public base URL of the backend; Mollie calls `<PUBLIC_URL>/v1/mollie/webhook` |
 | `MOLLIE_REDIRECT_URL` | empty | Success page of the customer; `?order=<id>` is appended for `GET /v1/tokens/claim` |
