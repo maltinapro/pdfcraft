@@ -29,6 +29,7 @@
 | `PAID_TOKEN_RETENTION_DAYS` | `365` | How long an expired paid token stays in Valkey so it can be renewed by id |
 | `BULK_MAX_INVOICES` | `100` | Maximum invoices in one bulk request. A bulk request costs one token per invoice, so it must not exceed the token's limit |
 | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations across all endpoints; further requests wait |
+| `COMPILE_QUEUE_TIMEOUT_SECS` | `10` | How long a request waits for a free compile slot; then it gets `503 server_busy` with `Retry-After: 5` (load shedding instead of an ever longer queue) |
 | `CORS_ALLOWED_ORIGINS` | any | Comma-separated browser origins (for example `https://demo.example.com`). `*` or unset allows any |
 | `METRICS_ADDR` | `0.0.0.0:9090` | Separate listener for `GET /metrics` (OpenMetrics); `off` disables it. Never expose it through an ingress ([Observability](13-observability.md)) |
 | `RUST_LOG` | `info` | Log level/filter (`tracing` env filter syntax, e.g. `info,pdfcraft_backend=debug`); see [Observability](13-observability.md) |

@@ -291,6 +291,22 @@ fn compile_slots() -> &'static tokio::sync::Semaphore {
     COMPILE_SLOTS.get_or_init(|| tokio::sync::Semaphore::new(config::get().max_concurrent_compiles))
 }
 
+/// Waits for a compile slot; sheds load instead of letting the queue (and every client's latency) grow without bound.
+async fn acquire_slot(wait: std::time::Duration) -> Result<tokio::sync::SemaphorePermit<'static>, ApiError> {
+    match tokio::time::timeout(wait, compile_slots().acquire()).await {
+        Ok(slot) => slot.map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "task_join_error", e.to_string())),
+        Err(_) => {
+            let mut busy = ApiError::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "server_busy",
+                "all compile slots are busy, please retry shortly",
+            );
+            busy.retry_after = Some(5);
+            Err(busy)
+        }
+    }
+}
+
 /// Fills the minijinja template with `data`; `assets` become `assets.<key>` paths of virtual files.
 fn fill_template(
     template: &str,
@@ -334,7 +350,7 @@ pub(crate) async fn render_pdf(
 
     let internal = |e: String| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "task_join_error", e);
     let queued = std::time::Instant::now();
-    let _slot = compile_slots().acquire().await.map_err(|e| internal(e.to_string()))?;
+    let _slot = acquire_slot(std::time::Duration::from_secs(config::get().compile_queue_timeout_secs)).await?;
     metrics::get().queue_wait.observe(queued.elapsed().as_secs_f64());
     let compiling = std::time::Instant::now();
     let compiled = tokio::task::spawn_blocking(move || compile_pdf(rendered, request_id, assets)).await;
@@ -396,4 +412,19 @@ async fn main() {
     }
 
     axum::serve(listener, app).await.expect("Server error");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn answers_server_busy_when_no_compile_slot_frees_up() {
+        let all = u32::try_from(config::get().max_concurrent_compiles).unwrap();
+        let _held = compile_slots().acquire_many(all).await.unwrap();
+        let err = acquire_slot(std::time::Duration::from_millis(50)).await.unwrap_err();
+        assert_eq!(err.status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(err.code, "server_busy");
+        assert_eq!(err.retry_after, Some(5));
+    }
 }

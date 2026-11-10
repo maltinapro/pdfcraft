@@ -30,6 +30,7 @@
 //! | `INTERNETMARKE_SANDBOX_USERNAME` / `_PASSWORD` | – | Shared test Portokasse login; free-token users then need no login of their own |
 //! | `BULK_MAX_INVOICES` | `100` | Maximum invoices per bulk request |
 //! | `MAX_CONCURRENT_COMPILES` | CPU count | Simultaneous Typst compilations |
+//! | `COMPILE_QUEUE_TIMEOUT_SECS` | `10` | How long a request waits for a free compile slot before it is answered with `503 server_busy` |
 //! | `METRICS_ADDR` | `0.0.0.0:9090` | Listen address of `GET /metrics` (OpenMetrics); `off` disables it |
 //! | `CORS_ALLOWED_ORIGINS` | any | Comma-separated origins, or `*` |
 
@@ -70,6 +71,7 @@ pub struct Config {
     pub internetmarke_sandbox_password: Option<String>,
     pub bulk_max_invoices: usize,
     pub max_concurrent_compiles: usize,
+    pub compile_queue_timeout_secs: u64,
     pub cors_origins: Option<Vec<String>>,
 }
 
@@ -192,6 +194,7 @@ impl Config {
             internetmarke_sandbox_password: env_opt("INTERNETMARKE_SANDBOX_PASSWORD"),
             bulk_max_invoices: env_parse("BULK_MAX_INVOICES", 100usize).max(1),
             max_concurrent_compiles: env_parse("MAX_CONCURRENT_COMPILES", cpus).max(1),
+            compile_queue_timeout_secs: env_parse("COMPILE_QUEUE_TIMEOUT_SECS", 10u64).max(1),
             cors_origins,
         }
     }
