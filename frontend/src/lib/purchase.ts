@@ -132,6 +132,22 @@ export async function fetchTokenInfo(): Promise<TokenInfo | null> {
   }
 }
 
+/** Stores a previously purchased token (e.g. after the browser data was deleted) once the server confirms it; `null` if it is unknown, expired or revoked. */
+export async function restoreToken(raw: string): Promise<PaidToken | null> {
+  const token = raw.trim()
+  if (!/^pk_[0-9a-f]+_[0-9a-f]+$/.test(token)) return null
+  try {
+    const info = await requestWithPaidToken<TokenInfo>('GET', '/v1/token', token)
+    if (info.kind !== 'paid' || !info.expiresAt || info.expiresAt * 1000 <= Date.now()) return null
+    const restored: PaidToken = { token, expiresAt: info.expiresAt, plan: info.plan, limitPerMinute: info.limitPerMinute }
+    savePaidToken(restored)
+    resetPaidRejection()
+    return restored
+  } catch {
+    return null
+  }
+}
+
 export async function cancelSubscription(): Promise<void> {
   const paid = loadPaidToken()
   if (!paid) return

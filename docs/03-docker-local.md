@@ -73,6 +73,17 @@ To let free tokens (watermarked drafts) buy test stamps without any login, also 
 
 Details, real sandbox/production setup and test logins: [Internetmarke](14-internetmarke-integration.md#trying-it-out).
 
+## Mollie purchase flow (optional)
+
+The same profile `mock` also starts a Mollie mock. With the env file `deploy/compose/mock-mollie.env` the purchase UI works completely offline:
+
+```bash
+docker compose --env-file deploy/compose/mock-mollie.env --profile mock up --build
+# app: http://localhost:8080/app/ (Buy a token), mock: http://localhost:8080/mock-mollie/
+```
+
+Walkthrough: [Paid tokens with Mollie](12-paid-tokens-mollie.md#with-docker-compose-full-flow-in-the-browser).
+
 ## Notes
 
 - The current Dockerfile runs the binary as root; for production consider adding a non-root user.

@@ -33,11 +33,11 @@ Plans and limits are server config (`PAID_PLANS=starter=60,business=300,pro=1000
 
 ## Frontend purchase page
 
-`GET /v1/checkout/offers` (public) returns `{"enabled": false}` or `{enabled, currency, offers:[{plan, days, amount, limitPerMinute}]}`. The frontend (`#/buy`, link "Buy a token") appears only when `enabled` is true. It lists the offers (optionally as subscription), sends the customer to Mollie, and after the redirect (`MOLLIE_REDIRECT_URL?order=…`) polls `GET /v1/tokens/claim` until the webhook arrived. The token is shown once and kept in the browser (`localStorage` `pdfcraft.paidToken`); it is used instead of the free token while valid. The page also shows plan, limit and end date (`GET /v1/token`, authenticated), renews the token (`tokenId` checkout), and cancels the subscription. Set `MOLLIE_REDIRECT_URL` to the app URL (`https://<your-host>/app/`).
+`GET /v1/checkout/offers` (public) returns `{"enabled": false}` or `{enabled, currency, offers:[{plan, days, amount, limitPerMinute}]}`. The frontend (`#/buy`, link "Buy a token") appears only when `enabled` is true. It lists the offers (optionally as subscription), sends the customer to Mollie, and after the redirect (`MOLLIE_REDIRECT_URL?order=…`) polls `GET /v1/tokens/claim` until the webhook arrived. The token is shown once and kept in the browser (`localStorage` `pdfcraft.paidToken`); it is used instead of the free token while valid. The page also shows plan, limit and end date (`GET /v1/token`, authenticated), renews the token (`tokenId` checkout), and cancels the subscription. If the browser data was deleted, the saved token can be entered again in the card "Already bought a token?" (checked with `GET /v1/token`, then stored again; the token cannot be recovered if it was not saved). Set `MOLLIE_REDIRECT_URL` to the app URL (`https://<your-host>/app/`).
 
 ## Legal texts
 
-`frontend/agb.html` (terms), `frontend/widerruf.html` (withdrawal policy with the model form) and the Mollie section of `frontend/datenschutz.html` belong to the shop; they are linked in the landing page footer and on the purchase page. The purchase page requires two checkboxes (accept terms; request immediate start and acknowledge the loss of the withdrawal right) and labels the buttons "Zahlungspflichtig kaufen/verlängern" (§ 312j BGB button solution). The cancel button on the purchase page serves as the cancellation button (§ 312k BGB).
+`frontend/agb.html` (terms), `frontend/widerruf.html` (withdrawal policy with the model form) and the Mollie section of `frontend/datenschutz.html` belong to the shop; they are linked in the landing page footer and on the purchase page. The purchase page requires two checkboxes (accept terms; request immediate start and acknowledge the loss of the withdrawal right) and labels the buttons "Zahlungspflichtig kaufen/verlängern" (§ 312j BGB button solution). The terms (items 3 and 6) and the purchase page state that no e-mail with the order confirmation or the token is sent: the token is shown once after payment and must be saved at once. The cancel button on the purchase page serves as the cancellation button (§ 312k BGB).
 
 These texts are drafts based on common German templates and the facts in this repository, **not legal advice**. Before go-live have them reviewed and check in particular: the seller (maltina.pro UG (haftungsbeschränkt) i. G., Düsseldorf; Vorneweg only supports and hosts the cluster), the missing imprint details (managing director, register data once entered, VAT ID), VAT wording (small-business rule or not), willingness to take part in consumer arbitration, the address for the withdrawal, and the order confirmation on a durable medium (§ 312f BGB; PDFCraft collects no e-mail address, so Mollie's payment receipt or an own confirmation must cover this).
 
@@ -80,6 +80,20 @@ curl -XPOST localhost:9200/renew/<subscription id>    # a recurring charge exten
 ```
 
 `MOLLIE_API_URL` may only point to a non-https URL on loopback.
+
+### With Docker Compose (full flow in the browser)
+
+The Compose profile `mock` starts `mock-mollie` next to the stack. It shares the backend's network namespace (plain http is only allowed on loopback, same trick as `mock-post`) and is exposed through the `edge` proxy under `/mock-mollie/`. `deploy/compose/mock-mollie.env` switches on the purchase flow with the mock:
+
+```bash
+docker compose --env-file deploy/compose/mock-mollie.env --profile mock up --build
+```
+
+1. Open http://localhost:8080/app/ and click "Buy a token" (the link only appears when Mollie is enabled).
+2. Pick an offer, tick both consent boxes and buy. You land on the mock checkout (`http://localhost:8080/mock-mollie/checkout/<id>`); "Pay" calls the webhook like Mollie and redirects back to the app, which claims and shows the token.
+3. For subscriptions tick the subscription box, pay, then press "Simulate renewal" on http://localhost:8080/mock-mollie/ (a recurring charge extends the token). Cancel in the buy page.
+
+Prices come from `PAID_PRICES` in the env file; `PAID_PLANS` (rate limits) can be overridden the same way. Use `docker compose ... down -v` to reset Valkey.
 
 ## Without Mollie
 
