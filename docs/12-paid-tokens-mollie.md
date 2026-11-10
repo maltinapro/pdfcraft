@@ -41,7 +41,7 @@ Prices are pure configuration (`PAID_PRICES`, `PAID_PLANS`); no code change is n
 | Starter, year (365 days) | `starter:365=` | 24.00 | 39.00 |
 | Business, 31 days (300 documents/min) | `business:31=` | 9.90 | 14.90 |
 
-There is no day pass: the free token covers trying it out, and Mollie's fees (a fixed amount plus a percentage) make very small one-off payments unattractive. The `pro` plan is defined in `PAID_PLANS` but not sold. A running subscription keeps the amount it was created with (the Mollie subscription holds it, see the terms, item 5); one-off renewals pay the price valid at that time, so raising the prices later does not affect existing subscribers. The subscription interval is sent to Mollie as `<days> days`; check in test mode that Mollie accepts `365 days` before offering a yearly subscription.
+There is no day pass: the free token covers trying it out, and Mollie's fees (a fixed amount plus a percentage) make very small one-off payments unattractive. The `pro` plan is defined in `PAID_PLANS` but not sold. A running subscription keeps the amount it was created with (the Mollie subscription holds it, see the terms, item 5); one-off renewals pay the price valid at that time, so raising the prices later does not affect existing subscribers. The subscription interval is sent to Mollie as `<days> days`. Mollie's API allows up to one year (`365 days`, per the `interval` field description of the official SDK), so the yearly offer also works as a subscription; longer terms would be rejected.
 
 ## Frontend purchase page
 
