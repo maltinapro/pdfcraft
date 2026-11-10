@@ -33,19 +33,19 @@ Plans and limits are server config (`PAID_PLANS=starter=60,business=300,pro=1000
 
 ## Pricing
 
-Prices are pure configuration (`PAID_PRICES`, `PAID_PLANS`); no code change is needed to change them. Suggested launch offers (prices incl. VAT, EUR):
+Prices are pure configuration (`PAID_PRICES`, `PAID_PLANS`); no code change is needed to change them. Suggested offers (prices incl. VAT, EUR); start with Starter only and add Business with one more `PAID_PRICES` entry when needed:
 
 | Offer | `PAID_PRICES` | Launch price | Later price |
 | --- | --- | --- | --- |
 | Starter, 31 days (one-off or subscription) | `starter:31=` | 2.90 | 4.90 |
 | Starter, year (365 days) | `starter:365=` | 24.00 | 39.00 |
-| Business, 31 days (300 documents/min) | `business:31=` | 9.90 | 14.90 |
+| Business, 31 days (300 documents/min), later for heavy API use | `business:31=` | 9.90 | 14.90 |
 
 There is no day pass: the free token covers trying it out, and Mollie's fees (a fixed amount plus a percentage) make very small one-off payments unattractive. The `pro` plan is defined in `PAID_PLANS` but not sold. A running subscription keeps the amount it was created with (the Mollie subscription holds it, see the terms, item 5); one-off renewals pay the price valid at that time, so raising the prices later does not affect existing subscribers. The subscription interval is sent to Mollie as `<days> days`. Mollie's API allows up to one year (`365 days`, per the `interval` field description of the official SDK), so the yearly offer also works as a subscription; longer terms would be rejected.
 
 ## Frontend purchase page
 
-`GET /v1/checkout/offers` (public) returns `{"enabled": false}` or `{enabled, currency, offers:[{plan, days, amount, limitPerMinute}]}`. The frontend (`#/buy`, link "Buy a token") appears only when `enabled` is true. It lists the offers (optionally as subscription), sends the customer to Mollie, and after the redirect (`MOLLIE_REDIRECT_URL?order=…`) polls `GET /v1/tokens/claim` until the webhook arrived. The token is shown once and kept in the browser (`localStorage` `pdfcraft.paidToken`); it is used instead of the free token while valid. The page also shows plan, limit and end date (`GET /v1/token`, authenticated), renews the token (`tokenId` checkout), and cancels the subscription. If the browser data was deleted, the saved token can be entered again in the card "Already bought a token?" (checked with `GET /v1/token`, then stored again; the token cannot be recovered if it was not saved). Set `MOLLIE_REDIRECT_URL` to the app URL (`https://<your-host>/app/`).
+`GET /v1/checkout/offers` (public) returns `{"enabled": false}` or `{enabled, currency, offers:[{plan, days, amount, limitPerMinute}]}`. The frontend (`#/buy`, link "Buy a token") appears only when `enabled` is true. It lists the offers (optionally as subscription), sends the customer to Mollie, and after the redirect (`MOLLIE_REDIRECT_URL?order=…`) polls `GET /v1/tokens/claim` until the webhook arrived. The token is shown once and kept in the browser (`localStorage` `pdfcraft.paidToken`); it is used instead of the free token while valid. The page also shows plan, limit and end date (`GET /v1/token`, authenticated), renews the token (`tokenId` checkout), and cancels the subscription. The page is built around one token per browser: without a stored token it shows the offers and the card "Already bought a token?"; with a stored token it shows only the token and "Renew" (with the subscription option), and a collapsed section "Buy another plan or a new token" (a newly bought token replaces the stored one; it also holds the re-entry field). If the browser data was deleted, the saved token can be entered again in the card "Already bought a token?" (checked with `GET /v1/token`, then stored again; the token cannot be recovered if it was not saved). Set `MOLLIE_REDIRECT_URL` to the app URL (`https://<your-host>/app/`).
 
 ## Legal texts
 
@@ -63,7 +63,7 @@ These texts are drafts based on common German templates and the facts in this re
    MOLLIE_API_KEY=test_...
    PUBLIC_URL=https://<your-host>             # Mollie must reach <PUBLIC_URL>/v1/mollie/webhook
    MOLLIE_REDIRECT_URL=https://<your-host>/app/   # success page, calls the claim endpoint
-   PAID_PRICES=starter:31=2.90,starter:365=24.00,business:31=9.90
+   PAID_PRICES=starter:31=2.90,starter:365=24.00
    PAID_PLANS=starter=60,business=300,pro=1000
    PAID_GRACE_DAYS=3
    ```
