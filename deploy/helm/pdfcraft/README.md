@@ -11,7 +11,7 @@ Routing on one host (same origin, no CORS):
 
 Anubis (`templates/anubis.yaml`, policy in `files/botPolicy.yaml`) needs an Ed25519 key pair: run `pdfcraft-backend anubis-keygen` (e.g. `docker run --rm ghcr.io/maltinapro/pdfcraft-backend:<tag> anubis-keygen`) and set `anubis.privateKeyHex` and `anubis.publicKeyHex` (or `anubis.existingSecret`: one Secret with the keys `ED25519_PRIVATE_KEY_HEX` and `ANUBIS_PUBLIC_KEY_HEX`). See [Free token and Anubis](../../../docs/11-free-token-and-anubis.md).
 
-Purchased tokens stay off until you set `backend.env.PAID_TOKENS_ENABLED: "true"` and `backend.stripeSecret` (a Secret with the key `STRIPE_WEBHOOK_SECRET`); see [Purchased Tokens (Stripe)](../../../docs/12-paid-tokens-stripe.md).
+Purchased tokens stay off until you set `backend.env.PAID_TOKENS_ENABLED: "true"` and `backend.mollieSecret` (a Secret with the key `MOLLIE_API_KEY`) plus `PUBLIC_URL`, `MOLLIE_REDIRECT_URL` and `PAID_PRICES` in `backend.env`; see [Purchased Tokens (Mollie)](../../../docs/12-paid-tokens-mollie.md).
 
 Buying Deutsche Post stamps (Internetmarke) stays off until you set `backend.env.INTERNETMARKE_ENABLED: "true"` and `backend.internetmarkeSecret` (a Secret with the keys `INTERNETMARKE_CLIENT_ID` and `INTERNETMARKE_CLIENT_SECRET`); see [Internetmarke](../../../docs/14-internetmarke-integration.md). Optional: `backend.env.INTERNETMARKE_SANDBOX_SHIPPING_URL` lets free tokens (watermarked drafts) buy test stamps from the Post test API; the shared test login goes into the same Secret as the optional keys `INTERNETMARKE_SANDBOX_USERNAME` and `INTERNETMARKE_SANDBOX_PASSWORD`.
 

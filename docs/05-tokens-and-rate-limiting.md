@@ -44,7 +44,7 @@ pdfcraft-backend tokens revoke <id>                    # delete immediately
 
 From source: `cargo run -- tokens ...`; in Docker: `docker compose run --rm backend /app/pdfcraft-backend tokens ...`. Changes apply immediately on every instance (no caching).
 
-`PAID_TOKENS_ENABLED=false` makes the server answer `401` for paid tokens even if they exist; see [Purchased Tokens (Stripe)](12-paid-tokens-stripe.md) for the switch-on guide.
+`PAID_TOKENS_ENABLED=false` makes the server answer `401` for paid tokens even if they exist; see [Purchased Tokens (Mollie)](12-paid-tokens-mollie.md) for the switch-on guide.
 
 ## Rate limit semantics
 

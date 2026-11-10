@@ -47,12 +47,12 @@ spec:
                   name: {{ .Values.anubis.existingSecret | default (printf "%s-anubis" .Release.Name) }}
                   key: ANUBIS_PUBLIC_KEY_HEX
             {{- end }}
-            {{- if .Values.backend.stripeSecret }}
-            - name: STRIPE_WEBHOOK_SECRET
+            {{- if .Values.backend.mollieSecret }}
+            - name: MOLLIE_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.backend.stripeSecret }}
-                  key: STRIPE_WEBHOOK_SECRET
+                  name: {{ .Values.backend.mollieSecret }}
+                  key: MOLLIE_API_KEY
             {{- end }}
             {{- if .Values.backend.internetmarkeSecret }}
             - name: INTERNETMARKE_CLIENT_ID

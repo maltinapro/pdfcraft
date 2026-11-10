@@ -66,11 +66,12 @@ pub fn router() -> Router {
         .route("/postage/stamps/recover", post(crate::internetmarke::recover_stamps))
         .layer(middleware::from_fn(auth));
     // Free tokens are issued against an Anubis pass instead of a token
-    // Purchase hand-over (Stripe): only answers while PAID_TOKENS_ENABLED
+    // Purchases (Mollie): only answer while PAID_TOKENS_ENABLED
     Router::new()
         .route("/free-token", post(crate::free::issue))
-        .route("/stripe/webhook", post(crate::stripe::webhook))
-        .route("/tokens/claim", get(crate::stripe::claim))
+        .route("/checkout", post(crate::mollie::checkout))
+        .route("/mollie/webhook", post(crate::mollie::webhook))
+        .route("/tokens/claim", get(crate::mollie::claim))
         .merge(protected)
 }
 

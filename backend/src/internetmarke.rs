@@ -388,7 +388,7 @@ fn lost_download(shop_order_id: &str, why: &str) -> ApiError {
 }
 
 /// Only a local mock server (development, tests) may be reached without TLS.
-fn is_loopback(url: &str) -> bool {
+pub(crate) fn is_loopback(url: &str) -> bool {
     reqwest::Url::parse(url).ok().and_then(|u| u.host_str().map(|h| matches!(h, "localhost" | "127.0.0.1" | "[::1]"))).unwrap_or(false)
         && url.starts_with("http://")
 }

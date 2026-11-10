@@ -21,7 +21,7 @@ Customer systems ──HTTPS──> Reverse proxy / load balancer (TLS, body lim
 
 ```bash
 VALKEY_URL=redis://...               # tokens and shared rate limit (persistent Valkey)
-PAID_TOKENS_ENABLED=true             # feature flag, see 12-paid-tokens-stripe.md
+PAID_TOKENS_ENABLED=true             # feature flag, see 12-paid-tokens-mollie.md
 PAID_PLANS=starter=60,business=300,pro=1000
 BULK_MAX_INVOICES=100
 MAX_CONCURRENT_COMPILES=<CPU cores>
@@ -61,7 +61,7 @@ Off by default. Before enabling it in production:
 
 ### Operations
 
-- Purchased tokens are normally created by the Stripe webhook; manually with `pdfcraft-backend tokens create --plan ... --days ...` (see [Tokens](05-tokens-and-rate-limiting.md)).
+- Purchased tokens are normally created by the Mollie webhook; manually with `pdfcraft-backend tokens create --plan ... --days ...` (see [Tokens](05-tokens-and-rate-limiting.md)).
 - Logs go to stdout: compile timings (`typst layout`, `pdf export`) and warnings (for example Valkey unreachable). Request logging per customer is not implemented; the reverse proxy access log fills that gap.
 - Rolling updates are safe: instances are stateless.
 - No PDFs or invoice data are persisted by the backend. If you log request bodies at the proxy, you are storing customer data; avoid that.
