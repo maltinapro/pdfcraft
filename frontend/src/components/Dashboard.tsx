@@ -1,3 +1,4 @@
+import { FreeVersionHint } from './FreeVersionHint'
 import { AppHeader } from './AppHeader'
 import { ArchiveList } from './ArchiveList'
 import { BackupBanner } from './BackupBanner'
@@ -33,6 +34,8 @@ export function Dashboard({ notice, onDismissNotice, archive, cancelled, onFollo
         <HeaderNav route="" unsaved={unsaved} />
         <ThemeToggle />
       </AppHeader>
+
+      <FreeVersionHint />
 
       {notice && (
         <div className="notice" role="status" onClick={onDismissNotice}>

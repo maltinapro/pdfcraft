@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AppHeader } from './AppHeader'
 import { PdfCanvasPreview, inlinePdfSupported } from './PdfCanvasPreview'
+import { FreeVersionHint } from './FreeVersionHint'
 import { FormIssuesContext, type FormIssuesValue } from './FormIssues'
 import { SettingsForm } from './SettingsForm'
 import { ThemeToggle } from './ThemeToggle'
@@ -293,6 +294,8 @@ export function Workspace({
           {tr('⬇ PDF herunterladen', '⬇ Download PDF')}
         </button>
       </AppHeader>
+
+      <FreeVersionHint />
 
       {downloaded && (
         <div className="notice notice-success" role="status">

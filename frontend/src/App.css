@@ -1,3 +1,5 @@
+@import '@fontsource-variable/inter/wght.css';
+
 :root {
   --bg: #f0f2f5; --text: #1a1a2e; --surface: #fff; --header-bg: #241259;
   --border: #dde1e7; --border-soft: #eef0f3; --border2: #e2e8f0; --input-border: #cbd5e1;
@@ -29,7 +31,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -868,6 +871,8 @@ input[type='color'] {
 .backup-banner p { flex: 1 1 18rem; }
 .backup-banner .btn { flex: none; }
 
+.notice-info { display: flex; justify-content: space-between; align-items: center; gap: 12px; cursor: default; background: color-mix(in srgb, var(--brand) 10%, var(--surface)); color: var(--text); border-bottom: 1px solid var(--border-soft); }
+.notice-info a { color: var(--brand); font-weight: 600; }
 .notice-success { display: flex; justify-content: space-between; align-items: center; gap: 12px; cursor: default; background: color-mix(in srgb, #16a34a 16%, var(--surface)); color: var(--text); }
 .notice-success a { color: var(--brand); font-weight: 600; }
 .notice-close { background: none; border: none; color: inherit; font-size: 1.1rem; cursor: pointer; line-height: 1; }
