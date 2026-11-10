@@ -15,7 +15,7 @@
 | `MOLLIE_API_KEY` | empty | Mollie API key (`test_…`/`live_…`); needed when `PAID_TOKENS_ENABLED=true` ([guide](12-paid-tokens-mollie.md)) |
 | `PUBLIC_URL` | empty | Public base URL of the backend; Mollie calls `<PUBLIC_URL>/v1/mollie/webhook` |
 | `MOLLIE_REDIRECT_URL` | empty | Success page of the customer; `?order=<id>` is appended for `GET /v1/tokens/claim` |
-| `PAID_PRICES` | empty | Offers as `plan:days=amount`, for example `starter:31=19.00,business:31=49.00`; `POST /v1/checkout` only sells these |
+| `PAID_PRICES` | empty | Offers as `plan:days=amount`, for example `starter:31=2.90,starter:365=24.00,business:31=9.90`; `POST /v1/checkout` only sells these |
 | `PAID_CURRENCY` | `EUR` | Currency of `PAID_PRICES` |
 | `MOLLIE_API_URL` | `https://api.mollie.com/v2` | Override for tests (plain http only on loopback), see `backend/tools/mock_mollie.py` |
 | `INTERNETMARKE_ENABLED` | `false` | Feature flag for buying Deutsche Post stamps with the user's own Portokasse ([guide](14-internetmarke-integration.md)) |

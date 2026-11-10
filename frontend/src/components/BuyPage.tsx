@@ -28,6 +28,7 @@ const planName = (plan: string) => plan.charAt(0).toUpperCase() + plan.slice(1)
 
 function duration(days: number): string {
   if (days === 1) return tr('Tagespass (1 Tag)', 'Day pass (1 day)')
+  if (days >= 360 && days <= 366) return tr('Jahr (365 Tage)', 'Year (365 days)')
   if (days >= 28 && days <= 31) return tr(`Monat (${days} Tage)`, `Month (${days} days)`)
   return tr(`${days} Tage`, `${days} days`)
 }
