@@ -921,3 +921,4 @@ a.btn { text-decoration: none; display: inline-block; }
 .token-value { flex: 1 1 260px; min-width: 0; font-family: ui-monospace, monospace; }
 .buy-sub { margin-top: 1.25rem; }
 .buy-note { font-size: 0.85rem; opacity: 0.75; }
+.check-row a { color: var(--brand); font-weight: 600; }

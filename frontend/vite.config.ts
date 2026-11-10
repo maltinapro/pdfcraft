@@ -21,6 +21,8 @@ export default defineConfig({
         app: resolve(__dirname, 'app/index.html'),
         impressum: resolve(__dirname, 'impressum.html'),
         datenschutz: resolve(__dirname, 'datenschutz.html'),
+        agb: resolve(__dirname, 'agb.html'),
+        widerruf: resolve(__dirname, 'widerruf.html'),
       },
     },
   },

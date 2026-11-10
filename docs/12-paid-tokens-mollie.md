@@ -35,6 +35,12 @@ Plans and limits are server config (`PAID_PLANS=starter=60,business=300,pro=1000
 
 `GET /v1/checkout/offers` (public) returns `{"enabled": false}` or `{enabled, currency, offers:[{plan, days, amount, limitPerMinute}]}`. The frontend (`#/buy`, link "Buy a token") appears only when `enabled` is true. It lists the offers (optionally as subscription), sends the customer to Mollie, and after the redirect (`MOLLIE_REDIRECT_URL?order=…`) polls `GET /v1/tokens/claim` until the webhook arrived. The token is shown once and kept in the browser (`localStorage` `pdfcraft.paidToken`); it is used instead of the free token while valid. The page also shows plan, limit and end date (`GET /v1/token`, authenticated), renews the token (`tokenId` checkout), and cancels the subscription. Set `MOLLIE_REDIRECT_URL` to the app URL (`https://<your-host>/app/`).
 
+## Legal texts
+
+`frontend/agb.html` (terms), `frontend/widerruf.html` (withdrawal policy with the model form) and the Mollie section of `frontend/datenschutz.html` belong to the shop; they are linked in the landing page footer and on the purchase page. The purchase page requires two checkboxes (accept terms; request immediate start and acknowledge the loss of the withdrawal right) and labels the buttons "Zahlungspflichtig kaufen/verlängern" (§ 312j BGB button solution). The cancel button on the purchase page serves as the cancellation button (§ 312k BGB).
+
+These texts are drafts based on common German templates and the facts in this repository, **not legal advice**. Before go-live have them reviewed and check in particular: the seller (currently Vorneweg eG i.Gr. as in the imprint), VAT wording (small-business rule or not), willingness to take part in consumer arbitration, the address for the withdrawal, and the order confirmation on a durable medium (§ 312f BGB; PDFCraft collects no e-mail address, so Mollie's payment receipt or an own confirmation must cover this).
+
 ## Enable it (checklist)
 
 1. Mollie dashboard (start with the test API key): enable the payment methods you want. Subscriptions need methods that support mandates (card, PayPal, SEPA direct debit).
