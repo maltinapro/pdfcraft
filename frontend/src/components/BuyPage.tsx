@@ -9,6 +9,7 @@ import {
   claimToken,
   fetchTokenInfo,
   loadPending,
+  restoreToken,
   savePending,
   startCheckout,
   useOffers,
@@ -52,6 +53,7 @@ export function BuyPage({ unsaved }: Props) {
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [waiver, setWaiver] = useState(false)
   const consent = acceptTerms && waiver
+  const [entered, setEntered] = useState('')
 
   const refresh = useCallback(async () => {
     const current = await fetchTokenInfo()
@@ -132,6 +134,21 @@ export function BuyPage({ unsaved }: Props) {
     } finally {
       setBusy(null)
     }
+  }
+
+  const restore = async () => {
+    setBusy('restore')
+    setMessage(null)
+    const restored = await restoreToken(entered)
+    setBusy(null)
+    if (!restored) {
+      setMessage(tr('Dieses Token ist unbekannt, abgelaufen oder widerrufen.', 'This token is unknown, expired or revoked.'))
+      return
+    }
+    setEntered('')
+    setFresh(false)
+    setMessage(tr('Token gespeichert. Es wird jetzt in diesem Browser verwendet.', 'Token saved. It is now used in this browser.'))
+    await refresh()
   }
 
   const forget = () => {
@@ -290,6 +307,36 @@ export function BuyPage({ unsaved }: Props) {
             )}
           </section>
         )}
+
+        <section className="data-card">
+          <h2>{tr('Token bereits gekauft?', 'Already bought a token?')}</h2>
+          <p>
+            {tr(
+              'Haben Sie Ihr Token gespeichert (z. B. nach dem Löschen der Browserdaten), tragen Sie es hier wieder ein.',
+              'If you saved your token (e.g. after browser data was deleted), enter it here again.',
+            )}
+          </p>
+          <form
+            className="token-row"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void restore()
+            }}
+          >
+            <input
+              className="token-value"
+              type="password"
+              autoComplete="off"
+              placeholder="pk_…"
+              value={entered}
+              aria-label={tr('Token', 'Token')}
+              onChange={(e) => setEntered(e.target.value)}
+            />
+            <button className="btn" type="submit" disabled={busy !== null || !entered.trim()}>
+              {busy === 'restore' ? '…' : tr('Token eintragen', 'Use this token')}
+            </button>
+          </form>
+        </section>
 
         <section className="data-card">
           <h2>{paid ? tr('Weiteres Token kaufen', 'Buy another token') : tr('Angebote', 'Offers')}</h2>
