@@ -11,6 +11,7 @@ PDFCraft is a full-stack PDF template builder:
 - Write pull request titles/descriptions and commit messages in English.
 - Keep `README.md` (short overview) and `docs/` (details) up to date: whenever a change affects setup, architecture, project structure, features, API, configuration or the tech stack, update the affected file in the same PR. Keep the README short; put details in `docs/`.
 - Work in one PR per roadmap step, branched from the latest `main`, so each step can be tested locally.
+- Epic sub-issues: the PR description must contain `Closes #<n>` for every sub-issue the PR solves (and for the epic when it finishes it), so GitHub closes them on merge. If an issue's code change is large, or it makes sense for review, open one PR per sub-issue (branched from the latest `main`, or stacked) instead of one PR for the whole epic; small, closely related sub-issues may share a PR.
 - PR titles must follow Conventional Commits (e.g. `feat: ...`), because PRs are squash-merged and the title becomes the commit message.
 
 ## Repository Structure
