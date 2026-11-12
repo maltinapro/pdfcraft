@@ -149,7 +149,7 @@ Cleanup: `docker rm -f pdfcraft-valkey`.
 java -jar Mustang-CLI-2.26.0.jar --action validate --source invoice.pdf
 ```
 
-Expected: `Parsed PDF:valid XML:valid`, PDF/A-3b compliant. For the EN 16931 profile, XRechnung-only rules (BR-DE-*) appear as notices; with the XRechnung profile and contact, phone and buyer reference filled in they disappear.
+Expected: `Parsed PDF:valid XML:valid`, PDF/A-3b compliant. To validate the fixed CI corpus of invoices and credit notes locally, see [E-invoice conformance check](10-architecture-and-extending.md#customizing-the-invoice-template). For the EN 16931 profile, XRechnung-only rules (BR-DE-*) appear as notices; with the XRechnung profile and contact, phone and buyer reference filled in they disappear.
 
 ## Internetmarke (optional)
 

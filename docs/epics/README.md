@@ -6,7 +6,7 @@ The code changes derived from the business plan ("Businessplan PDFCraft", digita
 
 - Issue IDs: `EXX-NN` (for example `E02-03`). Status by checkbox: `- [ ]` open, `- [x]` done.
 - Every issue has a short description and acceptance criteria (AC).
-- One PR per issue (or a coherent group of issues of one epic), branched from the latest `main`; PR titles follow Conventional Commits (`feat: ...`, `docs: ...`).
+- One PR per issue when the change is large or reviews better that way, otherwise a coherent group of small issues of one epic; branched from the latest `main`. The PR description lists `Closes #<n>` for every sub-issue it solves (and for the epic when it completes it), so the issues are closed on merge; PR titles follow Conventional Commits (`feat: ...`, `docs: ...`).
 - When an issue is finished: tick the checkbox, update the status in [roadmap.md](../roadmap.md), the affected docs, `README.md` and `AGENTS.md`.
 - Epics may be adjusted; name the reason in the PR.
 
