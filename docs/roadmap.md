@@ -4,7 +4,7 @@ Derived from the business plan ("Businessplan PDFCraft", digitalrechnung.jetzt, 
 
 Status: `open` · `in progress` · `done`. After every finished epic or issue, update this file and the epic file. Conventions and GitHub workflow: [epics/README.md](epics/README.md).
 
-GitHub issues are created **phase by phase** (epic issue + one sub-issue per task, labels `epic` / `task` / `phase-N`). Created so far: none.
+GitHub issues are created **phase by phase** (epic issue + one sub-issue per task, labels `epic` / `task` / `phase-N`). Created so far: phase 1 (E01 #101, E02 #105, E03 #108 with their sub-issues).
 
 ## Epics
 
