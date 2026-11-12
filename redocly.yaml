@@ -1,0 +1,5 @@
+extends:
+  - recommended
+rules:
+  # The spec lists the local backend on purpose
+  no-server-example.com: off

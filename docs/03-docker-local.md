@@ -9,7 +9,7 @@ Files: `backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`, `.dock
 | Backend | `docker build -f backend/Dockerfile -t pdfcraft-backend .` | Release binary + `vendor/typst-packages`; `TYPST_PACKAGE_PATH=/app/typst-packages`; port 3000 |
 | Frontend | `docker build -t pdfcraft-frontend frontend` | Static build served by nginx; port 80 |
 
-The backend build context is the **repository root**, because the binary embeds `frontend/src/template/invoice.typ`.
+The backend build context is the **repository root**, because the binary embeds `frontend/src/template/invoice.typ`. The frontend build context is the repository root too (`docker build -f frontend/Dockerfile .`), because the build publishes `docs/openapi.yaml` as `/api/openapi.yaml`.
 
 The frontend image bakes the backend URL in at build time:
 

@@ -74,7 +74,7 @@ curl -X POST http://localhost:3000/v1/invoices \
   --data @pdfcraft-config.json -o invoice.pdf
 ```
 
-Full reference: [API Reference](docs/09-api-reference.md).
+Full reference: [API Reference](docs/09-api-reference.md). The machine-readable [OpenAPI 3.1 specification](docs/openapi.yaml) (generate clients from it) is published with the frontend as an interactive reference at `/api/` ([live](https://digitalrechnung.jetzt/api/), `/api/openapi.yaml`).
 
 ## Documentation
 
@@ -88,7 +88,7 @@ Full reference: [API Reference](docs/09-api-reference.md).
 | [Production](docs/06-production.md) | Deploying the `/v1` API |
 | [Demo System](docs/07-demo-system.md) | Showing the configurator to prospects |
 | [Kubernetes / Helm](docs/08-kubernetes-helm-outlook.md) | Demo chart in `deploy/helm/pdfcraft`; production chart planned |
-| [API Reference](docs/09-api-reference.md) | Endpoints, bodies, examples |
+| [API Reference](docs/09-api-reference.md) | Endpoints, bodies, examples; [OpenAPI spec](docs/openapi.yaml) |
 | [Architecture and Extending](docs/10-architecture-and-extending.md) | Structure, how it works, adding fields |
 | [Free Token and Anubis](docs/11-free-token-and-anubis.md) | Free tokens, Anubis, watermark |
 | [Purchased Tokens (Mollie)](docs/12-paid-tokens-mollie.md) | Feature flag, purchase page, checkout, Mollie webhook, renewal, cancelling |

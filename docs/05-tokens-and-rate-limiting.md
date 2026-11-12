@@ -69,7 +69,7 @@ All errors are JSON: `{"error": "<code>", "details": "<text>"}`.
 | 400 | `validation_error` | Input invalid; `details` lists the problems with their paths |
 | 400 | `invalid_request` | Malformed JSON, empty or too large `invoices` list |
 | 401 | `unauthorized` | Missing, wrong, expired or revoked token; purchased tokens while disabled (`WWW-Authenticate: Bearer`) |
-| 413 | – | Body larger than 2 MB |
+| 413 | `invalid_request` | Body larger than 2 MB |
 | 422 | `typst_compile_error` | Template compile problem (should not happen with validated input; report it) |
 | 429 | `rate_limited` | Limit reached; see `Retry-After` |
 | 503 | `store_unavailable` | Valkey missing or unreachable |

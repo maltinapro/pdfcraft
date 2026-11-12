@@ -2,6 +2,14 @@
 
 See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key management and error codes, and [Configuration](04-configuration.md) for server settings.
 
+## OpenAPI specification
+
+[`openapi.yaml`](openapi.yaml) (OpenAPI 3.1) describes `POST /v1/invoices`, `/v1/invoices/bulk`, `/v1/documents`, `/v1/documents/bulk`, `GET /v1/token`, the two ways to send the token (`Authorization: Bearer <token>` or `X-API-Key`), `Retry-After` on `429`/`503` and the error envelope with its codes. The purchase, Mollie webhook, free-token and postage endpoints are not part of it yet. Use it to generate a client (for example with [OpenAPI Generator](https://openapi-generator.tech/)) or to try requests.
+
+- **Interactive reference:** the frontend build publishes the spec as `/api/openapi.yaml` and renders it with a self-hosted Swagger UI at `/api/` (no external requests; with `docker compose up --build` at http://localhost:8080/api/, with `npm run dev` at http://localhost:5173/api/). "Try it out" sends the requests to the host that serves the page.
+- **Quickstart:** `curl -X POST https://digitalrechnung.jetzt/v1/invoices -H 'Authorization: Bearer YOUR_TOKEN' -H 'content-type: application/json' --data @pdfcraft-config.json -o invoice.pdf` (examples below).
+- **Kept in sync:** the request examples of the spec are posted through the validation and rendering code by the test `openapi_request_examples_are_accepted` (`backend/src/v1.rs`), and `openapi_enums_match_the_validation` compares the allowed values (fonts, units, tax rates, locales, profiles, document types, length limits) with the code. CI also lints the file with Redocly (`npx @redocly/cli@2.78.0 lint docs/openapi.yaml --max-problems 0`, rules in `redocly.yaml`). When you change a field, limit or error code of one of these endpoints, change the spec in the same PR.
+
 ## Overview
 
 | Endpoint | Auth | Purpose |

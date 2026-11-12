@@ -928,4 +928,112 @@ mod tests {
             }
         }
     }
+
+    // ------------------------------------------------------------ OpenAPI spec (docs/openapi.yaml)
+
+    fn spec() -> serde_json::Value {
+        serde_yaml::from_str(include_str!("../../docs/openapi.yaml")).expect("docs/openapi.yaml is valid YAML")
+    }
+
+    /// All request examples of an operation: `(name, body)`.
+    fn spec_examples(spec: &serde_json::Value, path: &str) -> Vec<(String, serde_json::Value)> {
+        let examples = &spec["paths"][path]["post"]["requestBody"]["content"]["application/json"]["examples"];
+        let examples = examples.as_object().unwrap_or_else(|| panic!("{path} has request examples"));
+        assert!(!examples.is_empty(), "{path} has request examples");
+        examples.iter().map(|(name, example)| (format!("{path} {name}"), example["value"].clone())).collect()
+    }
+
+    fn enum_values(schema: &serde_json::Value) -> Vec<String> {
+        schema["enum"]
+            .as_array()
+            .expect("an enum")
+            .iter()
+            .map(|v| v.as_str().map_or_else(|| v.to_string(), str::to_string))
+            .collect()
+    }
+
+    /// Validates an invoice request the way the handlers do and renders it.
+    async fn render_invoice_example(name: &str, settings: serde_json::Value, invoice: serde_json::Value) {
+        let settings: Settings = serde_json::from_value(settings).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let invoice: Invoice = serde_json::from_value(invoice).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let mut errors = Errors::default();
+        let checked_settings = check_settings(&settings, &mut errors);
+        let checked = check_invoice(&invoice, "invoice", &mut errors);
+        assert!(errors.0.is_empty(), "{name}: {:?}", errors.0);
+        let (data, assets) = invoice_data(&settings, checked_settings.data, &invoice, checked, Vec::new());
+        let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await.unwrap_or_else(|e| panic!("{name}: {}", e.details));
+        assert!(pdf.starts_with(b"%PDF"), "{name}");
+    }
+
+    /// Validates a document request the way the handlers do and renders it.
+    async fn render_document_example(name: &str, kind: &str, settings: serde_json::Value, document: serde_json::Value) {
+        let kind = Kind::parse(kind).unwrap_or_else(|| panic!("{name}: unknown type {kind}"));
+        let settings: Settings = serde_json::from_value(settings).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let document: Document = serde_json::from_value(document).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let mut errors = Errors::default();
+        let checked_settings = check_settings(&settings, &mut errors);
+        assert!(errors.0.is_empty(), "{name}: {:?}", errors.0);
+        let (data, assets) = prepare_document(kind, &settings, checked_settings.data, Vec::new(), &document, "document", &mut errors)
+            .unwrap_or_else(|| panic!("{name}: {:?}", errors.0));
+        let pdf = render_pdf(kind.template(), data, assets).await.unwrap_or_else(|e| panic!("{name}: {}", e.details));
+        assert!(pdf.starts_with(b"%PDF"), "{name}");
+    }
+
+    /// The request examples of `docs/openapi.yaml` are real requests: every one passes the validation
+    /// of the handlers and renders a PDF, so the spec cannot drift from the code unnoticed.
+    #[tokio::test]
+    async fn openapi_request_examples_are_accepted() {
+        let spec = spec();
+
+        for (name, body) in spec_examples(&spec, "/v1/invoices") {
+            render_invoice_example(&name, body["settings"].clone(), body["invoice"].clone()).await;
+        }
+        for (name, body) in spec_examples(&spec, "/v1/invoices/bulk") {
+            let invoices = body["invoices"].as_array().expect("invoices");
+            assert!(!invoices.is_empty(), "{name}");
+            for (i, invoice) in invoices.iter().enumerate() {
+                render_invoice_example(&format!("{name}[{i}]"), body["settings"].clone(), invoice.clone()).await;
+            }
+        }
+
+        let mut single_types = Vec::new();
+        for (name, body) in spec_examples(&spec, "/v1/documents") {
+            let kind = body["type"].as_str().expect("type").to_string();
+            render_document_example(&name, &kind, body["settings"].clone(), body["document"].clone()).await;
+            single_types.push(kind);
+        }
+        for kind in Kind::ALL {
+            assert!(single_types.contains(&kind.slug().to_string()), "/v1/documents has no example for {}", kind.slug());
+        }
+        for (name, body) in spec_examples(&spec, "/v1/documents/bulk") {
+            let kind = body["type"].as_str().expect("type").to_string();
+            let documents = body["documents"].as_array().expect("documents");
+            assert!(!documents.is_empty(), "{name}");
+            for (i, document) in documents.iter().enumerate() {
+                render_document_example(&format!("{name}[{i}]"), &kind, body["settings"].clone(), document.clone()).await;
+            }
+        }
+    }
+
+    /// The allowed values of the spec are the ones the validation accepts.
+    #[test]
+    fn openapi_enums_match_the_validation() {
+        let spec = spec();
+        let schemas = &spec["components"]["schemas"];
+        let as_strings = |list: &[&str]| list.iter().map(|v| v.to_string()).collect::<Vec<_>>();
+
+        assert_eq!(enum_values(&schemas["Settings"]["properties"]["font"]), as_strings(crate::invoice::FONTS));
+        assert_eq!(enum_values(&schemas["Settings"]["properties"]["locale"]), as_strings(crate::invoice::LOCALES));
+        assert_eq!(enum_values(&schemas["Settings"]["properties"]["einvoiceProfile"]), as_strings(crate::invoice::PROFILES));
+        assert_eq!(enum_values(&schemas["Item"]["properties"]["unit"]), as_strings(crate::invoice::UNITS));
+        assert_eq!(
+            enum_values(&schemas["Item"]["properties"]["taxRate"]),
+            crate::invoice::TAX_RATES.iter().map(i64::to_string).collect::<Vec<_>>()
+        );
+        let kinds: Vec<&str> = Kind::ALL.iter().map(|k| k.slug()).collect();
+        assert_eq!(enum_values(&schemas["DocumentType"]), as_strings(&kinds));
+        assert_eq!(schemas["Invoice"]["properties"]["items"]["maxItems"], crate::invoice::MAX_ITEMS);
+        assert_eq!(schemas["ShortText"]["maxLength"], crate::invoice::MAX_SHORT);
+        assert_eq!(schemas["Settings"]["properties"]["footer"]["maxLength"], crate::invoice::MAX_LONG);
+    }
 }

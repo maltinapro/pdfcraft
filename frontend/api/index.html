@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>REST API reference | digitalrechnung.jetzt</title>
+    <meta
+      name="description"
+      content="REST API of digitalrechnung.jetzt: create invoices (ZUGFeRD / Factur-X, XRechnung), credit notes, offers, orders, delivery notes and letters as PDF from JSON. OpenAPI 3.1 specification and interactive reference."
+    />
+    <link rel="canonical" href="https://digitalrechnung.jetzt/api/" />
+    <meta name="robots" content="index, follow" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#241259" />
+  </head>
+  <body>
+    <header class="api-header">
+      <a class="brand" href="/">digitalrechnung.jetzt</a>
+      <nav>
+        <a href="/app/">Demo</a>
+        <a href="./openapi.yaml" download>openapi.yaml</a>
+        <a href="https://github.com/maltinapro/pdfcraft/blob/main/docs/09-api-reference.md">Guide</a>
+      </nav>
+    </header>
+    <main class="api-main">
+      <section class="quickstart">
+        <h1>REST API</h1>
+        <p>
+          Send JSON, get a PDF. Every request needs a purchased token; see the
+          <a href="./openapi.yaml">OpenAPI specification</a> for all fields, limits and error codes.
+        </p>
+        <pre><code id="curl-example"></code></pre>
+        <p class="hint">
+          Replace <code>YOUR_TOKEN</code> with your token. Free tokens exist for the browser demo only and
+          add a draft watermark. &ldquo;Try it out&rdquo; below sends requests to this site, whichever server is selected.
+        </p>
+      </section>
+      <div id="swagger-ui"></div>
+      <noscript><p>The interactive reference needs JavaScript. The raw specification is <a href="./openapi.yaml">openapi.yaml</a>.</p></noscript>
+    </main>
+    <script type="module" src="/src/apiReference.ts"></script>
+  </body>
+</html>

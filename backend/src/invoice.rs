@@ -22,11 +22,11 @@ pub const FONTS: &[&str] = &[
     "New Computer Modern",
     "DejaVu Sans Mono",
 ];
-const LOCALES: &[&str] = &["de-de", "en-de"];
+pub(crate) const LOCALES: &[&str] = &["de-de", "en-de"];
 pub(crate) const UNITS: &[&str] = &[
     "pcs", "h", "d", "mo", "y", "flat", "kg", "m", "km", "m2", "l",
 ];
-const PROFILES: &[&str] = &["en16931", "xrechnung"];
+pub(crate) const PROFILES: &[&str] = &["en16931", "xrechnung"];
 pub(crate) const TAX_RATES: &[i64] = &[19, 7, 0];
 
 const MAX_NUMBER: f64 = 1e9;
