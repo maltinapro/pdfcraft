@@ -19,6 +19,7 @@ Detailed guides for running, testing and deploying PDFCraft. The top-level [READ
 | 13 | [Observability](13-observability.md) | JSON logs (Loki), Prometheus metrics, PodMonitor/alerts, Grafana dashboards |
 | 14 | [Internetmarke](14-internetmarke-integration.md) | buy Deutsche Post stamps with the user's own Portokasse and print them onto PDFs (stateless, off by default) |
 | 15 | [PDF Signatures](15-pdf-signatures.md) | signature image on documents (implemented) and what a digital PDF signature needs (research: TLS/domain certificates do not work) |
+| – | [Roadmap and Epics](roadmap.md) | see the planned product work (phases, epics, sub-issues) derived from the business plan; conventions in [epics/README.md](epics/README.md) |
 
 ## Status legend
 
