@@ -27,7 +27,7 @@ A full-stack **PDF Template Builder** that combines simple form-based configurat
 - ⚡ **Fast PDFs** — a lean Typst template and a Rust-generated Factur-X/XRechnung XML render an invoice in under 10 ms
 - 📦 **Vendored Typst packages** — the few packages used (EPC QR code) ship in the repo; no network access at runtime
 - ✉️ **Deutsche Post stamps (optional)** — buy an Internetmarke with your own Portokasse account and print the franking mark into the address field; stateless, nothing is stored on the server (off by default, see [guide](docs/14-internetmarke-integration.md))
-- 🧾 **ZUGFeRD / Factur-X and XRechnung** — PDF/A-3b output with embedded EN 16931 or XRechnung XML (validated with Mustang), plus a sidebar that flags missing mandatory data
+- 🧾 **ZUGFeRD / Factur-X and XRechnung** — PDF/A-3b output with embedded EN 16931 or XRechnung XML (a fixed corpus of invoices and credit notes is validated with Mustang in CI), plus a sidebar that flags missing mandatory data
 
 ## Quick Start
 

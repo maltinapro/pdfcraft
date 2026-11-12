@@ -92,7 +92,17 @@ The invoice is a single Typst file: `frontend/src/template/invoice.typ` (the bac
 
 **Taking something from the invoice-pro fork** ([maltinapro/invoice-pro](https://github.com/maltinapro/invoice-pro), upstream [leonieziechmann/invoice-pro](https://github.com/leonieziechmann/invoice-pro), MIT; it is no longer vendored): look at the fork's `src/` for layout ideas, copy the layout code into `invoice.typ` and replace its data access (`loom` / model values) with the fields above. Keep the MIT copyright notice (© Leonie Ziechmann) if you copy substantial code, e.g. in a comment or in `README.md`. Do not re-add the package as a dependency unless you accept the performance cost.
 
-**Checking a change**: `cd backend && cargo test --release`, start the backend (`cargo run --release`; the warm-up compiles the real template and fails loudly on errors), generate a PDF via the app or `/v1/invoices`, and for e-invoice changes validate it with Mustang (`java -jar Mustang-CLI-2.26.0.jar --action validate --source invoice.pdf`).
+**Checking a change**: `cd backend && cargo test --release`, start the backend (`cargo run --release`; the warm-up compiles the real template and fails loudly on errors), generate a PDF via the app or `/v1/invoices`, and for e-invoice changes run the conformance check below (or validate a single PDF with `java -jar Mustang-CLI-2.26.0.jar --action validate --source invoice.pdf`).
+
+**E-invoice conformance check** (also runs in CI): the test `renders_einvoice_conformance_corpus` (`backend/src/v1.rs`) renders a fixed corpus: EN 16931 and XRechnung invoices with several tax rates, a 0 % item with exemption reason, an English invoice and credit notes (TypeCode 381). It always asserts that the PDF carries a complete `factur-x.xml` / `xrechnung.xml` (not `invoice-draft.xml`); with `PDF_OUT=<dir>` it writes `<dir>/einvoice-<name>.pdf`. To validate the corpus locally (Java and the Mustang CLI jar, version and SHA-256 are pinned in `.github/workflows/ci.yml`):
+
+```bash
+mkdir -p /tmp/einvoice-corpus
+(cd backend && PDF_OUT=/tmp/einvoice-corpus cargo test --locked renders_einvoice_conformance_corpus)
+java -jar Mustang-CLI-2.26.0.jar --action validateExpectValid --directory /tmp/einvoice-corpus --disable-file-logging
+```
+
+The exit code is non-zero if any file is invalid. Add new cases (new field, tax category, profile) to the corpus in the same PR as the change.
 
 ## Extending
 
@@ -121,5 +131,5 @@ The invoice is a single Typst file: `frontend/src/template/invoice.typ` (the bac
 
 ## CI and dependency updates
 
-- `.github/workflows/ci.yml` runs on every PR and on `main`: frontend `npm ci && npm run build` (type check + build) and backend `cargo check --locked --all-targets` + `cargo test --locked` (with dependency caching). `helm-lint.yml` lints the chart when `deploy/` changes. Make the `CI` jobs (`frontend`, `backend`) required checks in the branch protection of `main`.
+- `.github/workflows/ci.yml` runs on every PR and on `main`: frontend `npm ci && npm run build` (type check + build) and backend `cargo check --locked --all-targets` + `cargo test --locked` (with dependency caching). `helm-lint.yml` lints the chart when `deploy/` changes. The job `einvoice` renders the e-invoice corpus (see "E-invoice conformance check" above), downloads the pinned Mustang CLI (checksum verified, cached) and fails if Mustang reports any file as invalid. Make the `CI` jobs (`frontend`, `backend`, `einvoice`) required checks in the branch protection of `main`.
 - `renovate.json` configures Renovate (npm, cargo, GitHub Actions, Dockerfiles, Helm values). Updates run weekly (Monday before 06:00), minor/patch updates are grouped per ecosystem, Typst crates are bumped together. The issue "Dependency Dashboard" gives the overview. Requires the Renovate GitHub App to be installed for the repository (https://github.com/apps/renovate).

@@ -41,3 +41,46 @@ jobs:
           workspaces: backend
       - run: cargo check --locked --all-targets
       - run: cargo test --locked
+
+  # Renders a fixed corpus of e-invoices (see `renders_einvoice_conformance_corpus` in backend/src/v1.rs)
+  # and fails if Mustang reports any of them as invalid.
+  einvoice:
+    runs-on: ubuntu-24.04
+    env:
+      MUSTANG_VERSION: 2.26.0
+      MUSTANG_SHA256: 42d7868cb68264874a7b8cab4c3587b03b23ccc7cd72373da917f66758bb9736
+      CORPUS_DIR: ${{ github.workspace }}/einvoice-corpus
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Render the e-invoice corpus
+        working-directory: backend
+        run: |
+          mkdir -p "$CORPUS_DIR"
+          PDF_OUT="$CORPUS_DIR" cargo test --locked renders_einvoice_conformance_corpus
+          count=$(find "$CORPUS_DIR" -name 'einvoice-*.pdf' | wc -l)
+          echo "Rendered $count PDFs"
+          [ "$count" -ge 7 ] || { echo "Corpus is incomplete"; exit 1; }
+      - name: Cache Mustang CLI
+        id: mustang-cache
+        uses: actions/cache@v4
+        with:
+          path: Mustang-CLI-${{ env.MUSTANG_VERSION }}.jar
+          key: mustang-cli-${{ env.MUSTANG_VERSION }}-${{ env.MUSTANG_SHA256 }}
+      - name: Download Mustang CLI
+        if: steps.mustang-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL -o "Mustang-CLI-$MUSTANG_VERSION.jar" \
+            "https://repo1.maven.org/maven2/org/mustangproject/Mustang-CLI/$MUSTANG_VERSION/Mustang-CLI-$MUSTANG_VERSION.jar"
+      - name: Verify Mustang CLI checksum
+        run: echo "$MUSTANG_SHA256  Mustang-CLI-$MUSTANG_VERSION.jar" | sha256sum -c -
+      - name: Validate the corpus with Mustang
+        # validateExpectValid exits non-zero as soon as one file is invalid
+        run: java -jar "Mustang-CLI-$MUSTANG_VERSION.jar" --action validateExpectValid --directory "$CORPUS_DIR" --disable-file-logging

@@ -824,6 +824,80 @@ mod tests {
         }
     }
 
+    /// Fixed e-invoice corpus for the Mustang conformance check in CI (`docs/epics/E01-einvoice-conformance-ci.md`).
+    /// With `PDF_OUT=<dir>` the PDFs are written as `<dir>/einvoice-<name>.pdf`; without it the test still checks
+    /// that every document carries a complete e-invoice XML (no `invoice-draft.xml`).
+    #[tokio::test]
+    async fn renders_einvoice_conformance_corpus() {
+        let sender = json!({
+            "name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt",
+            "email": "rechnung@muster.example", "phone": "+49 30 123456", "contactName": "Erika Muster",
+            "vatId": "DE123456789", "taxNr": "12/345/67890",
+        });
+        let bank = json!({"name": "Musterbank", "iban": "DE89370400440532013000", "bic": "COBADEFFXXX"});
+        let recipient = json!({
+            "name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt",
+            "vatId": "DE987654321", "email": "einkauf@kunde.example", "buyerReference": "04011000-12345-34",
+        });
+        let mixed_items = json!([
+            {"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19},
+            {"description": "Fachbuch", "quantity": 3, "unit": "pcs", "price": 24.9, "taxRate": 7},
+            {"description": "Wartungspauschale", "quantity": 1, "unit": "flat", "price": 149.99, "taxRate": 19},
+        ]);
+        let exempt_items = json!([
+            {"description": "Beratung", "quantity": 2.5, "unit": "h", "price": 80, "taxRate": 19},
+            {"description": "Innergemeinschaftliche Lieferung", "quantity": 12, "unit": "kg", "price": 3.333, "taxRate": 0},
+        ]);
+        let settings = |profile: &str, locale: &str| json!({
+            "sender": sender, "bank": bank, "locale": locale, "einvoiceProfile": profile, "paymentDays": 30,
+            "exemptionReason": "Steuerfrei nach § 4 Nr. 1b UStG",
+        });
+        let invoice = |items: &serde_json::Value| json!({
+            "number": "2026-001", "date": "2026-01-31", "recipient": recipient, "items": items,
+        });
+        let credit_note = |items: &serde_json::Value| json!({
+            "number": "G-2026-001", "date": "2026-02-10", "reference": "2026-001", "referenceDate": "2026-01-31",
+            "reason": "Falsche Menge", "recipient": recipient, "items": items,
+        });
+
+        // (file name, e-invoice file expected in the PDF, settings, credit note?, document)
+        let corpus = [
+            ("en16931-mixed-rates", "factur-x.xml", settings("en16931", "de-de"), false, invoice(&mixed_items)),
+            ("en16931-exempt", "factur-x.xml", settings("en16931", "de-de"), false, invoice(&exempt_items)),
+            ("en16931-english", "factur-x.xml", settings("en16931", "en-de"), false, invoice(&mixed_items)),
+            ("xrechnung-mixed-rates", "xrechnung.xml", settings("xrechnung", "de-de"), false, invoice(&mixed_items)),
+            ("xrechnung-exempt", "xrechnung.xml", settings("xrechnung", "de-de"), false, invoice(&exempt_items)),
+            ("credit-note-en16931", "factur-x.xml", settings("en16931", "de-de"), true, credit_note(&mixed_items)),
+            ("credit-note-xrechnung", "xrechnung.xml", settings("xrechnung", "de-de"), true, credit_note(&exempt_items)),
+        ];
+        for (name, attached, settings, is_credit_note, document) in corpus {
+            let settings: Settings = serde_json::from_value(settings).unwrap();
+            let mut errors = Errors::default();
+            let s = check_settings(&settings, &mut errors);
+            let pdf = if is_credit_note {
+                let raw: Document = serde_json::from_value(document).unwrap();
+                let doc = documents::check_document(Kind::CreditNote, &raw, settings.locale.as_deref() == Some("en-de"), &mut errors);
+                assert!(errors.0.is_empty(), "{name}: {:?}", errors.0);
+                let (data, assets) = documents::build(Kind::CreditNote, &settings, s.data, &raw, doc, Vec::new());
+                render_pdf(Kind::CreditNote.template(), data, assets).await
+            } else {
+                let raw: Invoice = serde_json::from_value(document).unwrap();
+                let invoice = check_invoice(&raw, "invoice", &mut errors);
+                assert!(errors.0.is_empty(), "{name}: {:?}", errors.0);
+                let (data, assets) = invoice_data(&settings, s.data, &raw, invoice, Vec::new());
+                render_pdf(INVOICE_TEMPLATE, data, assets).await
+            }
+            .unwrap_or_else(|e| panic!("{name}: {}", e.details));
+            assert!(pdf.starts_with(b"%PDF"), "{name}");
+            let contains = |needle: &[u8]| pdf.windows(needle.len()).any(|w| w == needle);
+            assert!(contains(attached.as_bytes()), "{name}: {attached} is not attached");
+            assert!(!contains(b"invoice-draft.xml"), "{name}: the e-invoice XML is only a draft");
+            if let Ok(dir) = std::env::var("PDF_OUT") {
+                std::fs::write(format!("{dir}/einvoice-{name}.pdf"), pdf).unwrap();
+            }
+        }
+    }
+
     #[tokio::test]
     async fn renders_invoice_with_and_without_watermark() {
         let settings: Settings = serde_json::from_value(json!({
