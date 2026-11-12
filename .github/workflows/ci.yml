@@ -28,8 +28,8 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-  # Lints docs/openapi.yaml (rules in redocly.yaml; warnings fail the job). The backend tests
-  # (`openapi_*` in backend/src/v1.rs) check the spec's examples and enums against the code.
+  # Lints docs/openapi.yaml (rules in redocly.yaml; warnings fail the job). The file is generated from
+  # the backend code: the backend tests (`openapi_*`) fail when it is outdated or an example is invalid.
   openapi:
     runs-on: ubuntu-24.04
     steps:

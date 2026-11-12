@@ -1,8 +1,9 @@
 openapi: 3.1.0
 info:
-  title: digitalrechnung.jetzt API
-  version: 1.0.0
-  summary: Create invoices and business documents as PDF (with ZUGFeRD / Factur-X or XRechnung data) from plain JSON.
+  contact:
+    email: hello@maltina.pro
+    name: maltina.pro
+    url: https://maltina.pro/
   description: |
     The server holds the templates; clients send only data. All text is validated and escaped by the server,
     so do **not** escape it yourself. Problems of a request are returned together as `400 validation_error`.
@@ -22,174 +23,30 @@ info:
 
     The request examples are tested against the backend, so they stay valid.
   license:
-    name: MIT
     identifier: MIT
-  contact:
-    name: maltina.pro
-    url: https://maltina.pro/
-    email: hello@maltina.pro
+    name: MIT
+  summary: Create invoices and business documents as PDF (with ZUGFeRD / Factur-X or XRechnung data) from plain JSON.
+  title: digitalrechnung.jetzt API
+  version: 1.0.0
 servers:
-  - url: https://digitalrechnung.jetzt
-    description: Demo / production
-  - url: http://localhost:3000
-    description: Local backend (`cargo run` or `docker compose up`)
+- description: Demo / production
+  url: https://digitalrechnung.jetzt
+- description: Local backend (`cargo run` or `docker compose up`)
+  url: http://localhost:3000
 security:
-  - bearerAuth: []
-  - apiKeyAuth: []
+- bearerAuth: []
+- apiKeyAuth: []
 tags:
-  - name: Invoices
-    description: E-invoices (ZUGFeRD / Factur-X, XRechnung) as PDF.
-  - name: Documents
-    description: Credit notes, offers, order confirmations, delivery notes and letters as PDF.
-  - name: Token
-    description: Information about the calling token.
+- description: E-invoices (ZUGFeRD / Factur-X, XRechnung) as PDF.
+  name: Invoices
+- description: Credit notes, offers, order confirmations, delivery notes and letters as PDF.
+  name: Documents
+- description: Information about the calling token.
+  name: Token
 paths:
-  /v1/invoices:
-    post:
-      tags: [Invoices]
-      operationId: createInvoice
-      summary: Create one invoice (PDF)
-      description: |
-        Renders one invoice as PDF/A-3b. With `settings.zugferd` (default `true`) the PDF carries the
-        e-invoice XML (`factur-x.xml` for `en16931`, `xrechnung.xml` for `xrechnung`). If the data is not
-        sufficient for a valid e-invoice, `invoice-draft.xml` is attached instead. Costs one rate-limit unit.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvoiceRequest'
-            examples:
-              invoice:
-                summary: Invoice with two items
-                value:
-                  settings:
-                    sender:
-                      name: Muster GmbH
-                      address: Musterstr. 1
-                      city: 12345 Musterstadt
-                      email: rechnung@muster.example
-                      vatId: DE123456789
-                    bank:
-                      name: Musterbank
-                      iban: DE89370400440532013000
-                      bic: COBADEFFXXX
-                    locale: de-de
-                    einvoiceProfile: en16931
-                    paymentDays: 30
-                  invoice:
-                    number: 2026-001
-                    date: '2026-01-31'
-                    recipient:
-                      name: Kunde AG
-                      address: Kundenweg 5
-                      city: 54321 Kundenstadt
-                    items:
-                      - description: Beratung
-                        quantity: 8
-                        unit: h
-                        price: 95
-                        taxRate: 19
-                      - description: Fachbuch
-                        quantity: 3
-                        unit: pcs
-                        price: 24.9
-                        taxRate: 7
-      responses:
-        '200':
-          $ref: '#/components/responses/Pdf'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '413':
-          $ref: '#/components/responses/TooLarge'
-        '415':
-          $ref: '#/components/responses/UnsupportedMediaType'
-        '422':
-          $ref: '#/components/responses/Unprocessable'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/Unavailable'
-  /v1/invoices/bulk:
-    post:
-      tags: [Invoices]
-      operationId: createInvoicesBulk
-      summary: Create many invoices (ZIP of PDFs)
-      description: |
-        Renders many invoices with shared settings and returns a ZIP with one `invoice-<number>.pdf` per
-        invoice. If one invoice is invalid, nothing is returned and the error names the entry
-        (`invoices[3]: …`). The number of invoices per request depends on the plan (`bulkMax` of
-        `GET /v1/token`); `0` or more than `bulkMax` entries give `400 invalid_request`. Costs one
-        rate-limit unit per invoice, so the request also has to fit into `limitPerMinute`.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvoiceBulkRequest'
-            examples:
-              invoices:
-                summary: Two invoices
-                value:
-                  settings:
-                    sender:
-                      name: Muster GmbH
-                      address: Musterstr. 1
-                      city: 12345 Musterstadt
-                    bank:
-                      iban: DE89370400440532013000
-                  invoices:
-                    - number: 2026-001
-                      date: '2026-01-31'
-                      recipient:
-                        name: Kunde AG
-                        address: Kundenweg 5
-                        city: 54321 Kundenstadt
-                      items:
-                        - description: Beratung
-                          quantity: 8
-                          unit: h
-                          price: 95
-                    - number: 2026-002
-                      date: '2026-02-03'
-                      recipient:
-                        name: Beispiel KG
-                        address: Beispielallee 2
-                        city: 10115 Berlin
-                      items:
-                        - description: Wartungspauschale
-                          quantity: 1
-                          unit: flat
-                          price: 149.99
-      responses:
-        '200':
-          $ref: '#/components/responses/Zip'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '413':
-          $ref: '#/components/responses/TooLarge'
-        '415':
-          $ref: '#/components/responses/UnsupportedMediaType'
-        '422':
-          $ref: '#/components/responses/Unprocessable'
-        '429':
-          $ref: '#/components/responses/RateLimited'
-        '500':
-          $ref: '#/components/responses/ServerError'
-        '503':
-          $ref: '#/components/responses/Unavailable'
   /v1/documents:
     post:
-      tags: [Documents]
-      operationId: createDocument
-      summary: Create one document (PDF)
-      description: |
+      description: |-
         Credit note (Stornorechnung), offer, order confirmation, delivery note or letter; `type` selects the
         template. Same authentication, rate limit (one unit per PDF), watermark rules and error format as
         `POST /v1/invoices`. Only `settings.sender`, the logo, signature, accent color, font, locale and footer
@@ -205,130 +62,131 @@ paths:
         | `order` | `number`, `date`, `recipient`, `items` | `deliveryDate`, `reference`, `intro`, `closing` |
         | `delivery-note` | `number`, `date`, `recipient`, `items` (shown without prices) | `deliveryDate`, `reference`, `intro`, `closing` |
         | `letter` | `date`, `recipient`, `subject`, `body` | `reference`, `closing` |
+      operationId: createDocument
       requestBody:
-        required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/DocumentRequest'
             examples:
+              credit-note:
+                summary: Credit note for invoice 2026-001
+                value:
+                  document:
+                    date: '2026-02-10'
+                    items:
+                    - description: Beratung
+                      price: 95
+                      quantity: 2
+                      taxRate: 19
+                      unit: h
+                    number: G-2026-001
+                    reason: Falsche Menge
+                    recipient:
+                      address: Kundenweg 5
+                      city: 54321 Kundenstadt
+                      name: Kunde AG
+                    reference: 2026-001
+                    referenceDate: '2026-01-31'
+                  settings:
+                    bank:
+                      iban: DE89370400440532013000
+                    sender:
+                      address: Musterstr. 1
+                      city: 12345 Musterstadt
+                      name: Muster GmbH
+                  type: credit-note
+              delivery-note:
+                summary: Delivery note
+                value:
+                  document:
+                    date: '2026-04-01'
+                    items:
+                    - description: Fachbuch
+                      price: 0
+                      quantity: 3
+                      unit: pcs
+                    number: L-2026-009
+                    recipient:
+                      address: Kundenweg 5
+                      city: 54321 Kundenstadt
+                      name: Kunde AG
+                    reference: AB-2026-004
+                  settings:
+                    sender:
+                      address: Musterstr. 1
+                      city: 12345 Musterstadt
+                      name: Muster GmbH
+                  type: delivery-note
               letter:
                 summary: Letter
                 value:
-                  type: letter
-                  settings:
-                    sender:
-                      name: Muster GmbH
-                      address: Musterstr. 1
-                      city: 12345 Musterstadt
                   document:
-                    date: '2026-11-03'
-                    recipient:
-                      name: Kunde AG
-                      address: Kundenweg 5
-                      city: 54321 Kundenstadt
-                    subject: Hallo
                     body: |-
                       Sehr geehrte Damen und Herren,
 
                       vielen Dank für Ihre Anfrage.
                     closing: Mit freundlichen Grüßen
-              credit-note:
-                summary: Credit note for invoice 2026-001
-                value:
-                  type: credit-note
-                  settings:
-                    sender:
-                      name: Muster GmbH
-                      address: Musterstr. 1
-                      city: 12345 Musterstadt
-                    bank:
-                      iban: DE89370400440532013000
-                  document:
-                    number: G-2026-001
-                    date: '2026-02-10'
-                    reference: 2026-001
-                    referenceDate: '2026-01-31'
-                    reason: Falsche Menge
+                    date: '2026-11-03'
                     recipient:
-                      name: Kunde AG
                       address: Kundenweg 5
                       city: 54321 Kundenstadt
-                    items:
-                      - description: Beratung
-                        quantity: 2
-                        unit: h
-                        price: 95
-                        taxRate: 19
+                      name: Kunde AG
+                    subject: Hallo
+                  settings:
+                    sender:
+                      address: Musterstr. 1
+                      city: 12345 Musterstadt
+                      name: Muster GmbH
+                  type: letter
               offer:
                 summary: Offer
                 value:
-                  type: offer
-                  settings:
-                    sender:
-                      name: Muster GmbH
-                      address: Musterstr. 1
-                      city: 12345 Musterstadt
                   document:
-                    number: A-2026-004
                     date: '2026-03-02'
-                    validUntil: '2026-03-31'
+                    items:
+                    - description: Webseite
+                      price: 2400
+                      quantity: 1
+                      taxRate: 19
+                      unit: flat
+                    number: A-2026-004
                     recipient:
-                      name: Kunde AG
                       address: Kundenweg 5
                       city: 54321 Kundenstadt
-                    items:
-                      - description: Webseite
-                        quantity: 1
-                        unit: flat
-                        price: 2400
-                        taxRate: 19
+                      name: Kunde AG
+                    validUntil: '2026-03-31'
+                  settings:
+                    sender:
+                      address: Musterstr. 1
+                      city: 12345 Musterstadt
+                      name: Muster GmbH
+                  type: offer
               order:
                 summary: Order confirmation
                 value:
-                  type: order
-                  settings:
-                    sender:
-                      name: Muster GmbH
-                      address: Musterstr. 1
-                      city: 12345 Musterstadt
                   document:
-                    number: AB-2026-004
                     date: '2026-03-05'
-                    reference: A-2026-004
                     deliveryDate: '2026-04-01'
+                    items:
+                    - description: Webseite
+                      price: 2400
+                      quantity: 1
+                      taxRate: 19
+                      unit: flat
+                    number: AB-2026-004
                     recipient:
-                      name: Kunde AG
                       address: Kundenweg 5
                       city: 54321 Kundenstadt
-                    items:
-                      - description: Webseite
-                        quantity: 1
-                        unit: flat
-                        price: 2400
-                        taxRate: 19
-              delivery-note:
-                summary: Delivery note
-                value:
-                  type: delivery-note
+                      name: Kunde AG
+                    reference: A-2026-004
                   settings:
                     sender:
-                      name: Muster GmbH
                       address: Musterstr. 1
                       city: 12345 Musterstadt
-                  document:
-                    number: L-2026-009
-                    date: '2026-04-01'
-                    reference: AB-2026-004
-                    recipient:
-                      name: Kunde AG
-                      address: Kundenweg 5
-                      city: 54321 Kundenstadt
-                    items:
-                      - description: Fachbuch
-                        quantity: 3
-                        unit: pcs
-                        price: 0
+                      name: Muster GmbH
+                  type: order
+            schema:
+              $ref: '#/components/schemas/DocumentRequest'
+        required: true
       responses:
         '200':
           $ref: '#/components/responses/Pdf'
@@ -348,55 +206,56 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/Unavailable'
+      summary: Create one document (PDF)
+      tags:
+      - Documents
   /v1/documents/bulk:
     post:
-      tags: [Documents]
-      operationId: createDocumentsBulk
-      summary: Create many documents of one type (ZIP of PDFs)
-      description: |
+      description: |-
         Renders many documents of one `type` with shared settings and returns a ZIP of PDFs named
         `<type>-<number>.pdf`. Any validation error rejects the whole request and names the entry
         (`documents[2]: …`). The number of documents per request depends on the plan (`bulkMax` of
         `GET /v1/token`). Costs one rate-limit unit per document.
+      operationId: createDocumentsBulk
       requestBody:
-        required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/DocumentBulkRequest'
             examples:
               offers:
                 summary: Two offers
                 value:
-                  type: offer
+                  documents:
+                  - date: '2026-03-02'
+                    items:
+                    - description: Webseite
+                      price: 2400
+                      quantity: 1
+                      unit: flat
+                    number: A-2026-004
+                    recipient:
+                      address: Kundenweg 5
+                      city: 54321 Kundenstadt
+                      name: Kunde AG
+                  - date: '2026-03-03'
+                    items:
+                    - description: Wartung
+                      price: 99
+                      quantity: 12
+                      unit: mo
+                    number: A-2026-005
+                    recipient:
+                      address: Beispielallee 2
+                      city: 10115 Berlin
+                      name: Beispiel KG
                   settings:
                     sender:
-                      name: Muster GmbH
                       address: Musterstr. 1
                       city: 12345 Musterstadt
-                  documents:
-                    - number: A-2026-004
-                      date: '2026-03-02'
-                      recipient:
-                        name: Kunde AG
-                        address: Kundenweg 5
-                        city: 54321 Kundenstadt
-                      items:
-                        - description: Webseite
-                          quantity: 1
-                          unit: flat
-                          price: 2400
-                    - number: A-2026-005
-                      date: '2026-03-03'
-                      recipient:
-                        name: Beispiel KG
-                        address: Beispielallee 2
-                        city: 10115 Berlin
-                      items:
-                        - description: Wartung
-                          quantity: 12
-                          unit: mo
-                          price: 99
+                      name: Muster GmbH
+                  type: offer
+            schema:
+              $ref: '#/components/schemas/DocumentBulkRequest'
+        required: true
       responses:
         '200':
           $ref: '#/components/responses/Zip'
@@ -416,497 +275,754 @@ paths:
           $ref: '#/components/responses/ServerError'
         '503':
           $ref: '#/components/responses/Unavailable'
-  /v1/token:
-    get:
-      tags: [Token]
-      operationId: getToken
-      summary: Information about the calling token
-      description: Kind, plan, rate limit, bulk size and end date of the token used for the request. Does not cost a rate-limit unit.
+      summary: Create many documents of one type (ZIP of PDFs)
+      tags:
+      - Documents
+  /v1/invoices:
+    post:
+      description: |-
+        Renders one invoice as PDF/A-3b. With `settings.zugferd` (default `true`) the PDF carries the
+        e-invoice XML (`factur-x.xml` for `en16931`, `xrechnung.xml` for `xrechnung`). If the data is not
+        sufficient for a valid e-invoice, `invoice-draft.xml` is attached instead. Costs one rate-limit unit.
+      operationId: createInvoice
+      requestBody:
+        content:
+          application/json:
+            examples:
+              invoice:
+                summary: Invoice with two items
+                value:
+                  invoice:
+                    date: '2026-01-31'
+                    items:
+                    - description: Beratung
+                      price: 95
+                      quantity: 8
+                      taxRate: 19
+                      unit: h
+                    - description: Fachbuch
+                      price: 24.9
+                      quantity: 3
+                      taxRate: 7
+                      unit: pcs
+                    number: 2026-001
+                    recipient:
+                      address: Kundenweg 5
+                      city: 54321 Kundenstadt
+                      name: Kunde AG
+                  settings:
+                    bank:
+                      bic: COBADEFFXXX
+                      iban: DE89370400440532013000
+                      name: Musterbank
+                    einvoiceProfile: en16931
+                    locale: de-de
+                    paymentDays: 30
+                    sender:
+                      address: Musterstr. 1
+                      city: 12345 Musterstadt
+                      email: rechnung@muster.example
+                      name: Muster GmbH
+                      vatId: DE123456789
+            schema:
+              $ref: '#/components/schemas/InvoiceRequest'
+        required: true
       responses:
         '200':
+          $ref: '#/components/responses/Pdf'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      summary: Create one invoice (PDF)
+      tags:
+      - Invoices
+  /v1/invoices/bulk:
+    post:
+      description: |-
+        Renders many invoices with shared settings and returns a ZIP with one `invoice-<number>.pdf` per
+        invoice. If one invoice is invalid, nothing is returned and the error names the entry
+        (`invoices[3]: …`). The number of invoices per request depends on the plan (`bulkMax` of
+        `GET /v1/token`); `0` or more than `bulkMax` entries give `400 invalid_request`. Costs one
+        rate-limit unit per invoice, so the request also has to fit into `limitPerMinute`.
+      operationId: createInvoicesBulk
+      requestBody:
+        content:
+          application/json:
+            examples:
+              invoices:
+                summary: Two invoices
+                value:
+                  invoices:
+                  - date: '2026-01-31'
+                    items:
+                    - description: Beratung
+                      price: 95
+                      quantity: 8
+                      unit: h
+                    number: 2026-001
+                    recipient:
+                      address: Kundenweg 5
+                      city: 54321 Kundenstadt
+                      name: Kunde AG
+                  - date: '2026-02-03'
+                    items:
+                    - description: Wartungspauschale
+                      price: 149.99
+                      quantity: 1
+                      unit: flat
+                    number: 2026-002
+                    recipient:
+                      address: Beispielallee 2
+                      city: 10115 Berlin
+                      name: Beispiel KG
+                  settings:
+                    bank:
+                      iban: DE89370400440532013000
+                    sender:
+                      address: Musterstr. 1
+                      city: 12345 Musterstadt
+                      name: Muster GmbH
+            schema:
+              $ref: '#/components/schemas/InvoiceBulkRequest'
+        required: true
+      responses:
+        '200':
+          $ref: '#/components/responses/Zip'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      summary: Create many invoices (ZIP of PDFs)
+      tags:
+      - Invoices
+  /v1/token:
+    get:
+      description: |-
+        Kind, plan, rate limit, bulk size and end date of the token used for the request. Does not cost a
+        rate-limit unit.
+      operationId: getToken
+      responses:
+        '200':
+          content:
+            application/json:
+              examples:
+                paid:
+                  summary: Purchased token
+                  value:
+                    bulkMax: 25
+                    expiresAt: 1798761600
+                    id: 7f3k2m9q
+                    kind: paid
+                    limitPerMinute: 30
+                    plan: starter
+                    subscription: false
+              schema:
+                $ref: '#/components/schemas/TokenInfo'
           description: The token's properties.
           headers:
             Cache-Control:
               description: Always `no-store`.
               schema:
                 type: string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenInfo'
-              examples:
-                paid:
-                  summary: Purchased token
-                  value:
-                    kind: paid
-                    id: 7f3k2m9q
-                    plan: starter
-                    limitPerMinute: 30
-                    bulkMax: 25
-                    expiresAt: 1798761600
-                    subscription: false
         '401':
           $ref: '#/components/responses/Unauthorized'
         '503':
           $ref: '#/components/responses/Unavailable'
+      summary: Information about the calling token
+      tags:
+      - Token
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      description: 'The token as `Authorization: Bearer <token>`'
-    apiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: Alternative to the bearer header; the same token.
   headers:
-    RetryAfter:
-      description: Seconds to wait before the request is repeated.
-      schema:
-        type: integer
-        minimum: 1
     ContentDisposition:
       description: '`attachment; filename="…"` with the suggested file name.'
       schema:
         type: string
+    RetryAfter:
+      description: Seconds to wait before the request is repeated.
+      schema:
+        minimum: 1
+        type: integer
   responses:
-    Pdf:
-      description: The PDF (PDF/A-3b).
-      headers:
-        Content-Disposition:
-          $ref: '#/components/headers/ContentDisposition'
-      content:
-        application/pdf:
-          schema:
-            type: string
-            contentMediaType: application/pdf
-            contentEncoding: binary
-    Zip:
-      description: A ZIP archive with one PDF per entry, in the order of the request.
-      headers:
-        Content-Disposition:
-          $ref: '#/components/headers/ContentDisposition'
-      content:
-        application/zip:
-          schema:
-            type: string
-            contentMediaType: application/zip
-            contentEncoding: binary
     BadRequest:
+      content:
+        application/json:
+          examples:
+            bulk:
+              value:
+                details: '`invoices` needs 1 to 25 entries'
+                error: invalid_request
+            validation:
+              value:
+                details: 'invoice.recipient.name: is required; invoice.items[0].taxRate: must be one of: 19, 7, 0'
+                error: validation_error
+          schema:
+            $ref: '#/components/schemas/Error'
       description: |
         The request is invalid. `validation_error`: `details` lists all problems with their paths, separated
         by `; `. `invalid_request`: malformed JSON, unknown `type`, or an empty or too large bulk list.
         `invalid_asset`: the logo is not valid base64 or too large.
+    Pdf:
+      content:
+        application/pdf:
+          schema:
+            contentEncoding: binary
+            contentMediaType: application/pdf
+            type: string
+      description: The PDF (PDF/A-3b).
+      headers:
+        Content-Disposition:
+          $ref: '#/components/headers/ContentDisposition'
+    RateLimited:
+      content:
+        application/json:
+          example:
+            details: rate limit of 30 invoices per minute reached
+            error: rate_limited
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: The per-minute limit of the token is reached (`rate_limited`). Repeat the request after `Retry-After` seconds.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+    ServerError:
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          examples:
-            validation:
-              value:
-                error: validation_error
-                details: 'invoice.recipient.name: is required; invoice.items[0].taxRate: must be one of: 19, 7, 0'
-            bulk:
-              value:
-                error: invalid_request
-                details: '`invoices` needs 1 to 25 entries'
+      description: An internal error (`task_join_error`, `zip_error`). Repeat the request; report it if it persists.
+    TooLarge:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: The request body is larger than 2 MB (`invalid_request`).
     Unauthorized:
+      content:
+        application/json:
+          example:
+            details: 'missing, invalid or expired token (use `Authorization: Bearer <token>` or `X-API-Key`)'
+            error: unauthorized
+          schema:
+            $ref: '#/components/schemas/Error'
       description: The token is missing, invalid, expired or revoked.
       headers:
         WWW-Authenticate:
           description: Always `Bearer`.
           schema:
             type: string
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error: unauthorized
-            details: 'missing, invalid or expired token (use `Authorization: Bearer <token>` or `X-API-Key`)'
-    TooLarge:
-      description: The request body is larger than 2 MB (`invalid_request`).
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    UnsupportedMediaType:
-      description: 'The request has no `Content-Type: application/json` header (`invalid_request`).'
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    Unprocessable:
-      description: |
-        `invalid_request`: the JSON is well-formed but a required field (for example `settings` or `invoice`)
-        is missing or has the wrong type. `typst_compile_error`: the template could not be compiled; this
-        should not happen with validated input, please report it.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    RateLimited:
-      description: The per-minute limit of the token is reached (`rate_limited`). Repeat the request after `Retry-After` seconds.
-      headers:
-        Retry-After:
-          $ref: '#/components/headers/RetryAfter'
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-          example:
-            error: rate_limited
-            details: rate limit of 30 invoices per minute reached
-    ServerError:
-      description: An internal error (`task_join_error`, `zip_error`). Repeat the request; report it if it persists.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
     Unavailable:
+      content:
+        application/json:
+          example:
+            details: all compile slots are busy, please retry shortly
+            error: server_busy
+          schema:
+            $ref: '#/components/schemas/Error'
       description: |
         `store_unavailable`: the token store is not reachable. `server_busy`: all compile slots stayed busy,
         repeat the request after `Retry-After` seconds.
       headers:
         Retry-After:
           $ref: '#/components/headers/RetryAfter'
+    Unprocessable:
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          example:
-            error: server_busy
-            details: all compile slots are busy, please retry shortly
+      description: |
+        `invalid_request`: the JSON is well-formed but a required field (for example `settings` or `invoice`)
+        is missing or has the wrong type. `typst_compile_error`: the template could not be compiled; this
+        should not happen with validated input, please report it.
+    UnsupportedMediaType:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: 'The request has no `Content-Type: application/json` header (`invalid_request`).'
+    Zip:
+      content:
+        application/zip:
+          schema:
+            contentEncoding: binary
+            contentMediaType: application/zip
+            type: string
+      description: A ZIP archive with one PDF per entry, in the order of the request.
+      headers:
+        Content-Disposition:
+          $ref: '#/components/headers/ContentDisposition'
   schemas:
-    Error:
-      type: object
-      description: The error envelope of every error response.
-      required: [error, details]
-      properties:
-        error:
-          type: string
-          description: Stable error code.
-          enum:
-            - validation_error
-            - invalid_request
-            - invalid_asset
-            - unauthorized
-            - rate_limited
-            - store_unavailable
-            - server_busy
-            - typst_compile_error
-            - template_parse_error
-            - template_render_error
-            - task_join_error
-            - zip_error
-        details:
-          type: string
-          description: Human-readable explanation in English.
-    InvoiceRequest:
-      type: object
-      required: [settings, invoice]
-      properties:
-        settings:
-          $ref: '#/components/schemas/Settings'
-        invoice:
-          $ref: '#/components/schemas/Invoice'
-    InvoiceBulkRequest:
-      type: object
-      required: [settings, invoices]
-      properties:
-        settings:
-          $ref: '#/components/schemas/Settings'
-        invoices:
-          type: array
-          minItems: 1
-          description: Between 1 and `bulkMax` of the token (see `GET /v1/token`).
-          items:
-            $ref: '#/components/schemas/Invoice'
-    DocumentType:
-      type: string
-      enum: [credit-note, offer, order, delivery-note, letter]
-    DocumentRequest:
-      type: object
-      required: [type, settings, document]
-      properties:
-        type:
-          $ref: '#/components/schemas/DocumentType'
-        settings:
-          $ref: '#/components/schemas/Settings'
-        document:
-          $ref: '#/components/schemas/Document'
-    DocumentBulkRequest:
-      type: object
-      required: [type, settings, documents]
-      properties:
-        type:
-          $ref: '#/components/schemas/DocumentType'
-        settings:
-          $ref: '#/components/schemas/Settings'
-        documents:
-          type: array
-          minItems: 1
-          description: Between 1 and `bulkMax` of the token (see `GET /v1/token`).
-          items:
-            $ref: '#/components/schemas/Document'
-    Settings:
-      type: object
-      description: |
-        Sender and design, shared by all documents of a request. This is the same structure the configurator
-        exports; unknown fields (for example `schemaVersion`) are ignored.
-      required: [sender]
-      properties:
-        sender:
-          $ref: '#/components/schemas/Sender'
-        bank:
-          $ref: '#/components/schemas/Bank'
-        logo:
-          $ref: '#/components/schemas/Image'
-        signature:
-          allOf:
-            - $ref: '#/components/schemas/Image'
-          description: |
-            Handwritten signature printed below the closing text: PNG, JPEG, SVG or PDF (detected by content,
-            at most 300 KB decoded). It is an image, not a cryptographic signature.
-        accentColor:
-          type: string
-          pattern: '^#[0-9a-fA-F]{6}$'
-          default: '#1d4ed8'
-        font:
-          type: string
-          default: Liberation Sans
-          enum:
-            - Liberation Sans
-            - Carlito
-            - Open Sans
-            - Roboto
-            - Lato
-            - DejaVu Sans
-            - Liberation Serif
-            - Libertinus Serif
-            - New Computer Modern
-            - DejaVu Sans Mono
-        locale:
-          type: string
-          default: de-de
-          description: Language of the document texts.
-          enum: [de-de, en-de]
-        footer:
-          type: string
-          maxLength: 2000
-        intro:
-          type: string
-          maxLength: 2000
-          description: Text above the items.
-        closing:
-          type: string
-          maxLength: 2000
-          description: Text below the totals.
-        paymentDays:
-          type: integer
-          minimum: 0
-          maximum: 365
-          default: 14
-        exemptionReason:
-          type: string
-          maxLength: 200
-          default: Steuerfrei nach § 4 UStG
-          description: Reason printed and sent in the e-invoice for items with a tax rate of 0 %.
-        zugferd:
-          type: boolean
-          default: true
-          description: Attach the e-invoice XML to the PDF.
-        einvoiceProfile:
-          type: string
-          default: en16931
-          description: '`en16931` attaches `factur-x.xml` (ZUGFeRD / Factur-X), `xrechnung` attaches `xrechnung.xml`.'
-          enum: [en16931, xrechnung]
-    Sender:
-      type: object
-      required: [name, address, city]
-      properties:
-        name:
-          $ref: '#/components/schemas/ShortText'
-        address:
-          $ref: '#/components/schemas/ShortText'
-        city:
-          $ref: '#/components/schemas/ShortText'
-        taxNr:
-          $ref: '#/components/schemas/ShortText'
-        vatId:
-          $ref: '#/components/schemas/ShortText'
-        email:
-          $ref: '#/components/schemas/ShortText'
-        phone:
-          $ref: '#/components/schemas/ShortText'
-        contactName:
-          $ref: '#/components/schemas/ShortText'
     Bank:
-      type: object
       properties:
-        name:
-          $ref: '#/components/schemas/ShortText'
-        iban:
-          $ref: '#/components/schemas/ShortText'
         bic:
-          $ref: '#/components/schemas/ShortText'
-    Image:
-      type: object
-      required: [base64]
-      properties:
-        base64:
+          maxLength: 200
           type: string
-          contentEncoding: base64
-          description: The file, base64 encoded (at most 1 MB decoded for a logo).
-    ShortText:
-      type: string
-      maxLength: 200
-      description: Plain text, at most 200 characters. Do not escape it.
-    Recipient:
-      type: object
-      required: [name, address, city]
-      properties:
+        iban:
+          maxLength: 200
+          type: string
         name:
-          $ref: '#/components/schemas/ShortText'
-        address:
-          $ref: '#/components/schemas/ShortText'
-        city:
-          $ref: '#/components/schemas/ShortText'
-        vatId:
-          $ref: '#/components/schemas/ShortText'
-        email:
-          $ref: '#/components/schemas/ShortText'
-        buyerReference:
-          allOf:
-            - $ref: '#/components/schemas/ShortText'
-          description: Buyer reference (Leitweg-ID for public customers); required by XRechnung.
-    Item:
-      type: object
-      required: [description, quantity, price]
-      properties:
-        description:
+          maxLength: 200
           type: string
-          maxLength: 2000
-        quantity:
-          type: number
-          minimum: -1000000000
-          maximum: 1000000000
-        unit:
-          type: string
-          default: pcs
-          description: 'pieces, hour, day, month, year, flat rate, kg, m, km, m², litre'
-          enum: [pcs, h, d, mo, y, flat, kg, m, km, m2, l]
-        price:
-          type: number
-          minimum: -1000000000
-          maximum: 1000000000
-          description: Net unit price in euro.
-        taxRate:
-          type: integer
-          default: 19
-          description: Tax rate in percent.
-          enum: [19, 7, 0]
-    Postage:
       type: object
-      description: Franking mark (Internetmarke) printed into the address field. It is valid for one letter only.
-      required: [base64]
-      properties:
-        base64:
-          type: string
-          contentEncoding: base64
-          description: PNG, at most 300 KB decoded; it has to fit into the address field.
-    Invoice:
-      type: object
-      required: [number, date, recipient, items]
-      properties:
-        number:
-          $ref: '#/components/schemas/ShortText'
-        date:
-          $ref: '#/components/schemas/Date'
-        recipient:
-          $ref: '#/components/schemas/Recipient'
-        items:
-          type: array
-          minItems: 1
-          maxItems: 500
-          items:
-            $ref: '#/components/schemas/Item'
-        postage:
-          $ref: '#/components/schemas/Postage'
     Document:
-      type: object
-      description: |
+      description: |-
         A document; the required fields depend on `type` (see `POST /v1/documents`). `recipient` has only
         `name`, `address` and `city` for letters, offers, orders and delivery notes; for credit notes the
         e-invoice fields `vatId`, `email` and `buyerReference` are used as well.
       properties:
-        number:
-          $ref: '#/components/schemas/ShortText'
+        body:
+          description: Letter text.
+          maxLength: 10000
+          type: string
+        closing:
+          maxLength: 2000
+          type: string
         date:
-          $ref: '#/components/schemas/Date'
-        recipient:
-          $ref: '#/components/schemas/Recipient'
+          description: Document date as `YYYY-MM-DD` (years 1970 to 2200).
+          format: date
+          type: string
+        deliveryDate:
+          description: 'Order confirmation and delivery note: delivery date (`YYYY-MM-DD`).'
+          format: date
+          type: string
+        intro:
+          maxLength: 2000
+          type: string
         items:
-          type: array
-          maxItems: 500
+          description: 1 to 500 items (not used for letters; delivery notes show no prices).
           items:
             $ref: '#/components/schemas/Item'
-        reference:
-          allOf:
-            - $ref: '#/components/schemas/ShortText'
-          description: The cancelled invoice (credit note), the offer (order confirmation) or the order (delivery note).
-        referenceDate:
-          $ref: '#/components/schemas/Date'
-        validUntil:
-          $ref: '#/components/schemas/Date'
-        deliveryDate:
-          $ref: '#/components/schemas/Date'
-        subject:
-          $ref: '#/components/schemas/ShortText'
-        body:
+          maxItems: 500
+          type: array
+        number:
+          description: Document number (not used for letters).
+          maxLength: 200
           type: string
-          maxLength: 10000
-          description: Letter text.
-        reason:
-          type: string
-          maxLength: 2000
-        intro:
-          type: string
-          maxLength: 2000
-        closing:
-          type: string
-          maxLength: 2000
         postage:
           $ref: '#/components/schemas/Postage'
-    Date:
-      type: string
-      format: date
-      description: 'Calendar date as `YYYY-MM-DD` (years 1970 to 2200).'
-    TokenInfo:
+          description: Franking mark (Internetmarke PNG) printed into the address field.
+        reason:
+          description: 'Credit note: reason.'
+          maxLength: 2000
+          type: string
+        recipient:
+          $ref: '#/components/schemas/Recipient'
+        reference:
+          description: The cancelled invoice (credit note), the offer (order confirmation) or the order (delivery note).
+          maxLength: 200
+          type: string
+        referenceDate:
+          description: Date of the referenced document (`YYYY-MM-DD`).
+          format: date
+          type: string
+        subject:
+          description: Letter subject.
+          maxLength: 200
+          type: string
+        validUntil:
+          description: 'Offer: valid until (`YYYY-MM-DD`).'
+          format: date
+          type: string
       type: object
-      required: [kind, id, plan, limitPerMinute, bulkMax, expiresAt, subscription]
+    DocumentBulkRequest:
+      description: Many documents of one type with shared settings.
       properties:
-        kind:
+        documents:
+          description: Between 1 and `bulkMax` of the token (see `GET /v1/token`).
+          items:
+            $ref: '#/components/schemas/Document'
+          minItems: 1
+          type: array
+        settings:
+          $ref: '#/components/schemas/Settings'
+        type:
+          $ref: '#/components/schemas/DocumentType'
+      required:
+      - type
+      - settings
+      - documents
+      type: object
+    DocumentRequest:
+      description: One document of the given type with its settings.
+      properties:
+        document:
+          $ref: '#/components/schemas/Document'
+        settings:
+          $ref: '#/components/schemas/Settings'
+        type:
+          $ref: '#/components/schemas/DocumentType'
+      required:
+      - type
+      - settings
+      - document
+      type: object
+    DocumentType:
+      description: Type of a document; selects the template.
+      enum:
+      - credit-note
+      - offer
+      - order
+      - delivery-note
+      - letter
+      type: string
+    Error:
+      description: The error envelope of every error response.
+      properties:
+        details:
+          description: Human-readable explanation in English.
           type: string
-          enum: [free, paid]
-        id:
+        error:
+          description: Stable error code.
+          enum:
+          - validation_error
+          - invalid_request
+          - invalid_asset
+          - unauthorized
+          - rate_limited
+          - store_unavailable
+          - server_busy
+          - typst_compile_error
+          - template_parse_error
+          - template_render_error
+          - task_join_error
+          - zip_error
           type: string
-          description: Public token id (not the secret).
-        plan:
+      required:
+      - error
+      - details
+      type: object
+    Image:
+      description: An uploaded file (logo or signature), base64 encoded.
+      properties:
+        base64:
+          description: The file, base64 encoded (at most 1 MB decoded for a logo, 300 KB for a signature).
           type: string
-          description: '`free` for free tokens, otherwise the purchased plan.'
-        limitPerMinute:
+      required:
+      - base64
+      type: object
+    Invoice:
+      properties:
+        date:
+          description: Invoice date as `YYYY-MM-DD` (years 1970 to 2200).
+          format: date
+          type: string
+        items:
+          items:
+            $ref: '#/components/schemas/Item'
+          maxItems: 500
+          minItems: 1
+          type: array
+        number:
+          maxLength: 200
+          type: string
+        postage:
+          $ref: '#/components/schemas/Postage'
+          description: Franking mark (Internetmarke PNG) printed into the address field.
+        recipient:
+          $ref: '#/components/schemas/Recipient'
+      required:
+      - number
+      - date
+      - recipient
+      - items
+      type: object
+    InvoiceBulkRequest:
+      description: Many invoices with shared settings.
+      properties:
+        invoices:
+          description: Between 1 and `bulkMax` of the token (see `GET /v1/token`).
+          items:
+            $ref: '#/components/schemas/Invoice'
+          minItems: 1
+          type: array
+        settings:
+          $ref: '#/components/schemas/Settings'
+      required:
+      - settings
+      - invoices
+      type: object
+    InvoiceRequest:
+      description: One invoice with its settings.
+      properties:
+        invoice:
+          $ref: '#/components/schemas/Invoice'
+        settings:
+          $ref: '#/components/schemas/Settings'
+      required:
+      - settings
+      - invoice
+      type: object
+    Item:
+      properties:
+        description:
+          maxLength: 2000
+          type: string
+        price:
+          description: Net unit price in euro (between -1e9 and 1e9).
+          format: double
+          maximum: 1000000000
+          minimum: -1000000000
+          type: number
+        quantity:
+          description: Quantity (between -1e9 and 1e9).
+          format: double
+          maximum: 1000000000
+          minimum: -1000000000
+          type: number
+        taxRate:
+          default: 19
+          description: Tax rate in percent.
+          enum:
+          - 19
+          - 7
+          - 0
+          format: int64
           type: integer
-          description: PDFs per minute.
-        bulkMax:
+        unit:
+          default: pcs
+          description: 'Unit of the quantity: pieces, hour, day, month, year, flat rate, kg, m, km, m², litre.'
+          enum:
+          - pcs
+          - h
+          - d
+          - mo
+          - y
+          - flat
+          - kg
+          - m
+          - km
+          - m2
+          - l
+          type: string
+      required:
+      - description
+      - quantity
+      - price
+      type: object
+    Postage:
+      description: Franking mark (Internetmarke) printed into the address field. It is valid for one letter only.
+      properties:
+        base64:
+          description: The PNG, base64 encoded (at most 300 KB decoded); it has to fit into the address field.
+          type: string
+      required:
+      - base64
+      type: object
+    Recipient:
+      properties:
+        address:
+          maxLength: 200
+          type: string
+        buyerReference:
+          description: Buyer reference (Leitweg-ID for public customers); required by XRechnung.
+          maxLength: 200
+          type: string
+        city:
+          maxLength: 200
+          type: string
+        email:
+          description: Used for credit notes and invoices (e-invoice).
+          maxLength: 200
+          type: string
+        name:
+          maxLength: 200
+          type: string
+        vatId:
+          description: Used for credit notes and invoices (e-invoice).
+          maxLength: 200
+          type: string
+      required:
+      - name
+      - address
+      - city
+      type: object
+    Sender:
+      description: Plain text of at most 200 characters; do not escape it, the server does.
+      properties:
+        address:
+          maxLength: 200
+          type: string
+        city:
+          maxLength: 200
+          type: string
+        contactName:
+          maxLength: 200
+          type: string
+        email:
+          maxLength: 200
+          type: string
+        name:
+          maxLength: 200
+          type: string
+        phone:
+          maxLength: 200
+          type: string
+        taxNr:
+          maxLength: 200
+          type: string
+        vatId:
+          maxLength: 200
+          type: string
+      required:
+      - name
+      - address
+      - city
+      type: object
+    Settings:
+      description: |-
+        Sender and design, shared by all documents of a request. This is the structure the configurator
+        exports; unknown fields (for example `schemaVersion`) are ignored.
+      properties:
+        accentColor:
+          default: '#1d4ed8'
+          description: Color as `#rrggbb`.
+          pattern: ^#[0-9a-fA-F]{6}$
+          type: string
+        bank:
+          $ref: '#/components/schemas/Bank'
+        closing:
+          description: Text below the totals.
+          maxLength: 2000
+          type: string
+        einvoiceProfile:
+          default: en16931
+          description: '`en16931` attaches `factur-x.xml` (ZUGFeRD / Factur-X), `xrechnung` attaches `xrechnung.xml`.'
+          enum:
+          - en16931
+          - xrechnung
+          type: string
+        exemptionReason:
+          default: Steuerfrei nach § 4 UStG
+          description: Reason printed and sent in the e-invoice for items with a tax rate of 0 %.
+          maxLength: 200
+          type: string
+        font:
+          default: Liberation Sans
+          description: One of the fonts offered by the configurator.
+          enum:
+          - Liberation Sans
+          - Carlito
+          - Open Sans
+          - Roboto
+          - Lato
+          - DejaVu Sans
+          - Liberation Serif
+          - Libertinus Serif
+          - New Computer Modern
+          - DejaVu Sans Mono
+          type: string
+        footer:
+          maxLength: 2000
+          type: string
+        intro:
+          description: Text above the items.
+          maxLength: 2000
+          type: string
+        locale:
+          default: de-de
+          description: Language of the document texts.
+          enum:
+          - de-de
+          - en-de
+          type: string
+        logo:
+          $ref: '#/components/schemas/Image'
+          description: Logo printed in the letterhead (PNG, JPEG or SVG).
+        paymentDays:
+          default: 14
+          description: Payment term in days (whole number from 0 to 365).
+          format: int64
+          maximum: 365
+          minimum: 0
           type: integer
-          description: Maximum entries per bulk request.
-        expiresAt:
-          type:
-            - integer
-            - 'null'
-          description: End of the token (unix seconds).
-        subscription:
+        sender:
+          $ref: '#/components/schemas/Sender'
+        signature:
+          $ref: '#/components/schemas/Image'
+          description: |-
+            Handwritten signature printed below the closing text: PNG, JPEG, SVG or PDF (detected by content,
+            at most 300 KB decoded). It is an image, not a cryptographic signature.
+        zugferd:
+          default: true
+          description: Attach the e-invoice XML to the PDF.
           type: boolean
+      required:
+      - sender
+      type: object
+    TokenInfo:
+      description: Properties of the token that made the request.
+      properties:
+        bulkMax:
+          description: Maximum entries per bulk request.
+          minimum: 0
+          type: integer
+        expiresAt:
+          description: End of the token (unix seconds); `null` if unknown.
+          format: int64
+          minimum: 0
+          type:
+          - integer
+          - 'null'
+        id:
+          description: Public token id (not the secret).
+          type: string
+        kind:
+          description: '`free` or `paid`.'
+          enum:
+          - free
+          - paid
+          type: string
+        limitPerMinute:
+          description: PDFs per minute.
+          format: int32
+          minimum: 0
+          type: integer
+        plan:
+          description: '`free` for free tokens, otherwise the purchased plan.'
+          type: string
+        subscription:
           description: Whether a subscription renews the token.
+          type: boolean
+      required:
+      - kind
+      - id
+      - plan
+      - limitPerMinute
+      - bulkMax
+      - expiresAt
+      - subscription
+      type: object
+  securitySchemes:
+    apiKeyAuth:
+      description: Alternative to the bearer header; the same token.
+      in: header
+      name: X-API-Key
+      type: apiKey
+    bearerAuth:
+      description: 'The token as `Authorization: Bearer <token>`'
+      scheme: bearer
+      type: http

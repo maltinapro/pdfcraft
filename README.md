@@ -74,7 +74,7 @@ curl -X POST http://localhost:3000/v1/invoices \
   --data @pdfcraft-config.json -o invoice.pdf
 ```
 
-Full reference: [API Reference](docs/09-api-reference.md). The machine-readable [OpenAPI 3.1 specification](docs/openapi.yaml) (generate clients from it) is published with the frontend as an interactive reference at `/api/` ([live](https://digitalrechnung.jetzt/api/), `/api/openapi.yaml`).
+Full reference: [API Reference](docs/09-api-reference.md). The machine-readable [OpenAPI 3.1 specification](docs/openapi.yaml) (generated from the backend code; generate clients from it) is published with the frontend as an interactive reference at `/api/` ([live](https://digitalrechnung.jetzt/api/), `/api/openapi.yaml`).
 
 ## Documentation
 
