@@ -142,6 +142,12 @@ Do not hand out a production key. Options:
 4. Open the site, change an item, check that the preview updates and the download works.
 5. Confirm `POST /v1/free-token` without the Anubis cookie answers `403` and `/v1/invoices` without a token answers `401`.
 
+## SEO pages
+
+Besides the landing page the site has static, keyword-focused German pages that link into the matching form: `zugferd-rechnung-erstellen/`, `xrechnung-generator/`, `stornorechnung-gutschrift-e-rechnung/` and `e-rechnungspflicht/` (deadlines, with sources and a "Stand" date). Each is one `frontend/<slug>/index.html` with its own title, description, canonical URL, Open Graph tags and `FAQPage` JSON-LD (the JSON-LD must repeat the visible FAQ text), the shared styles (`landing.css`) and the shared footer (`frontend/partials/site-footer.html`, inserted for the `<!-- site-footer -->` placeholder by `vite.config.ts`).
+
+To add a page: copy one of the existing pages, then add (1) an entry to `build.rollupOptions.input` in `frontend/vite.config.ts`, (2) a `<url>` to `frontend/public/sitemap.xml` and (3) the links in `partials/site-footer.html` and on the landing page. Only claim what the product does (see `docs/epics/E01-einvoice-conformance-ci.md`); free PDFs carry the "Entwurf" watermark, so write "kostenlos testen", not "kostenlos ohne Anmeldung". The Internetmarke page ("DIN 5008 Brief online schreiben mit Internetmarke", CTA `/app/#/letter`) is deliberately not published until the feature is enabled and verified against the live Deutsche Post API (see [14](14-internetmarke-integration.md)). The deadlines page links the BMF letter (ZDH copy) and still shows a "not yet checked against the letter" note; remove it after checking. Re-check the page against the BMF letter and update its "Stand" date whenever the rules change.
+
 ## Landing page news
 
 The landing page (`frontend/index.html`) has a static "Neuigkeiten" section with the current version (build arg `APP_VERSION`) and short highlights, linking to the GitHub release notes. It is edited by hand and deliberately does not fetch anything from GitHub at runtime (privacy, no third-party requests).

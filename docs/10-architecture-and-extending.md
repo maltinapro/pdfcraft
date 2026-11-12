@@ -38,6 +38,8 @@ pdfcraft/
 ├── docker-compose.yml
 ├── frontend/                         # React + Vite
 │   ├── public/                       # Logo (logo.svg), favicons, icons, og-image, robots.txt, sitemap.xml
+│   ├── partials/site-footer.html     # Footer shared by the landing page and the SEO pages (`<!-- site-footer -->`)
+│   ├── <slug>/index.html             # Static SEO pages (zugferd-rechnung-erstellen, xrechnung-generator, stornorechnung-gutschrift-e-rechnung, e-rechnungspflicht)
 │   └── src/
 │       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/data`, `#/sender` = invoice with the sender tab open, ...), shared settings, drafts
 │       ├── components/               # Dashboard (tiles, latest documents), DocumentsPage (all issued documents), DataPage (backup/restore/reset), Workspace (form + live preview + download),
