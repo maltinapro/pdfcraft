@@ -94,7 +94,7 @@ Full reference: [API Reference](docs/09-api-reference.md).
 | [Purchased Tokens (Mollie)](docs/12-paid-tokens-mollie.md) | Feature flag, purchase page, checkout, Mollie webhook, renewal, cancelling |
 | [Observability](docs/13-observability.md) | JSON logs for Loki, Prometheus metrics, Grafana dashboards |
 | [Internetmarke](docs/14-internetmarke-integration.md) | Buying Deutsche Post stamps and printing them onto PDFs |
-| [Roadmap and Epics](docs/roadmap.md) | Planned product work derived from the business plan (phases, epics, issues) |
+| [Roadmap and Epics](docs/roadmap.md) | Planned code changes derived from the business plan (epics, phases) and what is deliberately not planned |
 
 ## Tech Stack
 

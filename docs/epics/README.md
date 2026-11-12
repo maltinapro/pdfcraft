@@ -1,6 +1,6 @@
 # Epics
 
-The product work derived from the business plan ("Businessplan PDFCraft", digitalrechnung.jetzt) is split into epics. Each epic is one file `EXX-name.md` with goal, dependencies, definition of done and issues. The overall order is in the [roadmap](../roadmap.md).
+The code changes derived from the business plan ("Businessplan PDFCraft", digitalrechnung.jetzt) are split into epics. Each epic is one file `EXX-name.md` with goal, dependencies, definition of done and issues. The overall order is in the [roadmap](../roadmap.md). An epic exists only for work that is code and worth doing now; everything else is listed in the roadmap with the trigger that would justify it.
 
 ## Conventions
 
@@ -8,7 +8,7 @@ The product work derived from the business plan ("Businessplan PDFCraft", digita
 - Every issue has a short description and acceptance criteria (AC).
 - One PR per issue (or a coherent group of issues of one epic), branched from the latest `main`; PR titles follow Conventional Commits (`feat: ...`, `docs: ...`).
 - When an issue is finished: tick the checkbox, update the status in [roadmap.md](../roadmap.md), the affected docs, `README.md` and `AGENTS.md`.
-- Epics may be adjusted; name the reason in the PR and record decisions in `docs/decisions.md` (created by E00-01).
+- Epics may be adjusted; name the reason in the PR.
 
 ## Cross-cutting requirements (apply to every issue)
 
@@ -25,7 +25,7 @@ The product work derived from the business plan ("Businessplan PDFCraft", digita
 ## GitHub issues
 
 - The Markdown files are the source of truth for scope and acceptance criteria; GitHub issues are used for tracking.
-- One issue per epic (label `epic`), one sub-issue per task (label `task`), plus the phase label `phase-0` … `phase-4`.
+- One issue per epic (label `epic`), one sub-issue per task (label `task`), plus the phase label `phase-1` … `phase-3`.
 - Issues are created **phase by phase**; the current state is tracked in [../roadmap.md](../roadmap.md). The issue title is `EXX-NN Title`; the body is the issue description plus acceptance criteria from the file.
 
 ## Template
@@ -33,7 +33,7 @@ The product work derived from the business plan ("Businessplan PDFCraft", digita
 ```markdown
 # EXX – Title
 
-**Phase:** … · **Depends on:** … · **Business plan:** … · **Status:** open
+**Phase:** … · **Depends on:** … · **Status:** open
 
 ## Goal
 ## Context / links
