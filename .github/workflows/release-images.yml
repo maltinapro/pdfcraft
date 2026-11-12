@@ -92,7 +92,7 @@ jobs:
         env:
           PLATFORM: ${{ matrix.platform }}
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           labels: |
@@ -143,7 +143,7 @@ jobs:
       - name: Image name
         run: echo "IMAGE=${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/pdfcraft-backend" >> "$GITHUB_ENV"
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           tags: ${{ needs.prepare.outputs.tags }}
@@ -174,7 +174,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/pdfcraft-frontend
           tags: ${{ needs.prepare.outputs.tags }}
