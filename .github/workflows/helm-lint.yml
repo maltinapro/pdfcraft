@@ -8,7 +8,7 @@ on:
 
 jobs:
   helm-lint:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       # Dummy values: the chart requires the Anubis key pair
       KEYS: --set anubis.privateKeyHex=00 --set anubis.publicKeyHex=00
