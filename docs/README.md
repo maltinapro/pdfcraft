@@ -12,7 +12,7 @@ Detailed guides for running, testing and deploying PDFCraft. The top-level [READ
 | 6 | [Production Deployment](06-production.md) | run the customer-facing `/v1` API reliably and safely |
 | 7 | [Demo System](07-demo-system.md) | show the configurator to prospective customers |
 | 8 | [Kubernetes / Helm (Outlook)](08-kubernetes-helm-outlook.md) | plan a Helm chart (not implemented yet) |
-| 9 | [API Reference](09-api-reference.md) | look up endpoints, request bodies and examples |
+| 9 | [API Reference](09-api-reference.md) | look up endpoints, request bodies and examples; OpenAPI spec (`openapi.yaml`) |
 | 10 | [Architecture and Extending](10-architecture-and-extending.md) | understand the structure or add a field |
 | 11 | [Free Token and Anubis](11-free-token-and-anubis.md) | how free tokens are issued and protected |
 | 12 | [Purchased Tokens (Mollie)](12-paid-tokens-mollie.md) | enable and operate purchased tokens |

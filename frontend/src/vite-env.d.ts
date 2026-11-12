@@ -11,3 +11,8 @@ interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
+
+declare module 'swagger-ui-dist/swagger-ui-es-bundle.js' {
+  const SwaggerUI: (options: Record<string, unknown>) => unknown
+  export default SwaggerUI
+}

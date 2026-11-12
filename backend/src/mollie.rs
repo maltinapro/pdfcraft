@@ -27,7 +27,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use reqwest::Method;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{sync::OnceLock, time::Duration};
 
@@ -408,18 +408,53 @@ pub async fn webhook(body: Bytes) -> Result<Response, ApiError> {
 
 // ----------------------------------------------------- the holder's token
 
-/// `GET /v1/token` (with the token): kind, plan, limit, end and whether a subscription is running.
+/// Properties of the token that made the request.
+#[derive(Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TokenInfo {
+    /// `free` or `paid`.
+    kind: &'static str,
+    /// Public token id (not the secret).
+    id: String,
+    /// `free` for free tokens, otherwise the purchased plan.
+    plan: String,
+    /// PDFs per minute.
+    limit_per_minute: u32,
+    /// Maximum entries per bulk request.
+    bulk_max: usize,
+    /// End of the token (unix seconds); `null` if unknown.
+    #[schema(required = true)]
+    expires_at: Option<u64>,
+    /// Whether a subscription renews the token.
+    subscription: bool,
+}
+
+/// Information about the calling token
+///
+/// Kind, plan, rate limit, bulk size and end date of the token used for the request. Does not cost a
+/// rate-limit unit.
+#[utoipa::path(
+    get,
+    path = "/v1/token",
+    tag = "Token",
+    operation_id = "getToken",
+    responses((status = 200, description = "The token's properties.", body = TokenInfo, headers(("Cache-Control" = String, description = "Always `no-store`."))))
+)]
 pub async fn token_info(Extension(client): Extension<Client>) -> Result<Response, ApiError> {
     let until = store::token_until(&client.id).await.map_err(|_| store_unavailable())?;
     let subscription = client.kind == Kind::Paid
         && store::get_value(&format!("{SUBSCRIPTION_OF_PREFIX}{}", client.id)).await.map_err(|_| store_unavailable())?.is_some();
     Ok((
         [("cache-control", "no-store")],
-        Json(json!({
-            "kind": client.kind.label(), "id": client.id, "plan": client.plan,
-            "limitPerMinute": client.limit, "bulkMax": config::get().bulk_max(&client.plan),
-            "expiresAt": until, "subscription": subscription,
-        })),
+        Json(TokenInfo {
+            kind: client.kind.label(),
+            id: client.id.clone(),
+            plan: client.plan.clone(),
+            limit_per_minute: client.limit,
+            bulk_max: config::get().bulk_max(&client.plan),
+            expires_at: until,
+            subscription,
+        }),
     )
         .into_response())
 }

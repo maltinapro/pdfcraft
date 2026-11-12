@@ -7,6 +7,7 @@ mod internetmarke;
 mod invoice;
 mod metrics;
 mod mollie;
+mod openapi;
 mod postage;
 mod signature;
 mod store;
@@ -217,9 +218,13 @@ struct HealthResponse {
     status: &'static str,
 }
 
-#[derive(Serialize)]
-struct ErrorResponse {
+/// The error envelope of every error response.
+#[derive(Serialize, utoipa::ToSchema)]
+#[schema(as = Error)]
+pub(crate) struct ErrorResponse {
+    /// Stable error code.
     error: &'static str,
+    /// Human-readable explanation in English.
     details: String,
 }
 
@@ -370,7 +375,7 @@ async fn health() -> Json<HealthResponse> {
 async fn main() {
     telemetry::init_logging();
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if free::run_cli(&args) || store::run_cli(&args).await {
+    if openapi::run_cli(&args) || free::run_cli(&args) || store::run_cli(&args).await {
         return;
     }
     let cfg = config::get();

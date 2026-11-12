@@ -7,8 +7,9 @@
 
 use crate::postage::{self, Postage};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as JsonValue};
+use utoipa::ToSchema;
 
 pub const FONTS: &[&str] = &[
     "Liberation Sans",
@@ -22,11 +23,11 @@ pub const FONTS: &[&str] = &[
     "New Computer Modern",
     "DejaVu Sans Mono",
 ];
-const LOCALES: &[&str] = &["de-de", "en-de"];
+pub(crate) const LOCALES: &[&str] = &["de-de", "en-de"];
 pub(crate) const UNITS: &[&str] = &[
     "pcs", "h", "d", "mo", "y", "flat", "kg", "m", "km", "m2", "l",
 ];
-const PROFILES: &[&str] = &["en16931", "xrechnung"];
+pub(crate) const PROFILES: &[&str] = &["en16931", "xrechnung"];
 pub(crate) const TAX_RATES: &[i64] = &[19, 7, 0];
 
 const MAX_NUMBER: f64 = 1e9;
@@ -34,78 +35,142 @@ pub(crate) const MAX_ITEMS: usize = 500;
 pub(crate) const MAX_SHORT: usize = 200;
 pub(crate) const MAX_LONG: usize = 2000;
 
-#[derive(Deserialize, Default)]
+/// Plain text of at most 200 characters; do not escape it, the server does.
+#[derive(Deserialize, Serialize, Default, ToSchema)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Sender {
+    #[schema(required = true, max_length = 200)]
     pub name: String,
+    #[schema(required = true, max_length = 200)]
     pub address: String,
+    #[schema(required = true, max_length = 200)]
     pub city: String,
+    #[schema(max_length = 200)]
     pub tax_nr: String,
+    #[schema(max_length = 200)]
     pub vat_id: String,
+    #[schema(max_length = 200)]
     pub email: String,
+    #[schema(max_length = 200)]
     pub phone: String,
+    #[schema(max_length = 200)]
     pub contact_name: String,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Serialize, Default, ToSchema)]
 #[serde(default)]
 pub struct Bank {
+    #[schema(max_length = 200)]
     pub name: String,
+    #[schema(max_length = 200)]
     pub iban: String,
+    #[schema(max_length = 200)]
     pub bic: String,
 }
 
-#[derive(Deserialize)]
+/// An uploaded file (logo or signature), base64 encoded.
+#[derive(Deserialize, Serialize, ToSchema)]
+#[schema(as = Image)]
 pub struct Logo {
+    /// The file, base64 encoded (at most 1 MB decoded for a logo, 300 KB for a signature).
+    #[schema(required = true)]
     base64: String,
 }
 
-#[derive(Deserialize, Default)]
+/// Sender and design, shared by all documents of a request. This is the structure the configurator
+/// exports; unknown fields (for example `schemaVersion`) are ignored.
+#[derive(Deserialize, Serialize, Default, ToSchema)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
+    /// Logo printed in the letterhead (PNG, JPEG or SVG).
     pub logo: Option<Logo>,
+    /// Handwritten signature printed below the closing text: PNG, JPEG, SVG or PDF (detected by content,
+    /// at most 300 KB decoded). It is an image, not a cryptographic signature.
     pub signature: Option<Logo>,
+    #[schema(required = true)]
     pub sender: Sender,
+    /// Color as `#rrggbb`.
+    #[schema(default = "#1d4ed8", pattern = "^#[0-9a-fA-F]{6}$")]
     pub accent_color: Option<String>,
+    /// One of the fonts offered by the configurator.
+    #[schema(default = "Liberation Sans")]
     pub font: Option<String>,
+    /// Language of the document texts.
+    #[schema(default = "de-de")]
     pub locale: Option<String>,
+    #[schema(max_length = 2000)]
     pub footer: String,
+    /// Text above the items.
+    #[schema(max_length = 2000)]
     pub intro: String,
+    /// Text below the totals.
+    #[schema(max_length = 2000)]
     pub closing: String,
+    /// Payment term in days (whole number from 0 to 365).
+    #[schema(value_type = Option<i64>, default = 14, minimum = 0, maximum = 365)]
     pub payment_days: Option<f64>,
+    /// Reason printed and sent in the e-invoice for items with a tax rate of 0 %.
+    #[schema(default = "Steuerfrei nach § 4 UStG", max_length = 200)]
     pub exemption_reason: Option<String>,
     pub bank: Bank,
+    /// Attach the e-invoice XML to the PDF.
+    #[schema(default = true)]
     pub zugferd: Option<bool>,
+    /// `en16931` attaches `factur-x.xml` (ZUGFeRD / Factur-X), `xrechnung` attaches `xrechnung.xml`.
+    #[schema(default = "en16931")]
     pub einvoice_profile: Option<String>,
 }
 
-#[derive(Deserialize, Default, Clone)]
+#[derive(Deserialize, Serialize, Default, Clone, ToSchema)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Recipient {
+    #[schema(required = true, max_length = 200)]
     pub name: String,
+    #[schema(required = true, max_length = 200)]
     pub address: String,
+    #[schema(required = true, max_length = 200)]
     pub city: String,
+    /// Used for credit notes and invoices (e-invoice).
+    #[schema(max_length = 200)]
     pub vat_id: String,
+    /// Used for credit notes and invoices (e-invoice).
+    #[schema(max_length = 200)]
     pub email: String,
+    /// Buyer reference (Leitweg-ID for public customers); required by XRechnung.
+    #[schema(max_length = 200)]
     pub buyer_reference: String,
 }
 
-#[derive(Deserialize, Default, Clone)]
+#[derive(Deserialize, Serialize, Default, Clone, ToSchema)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Item {
+    #[schema(required = true, max_length = 2000)]
     pub description: String,
+    /// Quantity (between -1e9 and 1e9).
+    #[schema(required = true, minimum = -1e9, maximum = 1e9)]
     pub quantity: f64,
+    /// Unit of the quantity: pieces, hour, day, month, year, flat rate, kg, m, km, m², litre.
+    #[schema(default = "pcs")]
     pub unit: Option<String>,
+    /// Net unit price in euro (between -1e9 and 1e9).
+    #[schema(required = true, minimum = -1e9, maximum = 1e9)]
     pub price: f64,
+    /// Tax rate in percent.
+    #[schema(value_type = Option<i64>, default = 19)]
     pub tax_rate: Option<f64>,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Serialize, Default, ToSchema)]
 #[serde(default)]
 pub struct Invoice {
+    #[schema(required = true, max_length = 200)]
     pub number: String,
+    /// Invoice date as `YYYY-MM-DD` (years 1970 to 2200).
+    #[schema(required = true, format = Date)]
     pub date: String,
+    #[schema(required = true)]
     pub recipient: Recipient,
+    #[schema(required = true, min_items = 1, max_items = 500)]
     pub items: Vec<Item>,
     /// Franking mark (Internetmarke PNG) printed into the address field.
     pub postage: Option<Postage>,

@@ -2,6 +2,15 @@
 
 See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key management and error codes, and [Configuration](04-configuration.md) for server settings.
 
+## OpenAPI specification
+
+[`openapi.yaml`](openapi.yaml) (OpenAPI 3.1) describes `POST /v1/invoices`, `/v1/invoices/bulk`, `/v1/documents`, `/v1/documents/bulk`, `GET /v1/token`, the two ways to send the token (`Authorization: Bearer <token>` or `X-API-Key`), `Retry-After` on `429`/`503` and the error envelope with its codes. The purchase, Mollie webhook, free-token and postage endpoints are not part of it yet. Use it to generate a client (for example with [OpenAPI Generator](https://openapi-generator.tech/)) or to try requests.
+
+- **Interactive reference:** the frontend build publishes the spec as `/api/openapi.yaml` and renders it with a self-hosted Swagger UI at `/api/` (no external requests; with `docker compose up --build` at http://localhost:8080/api/, with `npm run dev` at http://localhost:5173/api/). "Try it out" sends the requests to the host that serves the page.
+- **Quickstart:** `curl -X POST https://digitalrechnung.jetzt/v1/invoices -H 'Authorization: Bearer YOUR_TOKEN' -H 'content-type: application/json' --data @pdfcraft-config.json -o invoice.pdf` (examples below).
+- **Generated from the code:** `openapi.yaml` is not written by hand. The paths, request and response schemas, field limits and the allowed values (fonts, units, tax rates, locales, profiles, document types) are generated from the Rust types and handlers (`utoipa` derives and `#[utoipa::path]`, assembled in `backend/src/openapi.rs`); the allowed values come from the constants of the validation. The introduction, the shared error responses and the request examples live in `backend/src/openapi_overlay.yaml`. After changing a field, limit or endpoint, regenerate the file with `cd backend && cargo test openapi_file_is_up_to_date` (rewrites `docs/openapi.yaml` locally) or `cargo run -- openapi > ../docs/openapi.yaml`, and commit it. CI fails (the same test, `CI` is set there) when the committed file is outdated, so nobody has to edit it manually.
+- **Tested:** the request examples are posted through the validation and rendering code by `openapi_request_examples_are_accepted` (`backend/src/v1.rs`), `openapi_limits_match_the_validation` compares the length and item limits written into the schema attributes with the constants, and `openapi_lists_every_error_code` checks that every error code of the handlers is documented. CI also lints the file with Redocly (`npx @redocly/cli@2.78.0 lint docs/openapi.yaml --max-problems 0`, rules in `redocly.yaml`).
+
 ## Overview
 
 | Endpoint | Auth | Purpose |

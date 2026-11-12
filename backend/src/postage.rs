@@ -4,8 +4,9 @@
 
 use crate::invoice::Errors;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as JsonValue};
+use utoipa::ToSchema;
 
 const MAX_BYTES: usize = 300 * 1024;
 const MAX_PIXELS: u32 = 3000;
@@ -16,8 +17,11 @@ const MAX_HEIGHT_MM: f64 = 40.0;
 const DEFAULT_DPI: f64 = 300.0;
 const SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
 
-#[derive(Deserialize, Clone)]
+/// Franking mark (Internetmarke) printed into the address field. It is valid for one letter only.
+#[derive(Deserialize, Serialize, Clone, ToSchema)]
 pub struct Postage {
+    /// The PNG, base64 encoded (at most 300 KB decoded); it has to fit into the address field.
+    #[schema(required = true)]
     pub base64: String,
 }
 

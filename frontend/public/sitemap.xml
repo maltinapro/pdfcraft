@@ -3,4 +3,7 @@
   <url>
     <loc>https://digitalrechnung.jetzt/</loc>
   </url>
+  <url>
+    <loc>https://digitalrechnung.jetzt/api/</loc>
+  </url>
 </urlset>

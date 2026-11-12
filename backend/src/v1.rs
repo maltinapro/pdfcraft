@@ -17,6 +17,7 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::json;
+use utoipa::ToSchema;
 use std::{
     collections::{HashMap, HashSet},
     io::{Cursor, Write},
@@ -193,15 +194,19 @@ fn bad_json(e: JsonRejection) -> ApiError {
     ApiError::new(e.status(), "invalid_request", e.body_text())
 }
 
-#[derive(Deserialize)]
-struct SingleRequest {
+/// One invoice with its settings.
+#[derive(Deserialize, ToSchema)]
+pub(crate) struct InvoiceRequest {
     settings: Settings,
     invoice: Invoice,
 }
 
-#[derive(Deserialize)]
-struct BulkRequest {
+/// Many invoices with shared settings.
+#[derive(Deserialize, ToSchema)]
+pub(crate) struct InvoiceBulkRequest {
     settings: Settings,
+    /// Between 1 and `bulkMax` of the token (see `GET /v1/token`).
+    #[schema(min_items = 1)]
     invoices: Vec<Invoice>,
 }
 
@@ -216,9 +221,22 @@ fn settings_assets(settings: &crate::invoice::CheckedSettings) -> Result<Assets,
     decode_assets(&map)
 }
 
-async fn single(
+/// Create one invoice (PDF)
+///
+/// Renders one invoice as PDF/A-3b. With `settings.zugferd` (default `true`) the PDF carries the
+/// e-invoice XML (`factur-x.xml` for `en16931`, `xrechnung.xml` for `xrechnung`). If the data is not
+/// sufficient for a valid e-invoice, `invoice-draft.xml` is attached instead. Costs one rate-limit unit.
+#[utoipa::path(
+    post,
+    path = "/v1/invoices",
+    tag = "Invoices",
+    operation_id = "createInvoice",
+    request_body = InvoiceRequest,
+    responses((status = 200, description = "The PDF (PDF/A-3b).", content_type = "application/pdf", body = Vec<u8>, headers(("Content-Disposition" = String, description = "`attachment; filename=\"…\"` with the suggested file name."))))
+)]
+pub(crate) async fn single(
     Extension(client): Extension<Client>,
-    payload: Result<Json<SingleRequest>, JsonRejection>,
+    payload: Result<Json<InvoiceRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let Json(req) = payload.map_err(bad_json)?;
     take_tokens(&client, 1).await?;
@@ -238,9 +256,11 @@ async fn single(
     Ok(pdf_response(pdf, &format!("invoice-{}.pdf", file_stem(&req.invoice.number))))
 }
 
-#[derive(Deserialize)]
-struct DocumentRequest {
+/// One document of the given type with its settings.
+#[derive(Deserialize, ToSchema)]
+pub(crate) struct DocumentRequest {
     #[serde(rename = "type")]
+    #[schema(value_type = Kind, required = true)]
     kind: String,
     settings: Settings,
     document: Document,
@@ -387,8 +407,32 @@ async fn render_all(
     Ok(pdfs)
 }
 
-/// Credit note, offer, order confirmation, delivery note or letter (`type` selects the template).
-async fn document_single(
+/// Create one document (PDF)
+///
+/// Credit note (Stornorechnung), offer, order confirmation, delivery note or letter; `type` selects the
+/// template. Same authentication, rate limit (one unit per PDF), watermark rules and error format as
+/// `POST /v1/invoices`. Only `settings.sender`, the logo, signature, accent color, font, locale and footer
+/// are used. A credit note carries an EN 16931 / XRechnung credit-note XML (TypeCode 381) when
+/// `settings.zugferd` is on.
+///
+/// Required `document` fields by `type`:
+///
+/// | `type` | Required | Optional |
+/// | --- | --- | --- |
+/// | `credit-note` | `number`, `date`, `recipient`, `items`, `reference` (the cancelled invoice) | `referenceDate`, `reason`, `closing` |
+/// | `offer` | `number`, `date`, `recipient`, `items` | `validUntil`, `reference`, `intro`, `closing` |
+/// | `order` | `number`, `date`, `recipient`, `items` | `deliveryDate`, `reference`, `intro`, `closing` |
+/// | `delivery-note` | `number`, `date`, `recipient`, `items` (shown without prices) | `deliveryDate`, `reference`, `intro`, `closing` |
+/// | `letter` | `date`, `recipient`, `subject`, `body` | `reference`, `closing` |
+#[utoipa::path(
+    post,
+    path = "/v1/documents",
+    tag = "Documents",
+    operation_id = "createDocument",
+    request_body = DocumentRequest,
+    responses((status = 200, description = "The PDF (PDF/A-3b).", content_type = "application/pdf", body = Vec<u8>, headers(("Content-Disposition" = String, description = "`attachment; filename=\"…\"` with the suggested file name."))))
+)]
+pub(crate) async fn document_single(
     Extension(client): Extension<Client>,
     payload: Result<Json<DocumentRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
@@ -420,16 +464,33 @@ async fn document_single(
     Ok(pdf_response(pdf, &documents::file_name(kind, &req.document)))
 }
 
-#[derive(Deserialize)]
-struct DocumentBulkRequest {
+/// Many documents of one type with shared settings.
+#[derive(Deserialize, ToSchema)]
+pub(crate) struct DocumentBulkRequest {
     #[serde(rename = "type")]
+    #[schema(value_type = Kind, required = true)]
     kind: String,
     settings: Settings,
+    /// Between 1 and `bulkMax` of the token (see `GET /v1/token`).
+    #[schema(min_items = 1)]
     documents: Vec<Document>,
 }
 
-/// Many documents of one type with shared settings -> ZIP.
-async fn document_bulk(
+/// Create many documents of one type (ZIP of PDFs)
+///
+/// Renders many documents of one `type` with shared settings and returns a ZIP of PDFs named
+/// `<type>-<number>.pdf`. Any validation error rejects the whole request and names the entry
+/// (`documents[2]: …`). The number of documents per request depends on the plan (`bulkMax` of
+/// `GET /v1/token`). Costs one rate-limit unit per document.
+#[utoipa::path(
+    post,
+    path = "/v1/documents/bulk",
+    tag = "Documents",
+    operation_id = "createDocumentsBulk",
+    request_body = DocumentBulkRequest,
+    responses((status = 200, description = "A ZIP archive with one PDF per entry, in the order of the request.", content_type = "application/zip", body = Vec<u8>, headers(("Content-Disposition" = String, description = "`attachment; filename=\"…\"` with the suggested file name."))))
+)]
+pub(crate) async fn document_bulk(
     Extension(client): Extension<Client>,
     payload: Result<Json<DocumentBulkRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
@@ -466,9 +527,24 @@ async fn document_bulk(
     zip_response(&pdfs, names, kind.slug())
 }
 
-async fn bulk(
+/// Create many invoices (ZIP of PDFs)
+///
+/// Renders many invoices with shared settings and returns a ZIP with one `invoice-<number>.pdf` per
+/// invoice. If one invoice is invalid, nothing is returned and the error names the entry
+/// (`invoices[3]: …`). The number of invoices per request depends on the plan (`bulkMax` of
+/// `GET /v1/token`); `0` or more than `bulkMax` entries give `400 invalid_request`. Costs one
+/// rate-limit unit per invoice, so the request also has to fit into `limitPerMinute`.
+#[utoipa::path(
+    post,
+    path = "/v1/invoices/bulk",
+    tag = "Invoices",
+    operation_id = "createInvoicesBulk",
+    request_body = InvoiceBulkRequest,
+    responses((status = 200, description = "A ZIP archive with one PDF per entry, in the order of the request.", content_type = "application/zip", body = Vec<u8>, headers(("Content-Disposition" = String, description = "`attachment; filename=\"…\"` with the suggested file name."))))
+)]
+pub(crate) async fn bulk(
     Extension(client): Extension<Client>,
-    payload: Result<Json<BulkRequest>, JsonRejection>,
+    payload: Result<Json<InvoiceBulkRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let Json(req) = payload.map_err(bad_json)?;
     check_bulk_size(&client, req.invoices.len(), "invoices")?;
@@ -779,7 +855,7 @@ mod tests {
             }
             v
         };
-        let req: BulkRequest = serde_json::from_value(json!({
+        let req: InvoiceBulkRequest = serde_json::from_value(json!({
             "settings": {"sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"}},
             "invoices": [item("1", true), item("2", false)],
         }))
@@ -926,6 +1002,138 @@ mod tests {
             if let Ok(dir) = std::env::var("PDF_OUT") {
                 std::fs::write(format!("{dir}/invoice{}.pdf", if watermark { "-wm" } else { "" }), pdf).unwrap();
             }
+        }
+    }
+
+    // ------------------------------------------------------------ OpenAPI spec (docs/openapi.yaml)
+
+    fn spec() -> serde_json::Value {
+        crate::openapi::spec()
+    }
+
+    /// All request examples of an operation: `(name, body)`.
+    fn spec_examples(spec: &serde_json::Value, path: &str) -> Vec<(String, serde_json::Value)> {
+        let examples = &spec["paths"][path]["post"]["requestBody"]["content"]["application/json"]["examples"];
+        let examples = examples.as_object().unwrap_or_else(|| panic!("{path} has request examples"));
+        assert!(!examples.is_empty(), "{path} has request examples");
+        examples.iter().map(|(name, example)| (format!("{path} {name}"), example["value"].clone())).collect()
+    }
+
+    fn enum_values(schema: &serde_json::Value) -> Vec<String> {
+        schema["enum"]
+            .as_array()
+            .expect("an enum")
+            .iter()
+            .map(|v| v.as_str().map_or_else(|| v.to_string(), str::to_string))
+            .collect()
+    }
+
+    /// Validates an invoice request the way the handlers do and renders it.
+    async fn render_invoice_example(name: &str, settings: serde_json::Value, invoice: serde_json::Value) {
+        let settings: Settings = serde_json::from_value(settings).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let invoice: Invoice = serde_json::from_value(invoice).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let mut errors = Errors::default();
+        let checked_settings = check_settings(&settings, &mut errors);
+        let checked = check_invoice(&invoice, "invoice", &mut errors);
+        assert!(errors.0.is_empty(), "{name}: {:?}", errors.0);
+        let (data, assets) = invoice_data(&settings, checked_settings.data, &invoice, checked, Vec::new());
+        let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await.unwrap_or_else(|e| panic!("{name}: {}", e.details));
+        assert!(pdf.starts_with(b"%PDF"), "{name}");
+    }
+
+    /// Validates a document request the way the handlers do and renders it.
+    async fn render_document_example(name: &str, kind: &str, settings: serde_json::Value, document: serde_json::Value) {
+        let kind = Kind::parse(kind).unwrap_or_else(|| panic!("{name}: unknown type {kind}"));
+        let settings: Settings = serde_json::from_value(settings).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let document: Document = serde_json::from_value(document).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let mut errors = Errors::default();
+        let checked_settings = check_settings(&settings, &mut errors);
+        assert!(errors.0.is_empty(), "{name}: {:?}", errors.0);
+        let (data, assets) = prepare_document(kind, &settings, checked_settings.data, Vec::new(), &document, "document", &mut errors)
+            .unwrap_or_else(|| panic!("{name}: {:?}", errors.0));
+        let pdf = render_pdf(kind.template(), data, assets).await.unwrap_or_else(|e| panic!("{name}: {}", e.details));
+        assert!(pdf.starts_with(b"%PDF"), "{name}");
+    }
+
+    /// The request examples of `docs/openapi.yaml` are real requests: every one passes the validation
+    /// of the handlers and renders a PDF, so the spec cannot drift from the code unnoticed.
+    #[tokio::test]
+    async fn openapi_request_examples_are_accepted() {
+        let spec = spec();
+
+        for (name, body) in spec_examples(&spec, "/v1/invoices") {
+            render_invoice_example(&name, body["settings"].clone(), body["invoice"].clone()).await;
+        }
+        for (name, body) in spec_examples(&spec, "/v1/invoices/bulk") {
+            let invoices = body["invoices"].as_array().expect("invoices");
+            assert!(!invoices.is_empty(), "{name}");
+            for (i, invoice) in invoices.iter().enumerate() {
+                render_invoice_example(&format!("{name}[{i}]"), body["settings"].clone(), invoice.clone()).await;
+            }
+        }
+
+        let mut single_types = Vec::new();
+        for (name, body) in spec_examples(&spec, "/v1/documents") {
+            let kind = body["type"].as_str().expect("type").to_string();
+            render_document_example(&name, &kind, body["settings"].clone(), body["document"].clone()).await;
+            single_types.push(kind);
+        }
+        for kind in Kind::ALL {
+            assert!(single_types.contains(&kind.slug().to_string()), "/v1/documents has no example for {}", kind.slug());
+        }
+        for (name, body) in spec_examples(&spec, "/v1/documents/bulk") {
+            let kind = body["type"].as_str().expect("type").to_string();
+            let documents = body["documents"].as_array().expect("documents");
+            assert!(!documents.is_empty(), "{name}");
+            for (i, document) in documents.iter().enumerate() {
+                render_document_example(&format!("{name}[{i}]"), &kind, body["settings"].clone(), document.clone()).await;
+            }
+        }
+    }
+
+    /// The limits written into the `#[schema(...)]` attributes are the ones the validation enforces
+    /// (attributes only take literals, so they cannot use the constants directly).
+    #[test]
+    fn openapi_limits_match_the_validation() {
+        let spec = spec();
+        let schemas = &spec["components"]["schemas"];
+
+        assert_eq!(schemas["Invoice"]["properties"]["items"]["maxItems"], crate::invoice::MAX_ITEMS);
+        assert_eq!(schemas["Document"]["properties"]["items"]["maxItems"], crate::invoice::MAX_ITEMS);
+        for (schema, property) in [
+            ("Sender", "name"),
+            ("Recipient", "name"),
+            ("Bank", "iban"),
+            ("Invoice", "number"),
+            ("Document", "subject"),
+        ] {
+            assert_eq!(schemas[schema]["properties"][property]["maxLength"], crate::invoice::MAX_SHORT, "{schema}.{property}");
+        }
+        for (schema, property) in [("Settings", "footer"), ("Settings", "closing"), ("Item", "description"), ("Document", "reason")] {
+            assert_eq!(schemas[schema]["properties"][property]["maxLength"], crate::invoice::MAX_LONG, "{schema}.{property}");
+        }
+        let kinds: Vec<&str> = Kind::ALL.iter().map(|k| k.slug()).collect();
+        assert_eq!(enum_values(&schemas["DocumentType"]), kinds);
+    }
+
+    /// Every error code the handlers answer with is documented in the `Error` schema.
+    #[test]
+    fn openapi_lists_every_error_code() {
+        let spec = spec();
+        let documented = enum_values(&spec["components"]["schemas"]["Error"]["properties"]["error"]);
+        let mut used = std::collections::BTreeSet::new();
+        for source in [include_str!("main.rs"), include_str!("v1.rs")] {
+            // `ApiError::new(StatusCode::X, "code", ...)`, possibly spread over several lines.
+            let production_code = source.split("#[cfg(test)]").next().unwrap_or(source);
+            for call in production_code.split("ApiError::new(").skip(1) {
+                if let Some(code) = call.split('"').nth(1) {
+                    used.insert(code.to_string());
+                }
+            }
+        }
+        assert!(!used.is_empty());
+        for code in used {
+            assert!(documented.contains(&code), "error code {code} is missing in openapi_overlay.yaml (errorCodes)");
         }
     }
 }

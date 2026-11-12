@@ -14,12 +14,15 @@ use crate::postage::{self, Postage};
 use serde::Deserialize;
 use serde_json::{json, Value as JsonValue};
 use std::sync::LazyLock;
+use utoipa::ToSchema;
 
 const MAX_BODY: usize = 10_000;
 
 const COMMON: &str = include_str!("../../frontend/src/template/document-common.typ");
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+/// Type of a document; selects the template.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, ToSchema)]
+#[schema(as = DocumentType, rename_all = "kebab-case")]
 pub enum Kind {
     CreditNote,
     Offer,
@@ -72,22 +75,46 @@ impl Kind {
     }
 }
 
-#[derive(Deserialize, Default)]
+/// A document; the required fields depend on `type` (see `POST /v1/documents`). `recipient` has only
+/// `name`, `address` and `city` for letters, offers, orders and delivery notes; for credit notes the
+/// e-invoice fields `vatId`, `email` and `buyerReference` are used as well.
+#[derive(Deserialize, Default, ToSchema)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Document {
+    /// Document number (not used for letters).
+    #[schema(max_length = 200)]
     pub number: String,
+    /// Document date as `YYYY-MM-DD` (years 1970 to 2200).
+    #[schema(format = Date)]
     pub date: String,
     pub recipient: Recipient,
+    /// 1 to 500 items (not used for letters; delivery notes show no prices).
+    #[schema(max_items = 500)]
     pub items: Vec<Item>,
-    /// Original invoice (credit note), offer (order) or order number (delivery note).
+    /// The cancelled invoice (credit note), the offer (order confirmation) or the order (delivery note).
+    #[schema(max_length = 200)]
     pub reference: String,
+    /// Date of the referenced document (`YYYY-MM-DD`).
+    #[schema(format = Date)]
     pub reference_date: String,
+    /// Offer: valid until (`YYYY-MM-DD`).
+    #[schema(format = Date)]
     pub valid_until: String,
+    /// Order confirmation and delivery note: delivery date (`YYYY-MM-DD`).
+    #[schema(format = Date)]
     pub delivery_date: String,
+    /// Letter subject.
+    #[schema(max_length = 200)]
     pub subject: String,
+    /// Letter text.
+    #[schema(max_length = 10000)]
     pub body: String,
+    /// Credit note: reason.
+    #[schema(max_length = 2000)]
     pub reason: String,
+    #[schema(max_length = 2000)]
     pub intro: String,
+    #[schema(max_length = 2000)]
     pub closing: String,
     /// Franking mark (Internetmarke PNG) printed into the address field.
     pub postage: Option<Postage>,
