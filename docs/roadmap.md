@@ -33,13 +33,23 @@ Phase 1 = small, independent quick wins. Phase 2 = new user-facing features. Pha
 | Plan item | Why not now | Build when |
 | --- | --- | --- |
 | Price change to 29 €/year and 3.90 €/month | Configuration only: `PAID_PRICES` (see "Pricing" in [12](12-paid-tokens-mollie.md)), no code | – |
-| Monthly quotas, priority tier, usage display | One Starter plan is sold; the per-minute limit and compile queue already protect capacity. The live preview uses the same token, so counting requests would punish editing, and the backend cannot tell preview from final download | a second plan with a different quota is actually sold |
-| Token dashboard | The buy page already shows token, expiry, renewal and cancelling | usage data exists |
+| Monthly quotas (300 documents, 5,000 / 50,000 API calls) and usage display | Only a per-minute limit exists. The live preview uses the same token, so counting requests would punish editing, and the backend cannot tell preview from final download. Tiers can start without quotas: "API Growth" / "API Scale" and the "priority rate limit" map to the existing `PAID_PLANS` (`business` = 100/min, `pro` = 300/min) and `PAID_PRICES`, which is configuration only | API customers exist and one of them exceeds a fair monthly volume; then design a quota that counts final renders only |
+| Token dashboard | The buy page already shows plan, per-minute limit, expiry, renewal and cancelling; only the monthly usage from the plan is missing, and it needs a quota | a quota exists |
 | PAdES signatures | Not required for e-invoices ([15](15-pdf-signatures.md)); needs customer-owned signing certificates and key handling | a customer asks and brings a certificate |
 | E2E-encrypted sync | The backup file already moves data; sync would put customer data on the server and breaks the privacy promise | repeated requests for multi-device use |
 | Production Helm chart (HA), enterprise offer, custom template service | No lead yet; the demo chart already works and supports an external Valkey | a concrete enterprise or custom-template lead |
 | Decision log, legal texts, purchase invoices, DPA, KPIs, license strategy | Not code. Open points are listed in `AGENTS.md` (steps 43, 45) | handled outside the repo; code only if a decision requires it |
 | Developer test token, SDKs, Postman collection | Without evidence it is speculative; OpenAPI (E02) lets users generate clients | developers report the Anubis cookie as blocker |
+
+## Claims in the plan to correct before they are published
+
+- "Mustang validation integrated": only run by hand so far (E01 fixes this).
+- "Internetmarke with your own Portokasse" as a selling point: off by default, never verified against the live Deutsche Post API, and it is open whether partners may use end-customer Portokasse logins ([14](14-internetmarke-integration.md)). Do not advertise it before that is verified.
+- "Pre-validated compliance certificate" for enterprise customers: no such certificate exists; the CI result from E01 is the most the project can show.
+- "< 10 ms": true for typical documents (about 5 ms for 3 items, about 28 ms for 60 items); say "typically".
+- "29 €/year and 3.90 €/month": the product launches at 24.00 € and 2.90 € (`PAID_PRICES`); the 29 € plan price and the finance figures are an owner decision, not a code task.
+- The license is MIT (checked); a separate commercial module is not needed now.
+- The finance plan's largest line (API customers) assumes the API tiers; they can be sold via `PAID_PLANS` without a monthly quota (see above).
 
 ## Recommended order
 
