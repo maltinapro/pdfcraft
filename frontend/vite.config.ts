@@ -10,6 +10,9 @@ const appVersion = process.env.APP_VERSION || 'dev'
 // (api/index.html). The Docker build copies it to /docs/openapi.yaml, the same place relative to the build root.
 const openapiFile = resolve(__dirname, '../docs/openapi.yaml')
 
+// Footer shared by the landing page and the SEO pages (placeholder `<!-- site-footer -->`)
+const footerFile = resolve(__dirname, 'partials/site-footer.html')
+
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [
@@ -28,7 +31,8 @@ export default defineConfig({
     },
     {
       name: 'app-version-html',
-      transformIndexHtml: (html) => html.replaceAll('__APP_VERSION__', appVersion),
+      transformIndexHtml: (html) =>
+        html.replace('<!-- site-footer -->', () => readFileSync(footerFile, 'utf8')).replaceAll('__APP_VERSION__', appVersion),
     },
   ],
   build: {
@@ -37,6 +41,11 @@ export default defineConfig({
         landing: resolve(__dirname, 'index.html'),
         app: resolve(__dirname, 'app/index.html'),
         api: resolve(__dirname, 'api/index.html'),
+        // SEO pages: one HTML file each (+ an entry in public/sitemap.xml and partials/site-footer.html)
+        zugferd: resolve(__dirname, 'zugferd-rechnung-erstellen/index.html'),
+        xrechnung: resolve(__dirname, 'xrechnung-generator/index.html'),
+        stornorechnung: resolve(__dirname, 'stornorechnung-gutschrift-e-rechnung/index.html'),
+        erechnungspflicht: resolve(__dirname, 'e-rechnungspflicht/index.html'),
         impressum: resolve(__dirname, 'impressum.html'),
         datenschutz: resolve(__dirname, 'datenschutz.html'),
         agb: resolve(__dirname, 'agb.html'),

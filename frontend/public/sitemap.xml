@@ -4,6 +4,18 @@
     <loc>https://digitalrechnung.jetzt/</loc>
   </url>
   <url>
+    <loc>https://digitalrechnung.jetzt/zugferd-rechnung-erstellen/</loc>
+  </url>
+  <url>
+    <loc>https://digitalrechnung.jetzt/xrechnung-generator/</loc>
+  </url>
+  <url>
+    <loc>https://digitalrechnung.jetzt/stornorechnung-gutschrift-e-rechnung/</loc>
+  </url>
+  <url>
+    <loc>https://digitalrechnung.jetzt/e-rechnungspflicht/</loc>
+  </url>
+  <url>
     <loc>https://digitalrechnung.jetzt/api/</loc>
   </url>
 </urlset>

@@ -12,7 +12,7 @@ GitHub issues are created **phase by phase** (epic issue + one sub-issue per tas
 | --- | --- | --- | --- | --- |
 | [E01](epics/E01-einvoice-conformance-ci.md) | E-invoice conformance in CI | 1 | – | done |
 | [E02](epics/E02-openapi-spec.md) | OpenAPI specification | 1 | – | done |
-| [E03](epics/E03-seo-landing-pages.md) | SEO landing pages | 1 | – | open |
+| [E03](epics/E03-seo-landing-pages.md) | SEO landing pages | 1 | – | in progress |
 | [E04](epics/E04-master-data.md) | Customer and article master data | 2 | – | open |
 | [E05](epics/E05-einvoice-viewer.md) | E-invoice viewer and checker | 2 | E01, E03-01 | open |
 | [E06](epics/E06-template-designs.md) | Additional template design | 3 | – | open |
