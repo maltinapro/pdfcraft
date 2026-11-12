@@ -22,7 +22,7 @@ use axum::{
     routing::get,
     Router,
 };
-use minijinja::{Environment, Value};
+use minijinja::{value::Serde, Environment, Value};
 use serde::Serialize;
 use serde_json::Value as JsonValue;
 use std::{
@@ -339,7 +339,7 @@ fn fill_template(
         .template_from_str(template)
         .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, "template_parse_error", e.to_string()))?;
     template
-        .render(Value::from_serialize(&data))
+        .render(Value::from(Serde(&data)))
         .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, "template_render_error", e.to_string()))
 }
 

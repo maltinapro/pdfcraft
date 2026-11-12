@@ -8,7 +8,7 @@ axum = { version = "0.8", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-minijinja = "3"
+minijinja = { version = "3", features = ["serde"] }
 typst = "0.15.1"
 typst-pdf = "0.15.1"
 typst-as-lib = "0.17.0"
