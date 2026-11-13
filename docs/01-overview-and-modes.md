@@ -49,7 +49,7 @@ Tokens + rate limit: Valkey; free: 20/min, paid tokens: disabled (PAID_TOKENS_EN
 | File | Created by | Content | Accepted by |
 | --- | --- | --- | --- |
 | `pdfcraft-config.json` | **Daten & Sicherung** → *Für Entwickler* → Konfiguration exportieren | `{ schemaVersion, settings, invoice }` | frontend import and `POST /v1/invoices` |
-| `pdfcraft-backup-<date>.json` | **Daten & Sicherung** → Sicherung herunterladen | `{ backupVersion, config, documents, archive }`: sender/design incl. logo, invoice and document drafts, issued documents | frontend restore (also accepts the older config and archive files) |
+| `pdfcraft-backup-<date>.json` | **Daten & Sicherung** → Sicherung herunterladen | `{ backupVersion, config, documents, archive, masterData }`: sender/design incl. logo, invoice and document drafts, issued documents, saved recipients and articles | frontend restore (also accepts version 1 backups without `masterData` and the older config and archive files) |
 
 Nothing is stored server-side: the backup file is the only way to move or recover the browser data. The dashboard reminds the user to back up while issued documents are not part of the last backup (`pdfcraft.lastBackup` in `localStorage`).
 
