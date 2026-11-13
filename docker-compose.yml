@@ -113,7 +113,7 @@ services:
       - backend
 
   valkey:
-    image: valkey/valkey:8-alpine
+    image: valkey/valkey:9-alpine
     # Append-only file: tokens survive restarts
     command: ["valkey-server", "--appendonly", "yes", "--save", "60", "1"]
     volumes:

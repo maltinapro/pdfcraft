@@ -35,7 +35,7 @@ backend:
 valkey:
   enabled: true
   nodeSelector: {}
-  image: valkey/valkey:8-alpine
+  image: valkey/valkey:9-alpine
   persistence:
     size: 1Gi
     storageClass: ""
