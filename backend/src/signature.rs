@@ -3,7 +3,7 @@
 //! The SVG is cropped to its visible content so a signature on a full A4 page is not shrunk.
 
 use hayro_svg::{
-    hayro_interpret::InterpreterSettings, hayro_syntax::Pdf, RenderCache, SvgRenderSettings,
+    hayro_interpret::{InterpreterSettings, RenderContent}, hayro_syntax::Pdf, RenderCache, SvgRenderSettings,
 };
 use std::sync::Arc;
 
@@ -15,7 +15,7 @@ pub fn pdf_to_svg(bytes: &[u8]) -> Option<String> {
         let pdf = Pdf::new(Arc::new(data)).ok()?;
         let page = pdf.pages().first()?;
         let settings = InterpreterSettings {
-            render_annotations: false,
+            render_content: RenderContent::PAGE,
             ..InterpreterSettings::default()
         };
         let svg = hayro_svg::convert(
@@ -84,6 +84,45 @@ mod tests {
         assert!(v[3] < 12.0, "{view_box}");
         assert!(svg.starts_with("<svg viewBox=\"") && svg.contains(" xmlns=\"http://www.w3.org/2000/svg\""));
         assert!(!svg.split('>').next().unwrap().contains(" 595"));
+    }
+
+    #[tokio::test]
+    async fn ignores_pdf_annotations() {
+        use lopdf::{dictionary, Object, Stream};
+
+        let pdf = crate::render_pdf("#set document(date: datetime(year: 2026, month: 1, day: 1))\nA signature", serde_json::json!({}), vec![])
+            .await.map_err(|e| e.details).unwrap();
+        let expected = super::pdf_to_svg(&pdf).unwrap();
+        let mut document = lopdf::Document::load_mem(&pdf).unwrap();
+        let page_id = *document.get_pages().values().next().unwrap();
+        let appearance = document.add_object(Stream::new(
+            dictionary! {
+                "Type" => "XObject",
+                "Subtype" => "Form",
+                "BBox" => vec![0.into(), 0.into(), 100.into(), 100.into()],
+            },
+            b"0 0 100 100 re f".to_vec(),
+        ));
+        let annotation = document.add_object(dictionary! {
+            "Type" => "Annot",
+            "Subtype" => "Stamp",
+            "Rect" => vec![0.into(), 0.into(), 100.into(), 100.into()],
+            "AP" => dictionary! { "N" => Object::Reference(appearance) },
+        });
+        document.get_object_mut(page_id).unwrap().as_dict_mut().unwrap()
+            .set("Annots", vec![Object::Reference(annotation)]);
+        let mut annotated_pdf = Vec::new();
+        document.save_to(&mut annotated_pdf).unwrap();
+
+        let parsed = super::Pdf::new(super::Arc::new(annotated_pdf.clone())).unwrap();
+        let rendered_with_annotations = hayro_svg::convert(
+            parsed.pages().first().unwrap(),
+            &super::RenderCache::new(),
+            &super::InterpreterSettings::default(),
+            &super::SvgRenderSettings { bg_color: [0, 0, 0, 0] },
+        );
+        assert_ne!(super::crop_to_content(&rendered_with_annotations).unwrap(), expected);
+        assert_eq!(super::pdf_to_svg(&annotated_pdf).unwrap(), expected);
     }
 
     #[test]

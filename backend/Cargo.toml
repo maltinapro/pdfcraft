@@ -15,19 +15,19 @@ typst-as-lib = "0.17.0"
 typst-kit = { version = "0.15.1", default-features = false, features = ["scan-fonts", "embedded-fonts"] }
 tower-http = { version = "0.7", features = ["cors"] }
 base64 = "0.23.1"
-lopdf = "0.46.0"
-hayro-svg = { version = "0.7", default-features = false }
-usvg = { version = "0.47", default-features = false }
-resvg = { version = "0.47", default-features = false }
+lopdf = "0.47.0"
+hayro-svg = { version = "0.9", default-features = false }
+usvg = { version = "0.50", default-features = false }
+resvg = { version = "0.50", default-features = false }
 tiny-skia = "0.12"
 zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
-redis = { version = "0.27", features = ["tokio-comp", "connection-manager", "cluster-async"] }
+redis = { version = "0.32", features = ["tokio-comp", "connection-manager", "cluster-async"] }
 sha2 = "0.11.1"
 rand = "0.10"
 ed25519-dalek = "3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
-prometheus-client = "0.25.2"
+prometheus-client = "0.26.0"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json", "form"] }
 utoipa = "5"
 serde_yaml = "0.9"
