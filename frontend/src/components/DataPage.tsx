@@ -51,8 +51,8 @@ export function DataPage({ notice, onDismissNotice, lastBackup, unsaved, onBacku
           <h2>{tr('Sicherung', 'Backup')}</h2>
           <p>
             {tr(
-              'Laden Sie Ihre Daten regelmäßig als Datei herunter und bewahren Sie diese an einem sicheren Ort auf (z. B. Cloud-Speicher oder USB-Stick). Die Datei enthält Absender, Logo, Unterschrift, Entwürfe und alle Belege.',
-              'Download your data as a file regularly and keep it in a safe place (e.g. cloud storage or a USB stick). The file contains sender, logo, signature, drafts and all documents.',
+              'Laden Sie Ihre Daten regelmäßig als Datei herunter und bewahren Sie diese an einem sicheren Ort auf (z. B. Cloud-Speicher oder USB-Stick). Die Datei enthält Absender, Logo, Unterschrift, Entwürfe, gespeicherte Empfänger und Artikel sowie alle Belege.',
+              'Download your data as a file regularly and keep it in a safe place (e.g. cloud storage or a USB stick). The file contains sender, logo, signature, drafts, saved recipients and articles, and all documents.',
             )}
           </p>
           <p className="data-status" data-state={unsaved > 0 || !when ? 'warn' : 'ok'}>
@@ -70,8 +70,8 @@ export function DataPage({ notice, onDismissNotice, lastBackup, unsaved, onBacku
           <h2>{tr('Wiederherstellen', 'Restore')}</h2>
           <p>
             {tr(
-              'Neuer Computer oder Browser-Daten gelöscht? Laden Sie hier Ihre Sicherung hoch. Aktuelle Absenderdaten und Entwürfe werden ersetzt, Belege aus der Datei werden ergänzt.',
-              'New computer or browser data cleared? Upload your backup here. Current sender details and drafts are replaced, documents from the file are added.',
+              'Neuer Computer oder Browser-Daten gelöscht? Laden Sie hier Ihre Sicherung hoch. Aktuelle Absenderdaten und Entwürfe werden ersetzt, Belege sowie Empfänger und Artikel aus der Datei werden ergänzt.',
+              'New computer or browser data cleared? Upload your backup here. Current sender details and drafts are replaced, documents, recipients and articles from the file are added.',
             )}
           </p>
           <div className="data-actions">
@@ -117,8 +117,8 @@ export function DataPage({ notice, onDismissNotice, lastBackup, unsaved, onBacku
           <h2>{tr('Alles löschen', 'Delete everything')}</h2>
           <p>
             {tr(
-              'Entfernt Absenderdaten, Logo, Unterschrift, Entwürfe und alle Belege aus diesem Browser. Das lässt sich nicht rückgängig machen – sichern Sie vorher.',
-              'Removes sender details, logo, signature, drafts and all documents from this browser. This cannot be undone – back up first.',
+              'Entfernt Absenderdaten, Logo, Unterschrift, Entwürfe, Empfänger, Artikel und alle Belege aus diesem Browser. Das lässt sich nicht rückgängig machen – sichern Sie vorher.',
+              'Removes sender details, logo, signature, drafts, recipients, articles and all documents from this browser. This cannot be undone – back up first.',
             )}
           </p>
           <div className="data-actions">

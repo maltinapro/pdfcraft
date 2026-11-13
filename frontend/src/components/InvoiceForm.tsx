@@ -1,5 +1,6 @@
 import { TextField } from './Field'
 import { ItemsEditor } from './ItemsEditor'
+import { RecipientPicker } from './MasterDataPickers'
 import { PostageSection } from './PostageSection'
 import { tr, useLang } from '../lib/i18n'
 import type { Invoice, Recipient } from '../lib/types'
@@ -24,6 +25,7 @@ export function InvoiceForm({ invoice, onChange }: Props) {
 
       <section className="form-section">
         <h3>{tr('Empfänger', 'Recipient')}</h3>
+        <RecipientPicker recipient={invoice.recipient} onPick={(recipient) => onChange({ ...invoice, recipient })} />
         <TextField field="recipient.name" label={tr('Name', 'Name')} value={invoice.recipient.name} onChange={(v) => setRecipient('name', v)} />
         <TextField field="recipient.address" label={tr('Straße / Hausnummer', 'Street / house number')} value={invoice.recipient.address} onChange={(v) => setRecipient('address', v)} />
         <TextField field="recipient.city" label={tr('PLZ / Ort', 'Postcode / city')} value={invoice.recipient.city} onChange={(v) => setRecipient('city', v)} />

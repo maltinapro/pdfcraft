@@ -123,7 +123,7 @@ Further options: HTTP basic auth or a shared demo password at the proxy if only 
 
 ## Demo data and privacy
 
-- The configuration is stored in the visitor's browser only (`localStorage`); the server stores nothing.
+- The configuration and the saved recipients and articles (master data) are stored in the visitor's browser only (`localStorage`); the server stores nothing.
 - Tell prospects not to enter real customer data into the demo, because it is processed on your server.
 - The pre-filled defaults (Muster GmbH, Kunde AG) are fictional and safe to show.
 
