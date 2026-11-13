@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   frontend:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: frontend
@@ -31,7 +31,7 @@ jobs:
   # Lints docs/openapi.yaml (rules in redocly.yaml; warnings fail the job). The file is generated from
   # the backend code: the backend tests (`openapi_*`) fail when it is outdated or an example is invalid.
   openapi:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -40,7 +40,7 @@ jobs:
       - run: npx --yes @redocly/cli@2.78.0 lint docs/openapi.yaml --max-problems 0
 
   backend:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: backend
@@ -56,7 +56,7 @@ jobs:
   # Renders a fixed corpus of e-invoices (see `renders_einvoice_conformance_corpus` in backend/src/v1.rs)
   # and fails if Mustang reports any of them as invalid.
   einvoice:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       MUSTANG_VERSION: 2.26.0
       MUSTANG_SHA256: 42d7868cb68264874a7b8cab4c3587b03b23ccc7cd72373da917f66758bb9736
