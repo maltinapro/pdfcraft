@@ -21,7 +21,7 @@ usvg = { version = "0.50", default-features = false }
 resvg = { version = "0.50", default-features = false }
 tiny-skia = "0.12"
 zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
-redis = { version = "0.32", features = ["tokio-comp", "connection-manager", "cluster-async"] }
+redis = { version = "1.0", features = ["tokio-comp", "connection-manager", "cluster-async"] }
 sha2 = "0.11.1"
 rand = "0.10"
 ed25519-dalek = "3"
