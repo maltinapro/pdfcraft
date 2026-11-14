@@ -17,6 +17,8 @@ export interface Bank {
   bic: string
 }
 
+export type Design = 'classic' | 'modern-minimal'
+
 export interface Logo {
   fileName: string
   /** Base64 without the data URL prefix. */
@@ -29,6 +31,7 @@ export interface Settings {
   /** Handwritten signature as PNG, JPEG, SVG or one-page PDF; printed below the closing text. */
   signature: Logo | null
   sender: Sender
+  design: Design
   accentColor: string
   font: string
   locale: string
@@ -102,6 +105,11 @@ export const LOCALES = [
   { value: 'en-de', get label() { return tr('English', 'English') } },
 ] as const
 
+export const DESIGNS = [
+  { value: 'classic', get label() { return tr('Klassisch', 'Classic') }, preview: '/design-previews/classic.png' },
+  { value: 'modern-minimal', get label() { return tr('Modern Minimal', 'Modern Minimal') }, preview: '/design-previews/modern-minimal.png' },
+] as const
+
 export const UNITS = [
   { value: 'pcs', get label() { return tr('Stück', 'Pieces') } },
   { value: 'h', get label() { return tr('Stunden', 'Hours') } },
@@ -138,6 +146,7 @@ export const DEFAULT_SETTINGS: Settings = {
     phone: '',
     contactName: '',
   },
+  design: 'classic',
   accentColor: '#1d4ed8',
   font: 'Liberation Sans',
   locale: 'de-de',

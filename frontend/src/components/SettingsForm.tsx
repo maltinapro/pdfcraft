@@ -4,6 +4,7 @@ import { useFieldProps } from './FormIssues'
 import { tr, useLang } from '../lib/i18n'
 import {
   FONTS,
+  DESIGNS,
   EINVOICE_PROFILES,
   LOCALES,
   MAX_LOGO_BYTES,
@@ -210,6 +211,24 @@ export function SettingsForm({ settings, onChange, forInvoice = true }: Props) {
 
       <section className="form-section">
         <h3>{tr('Design', 'Design')}</h3>
+        <div className="field">
+          <span className="field-label">{tr('Dokumentvorlage', 'Document design')}</span>
+          <div className="design-options" role="radiogroup" aria-label={tr('Dokumentvorlage', 'Document design')}>
+            {DESIGNS.map((design) => (
+              <label className={`design-option${settings.design === design.value ? ' selected' : ''}`} key={design.value}>
+                <input
+                  type="radio"
+                  name="document-design"
+                  value={design.value}
+                  checked={settings.design === design.value}
+                  onChange={() => set('design', design.value)}
+                />
+                <img src={design.preview} alt="" />
+                <span>{design.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
         <Field label={tr('Akzentfarbe', 'Accent color')}>
           <input
             type="color"

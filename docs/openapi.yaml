@@ -908,6 +908,13 @@ components:
           description: Text below the totals.
           maxLength: 2000
           type: string
+        design:
+          default: classic
+          description: Document layout.
+          enum:
+          - classic
+          - modern-minimal
+          type: string
         einvoiceProfile:
           default: en16931
           description: '`en16931` attaches `factur-x.xml` (ZUGFeRD / Factur-X), `xrechnung` attaches `xrechnung.xml`.'

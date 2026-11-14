@@ -16,7 +16,13 @@ const OVERLAY: &str = include_str!("openapi_overlay.yaml");
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(crate::v1::single, crate::v1::bulk, crate::v1::document_single, crate::v1::document_bulk, crate::mollie::token_info),
+    paths(
+        crate::v1::single,
+        crate::v1::bulk,
+        crate::v1::document_single,
+        crate::v1::document_bulk,
+        crate::mollie::token_info
+    ),
     components(schemas(crate::ErrorResponse))
 )]
 struct ApiDoc;
@@ -40,13 +46,16 @@ fn reference(name: &str) -> Value {
 }
 
 fn object<'a>(value: &'a mut Value, what: &str) -> &'a mut Map<String, Value> {
-    value.as_object_mut().unwrap_or_else(|| panic!("{what} is an object"))
+    value
+        .as_object_mut()
+        .unwrap_or_else(|| panic!("{what} is an object"))
 }
 
 /// The complete specification as JSON.
 pub fn spec() -> Value {
     let mut spec = serde_json::to_value(ApiDoc::openapi()).expect("the specification serializes");
-    let mut overlay: Value = serde_yaml::from_str(OVERLAY).expect("openapi_overlay.yaml is valid YAML");
+    let mut overlay: Value =
+        serde_yaml::from_str(OVERLAY).expect("openapi_overlay.yaml is valid YAML");
 
     for key in ["info", "servers", "security", "tags"] {
         spec[key] = overlay[key].take();
@@ -66,13 +75,23 @@ fn clean_schemas(schemas: &mut Value) {
     for (_, schema) in object(schemas, "schemas") {
         let required: Vec<String> = schema["required"]
             .as_array()
-            .map(|r| r.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
+            .map(|r| {
+                r.iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect()
+            })
             .unwrap_or_default();
-        let Some(properties) = schema.get_mut("properties").and_then(Value::as_object_mut) else { continue };
+        let Some(properties) = schema.get_mut("properties").and_then(Value::as_object_mut) else {
+            continue;
+        };
         for (name, property) in properties {
-            let Some(property) = property.as_object_mut() else { continue };
+            let Some(property) = property.as_object_mut() else {
+                continue;
+            };
             // Optional `Option<T>` field: an omitted field and `null` are both fine; document it as optional only.
-            if let (false, Some(Value::Array(types))) = (required.contains(name), property.get("type")) {
+            if let (false, Some(Value::Array(types))) =
+                (required.contains(name), property.get("type"))
+            {
                 let types: Vec<Value> = types.iter().filter(|t| *t != "null").cloned().collect();
                 if let [single] = types.as_slice() {
                     property.insert("type".into(), single.clone());
@@ -97,7 +116,9 @@ fn clean_schemas(schemas: &mut Value) {
                 Some(Value::String(s)) => s.is_empty(),
                 Some(Value::Array(a)) => a.is_empty(),
                 Some(Value::Object(_)) | Some(Value::Null) => true,
-                Some(Value::Number(n)) => n.as_f64() == Some(0.0) && property.get("type") == Some(&json!("number")),
+                Some(Value::Number(n)) => {
+                    n.as_f64() == Some(0.0) && property.get("type") == Some(&json!("number"))
+                }
                 _ => false,
             };
             if noise || required.contains(name) {
@@ -112,26 +133,59 @@ fn inject_allowed_values(schemas: &mut Value, error_codes: &Value) {
     fn set_enum(property: &mut Value, values: Value) {
         property["enum"] = values;
     }
-    set_enum(&mut schemas["Settings"]["properties"]["font"], json!(invoice::FONTS));
-    set_enum(&mut schemas["Settings"]["properties"]["locale"], json!(invoice::LOCALES));
-    set_enum(&mut schemas["Settings"]["properties"]["einvoiceProfile"], json!(invoice::PROFILES));
-    set_enum(&mut schemas["Item"]["properties"]["unit"], json!(invoice::UNITS));
-    set_enum(&mut schemas["Item"]["properties"]["taxRate"], json!(invoice::TAX_RATES));
-    set_enum(&mut schemas["DocumentType"], json!(Kind::ALL.iter().map(|k| k.slug()).collect::<Vec<_>>()));
-    set_enum(&mut schemas["TokenInfo"]["properties"]["kind"], json!(["free", "paid"]));
-    set_enum(&mut schemas["Error"]["properties"]["error"], error_codes.clone());
+    set_enum(
+        &mut schemas["Settings"]["properties"]["font"],
+        json!(invoice::FONTS),
+    );
+    set_enum(
+        &mut schemas["Settings"]["properties"]["locale"],
+        json!(invoice::LOCALES),
+    );
+    set_enum(
+        &mut schemas["Settings"]["properties"]["einvoiceProfile"],
+        json!(invoice::PROFILES),
+    );
+    set_enum(
+        &mut schemas["Settings"]["properties"]["design"],
+        json!(invoice::DESIGNS),
+    );
+    set_enum(
+        &mut schemas["Item"]["properties"]["unit"],
+        json!(invoice::UNITS),
+    );
+    set_enum(
+        &mut schemas["Item"]["properties"]["taxRate"],
+        json!(invoice::TAX_RATES),
+    );
+    set_enum(
+        &mut schemas["DocumentType"],
+        json!(Kind::ALL.iter().map(|k| k.slug()).collect::<Vec<_>>()),
+    );
+    set_enum(
+        &mut schemas["TokenInfo"]["properties"]["kind"],
+        json!(["free", "paid"]),
+    );
+    set_enum(
+        &mut schemas["Error"]["properties"]["error"],
+        error_codes.clone(),
+    );
 }
 
 /// Examples, shared error responses and the binary success responses of every operation.
 fn complete_operations(spec: &mut Value, overlay: &mut Value) {
     for (path, item) in object(&mut spec["paths"], "paths") {
         for (_, operation) in object(item, path) {
-            let id = operation["operationId"].as_str().expect("operationId").to_string();
+            let id = operation["operationId"]
+                .as_str()
+                .expect("operationId")
+                .to_string();
             let is_get = operation["requestBody"].is_null();
             if !is_get {
-                operation["requestBody"]["content"]["application/json"]["examples"] = overlay["examples"][&id].take();
+                operation["requestBody"]["content"]["application/json"]["examples"] =
+                    overlay["examples"][&id].take();
             } else {
-                operation["responses"]["200"]["content"]["application/json"]["examples"] = overlay["responseExamples"][&id].take();
+                operation["responses"]["200"]["content"]["application/json"]["examples"] =
+                    overlay["responseExamples"][&id].take();
             }
             let responses = object(&mut operation["responses"], "responses");
             if path.ends_with("/bulk") {
@@ -139,7 +193,11 @@ fn complete_operations(spec: &mut Value, overlay: &mut Value) {
             } else if !is_get {
                 responses.insert("200".into(), reference("Pdf"));
             }
-            for (status, name) in if is_get { &TOKEN_ERRORS[..] } else { &POST_ERRORS[..] } {
+            for (status, name) in if is_get {
+                &TOKEN_ERRORS[..]
+            } else {
+                &POST_ERRORS[..]
+            } {
                 responses.insert((*status).into(), reference(name));
             }
         }
@@ -151,7 +209,10 @@ pub fn yaml() -> String {
     let spec = spec();
     // Top-level keys in reading order; everything below is sorted alphabetically.
     let mut document = serde_yaml::Mapping::new();
-    document.insert("openapi".into(), serde_yaml::to_value(&spec["openapi"]).unwrap());
+    document.insert(
+        "openapi".into(),
+        serde_yaml::to_value(&spec["openapi"]).unwrap(),
+    );
     for key in ["info", "servers", "security", "tags", "paths", "components"] {
         document.insert(key.into(), serde_yaml::to_value(&spec[key]).unwrap());
     }
@@ -161,7 +222,14 @@ pub fn yaml() -> String {
 /// `serde_yaml` leaves date-like strings unquoted, which YAML 1.1 parsers read as dates.
 fn quote_dates(yaml: &str) -> String {
     let is_date = |s: &str| {
-        s.len() == 10 && s.char_indices().all(|(i, c)| if i == 4 || i == 7 { c == '-' } else { c.is_ascii_digit() })
+        s.len() == 10
+            && s.char_indices().all(|(i, c)| {
+                if i == 4 || i == 7 {
+                    c == '-'
+                } else {
+                    c.is_ascii_digit()
+                }
+            })
     };
     let mut out = String::with_capacity(yaml.len());
     for line in yaml.lines() {

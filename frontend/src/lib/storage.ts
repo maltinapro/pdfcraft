@@ -1,6 +1,7 @@
 import { tr } from './i18n'
 import {
   DEFAULT_SETTINGS,
+  DESIGNS,
   MAX_LOGO_BYTES,
   defaultInvoice,
   newItem,
@@ -70,6 +71,7 @@ export function parseConfig(raw: unknown): AppConfig {
   // Migrations for older versions go here, one step per version.
 
   const settings = mergeObject(DEFAULT_SETTINGS as unknown as Obj, raw.settings) as unknown as Settings
+  if (!DESIGNS.some(({ value }) => value === settings.design)) settings.design = DEFAULT_SETTINGS.design
   settings.logo = isObj(raw.settings) ? parseLogo(raw.settings.logo) : null
   settings.signature = isObj(raw.settings) ? parseLogo(raw.settings.signature) : null
 

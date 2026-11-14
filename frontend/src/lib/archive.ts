@@ -148,7 +148,15 @@ export type { DocDataKind }
 export function groupBySettings(entries: ArchiveEntry[], current: Settings): { settings: Settings; entries: ArchiveEntry[] }[] {
   const groups = new Map<string, { settings: Settings; entries: ArchiveEntry[] }>()
   for (const entry of entries) {
-    const settings: Settings = entry.settings ? { ...current, ...entry.settings, logo: current.logo, signature: current.signature } : current
+    const settings: Settings = entry.settings
+      ? {
+          ...current,
+          ...entry.settings,
+          design: entry.settings.design === 'modern-minimal' ? 'modern-minimal' : 'classic',
+          logo: current.logo,
+          signature: current.signature,
+        }
+      : current
     const key = JSON.stringify(entry.settings ?? null)
     const group = groups.get(key) ?? { settings, entries: [] }
     group.entries.push(entry)
