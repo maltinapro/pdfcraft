@@ -12,7 +12,7 @@
 //!   creates the mandate; once it is paid, the backend creates the subscription. Its
 //!   metadata remembers the token id, so every later `recurring` payment moves the
 //!   token's end to now + the interval + `PAID_GRACE_DAYS`.
-//! * The new plain token is handed over once through `GET /v1/tokens/claim?order=…`.
+//! * The new plain token is handed over (once, plus a ten minute grace period) through `GET /v1/tokens/claim?order=…`.
 //!
 //! Nothing but the token (hashed), its plan and its end date is stored by PDFCraft; no
 //! customer, company or payment data (Mollie keeps the payment and the customer).
@@ -32,6 +32,11 @@ use serde_json::{json, Value};
 use std::{sync::OnceLock, time::Duration};
 
 const CLAIM_PREFIX: &str = "pdfcraft:claim:";
+/// Copy of a collected claim, readable again for a few minutes (page reloaded or storage failed before the token was saved).
+const CLAIMED_PREFIX: &str = "pdfcraft:claimed:";
+/// How long a new token waits to be collected (e.g. a slow bank transfer, the customer returns later).
+const CLAIM_WAIT_SECS: u64 = 24 * 3600;
+const CLAIM_GRACE_SECS: u64 = 600;
 const PAYMENT_PREFIX: &str = "pdfcraft:mollie:payment:";
 const TOKEN_PREFIX: &str = "pdfcraft:mollie:token:";
 const SUBSCRIBED_PREFIX: &str = "pdfcraft:mollie:subscribed:";
@@ -288,7 +293,7 @@ async fn apply_purchase(payment: &Value, payment_id: &str, plan: &str, days: u64
             .map_err(|_| store_unavailable())?;
         tracing::info!(event = "token_created", token_id = %created.id, token_kind = "paid", token_plan = plan);
         let claim = json!({ "token": created.token, "expiresAt": created.valid_until, "plan": plan, "limitPerMinute": limit });
-        store::put(&format!("{CLAIM_PREFIX}{order}"), &claim.to_string(), 3600)
+        store::put(&format!("{CLAIM_PREFIX}{order}"), &claim.to_string(), CLAIM_WAIT_SECS)
             .await
             .map_err(|_| store_unavailable())?;
         created.id
@@ -490,12 +495,19 @@ pub struct ClaimQuery {
     order: String,
 }
 
-/// `GET /v1/tokens/claim?order=…`: returns the token of a finished purchase once.
+/// `GET /v1/tokens/claim?order=…`: returns the token of a finished purchase; after the first read it can be read again for ten minutes, then never.
 pub async fn claim(Query(q): Query<ClaimQuery>) -> Result<Response, ApiError> {
     ensure_enabled()?;
     let valid_id = q.order.len() <= 64 && q.order.bytes().all(|b| b.is_ascii_alphanumeric());
     let found = if valid_id {
-        store::take_value(&format!("{CLAIM_PREFIX}{}", q.order)).await.map_err(|_| store_unavailable())?
+        match store::take_value(&format!("{CLAIM_PREFIX}{}", q.order)).await.map_err(|_| store_unavailable())? {
+            Some(json) => {
+                // Best effort: keep a copy for a short grace period
+                let _ = store::put(&format!("{CLAIMED_PREFIX}{}", q.order), &json, CLAIM_GRACE_SECS).await;
+                Some(json)
+            }
+            None => store::get_value(&format!("{CLAIMED_PREFIX}{}", q.order)).await.map_err(|_| store_unavailable())?,
+        }
     } else {
         None
     };

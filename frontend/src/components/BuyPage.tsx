@@ -152,6 +152,17 @@ export function BuyPage({ unsaved }: Props) {
     await refresh()
   }
 
+  const download = () => {
+    if (!paid) return
+    const blob = new Blob([`${paid.token}\n`], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `pdfcraft-token-${paid.plan}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const forget = () => {
     const ok = window.confirm(
       tr(
@@ -314,8 +325,8 @@ export function BuyPage({ unsaved }: Props) {
             {fresh && (
               <p className="data-status" data-state="warn">
                 {tr(
-                  'Speichern Sie dieses Token jetzt an einem sicheren Ort. Es wird nur in diesem Browser gemerkt und kann nicht wiederhergestellt werden.',
-                  'Save this token somewhere safe now. It is only remembered in this browser and cannot be recovered.',
+                  'Speichern Sie dieses Token jetzt an einem sicheren Ort (kopieren oder „Als Datei speichern“). Es wird nur in diesem Browser gemerkt und kann nicht wiederhergestellt werden.',
+                  'Save this token somewhere safe now (copy it or use “Save as file”). It is only remembered in this browser and cannot be recovered.',
                 )}
               </p>
             )}
@@ -344,6 +355,7 @@ export function BuyPage({ unsaved }: Props) {
               />
               <button className="btn" onClick={() => setShown((v) => !v)}>{shown ? tr('Verbergen', 'Hide') : tr('Anzeigen', 'Show')}</button>
               <button className="btn" onClick={() => void navigator.clipboard?.writeText(paid.token)}>{tr('Kopieren', 'Copy')}</button>
+              <button className="btn" onClick={download}>{tr('Als Datei speichern', 'Save as file')}</button>
             </div>
             <div className="data-actions">
               {info?.subscription && (
