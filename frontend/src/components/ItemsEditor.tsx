@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Field, TextField } from './Field'
 import { errorId, useFieldIssue, useFieldPropsFor } from './FormIssues'
+import { ArticlePicker } from './MasterDataPickers'
 import { tr, useLang } from '../lib/i18n'
+import { getMasterData, saveArticleFromItem, setMasterData } from '../lib/masterData'
 import { TAX_RATES, UNITS, newItem, type InvoiceItem } from '../lib/types'
 
 interface Props {
@@ -33,6 +35,17 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
   const endDrag = () => {
     setDragIndex(null)
     setOverIndex(null)
+  }
+
+  const [saved, setSaved] = useState<{ id: string; text: string; error?: boolean } | null>(null)
+
+  const saveAsArticle = (item: InvoiceItem) => {
+    const { data, updated } = saveArticleFromItem(getMasterData(), item)
+    setSaved(
+      setMasterData(data)
+        ? { id: item.id, text: updated ? tr('Artikel aktualisiert.', 'Article updated.') : tr('Artikel gespeichert.', 'Article saved.') }
+        : { id: item.id, text: tr('Speichern im Browser fehlgeschlagen (Speicher voll oder deaktiviert).', 'Saving in the browser failed (storage full or disabled).'), error: true },
+    )
   }
 
   const removeItem = (id: string) => onChange(items.filter((item) => item.id !== id))
@@ -151,17 +164,32 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
               </Field>
             </div>
           )}
+          {prices && (
+            <div className="item-save">
+              <button type="button" className="btn btn-small" disabled={!item.description.trim()} onClick={() => saveAsArticle(item)}>
+                {tr('Als Artikel speichern', 'Save as article')}
+              </button>
+              {saved?.id === item.id && (
+                <span className={saved.error ? 'form-error' : 'form-hint'} role="status">
+                  {saved.text}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       ))}
-      <button
-        type="button"
-        className="btn"
-        data-field="items"
-        aria-describedby={listIssue ? errorId('items') : undefined}
-        onClick={() => onChange([...items, newItem()])}
-      >
-        {tr('+ Position hinzufügen', '+ Add item')}
-      </button>
+      <div className="items-add">
+        <button
+          type="button"
+          className="btn"
+          data-field="items"
+          aria-describedby={listIssue ? errorId('items') : undefined}
+          onClick={() => onChange([...items, newItem()])}
+        >
+          {tr('+ Position hinzufügen', '+ Add item')}
+        </button>
+        <ArticlePicker prices={prices} onAdd={(item) => onChange([...items, item])} />
+      </div>
     </section>
   )
 }

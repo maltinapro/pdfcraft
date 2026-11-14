@@ -41,15 +41,16 @@ pdfcraft/
 │   ├── partials/site-footer.html     # Footer shared by the landing page and the SEO pages (`<!-- site-footer -->`)
 │   ├── <slug>/index.html             # Static SEO pages (zugferd-rechnung-erstellen, xrechnung-generator, stornorechnung-gutschrift-e-rechnung, e-rechnungspflicht)
 │   └── src/
-│       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/data`, `#/sender` = invoice with the sender tab open, ...), shared settings, drafts
-│       ├── components/               # Dashboard (tiles, latest documents), DocumentsPage (all issued documents), DataPage (backup/restore/reset), Workspace (form + live preview + download),
+│       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/contacts` / `#/articles`, `#/data`, `#/sender` = invoice with the sender tab open, ...), shared settings, drafts
+│       ├── components/               # Dashboard (tiles, latest documents), DocumentsPage (all issued documents), MasterDataPage (recipients and articles), MasterDataPickers (recipient/article pickers in the forms), DataPage (backup/restore/reset), Workspace (form + live preview + download),
 │       │                             # DocumentForm (generic, driven by DocSpec), InvoiceForm, ItemsEditor, SettingsForm, Field
 │       ├── lib/
 │       │   ├── documents.ts          # DOC_SPECS (one entry per document type), drafts in localStorage
 │       │   ├── router.ts             # Tiny hash router
 │       │   ├── types.ts              # Model, defaults, whitelists (fonts, units, tax rates)
 │       │   ├── storage.ts            # Versioned localStorage + JSON export/import
-│       │   ├── backup.ts             # Complete backup file (config + drafts + archive), last-backup reminder
+│       │   ├── backup.ts             # Complete backup file (`BACKUP_VERSION` 2: config + drafts + archive + master data), last-backup reminder
+│       │   ├── masterData.ts         # Saved recipients and articles (`localStorage` key `pdfcraft.masterData`, `masterDataVersion` 1), strict parser, merge/seed helpers
 │       │   ├── theme.ts              # Light/dark theme (system default, manual override)
 │       │   ├── validate.ts           # E-invoice issues shown in the sidebar
 │       │   └── api.ts                # free token handling + requestPdf() / requestDocument()
@@ -117,6 +118,8 @@ The exit code is non-zero if any file is invalid. Add new cases (new field, tax 
 
 - **New setting / field**: add it to `frontend/src/lib/types.ts`, validate it in `backend/src/invoice.rs`, add an input in the matching form, and handle it in `backend/src/einvoice.rs` (totals, XML) if it affects amounts or the e-invoice, and use it in `frontend/src/template/invoice.typ`.
 - **New unit or tax rate**: extend `UNITS` / `TAX_RATES` in `types.ts` (also add the unit label/UN code in `einvoice.rs` and the template).
+- **Master data** (saved recipients and articles): `frontend/src/lib/masterData.ts` keeps them in `localStorage` key `pdfcraft.masterData` (`masterDataVersion` 1) and as a small external store (`useMasterData()`), so the page `#/contacts` / `#/articles` (`MasterDataPage`) and the pickers in the forms (`RecipientPicker` in `InvoiceForm`/`DocumentForm`, `ArticlePicker` and "Save as article" in `ItemsEditor`) share one state. A recipient is identified by name + address + city, an article by description + unit + VAT rate (saving again updates the rest); picking a recipient fills the recipient fields, picking an article only appends a new line, so edited lines are never overwritten. The parser is strict (units must be in `UNITS`, VAT rates in `TAX_RATES`, same length/number limits as the backend; one invalid entry rejects the whole file) and is used for both the stored value and the backup. The backup (`backup.ts`, `BACKUP_VERSION` 2) contains it as `masterData`; a restore merges it (existing entries win), `Reset` removes it, "Import from issued documents" derives recipients and articles from the archive (priced documents only) and adds only what is new. The first save of real data asks the browser for persistent storage (`navigator.storage.persist()`). Add a new field to the stored entries in `masterData.ts` (parser, `Contact`/`Article`) and bump `MASTER_DATA_VERSION` with a migration in `parseMasterData`. Nothing is sent to the server except as part of a document request.
+- **Frontend tests**: `cd frontend && npm test` (Vitest, no DOM; `localStorage` is faked in the test) runs the unit tests next to the code (`src/lib/*.test.ts`); CI runs them before the build.
 - **Config schema change**: bump `SCHEMA_VERSION` in `storage.ts` and add a migration in `parseConfig`.
 - **Rule**: do not add caches of rendered templates or PDFs; customer data must not be retained between requests.
 

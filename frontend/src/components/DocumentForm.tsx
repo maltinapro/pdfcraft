@@ -1,5 +1,6 @@
 import { TextAreaField, TextField } from './Field'
 import { ItemsEditor } from './ItemsEditor'
+import { RecipientPicker } from './MasterDataPickers'
 import { PostageSection } from './PostageSection'
 import { tr, useLang } from '../lib/i18n'
 import type { Doc, DocSpec } from '../lib/documents'
@@ -47,6 +48,7 @@ export function DocumentForm({ spec, doc, onChange }: Props) {
 
       <section className="form-section">
         <h3>{tr('Empfänger', 'Recipient')}</h3>
+        <RecipientPicker recipient={doc.recipient} onPick={(recipient) => onChange({ ...doc, recipient })} />
         <TextField field="recipient.name" label={tr('Name', 'Name')} value={doc.recipient.name} onChange={(v) => setRecipient('name', v)} />
         <TextField field="recipient.address" label={tr('Straße / Hausnummer', 'Street / house number')} value={doc.recipient.address} onChange={(v) => setRecipient('address', v)} />
         <TextField field="recipient.city" label={tr('PLZ / Ort', 'Postcode / city')} value={doc.recipient.city} onChange={(v) => setRecipient('city', v)} />

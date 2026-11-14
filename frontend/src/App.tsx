@@ -4,6 +4,7 @@ import { Dashboard } from './components/Dashboard'
 import { DataPage } from './components/DataPage'
 import { DocumentForm } from './components/DocumentForm'
 import { DocumentsPage } from './components/DocumentsPage'
+import { MasterDataPage } from './components/MasterDataPage'
 import { InvoiceForm } from './components/InvoiceForm'
 import { Workspace } from './components/Workspace'
 import { RateLimitedError, fetchBulkMax, requestBulk, requestDocument, requestPdf } from './lib/api'
@@ -30,6 +31,7 @@ import {
 } from './lib/documents'
 import { clearLastBackup, exportBackup, loadLastBackup, readBackup, saveLastBackup, unsavedCount } from './lib/backup'
 import { tr, useLang } from './lib/i18n'
+import { getMasterData, masterDataFromArchive, mergeMasterData, resetMasterData, setMasterData, useMasterData } from './lib/masterData'
 import { handlePaymentReturn, useOffers } from './lib/purchase'
 import { routeHref, useRoute } from './lib/router'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
@@ -54,6 +56,7 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<SaveState>('saved')
   const [lastBackup, setLastBackup] = useState<string | null>(loadLastBackup)
+  const masterData = useMasterData()
 
   useEffect(() => {
     if (!saveArchive(archive)) setNotice(tr('Archiv konnte nicht gespeichert werden (Speicher voll oder deaktiviert).', 'Archive could not be saved (storage full or disabled).'))
@@ -137,7 +140,7 @@ export default function App() {
   }, [settings, invoice, drafts])
 
   const backup = useCallback(() => {
-    const url = URL.createObjectURL(exportBackup(settings, invoice, drafts, archive))
+    const url = URL.createObjectURL(exportBackup(settings, invoice, drafts, archive, masterData))
     const link = document.createElement('a')
     link.href = url
     link.download = `pdfcraft-backup-${new Date().toISOString().slice(0, 10)}.json`
@@ -147,7 +150,7 @@ export default function App() {
     saveLastBackup(now)
     setLastBackup(now)
     setNotice(tr('Sicherung heruntergeladen. Bewahren Sie die Datei an einem sicheren Ort auf.', 'Backup downloaded. Keep the file in a safe place.'))
-  }, [settings, invoice, drafts, archive])
+  }, [settings, invoice, drafts, archive, masterData])
 
   const restore = useCallback(
     async (file: File | undefined) => {
@@ -168,7 +171,13 @@ export default function App() {
         const known = new Set(archive.map((e) => e.id))
         const added = content.archive.filter((e) => !known.has(e.id))
         setArchive((current) => [...current, ...added].sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)))
-        setNotice(tr(`Wiederhergestellt. ${added.length} Beleg(e) ergänzt.`, `Restored. ${added.length} document(s) added.`))
+        // Master data is merged like the documents: what is already there is kept
+        const merged = content.masterData ? mergeMasterData(getMasterData(), content.masterData) : null
+        if (merged) setMasterData(merged.data)
+        setNotice(
+          tr(`Wiederhergestellt. ${added.length} Beleg(e) ergänzt.`, `Restored. ${added.length} document(s) added.`) +
+            (merged ? ' ' + tr(`${merged.addedContacts} Empfänger und ${merged.addedArticles} Artikel ergänzt.`, `${merged.addedContacts} recipient(s) and ${merged.addedArticles} article(s) added.`) : ''),
+        )
       } catch (e) {
         setNotice(e instanceof Error ? e.message : String(e))
       }
@@ -200,8 +209,8 @@ export default function App() {
   const reset = useCallback(() => {
     const ok = window.confirm(
       tr(
-        'Wirklich alles löschen? Absenderdaten, Logo, Unterschrift, Entwürfe und alle Belege werden unwiderruflich aus diesem Browser entfernt. Haben Sie vorher eine Sicherung heruntergeladen?',
-        'Really delete everything? Sender details, logo, signature, drafts and all documents are permanently removed from this browser. Did you download a backup first?',
+        'Wirklich alles löschen? Absenderdaten, Logo, Unterschrift, Entwürfe, Stammdaten und alle Belege werden unwiderruflich aus diesem Browser entfernt. Haben Sie vorher eine Sicherung heruntergeladen?',
+        'Really delete everything? Sender details, logo, signature, drafts, master data and all documents are permanently removed from this browser. Did you download a backup first?',
       ),
     )
     if (!ok) return
@@ -210,6 +219,7 @@ export default function App() {
     clearConfig()
     clearDrafts()
     clearArchive()
+    resetMasterData()
     setArchive([])
     setSettings(DEFAULT_SETTINGS)
     setInvoice(defaultInvoice())
@@ -249,6 +259,30 @@ export default function App() {
         onDeleteEntries={(ids) => setArchive((a) => a.filter((e) => !ids.includes(e.id)))}
         unsaved={unsaved}
         onBackup={backup}
+      />
+    )
+  }
+
+  if (route === 'contacts' || route === 'articles') {
+    return (
+      <MasterDataPage
+        tab={route}
+        notice={notice}
+        onDismissNotice={dismiss}
+        archive={archive}
+        unsaved={unsaved}
+        onImportArchive={() => {
+          const result = mergeMasterData(getMasterData(), masterDataFromArchive(archive))
+          if (result.addedContacts + result.addedArticles > 0 && !setMasterData(result.data)) {
+            setNotice(tr('Speichern im Browser fehlgeschlagen (Speicher voll oder deaktiviert).', 'Saving in the browser failed (storage full or disabled).'))
+            return
+          }
+          setNotice(
+            result.addedContacts + result.addedArticles === 0
+              ? tr('Keine neuen Empfänger oder Artikel in den Belegen gefunden.', 'No new recipients or articles found in the documents.')
+              : tr(`${result.addedContacts} Empfänger und ${result.addedArticles} Artikel übernommen.`, `${result.addedContacts} recipient(s) and ${result.addedArticles} article(s) imported.`),
+          )
+        }}
       />
     )
   }

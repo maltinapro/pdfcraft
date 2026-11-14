@@ -54,6 +54,7 @@ cd frontend && VITE_API_TOKEN=pf_... npm run dev
 
 ```bash
 cd backend  && cargo check
+cd frontend && npm test          # unit tests (Vitest)
 cd frontend && npm run build
 ```
 
