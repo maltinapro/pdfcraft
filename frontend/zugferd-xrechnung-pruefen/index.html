@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ZUGFeRD und XRechnung anzeigen und prüfen – im Browser | digitalrechnung.jetzt</title>
+    <meta name="description" content="Empfangene E-Rechnung (ZUGFeRD-PDF oder XRechnung-XML) als normale Rechnung lesen und auf Rechenfehler prüfen. Die Datei bleibt in deinem Browser und wird nicht hochgeladen." />
+    <link rel="canonical" href="https://digitalrechnung.jetzt/zugferd-xrechnung-pruefen/" />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="de_DE" />
+    <meta property="og:site_name" content="digitalrechnung.jetzt" />
+    <meta property="og:url" content="https://digitalrechnung.jetzt/zugferd-xrechnung-pruefen/" />
+    <meta property="og:title" content="ZUGFeRD und XRechnung anzeigen und prüfen – im Browser | digitalrechnung.jetzt" />
+    <meta property="og:description" content="Empfangene E-Rechnung (ZUGFeRD-PDF oder XRechnung-XML) als normale Rechnung lesen und auf Rechenfehler prüfen. Die Datei bleibt in deinem Browser und wird nicht hochgeladen." />
+    <meta property="og:image" content="https://digitalrechnung.jetzt/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="PDFCraft – digitalrechnung.jetzt" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ZUGFeRD und XRechnung anzeigen und prüfen – im Browser | digitalrechnung.jetzt" />
+    <meta name="twitter:description" content="Empfangene E-Rechnung (ZUGFeRD-PDF oder XRechnung-XML) als normale Rechnung lesen und auf Rechenfehler prüfen. Die Datei bleibt in deinem Browser und wird nicht hochgeladen." />
+    <meta name="twitter:image" content="https://digitalrechnung.jetzt/og-image.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Wird meine Rechnung hochgeladen?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Nein. Die Datei wird nur in deinem Browser gelesen. Es gibt keinen Upload und der Server erfährt nichts über die Datei. Das gilt auch für PDFs: Das eingebettete XML wird lokal herausgelöst."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Welche Dateien kann ich öffnen?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "PDFs mit eingebetteter E-Rechnung (ZUGFeRD 2 / Factur-X, XRechnung als PDF) sowie XML-Dateien in den Syntaxen CII und UBL. ZUGFeRD 1.x wird nicht gelesen."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Ist die Rechnung nach der Prüfung gültig?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Das sagt die Seite nicht. Sie prüft nur, ob Pflichtangaben vorhanden sind und ob die Summen rechnerisch zusammenpassen, und listet genau auf, was geprüft wurde. Eine vollständige Prüfung gegen das XML-Schema und die Regeln der EN 16931 und der XRechnung leistet ein offizieller Validator, zum Beispiel das KoSIT-Prüftool oder Mustang."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Was passiert, wenn mein PDF keine E-Rechnung enthält?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Dann findet die Seite keinen XML-Anhang und sagt das. Eine normale PDF-Rechnung ohne eingebettetes XML ist keine E-Rechnung im Sinne der E-Rechnungspflicht."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Kostet das etwas?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Nein. Das Ansehen und die Plausibilitätsprüfung brauchen weder ein Konto noch ein Token."
+            }
+          }
+        ]
+      }
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#241259" />
+    <link rel="stylesheet" href="/src/landing.css" />
+  </head>
+  <body>
+    <div class="banner">Demo-System – bitte keine echten Kundendaten eingeben.</div>
+
+    <header class="page-header">
+      <a class="brand" href="/">digitalrechnung.jetzt</a>
+      <nav>
+        <a href="/zugferd-rechnung-erstellen/">ZUGFeRD</a>
+        <a href="/xrechnung-generator/">XRechnung</a>
+        <a href="/stornorechnung-gutschrift-e-rechnung/">Stornorechnung</a>
+        <a href="/e-rechnungspflicht/">E-Rechnungspflicht</a>
+        <a href="/zugferd-xrechnung-pruefen/">Prüfen</a>
+        <a href="/app/">Demo</a>
+      </nav>
+    </header>
+
+    <main class="page-main">
+      <h1>ZUGFeRD und XRechnung anzeigen und prüfen</h1>
+      <p class="lead">Eine empfangene E-Rechnung wie eine normale Rechnung lesen: Datei in den Browser ziehen, Positionen, Beträge und Zahlungsdaten ansehen, ausdrucken. Die Datei verlässt deinen Browser nicht.</p>
+      <section>
+        <h2>Was du bekommst</h2>
+        <ul>
+          <li>Ein <strong>PDF mit eingebetteter E-Rechnung</strong> (ZUGFeRD 2 / Factur-X, XRechnung) oder eine <strong>XML-Datei</strong> (Syntax CII oder UBL) wird als lesbare Rechnung angezeigt: Absender, Empfänger, Positionen, Steuer, Summen, Zahlungsangaben.</li>
+          <li>Ein Reiter mit dem <strong>rohen XML</strong>, falls du genau nachsehen willst, was im PDF steckt.</li>
+          <li>Eine <strong>Plausibilitätsprüfung</strong> mit genauer Liste dessen, was geprüft wurde: Pflichtangaben, Positionssummen, Steuerbeträge, Gesamtsummen, Zahlbetrag und die Prüfsumme der IBAN.</li>
+          <li>Eine Druckansicht der Rechnung.</li>
+        </ul>
+        <p>
+          <a class="button" href="/app/#/viewer">E-Rechnung ansehen und prüfen</a>
+          <a class="button secondary" href="/e-rechnungspflicht/">Wann ist die E-Rechnung Pflicht?</a>
+        </p>
+      </section>
+
+      <section>
+        <h2>So geht’s</h2>
+        <ol>
+          <li>Die Seite öffnen und die empfangene Datei auf das Feld ziehen oder über „Datei auswählen“ laden (PDF bis 20 MB, XML bis 5 MB).</li>
+          <li>Im Reiter <strong>Rechnung</strong> die Rechnung lesen oder drucken.</li>
+          <li>Im Reiter <strong>Plausibilitätsprüfung</strong> nachsehen, ob Beträge und Pflichtangaben auffällig sind.</li>
+        </ol>
+        <p class="notice">
+          Die Datei wird ausschließlich in deinem Browser verarbeitet. Es gibt dafür keinen Server-Aufruf, und
+          nichts wird gespeichert.
+        </p>
+      </section>
+
+      <section>
+        <h2>Was die Prüfung leistet – und was nicht</h2>
+        <p>Die Seite nennt eine Rechnung nie „gültig“. Sie prüft nur:</p>
+        <ul>
+          <li>Pflichtangaben im Kopf (Nummer, Datum, Typ, Währung, Spezifikationskennung) sowie zu Verkäufer und Käufer,</li>
+          <li>ob jede Position Bezeichnung, Menge, Einheit, Preis, Betrag und Steuerkategorie hat,</li>
+          <li>ob Menge × Preis den Positionsbetrag ergibt und die Positionen die Summe ergeben,</li>
+          <li>ob Steuerbasis, Steuerbetrag, Gesamtsteuer, Brutto- und Zahlbetrag rechnerisch passen (1 Cent Rundungstoleranz bei Produkten),</li>
+          <li>ob eine befreite Steuerkategorie einen Grund nennt,</li>
+          <li>ob Zahlungsangaben vorhanden sind, die IBAN-Prüfsumme stimmt und die Datumsangaben echte Kalendertage sind.</li>
+        </ul>
+        <p>
+          <strong>Nicht geprüft</strong> werden die Gültigkeit gegen das XML-Schema, die Geschäftsregeln der EN 16931 und
+          der XRechnung, die Codelisten, die PDF/A-3-Konformität, ob PDF und XML zusammenpassen, Signaturen
+          sowie die Richtigkeit von USt-IdNr., Steuersätzen und Bankverbindung. Dafür gibt es offizielle Validatoren, zum
+          Beispiel das <a href="https://github.com/itplr-kosit/validator" rel="noopener noreferrer">KoSIT-Prüftool</a>
+          (XRechnung) oder <a href="https://www.mustangproject.org/" rel="noopener noreferrer">Mustang</a>
+          (ZUGFeRD / Factur-X). Das Ergebnis dieser Seite ersetzt keine rechtliche oder steuerliche Prüfung.
+        </p>
+      </section>
+
+      <section>
+        <h2>Weiterführend</h2>
+        <ul class="related">
+          <li><a href="/zugferd-rechnung-erstellen/">ZUGFeRD-Rechnung online erstellen</a></li>
+          <li><a href="/xrechnung-generator/">XRechnung für Kleinunternehmer und Freelancer</a></li>
+          <li><a href="/e-rechnungspflicht/">E-Rechnungspflicht: Fristen und Ausnahmen</a></li>
+        </ul>
+      </section>
+      <section class="faq">
+        <h2>Häufige Fragen</h2>
+        <details>
+          <summary>Wird meine Rechnung hochgeladen?</summary>
+          <p>Nein. Die Datei wird nur in deinem Browser gelesen. Es gibt keinen Upload und der Server erfährt nichts über die Datei. Das gilt auch für PDFs: Das eingebettete XML wird lokal herausgelöst.</p>
+        </details>
+        <details>
+          <summary>Welche Dateien kann ich öffnen?</summary>
+          <p>PDFs mit eingebetteter E-Rechnung (ZUGFeRD 2 / Factur-X, XRechnung als PDF) sowie XML-Dateien in den Syntaxen CII und UBL. ZUGFeRD 1.x wird nicht gelesen.</p>
+        </details>
+        <details>
+          <summary>Ist die Rechnung nach der Prüfung gültig?</summary>
+          <p>Das sagt die Seite nicht. Sie prüft nur, ob Pflichtangaben vorhanden sind und ob die Summen rechnerisch zusammenpassen, und listet genau auf, was geprüft wurde. Eine vollständige Prüfung gegen das XML-Schema und die Regeln der EN 16931 und der XRechnung leistet ein offizieller Validator, zum Beispiel das KoSIT-Prüftool oder Mustang.</p>
+        </details>
+        <details>
+          <summary>Was passiert, wenn mein PDF keine E-Rechnung enthält?</summary>
+          <p>Dann findet die Seite keinen XML-Anhang und sagt das. Eine normale PDF-Rechnung ohne eingebettetes XML ist keine E-Rechnung im Sinne der E-Rechnungspflicht.</p>
+        </details>
+        <details>
+          <summary>Kostet das etwas?</summary>
+          <p>Nein. Das Ansehen und die Plausibilitätsprüfung brauchen weder ein Konto noch ein Token.</p>
+        </details>
+      </section>
+    </main>
+
+    <!-- site-footer -->
+  </body>
+</html>

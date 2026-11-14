@@ -46,6 +46,7 @@ export default defineConfig({
         xrechnung: resolve(__dirname, 'xrechnung-generator/index.html'),
         stornorechnung: resolve(__dirname, 'stornorechnung-gutschrift-e-rechnung/index.html'),
         erechnungspflicht: resolve(__dirname, 'e-rechnungspflicht/index.html'),
+        pruefen: resolve(__dirname, 'zugferd-xrechnung-pruefen/index.html'),
         impressum: resolve(__dirname, 'impressum.html'),
         datenschutz: resolve(__dirname, 'datenschutz.html'),
         agb: resolve(__dirname, 'agb.html'),

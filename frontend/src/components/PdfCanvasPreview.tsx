@@ -4,9 +4,6 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
-// Browsers without a built-in PDF viewer (e.g. Chrome on Android) cannot show PDFs in an iframe
-export const inlinePdfSupported = (): boolean => navigator.pdfViewerEnabled !== false
-
 export function PdfCanvasPreview({ blob, onReady }: { blob: Blob; onReady?: () => void }) {
   const container = useRef<HTMLDivElement>(null)
 

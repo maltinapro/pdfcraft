@@ -3,7 +3,7 @@ import { useOffers } from '../lib/purchase'
 import { routeHref } from '../lib/router'
 
 interface Props {
-  route: 'documents' | 'contacts' | 'data' | 'buy' | ''
+  route: 'documents' | 'contacts' | 'viewer' | 'data' | 'buy' | ''
   /** Documents that are not in the last backup: shown as a dot on "Backup". */
   unsaved: number
 }
@@ -19,6 +19,9 @@ export function HeaderNav({ route, unsaved }: Props) {
       </a>
       <a href={routeHref('contacts')} aria-current={route === 'contacts' ? 'page' : undefined}>
         {tr('Kunden & Artikel', 'Customers & articles')}
+      </a>
+      <a href={routeHref('viewer')} aria-current={route === 'viewer' ? 'page' : undefined}>
+        {tr('E-Rechnung ansehen', 'View e-invoice')}
       </a>
       {enabled && (
         <a href={routeHref('buy')} aria-current={route === 'buy' ? 'page' : undefined}>

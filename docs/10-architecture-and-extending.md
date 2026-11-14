@@ -39,7 +39,7 @@ pdfcraft/
 ├── frontend/                         # React + Vite
 │   ├── public/                       # Logo (logo.svg), favicons, icons, og-image, robots.txt, sitemap.xml
 │   ├── partials/site-footer.html     # Footer shared by the landing page and the SEO pages (`<!-- site-footer -->`)
-│   ├── <slug>/index.html             # Static SEO pages (zugferd-rechnung-erstellen, xrechnung-generator, stornorechnung-gutschrift-e-rechnung, e-rechnungspflicht)
+│   ├── <slug>/index.html             # Static SEO pages (zugferd-rechnung-erstellen, xrechnung-generator, stornorechnung-gutschrift-e-rechnung, e-rechnungspflicht, zugferd-xrechnung-pruefen)
 │   └── src/
 │       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/contacts` / `#/articles`, `#/data`, `#/sender` = invoice with the sender tab open, ...), shared settings, drafts
 │       ├── components/               # Dashboard (tiles, latest documents), DocumentsPage (all issued documents), MasterDataPage (recipients and articles), MasterDataPickers (recipient/article pickers in the forms), DataPage (backup/restore/reset), Workspace (form + live preview + download),
@@ -51,6 +51,7 @@ pdfcraft/
 │       │   ├── storage.ts            # Versioned localStorage + JSON export/import
 │       │   ├── backup.ts             # Complete backup file (`BACKUP_VERSION` 2: config + drafts + archive + master data), last-backup reminder
 │       │   ├── masterData.ts         # Saved recipients and articles (`localStorage` key `pdfcraft.masterData`, `masterDataVersion` 1), strict parser, merge/seed helpers
+│       │   ├── einvoice/             # E-invoice viewer: extract.ts (PDF/XML -> XML), xml.ts, parse.ts (CII + UBL -> view model), check.ts (plausibility checks), format.ts, testdata/
 │       │   ├── theme.ts              # Light/dark theme (system default, manual override)
 │       │   ├── validate.ts           # E-invoice issues shown in the sidebar
 │       │   └── api.ts                # free token handling + requestPdf() / requestDocument()
@@ -71,6 +72,18 @@ pdfcraft/
     ├── src/facturx.rs                # Factur-X XMP post-processing (lopdf)
     └── vendor/typst-packages/        # Vendored @preview packages (sepay, ibanator, rustycure)
 ```
+
+## E-invoice viewer and checker
+
+Route `#/viewer` (`components/ViewerPage.tsx`, public, no token) reads a received e-invoice **entirely in the browser**; there is no endpoint and nothing is uploaded or stored.
+
+1. `lib/einvoice/extract.ts`: a PDF is opened with `pdfjs-dist` (loaded lazily into its own chunk, shared with the PDF preview) and the XML attachment is picked (`factur-x.xml`, `zugferd-invoice.xml`, `xrechnung.xml`, case-insensitive, otherwise the first `.xml`); a plain `.xml` is used as is. Limits: PDF 20 MB, XML 5 MB; errors (empty, too large, unsupported, unreadable/encrypted PDF, no XML) have codes that `ViewerPage` shows as text. `pdfjs-dist` was chosen over `pdf-lib` because it is already a dependency (no second PDF library in the bundle).
+2. `lib/einvoice/xml.ts`: small dependency-free XML reader (local names only; DOCTYPE and custom entities are never expanded), so it runs in Node tests and cannot be hit by entity expansion.
+3. `lib/einvoice/parse.ts`: maps CII (`CrossIndustryInvoice`: ZUGFeRD 2, Factur-X, XRechnung) and UBL (`Invoice`, `CreditNote`) to one view model (`InvoiceView`: parties, references, items, allowances/charges, tax breakdown, totals, payment means, notes). ZUGFeRD 1.x is rejected with its own message.
+4. `lib/einvoice/check.ts`: `runChecks()` returns the plausibility checks (mandatory header/party/line fields, line amount = quantity x price, line sum, net total, tax basis and amount per category/rate, total tax, gross total, amount due, tax categories with exemption reason, payment means with IBAN checksum, dates) in cents with a 1 cent tolerance for products. `NOT_CHECKED()` lists what is deliberately **not** checked (XSD validity, EN 16931/XRechnung business rules, code lists, PDF/A-3 and PDF-XML match, signatures, correctness of VAT IDs/bank data). The page never calls a file "valid" and links to the KoSIT validator and Mustang for a full check.
+5. `EInvoiceView.tsx` (readable invoice, print CSS in `viewer.css`), `EInvoiceChecks.tsx` (checks), a raw XML tab.
+
+Tests: `src/lib/einvoice/einvoice.test.ts` with fixtures in `lib/einvoice/testdata/` (CII XMLs extracted from the E01 corpus (`PDF_OUT=<dir> cargo test renders_einvoice_conformance_corpus`), hand-written UBL invoice and credit note, one real PDF). To add a case, drop the XML into `testdata/` and add it to the test lists. The static page `zugferd-xrechnung-pruefen/` (see [07](07-demo-system.md)) may only claim what the checks do.
 
 ## Vendored Typst packages
 
