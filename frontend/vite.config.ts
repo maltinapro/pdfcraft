@@ -52,6 +52,14 @@ export default defineConfig({
         agb: resolve(__dirname, 'agb.html'),
         widerruf: resolve(__dirname, 'widerruf.html'),
       },
+      output: {
+        // Emit assets with a .mjs extension (the pdf.js worker) as .js: some servers (nginx:alpine) send .mjs as
+        // application/octet-stream, which browsers refuse for module workers
+        assetFileNames: (asset) => {
+          const name = asset.names?.[0] ?? ''
+          return name.endsWith('.mjs') ? 'assets/[name]-[hash].js' : 'assets/[name]-[hash][extname]'
+        },
+      },
     },
   },
   server: {
