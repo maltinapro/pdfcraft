@@ -240,8 +240,11 @@ pub async fn lookup(presented: &str) -> Result<Option<Client>, Unavailable> {
 
 /// Creates a token valid for `ttl_secs`. The plain token is only returned here.
 pub async fn create_token(kind: Kind, plan: &str, limit: u32, ttl_secs: u64) -> Result<Created, Unavailable> {
-    let id = random_hex(6);
-    let secret = random_hex(16);
+    create_token_with(kind, plan, limit, ttl_secs, random_hex(6), random_hex(16)).await
+}
+
+/// Like [`create_token`], with a given id and secret (hex), e.g. derived from an Anubis pass.
+pub async fn create_token_with(kind: Kind, plan: &str, limit: u32, ttl_secs: u64, id: String, secret: String) -> Result<Created, Unavailable> {
     let until = now() + ttl_secs;
     let key = format!("{TOKEN_PREFIX}{id}");
     let mut pipe = redis::pipe();
@@ -289,6 +292,15 @@ pub async fn extend_paid_token(id: &str, add_secs: u64) -> Result<Option<u64>, U
     pipe.cmd("EXPIREAT").arg(&key).arg(expire_at(Kind::Paid, new_until)).ignore();
     pipe.query_async::<()>(&mut c).await.map_err(unavailable)?;
     Ok(Some(new_until))
+}
+
+/// Valid end of the token `pf_<id>_<secret>` (unix seconds) if it still exists and the secret
+/// matches; `None` if it was revoked, expired or never existed.
+pub async fn valid_until_of(presented: &str) -> Result<Option<u64>, Unavailable> {
+    match lookup(presented).await? {
+        Some(client) => token_until(&client.id).await,
+        None => Ok(None),
+    }
 }
 
 /// End of a token (unix seconds), also for an expired one still in retention.

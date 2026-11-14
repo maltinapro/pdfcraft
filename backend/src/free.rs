@@ -71,6 +71,17 @@ pub fn verify_jwt(jwt: &str, key: &VerifyingKey, now: u64) -> Option<u64> {
     (exp > now && nbf_ok).then_some(exp)
 }
 
+/// Id and secret (hex) of the free token for one Anubis pass. They are derived from the cookie
+/// instead of being random, so the same pass always maps to the same token: a browser that lost
+/// its stored token (other origin or port with the same cookie, cleared site data) gets it back
+/// instead of `409`. Only the holder of the cookie can compute them, and the cookie already
+/// entitles to exactly this one token; the store still holds only a hash of the secret.
+fn pass_credentials(jwt: &str) -> (String, String) {
+    let id = store::hash_secret(&format!("pdfcraft-free-token-id:{jwt}"));
+    let secret = store::hash_secret(&format!("pdfcraft-free-token-secret:{jwt}"));
+    (id[..12].to_string(), secret[..32].to_string())
+}
+
 fn challenge_required() -> ApiError {
     ApiError::new(
         StatusCode::FORBIDDEN,
@@ -82,13 +93,14 @@ fn challenge_required() -> ApiError {
 pub async fn issue(req: Request) -> Result<Response, ApiError> {
     let result = issue_token(req).await;
     crate::metrics::free_token_request(match &result {
-        Ok(_) => "issued",
+        Ok((_, outcome)) => *outcome,
         Err(e) => e.code,
     });
-    result
+    result.map(|(response, _)| response)
 }
 
-async fn issue_token(req: Request) -> Result<Response, ApiError> {
+/// The response and the metric label (`issued` or `recovered`).
+async fn issue_token(req: Request) -> Result<(Response, &'static str), ApiError> {
     let cfg = config::get();
     let Some(key) = cfg.anubis_public_key_hex.as_deref().and_then(decode_hex32).and_then(|b| VerifyingKey::from_bytes(&b).ok()) else {
         return Err(ApiError::new(
@@ -111,27 +123,42 @@ async fn issue_token(req: Request) -> Result<Response, ApiError> {
     let unavailable = |_| ApiError::new(StatusCode::SERVICE_UNAVAILABLE, "store_unavailable", "the token store (Valkey) is not configured or not reachable");
     // One free token per Anubis pass; the marker lives as long as the pass is valid.
     let marker = format!("pdfcraft:anubis:{}", store::hash_secret(jwt));
-    if !store::mark_once(&marker, exp - now).await.map_err(unavailable)? {
-        return Err(ApiError::new(
-            StatusCode::CONFLICT,
-            "already_issued",
-            "this challenge was already used for a free token; solve a new one after it expires",
-        ));
-    }
-    let created = store::create_token(Kind::Free, "free", cfg.free_rate_limit_per_minute, cfg.free_token_ttl_secs)
-        .await
-        .map_err(unavailable)?;
-    tracing::info!(event = "token_created", token_id = %created.id, token_kind = "free", token_plan = "free");
-    Ok((
+    let (id, secret) = pass_credentials(jwt);
+    let (token, expires_at, recovered) = if store::mark_once(&marker, exp - now).await.map_err(unavailable)? {
+        let created = store::create_token_with(Kind::Free, "free", cfg.free_rate_limit_per_minute, cfg.free_token_ttl_secs, id, secret)
+            .await
+            .map_err(unavailable)?;
+        tracing::info!(event = "token_created", token_id = %created.id, token_kind = "free", token_plan = "free");
+        (created.token, created.valid_until, false)
+    } else {
+        // The pass was already exchanged: hand out the same token again while it is still valid
+        // (no second token, same rate-limit bucket). A revoked or expired one stays `409`.
+        let token = format!("pf_{id}_{secret}");
+        match store::valid_until_of(&token).await.map_err(unavailable)? {
+            Some(until) => {
+                tracing::info!(event = "free_token_recovered", token_id = %id);
+                (token, until, true)
+            }
+            None => {
+                return Err(ApiError::new(
+                    StatusCode::CONFLICT,
+                    "already_issued",
+                    "this challenge was already used for a free token; solve a new one after it expires",
+                ))
+            }
+        }
+    };
+    let response = (
         StatusCode::OK,
         [(header::CACHE_CONTROL, "no-store")],
         Json(FreeToken {
-            token: created.token,
-            expires_at: created.valid_until,
+            token,
+            expires_at,
             limit_per_minute: cfg.free_rate_limit_per_minute,
         }),
     )
-        .into_response())
+        .into_response();
+    Ok((response, if recovered { "recovered" } else { "issued" }))
 }
 
 /// `anubis-keygen`: prints a key pair for Anubis (`ED25519_PRIVATE_KEY_HEX`) and the
@@ -159,6 +186,16 @@ mod tests {
         let p = URL_SAFE_NO_PAD.encode(format!(r#"{{"challenge":"abc","exp":{exp},"nbf":1}}"#));
         let sig = sk.sign(format!("{h}.{p}").as_bytes());
         format!("{h}.{p}.{}", URL_SAFE_NO_PAD.encode(sig.to_bytes()))
+    }
+
+    #[test]
+    fn pass_credentials_are_stable_hex_and_per_pass() {
+        let (id, secret) = pass_credentials("a.b.c");
+        assert_eq!(pass_credentials("a.b.c"), (id.clone(), secret.clone()));
+        assert_ne!(pass_credentials("a.b.d").0, id);
+        assert_eq!((id.len(), secret.len()), (12, 32));
+        assert!(id.bytes().chain(secret.bytes()).all(|b| b.is_ascii_hexdigit()));
+        assert_ne!(id, secret[..12], "id and secret must not share a prefix");
     }
 
     #[test]
