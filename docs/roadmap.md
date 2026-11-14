@@ -4,7 +4,7 @@ Derived from the business plan ("Businessplan PDFCraft", digitalrechnung.jetzt, 
 
 Status: `open` · `in progress` · `done`. After every finished epic or issue, update this file and the epic file. Conventions and GitHub workflow: [epics/README.md](epics/README.md).
 
-GitHub issues are created **phase by phase** (epic issue + one sub-issue per task, labels `epic` / `task` / `phase-N`). Created so far: phase 1 (E01 #101, E02 #105, E03 #108 with their sub-issues).
+GitHub issues are created **phase by phase** (epic issue + one sub-issue per task, labels `epic` / `task` / `phase-N`). Created so far: phase 1 (E01 #101, E02 #105, E03 #108), phase 2 (E04 #136, E05 #142), and phase 3 (E06 #150), each with its sub-issues.
 
 ## Epics
 
@@ -15,7 +15,7 @@ GitHub issues are created **phase by phase** (epic issue + one sub-issue per tas
 | [E03](epics/E03-seo-landing-pages.md) | SEO landing pages | 1 | – | in progress |
 | [E04](epics/E04-master-data.md) | Customer and article master data | 2 | – | done |
 | [E05](epics/E05-einvoice-viewer.md) | E-invoice viewer and checker | 2 | E01, E03-01 | done |
-| [E06](epics/E06-template-designs.md) | Additional template design | 3 | – | open |
+| [E06](epics/E06-template-designs.md) | Additional template design | 3 | – | open (#150) |
 
 Phase 1 = small, independent quick wins. Phase 2 = new user-facing features. Phase 3 = only when users ask for it.
 
