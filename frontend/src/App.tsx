@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { BuyPage } from './components/BuyPage'
 import { Dashboard } from './components/Dashboard'
 import { DataPage } from './components/DataPage'
@@ -39,6 +39,9 @@ import { exampleDataIssues, hasExampleSender, requiredIssues, validateInvoice } 
 import { DEFAULT_SETTINGS, defaultInvoice, type Invoice, type Settings } from './lib/types'
 import type { SaveState } from './components/Workspace'
 import './App.css'
+
+// Public viewer for received e-invoices: own chunk (XML reader, checks, pdf.js on demand)
+const ViewerPage = lazy(() => import('./components/ViewerPage').then((m) => ({ default: m.ViewerPage })))
 
 const fileStem = (value: string, fallback: string) => value.replace(/[^\w.-]+/g, '_') || fallback
 
@@ -288,6 +291,14 @@ export default function App() {
   }
 
   if (route === 'buy' && purchases) return <BuyPage unsaved={unsaved} />
+
+  if (route === 'viewer') {
+    return (
+      <Suspense fallback={null}>
+        <ViewerPage unsaved={unsaved} />
+      </Suspense>
+    )
+  }
 
   if (route === 'data') {
     return (

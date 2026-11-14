@@ -38,7 +38,7 @@ See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key man
 
 ## `POST /v1/free-token`
 
-Issues a free token (`pf_…`) to a browser that solved the Anubis challenge. No body. Response `200`: `{ "token", "expiresAt" (unix seconds), "limitPerMinute" }`. `403 challenge_required` without a valid Anubis cookie, `409 already_issued` if the cookie was already exchanged, `503 free_token_disabled` if `ANUBIS_PUBLIC_KEY_HEX` is not set. Details: [Free Token and Anubis](11-free-token-and-anubis.md).
+Issues a free token (`pf_…`) to a browser that solved the Anubis challenge. No body. Response `200`: `{ "token", "expiresAt" (unix seconds), "limitPerMinute" }`. `403 challenge_required` without a valid Anubis cookie, `409 already_issued` if the cookie was already exchanged and its token was revoked or has expired (a repeated request with the same cookie otherwise returns the same token again), `503 free_token_disabled` if `ANUBIS_PUBLIC_KEY_HEX` is not set. Details: [Free Token and Anubis](11-free-token-and-anubis.md).
 
 ## Purchased tokens
 

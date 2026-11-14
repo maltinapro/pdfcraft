@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AppHeader } from './AppHeader'
-import { PdfCanvasPreview, inlinePdfSupported } from './PdfCanvasPreview'
 import { FreeVersionHint } from './FreeVersionHint'
 import { FormIssuesContext, type FormIssuesValue } from './FormIssues'
 import { SettingsForm } from './SettingsForm'
@@ -8,9 +7,13 @@ import { ThemeToggle } from './ThemeToggle'
 import { ValidationError } from '../lib/api'
 import { fieldTitle } from '../lib/apiErrors'
 import { tr, useLang } from '../lib/i18n'
+import { inlinePdfSupported } from '../lib/pdfSupport'
 import { routeHref } from '../lib/router'
 import type { Issue } from '../lib/validate'
 import type { Settings } from '../lib/types'
+
+// pdf.js is large: load it only when a browser without a built-in PDF viewer needs the canvas preview
+const PdfCanvasPreview = lazy(() => import('./PdfCanvasPreview').then((m) => ({ default: m.PdfCanvasPreview })))
 
 const PREVIEW_DEBOUNCE_MS = 600
 
@@ -367,7 +370,11 @@ export function Workspace({
           {paused && <PreviewPaused count={problems.length} onShow={revealProblems} />}
           {!paused && error && <PreviewError message={error} />}
           {loading && <div className="preview-loading">{tr('Aktualisiere Vorschau …', 'Updating preview …')}</div>}
-          {!inlineSupported && pdfBlob && <PdfCanvasPreview blob={pdfBlob} />}
+          {!inlineSupported && pdfBlob && (
+            <Suspense fallback={null}>
+              <PdfCanvasPreview blob={pdfBlob} />
+            </Suspense>
+          )}
           {inlineSupported && previewUrl && (
             <iframe className="preview-frame" title={tr('PDF-Vorschau', 'PDF preview')} src={previewUrl} />
           )}

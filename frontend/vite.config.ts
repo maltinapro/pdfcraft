@@ -46,10 +46,19 @@ export default defineConfig({
         xrechnung: resolve(__dirname, 'xrechnung-generator/index.html'),
         stornorechnung: resolve(__dirname, 'stornorechnung-gutschrift-e-rechnung/index.html'),
         erechnungspflicht: resolve(__dirname, 'e-rechnungspflicht/index.html'),
+        pruefen: resolve(__dirname, 'zugferd-xrechnung-pruefen/index.html'),
         impressum: resolve(__dirname, 'impressum.html'),
         datenschutz: resolve(__dirname, 'datenschutz.html'),
         agb: resolve(__dirname, 'agb.html'),
         widerruf: resolve(__dirname, 'widerruf.html'),
+      },
+      output: {
+        // Emit assets with a .mjs extension (the pdf.js worker) as .js: some servers (nginx:alpine) send .mjs as
+        // application/octet-stream, which browsers refuse for module workers
+        assetFileNames: (asset) => {
+          const name = asset.names?.[0] ?? ''
+          return name.endsWith('.mjs') ? 'assets/[name]-[hash].js' : 'assets/[name]-[hash][extname]'
+        },
       },
     },
   },

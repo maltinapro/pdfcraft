@@ -81,6 +81,24 @@ export function Dashboard({ notice, onDismissNotice, archive, cancelled, onFollo
               </a>
             </li>
           ))}
+          <li>
+            <a className="tile" href={routeHref('viewer')} style={{ ['--tile-color' as string]: '#4A2FB0' }}>
+              <span className="tile-icon">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6.5" />
+                  <path d="m20 20-4.2-4.2" />
+                </svg>
+              </span>
+              <span className="tile-title">{tr('E-Rechnung ansehen', 'View e-invoice')}</span>
+              <span className="tile-text">
+                {tr(
+                  'Empfangene ZUGFeRD- oder XRechnung-Datei lesen und prüfen. Bleibt in Ihrem Browser.',
+                  'Read and check a received ZUGFeRD or XRechnung file. It stays in your browser.',
+                )}
+              </span>
+              <span className="tile-cta">{tr('Öffnen', 'Open')} <span aria-hidden="true">→</span></span>
+            </a>
+          </li>
         </ul>
 
 

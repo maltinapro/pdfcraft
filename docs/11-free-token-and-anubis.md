@@ -14,7 +14,7 @@ browser ── /v1/*       ──> ingress ────────────�
 1. Opening `/app/` makes the browser solve a proof-of-work challenge (policy: `deploy/anubis/botPolicy.yaml`). Anubis then sets a signed JWT cookie (`techaro.lol-anubis-auth`, EdDSA, lifetime `COOKIE_EXPIRATION_TIME`, 12 h).
 2. The frontend calls `POST /v1/free-token`. The request carries the cookie (same origin). The ingress routes it to the backend, **not** through Anubis.
 3. The backend verifies the cookie with Anubis' **public key** (`ANUBIS_PUBLIC_KEY_HEX`): signature, `exp`, `nbf`. Without a valid cookie it answers `403 challenge_required`.
-4. The backend remembers a hash of the cookie in Valkey (`SET NX EX`). Every solved challenge yields **one** free token; reuse answers `409 already_issued`.
+4. The backend remembers a hash of the cookie in Valkey (`SET NX EX`). Every solved challenge yields **one** free token. The token is derived from the cookie (hash of the cookie with a fixed label, so only the cookie holder can compute it; Valkey stores only a hash of the secret), so a repeated request with the same cookie returns **the same token** again while it is valid (for example when the browser lost its `localStorage`, or the app runs on another port of the same host and shares the cookie). Only a revoked or expired token answers `409 already_issued`.
 5. When the token (and the pass) expire, the user solves a new challenge.
 
 A script that calls `/v1/free-token` directly gets `403`. A script has to solve the proof-of-work for every single token. That is the same cost a browser pays, so mass creation is expensive, but not impossible. Raise `DIFFICULTY` or add per-IP limits at the edge if abuse shows up. The free token endpoint is disabled (`503`) until `ANUBIS_PUBLIC_KEY_HEX` is set.
@@ -61,7 +61,7 @@ docker compose up --build
 ```
 
 1. Open http://localhost:8080/app/ in a browser. Anubis shows its challenge ("Making sure you're not a bot!") and then the app.
-2. In the browser console: `await (await fetch('/v1/free-token', {method: 'POST'})).json()` returns `{token, expiresAt, limitPerMinute}`. Repeating it returns `409 already_issued`.
+2. In the browser console: `await (await fetch('/v1/free-token', {method: 'POST'})).json()` returns `{token, expiresAt, limitPerMinute}`. Repeating it returns the same token again.
 3. `curl -X POST http://localhost:8080/v1/free-token` answers `403 challenge_required`.
 4. Use the token with `POST /v1/invoices` (see [API Reference](09-api-reference.md)): the PDF shows the "Entwurf" watermark.
 
