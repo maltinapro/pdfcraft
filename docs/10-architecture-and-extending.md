@@ -4,28 +4,28 @@
 
 ```
 Browser
-  └─ Form (Invoice / Settings tabs)
+  └─ Workspace (six document types, four guided zones)
        │  free token (Anubis → POST /v1/free-token), kept in localStorage
        │
        ▼  POST /v1/invoices  { settings, invoice }  + Bearer token
-  Rust / Axum              (backend/src/v1.rs, invoice.rs)
-       │  validates + escapes input; template = static frontend/src/template/invoice.typ
+  Rust / Axum              (backend/src/v1.rs, invoice.rs, documents.rs)
+       │  validates + escapes input; uses static Typst templates
        ├─ minijinja → renders template with the checked data (+ watermark for free tokens)
        ├─ typst-as-lib + Typst compile rendered source
        └─ typst-pdf → PDF/A-3b bytes (embedded ZUGFeRD XML)
               │
               ▼
-          iframe preview / download
+          pdf.js canvas preview / download
 ```
 
 ## How it works
 
-1. **Configure**: the forms edit a typed model (`InvoiceSettings`, `Invoice`).
-2. **Request**: `requestPdf()` in `api.ts` sends `{settings, invoice}` with the free token. The backend (`invoice.rs`) allow-lists designs, fonts, locales, units, tax rates, colors, numbers and dates, and escapes `\` and `"` (all user data goes into Typst string literals).
+1. **Configure**: `Workspace` edits the selected document through four guided zones. Invoice and document forms update their typed models (`InvoiceSettings`, `Invoice`, or the corresponding document type); drafts remain in browser storage.
+2. **Request**: `api.ts` sends invoice or document data with the free token. Preview requests add `?zones=1`; the flag affects only preview geometry and does not change the ordinary API contract. The backend allow-lists supported values and escapes `\` and `"` (all user data goes into Typst string literals).
 3. **Prepare**: `backend/src/einvoice.rs` computes amounts (fixed-point, cents, half away from zero) and display texts, and generates the Factur-X / XRechnung XML (CII, EN 16931). Any problem (missing VAT id, invalid IBAN, XRechnung gaps ...) turns the attachment into `invoice-draft.xml`.
 4. **Render**: the backend renders its embedded template with minijinja, using the prepared data; the logo is `assets.logo`, the XML is `assets.xml`.
 5. **Compile**: Typst only lays out the data (no template package, ~8 ms); typst-pdf exports PDF/A-3b and the template attaches the XML with `pdf.attach`. `backend/src/facturx.rs` adds the Factur-X XMP metadata.
-6. **Preview / download**: the PDF is shown via blob URL in an iframe, or downloaded.
+6. **Preview / download**: preview requests ask for zone 3/4 geometry using `?zones=1`; the backend returns it in `X-Pdfcraft-Zones` without changing ordinary API responses. The frontend displays the PDF blob on a pdf.js canvas, draws clickable zone outlines and opens the corresponding fields when a zone is selected. On compact screens the Fields/Sheet switch can hide the form behind the paper while the editor bar remains available; on wide screens a splitter adjusts the form/preview balance. Final PDFs can be downloaded and entered in the local archive.
 
 The shared `settings.design` choice is `classic` by default (including for older saved configs) or `modern-minimal`. Both variants are conditional styling in the same invoice and shared document templates, so the address field, reference line and DIN 5008 marks stay fixed; the design is part of config backups and issue-time archive snapshots. The settings form shows static previews rendered from the actual templates.
 
@@ -43,7 +43,7 @@ pdfcraft/
 │   ├── partials/site-footer.html     # Footer shared by the landing page and the SEO pages (`<!-- site-footer -->`)
 │   ├── <slug>/index.html             # Static SEO pages (zugferd-rechnung-erstellen, xrechnung-generator, stornorechnung-gutschrift-e-rechnung, e-rechnungspflicht, zugferd-xrechnung-pruefen)
 │   └── src/
-│       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/contacts` / `#/articles`, `#/data`, `#/sender` = invoice with the sender tab open, ...), shared settings, drafts
+│       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/contacts` / `#/articles`, `#/data`, `#/sender` = invoice with the sender zone open, ...), shared settings, drafts
 │       ├── components/               # Dashboard (tiles, latest documents), DocumentsPage (all issued documents), MasterDataPage (recipients and articles), MasterDataPickers (recipient/article pickers in the forms), DataPage (backup/restore/reset), Workspace (form + live preview + download),
 │       │                             # DocumentForm (generic, driven by DocSpec), InvoiceForm, ItemsEditor, SettingsForm, Field
 │       ├── lib/

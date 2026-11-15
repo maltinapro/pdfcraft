@@ -51,6 +51,8 @@ For E07 UI changes, install Chromium once with `npx playwright install chromium`
 
 For E08 paper-first editor changes, inspect the zone editor and clickable PDF preview at the same sizes and themes. The screenshot script is automated only; the E08 five-task tap/time comparison must be run by a person against the E07-05 baseline before claiming usability improvement.
 
+The E08 editor uses a resizable desktop form/preview split and, below 840 px, a Fields/Sheet switch with persistent zone navigation. In Sheet mode, the zone sheet can be opened for edits and closed with Show preview. Recent follow-up checks also cover compact form spacing, themed scrollbars, separated item totals and preview-zone outlines. Keep E08-07 open until the five-task comparison and real-device checks are recorded; automated screenshots are not a substitute.
+
 ## Backend PDF Pipeline (Current)
 1. Receive `{ template, data }` in `POST /generate-pdf`
 2. Render template with minijinja (`template` + `data`)
