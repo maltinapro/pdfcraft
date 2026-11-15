@@ -36,7 +36,11 @@ export interface PdfJs {
 
 /** pdf.js is loaded on demand (own chunk): only someone who drops a PDF pays for it. */
 export async function loadPdfJs(): Promise<PdfJs> {
-  const [pdfjs, worker] = await Promise.all([import('pdfjs-dist'), import('pdfjs-dist/build/pdf.worker.min.mjs?url')])
+  // Legacy build (polyfilled) like the preview: the modern build needs very recent browsers
+  const [pdfjs, worker] = await Promise.all([
+    import('pdfjs-dist/legacy/build/pdf.mjs'),
+    import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'),
+  ])
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default
   return pdfjs as unknown as PdfJs
 }

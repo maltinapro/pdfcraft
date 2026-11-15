@@ -517,6 +517,11 @@ input[type='color'] {
   max-width: min(90%, 560px);
 }
 
+.preview-error a {
+  color: inherit;
+  font-weight: 600;
+}
+
 .preview-error ul {
   margin: 6px 0 0;
   padding-left: 18px;
