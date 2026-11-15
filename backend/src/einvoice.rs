@@ -337,7 +337,11 @@ pub fn prepare(
     let english = settings["locale"] == "en-de";
     let date = valid_date(&inv.date).unwrap_or((1970, 1, 1));
     let days = settings["paymentDays"].as_i64().unwrap_or(14);
-    let due = add_days(date, days);
+    let service_date = inv.service_date.as_deref().and_then(valid_date);
+    let service_from = inv.service_date_from.as_deref().and_then(valid_date);
+    let service_to = inv.service_date_to.as_deref().and_then(valid_date);
+    let effective_service_date = service_date.or(service_from).unwrap_or(date);
+    let due = inv.due_date.as_deref().and_then(valid_date).unwrap_or_else(|| add_days(date, days));
     let reason = raw.exemption_reason.as_deref().unwrap_or("Steuerfrei nach § 4 UStG").trim();
 
     let lines: Vec<Line> = inv
@@ -391,6 +395,13 @@ pub fn prepare(
         }
     }
     invoice_json["dateText"] = json!(german_date(date));
+    invoice_json["serviceDateText"] = json!(match (service_from, service_to) {
+        (Some(from), Some(to)) => format!("{} – {}", german_date(from), german_date(to)),
+        _ => german_date(effective_service_date),
+    });
+    invoice_json["serviceDateFromText"] = service_from.map(german_date).map_or(Value::Null, |v| json!(v));
+    invoice_json["serviceDateToText"] = service_to.map(german_date).map_or(Value::Null, |v| json!(v));
+    invoice_json["dueDateText"] = json!(german_date(due));
     invoice_json["totals"] = json!({
         "net": format!("{}{NBSP}€", money(net)),
         "gross": format!("{}{NBSP}€", money(gross)),
@@ -417,6 +428,7 @@ pub fn prepare(
         "pay": {
             "sum": format!("{}{NBSP}€", money(gross)),
             "days": days,
+            "dueDate": german_date(due),
             "iban": escape(&group_iban(&iban)),
             "ibanRaw": escape(&iban),
             "bic": escape(&bic),
@@ -592,7 +604,7 @@ pub fn prepare(
 
     open(&mut x, "ram:ApplicableHeaderTradeDelivery");
     open(&mut x, "ram:ActualDeliverySupplyChainEvent");
-    date_element(&mut x, "ram:OccurrenceDateTime", date);
+    date_element(&mut x, "ram:OccurrenceDateTime", effective_service_date);
     close(&mut x, "ram:ActualDeliverySupplyChainEvent");
     close(&mut x, "ram:ApplicableHeaderTradeDelivery");
 
@@ -623,6 +635,12 @@ pub fn prepare(
         element(&mut x, "ram:CategoryCode", category(g.rate));
         element(&mut x, "ram:RateApplicablePercent", &format!("{}.00", g.rate));
         close(&mut x, "ram:ApplicableTradeTax");
+    }
+    if let (Some(from), Some(to)) = (service_from, service_to) {
+        open(&mut x, "ram:BillingSpecifiedPeriod");
+        date_element(&mut x, "ram:StartDateTime", from);
+        date_element(&mut x, "ram:EndDateTime", to);
+        close(&mut x, "ram:BillingSpecifiedPeriod");
     }
     open(&mut x, "ram:SpecifiedTradePaymentTerms");
     date_element(&mut x, "ram:DueDateDateTime", due);

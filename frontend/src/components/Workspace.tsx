@@ -317,6 +317,13 @@ export function Workspace({
     setServerIssues([])
     setLoading(false)
   }, [])
+  const pendingReady = useCallback(
+    (count: number) => {
+      setPageCount(count)
+      if (pendingPdf) promotePending(pendingPdf.blob)
+    },
+    [pendingPdf, promotePending],
+  )
 
   useEffect(() => {
     if (key === lastKeyRef.current) return
@@ -535,10 +542,7 @@ export function Workspace({
                     zoom={zoom}
                     page={page}
                     onZoneSelect={onPreviewZone}
-                    onReady={(count) => {
-                      setPageCount(count)
-                      promotePending(pendingPdf.blob)
-                    }}
+                    onReady={pendingReady}
                   />
                 </div>
               </Suspense>

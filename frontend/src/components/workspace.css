@@ -149,7 +149,7 @@
 .editor-save-status svg { width: 16px; height: 16px; vertical-align: middle; }
 .editor-save-status a { color: var(--color-primary); }
 .editor-footer-actions { display: flex; justify-content: space-between; gap: var(--space-2); }
-.editor-footer-actions .btn-primary { background: var(--zone-color); border-color: var(--zone-color); color: var(--zone-on-container); }
+.editor-footer-actions .btn-primary { background: var(--zone-container); border-color: var(--zone-color); color: var(--zone-on-container); }
 .editor-footer-actions .btn-primary:focus-visible { outline: 2px solid var(--zone-color); outline-offset: 2px; }
 
 .editor-preview {
@@ -203,6 +203,7 @@
 
 @media (max-width: 839px) {
   .app-editor { height: 100dvh; }
+  .app-editor .header-nav { display: none; }
   .app-editor .app-header { gap: var(--space-2); padding: var(--space-2) var(--space-3); }
   .app-editor .app-title { font-size: var(--type-body-m); }
   .app-editor .app-title .logo { height: 28px; width: 28px; }

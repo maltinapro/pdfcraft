@@ -165,13 +165,25 @@ pub struct Item {
 }
 
 #[derive(Deserialize, Serialize, Default, ToSchema)]
-#[serde(default)]
+#[serde(default, rename_all = "camelCase")]
 pub struct Invoice {
     #[schema(required = true, max_length = 200)]
     pub number: String,
     /// Invoice date as `YYYY-MM-DD` (years 1970 to 2200).
     #[schema(required = true, format = Date)]
     pub date: String,
+    /// Optional date of service (defaults to the invoice date).
+    #[schema(format = Date)]
+    pub service_date: Option<String>,
+    /// Optional inclusive start of the service period; use together with `serviceDateTo`.
+    #[schema(format = Date)]
+    pub service_date_from: Option<String>,
+    /// Optional inclusive end of the service period; use together with `serviceDateFrom`.
+    #[schema(format = Date)]
+    pub service_date_to: Option<String>,
+    /// Optional override for the due date (otherwise derived from the payment term).
+    #[schema(format = Date)]
+    pub due_date: Option<String>,
     #[schema(required = true)]
     pub recipient: Recipient,
     #[schema(required = true, min_items = 1, max_items = 500)]
@@ -392,6 +404,42 @@ pub fn check_invoice(inv: &Invoice, path: &str, e: &mut Errors) -> JsonValue {
             (1970, 1, 1)
         }
     };
+    let optional_date = |field: &str, raw: Option<&String>, e: &mut Errors| {
+        raw.filter(|value| !value.trim().is_empty())
+            .map(|value| match valid_date(value) {
+                Some(date) => Some(date),
+                None => {
+                    e.add(&format!("{path}.{field}"), "must be a valid date as YYYY-MM-DD");
+                    None
+                }
+            })
+            .flatten()
+    };
+    let service_date = optional_date("serviceDate", inv.service_date.as_ref(), e);
+    let service_date_from = optional_date("serviceDateFrom", inv.service_date_from.as_ref(), e);
+    let service_date_to = optional_date("serviceDateTo", inv.service_date_to.as_ref(), e);
+    let due_date = optional_date("dueDate", inv.due_date.as_ref(), e);
+    if service_date_from.is_some() != service_date_to.is_some() {
+        e.add(
+            &format!("{path}.serviceDateFrom"),
+            "serviceDateFrom and serviceDateTo must be provided together",
+        );
+    }
+    if service_date_from.zip(service_date_to).is_some_and(|(from, to)| from > to) {
+        e.add(
+            &format!("{path}.serviceDateFrom"),
+            "serviceDateFrom must not be after serviceDateTo",
+        );
+    }
+    if service_date.is_some() && (service_date_from.is_some() || service_date_to.is_some()) {
+        e.add(
+            &format!("{path}.serviceDate"),
+            "serviceDate cannot be combined with a service period",
+        );
+    }
+    if due_date.is_some_and(|due| due < date) {
+        e.add(&format!("{path}.dueDate"), "dueDate must not be before the invoice date");
+    }
     if inv.items.is_empty() || inv.items.len() > MAX_ITEMS {
         e.add(
             &format!("{path}.items"),
@@ -435,6 +483,10 @@ pub fn check_invoice(inv: &Invoice, path: &str, e: &mut Errors) -> JsonValue {
     let mut out = json!({
         "number": text(e, &format!("{path}.number"), &inv.number, MAX_SHORT, true),
         "date": { "year": date.0, "month": date.1, "day": date.2 },
+        "serviceDate": service_date.map(|(year, month, day)| json!({ "year": year, "month": month, "day": day })),
+        "serviceDateFrom": service_date_from.map(|(year, month, day)| json!({ "year": year, "month": month, "day": day })),
+        "serviceDateTo": service_date_to.map(|(year, month, day)| json!({ "year": year, "month": month, "day": day })),
+        "dueDate": due_date.map(|(year, month, day)| json!({ "year": year, "month": month, "day": day })),
         "recipient": recipient,
         "items": items,
     });

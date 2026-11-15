@@ -70,7 +70,7 @@ export function validateInvoice(settings: Settings, invoice: Invoice): Issue[] {
 export function requiredIssues(
   spec: Pick<DocSpec, 'kind' | 'letter' | 'items'>,
   settings: Settings,
-  doc: { number: string; date: string; reference?: string; subject?: string; body?: string; recipient: { name: string; address: string; city: string }; items: InvoiceItem[] },
+  doc: { number: string; date: string; serviceDate?: string; serviceDateFrom?: string; serviceDateTo?: string; dueDate?: string; reference?: string; subject?: string; body?: string; recipient: { name: string; address: string; city: string }; items: InvoiceItem[] },
 ): Issue[] {
   const issues: Issue[] = []
   const missing = (field: string, message = tr('Pflichtfeld', 'Required')) =>
@@ -79,6 +79,18 @@ export function requiredIssues(
 
   if (!spec.letter && blank(doc.number)) missing('number')
   if (blank(doc.date)) missing('date', tr('Bitte ein Datum angeben', 'Please enter a date'))
+  if (!!doc.serviceDateFrom !== !!doc.serviceDateTo) {
+    missing('serviceDateFrom', tr('Bitte Start und Ende des Leistungszeitraums angeben', 'Enter both the start and end of the service period'))
+  }
+  if (doc.serviceDateFrom && doc.serviceDateTo && doc.serviceDateFrom > doc.serviceDateTo) {
+    missing('serviceDateFrom', tr('Der Leistungszeitraum endet vor seinem Beginn', 'The service period ends before it starts'))
+  }
+  if (doc.serviceDate && (doc.serviceDateFrom || doc.serviceDateTo)) {
+    missing('serviceDate', tr('Ein Leistungsdatum kann nicht mit einem Leistungszeitraum kombiniert werden', 'A service date cannot be combined with a service period'))
+  }
+  if (doc.dueDate && doc.date && doc.dueDate < doc.date) {
+    missing('dueDate', tr('Das Fälligkeitsdatum darf nicht vor dem Rechnungsdatum liegen', 'The due date cannot be before the invoice date'))
+  }
   if (spec.kind === 'credit-note' && blank(doc.reference)) missing('reference')
   if (blank(doc.recipient.name)) missing('recipient.name')
   if (blank(doc.recipient.address)) missing('recipient.address')

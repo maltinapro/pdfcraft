@@ -367,7 +367,7 @@ export default function App() {
         forInvoice
         data={{ settings, invoice }}
         render={(signal) => requestPdf(settings, invoice, signal)}
-        form={(zone) => <InvoiceForm invoice={invoice} onChange={setInvoice} zone={zone} />}
+        form={(zone) => <InvoiceForm invoice={invoice} settings={settings} onChange={setInvoice} zone={zone} />}
         issues={documentIssues}
         onDownloaded={() => issue('invoice')}
         onFollowUp={followUp}

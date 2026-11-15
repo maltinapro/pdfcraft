@@ -1,18 +1,19 @@
-import { TextField } from './Field'
+import { SelectField, TextField } from './Field'
 import { ItemsEditor } from './ItemsEditor'
 import { RecipientPicker } from './MasterDataPickers'
 import { PostageSection } from './PostageSection'
 import { tr, useLang } from '../lib/i18n'
-import type { Invoice, Recipient } from '../lib/types'
+import { addIsoDays, type Invoice, type Recipient, type Settings } from '../lib/types'
 import type { ZoneId } from '../lib/documents'
 
 interface Props {
   invoice: Invoice
+  settings: Settings
   onChange: (invoice: Invoice) => void
   zone: ZoneId
 }
 
-export function InvoiceForm({ invoice, onChange, zone }: Props) {
+export function InvoiceForm({ invoice, settings, onChange, zone }: Props) {
   useLang()
   const setRecipient = (key: keyof Recipient, value: string) =>
     onChange({ ...invoice, recipient: { ...invoice.recipient, [key]: value } })
@@ -24,6 +25,48 @@ export function InvoiceForm({ invoice, onChange, zone }: Props) {
         <h3>{tr('Rechnung', 'Invoice')}</h3>
         <TextField field="number" label={tr('Rechnungsnummer', 'Invoice number')} value={invoice.number} onChange={(v) => onChange({ ...invoice, number: v })} />
         <TextField field="date" label={tr('Rechnungsdatum', 'Invoice date')} type="date" value={invoice.date} onChange={(v) => onChange({ ...invoice, date: v })} />
+        <SelectField
+          label={tr('Leistungsdatum oder -zeitraum', 'Service date or period')}
+          value={invoice.serviceDateFrom || invoice.serviceDateTo ? 'period' : 'date'}
+          onChange={(value) => onChange(value === 'period'
+            ? {
+                ...invoice,
+                serviceDate: '',
+                serviceDateFrom: invoice.serviceDate || invoice.date,
+                serviceDateTo: invoice.serviceDate || invoice.date,
+              }
+            : {
+                ...invoice,
+                serviceDate: invoice.serviceDate || invoice.serviceDateFrom || invoice.date,
+                serviceDateFrom: '',
+                serviceDateTo: '',
+              })}
+          options={[
+            { value: 'date', label: tr('Einzelnes Leistungsdatum', 'Single service date') },
+            { value: 'period', label: tr('Leistungszeitraum', 'Service period') },
+          ]}
+          hint={tr('Standardmäßig das Rechnungsdatum.', 'Defaults to the invoice date.')}
+        />
+        {invoice.serviceDateFrom || invoice.serviceDateTo ? (
+          <>
+            <TextField field="serviceDateFrom" label={tr('Leistungszeitraum von', 'Service period from')} type="date" value={invoice.serviceDateFrom ?? ''} onChange={(v) => onChange({ ...invoice, serviceDateFrom: v })} />
+            <TextField field="serviceDateTo" label={tr('Leistungszeitraum bis', 'Service period to')} type="date" value={invoice.serviceDateTo ?? ''} onChange={(v) => onChange({ ...invoice, serviceDateTo: v })} />
+          </>
+        ) : (
+          <TextField field="serviceDate" label={tr('Leistungsdatum', 'Date of service')} type="date" value={invoice.serviceDate || invoice.date} onChange={(v) => onChange({ ...invoice, serviceDate: v })} />
+        )}
+        <TextField
+          field="dueDate"
+          label={tr('Fälligkeitsdatum', 'Due date')}
+          type="date"
+          value={invoice.dueDate || addIsoDays(invoice.date, settings.paymentDays)}
+          onChange={(v) => onChange({ ...invoice, dueDate: v })}
+        />
+        {invoice.dueDate && (
+          <button type="button" className="btn btn-small btn-tonal" onClick={() => onChange({ ...invoice, dueDate: '' })}>
+            {tr('Zahlungsziel verwenden', 'Use payment term')}
+          </button>
+        )}
       </section>
       )}
 

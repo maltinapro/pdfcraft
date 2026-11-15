@@ -36,6 +36,7 @@
 //! | `CORS_ALLOWED_ORIGINS` | any | Comma-separated origins, or `*` |
 
 use std::sync::OnceLock;
+use axum::http::header::HeaderName;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 pub struct Config {
@@ -239,7 +240,10 @@ pub fn get() -> &'static Config {
 }
 
 pub fn cors_layer() -> CorsLayer {
-    let layer = CorsLayer::new().allow_methods(Any).allow_headers(Any);
+    let layer = CorsLayer::new()
+        .allow_methods(Any)
+        .allow_headers(Any)
+        .expose_headers([HeaderName::from_static("x-pdfcraft-zones")]);
     match &get().cors_origins {
         None => layer.allow_origin(Any),
         Some(origins) => layer.allow_origin(AllowOrigin::list(
