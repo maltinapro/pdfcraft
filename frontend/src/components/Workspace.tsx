@@ -16,6 +16,7 @@ import { routeHref } from '../lib/router'
 import type { Issue } from '../lib/validate'
 import type { Settings } from '../lib/types'
 import type { ZoneRect } from '../lib/documents'
+import { formatXml, tokenizeXml } from '../lib/xmlDisplay'
 import './workspace.css'
 
 const PdfCanvasPreview = lazy(() => import('./PdfCanvasPreview').then((m) => ({ default: m.PdfCanvasPreview })))
@@ -107,7 +108,7 @@ function IssueSummary({ issues, kind, onJump, open }: SummaryProps) {
 }
 
 const fixedZones: ZoneRect[] = [
-  { zone: 1, page: 1, x: 25, y: 5, w: 170, h: 38 },
+  { zone: 1, page: 1, x: 110, y: 5, w: 85, h: 38 },
   { zone: 1, page: 1, x: 25, y: 250, w: 160, h: 35 },
   { zone: 2, page: 1, x: 25, y: 45, w: 85, h: 47.4 },
 ]
@@ -136,6 +137,8 @@ export function Workspace({
   const zones = ZONES[documentKind]
   const initialZoneState = zones.some((zone) => zone.id === initialZone) ? initialZone : zones[0].id
   const [activeZone, setActiveZone] = useState<ZoneId>(initialZoneState)
+  const [senderSection, setSenderSection] = useState<'company' | 'appearance'>('company')
+  const [editorSplit, setEditorSplit] = useState(38)
   const [mobileView, setMobileView] = useState<'fields' | 'sheet'>('fields')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 839px)').matches)
@@ -231,7 +234,7 @@ export function Workspace({
       const target = field === ''
         ? panel.querySelector<HTMLElement>('.zone-panel-header h2')
         : field
-          ? panel.querySelector<HTMLElement>(`[data-field="${CSS.escape(field)}"]`)
+          ? [...panel.querySelectorAll<HTMLElement>('[data-field]')].find((element) => element.dataset.field === field)
         : activeZone === 'recipient'
           ? panel.querySelector<HTMLElement>('.picker-actions button')
           : panel.querySelector<HTMLElement>('[data-field], input, select, textarea, button')
@@ -270,6 +273,13 @@ export function Workspace({
       if (zone) {
         setActiveZone(zone)
         setVisited((prev) => new Set(prev).add(zone))
+        if (zone === 'sender') {
+          setSenderSection(
+            /^(settings\.(design|accentColor|font|locale|intro|closing|footer|zugferd|einvoiceProfile))/.test(field)
+              ? 'appearance'
+              : 'company',
+          )
+        }
       }
       setMobileView('fields')
       setSheetOpen(false)
@@ -293,7 +303,18 @@ export function Workspace({
 
   const zoneBody = (zone: ZoneId) =>
     zone === 'sender' ? (
-      <SettingsForm settings={settings} onChange={onSettingsChange} forInvoice={forInvoice} zone={zone} />
+      <>
+        <SegmentedButton
+          label={tr('Absender-Bereich', 'Sender section')}
+          value={senderSection}
+          options={[
+            { value: 'company', label: tr('Firma & Bank', 'Company & bank') },
+            { value: 'appearance', label: tr('Aussehen & Texte', 'Look & text') },
+          ]}
+          onChange={setSenderSection}
+        />
+        <SettingsForm settings={settings} onChange={onSettingsChange} forInvoice={forInvoice} zone={zone} senderSection={senderSection} />
+      </>
     ) : (
       form(zone)
     )
@@ -418,7 +439,7 @@ export function Workspace({
   const summaryOpen = showAll || summary.length > 0
 
   return (
-    <div className="app app-editor">
+    <div className={`app app-editor editor-zone-${activeZone}`}>
       <AppHeader title={title} route={route} unsaved={unsaved}>
         {compact && (
           <SegmentedButton
@@ -462,7 +483,10 @@ export function Workspace({
         </section>
       )}
 
-      <div className={`workspace editor-workspace editor-view-${mobileView}`}>
+      <div
+        className={`workspace editor-workspace editor-view-${mobileView}`}
+        style={!compact ? { gridTemplateColumns: `minmax(360px, ${editorSplit}fr) 24px minmax(360px, ${100 - editorSplit}fr)` } : undefined}
+      >
         {(!compact || mobileView === 'fields') && (
           <aside className="sidebar editor-sidebar" ref={sidebarRef}>
             {!compact && <ZoneBar zones={zones} active={activeZone} states={zoneStates} onSelect={(zone) => selectZone(zone)} />}
@@ -485,6 +509,21 @@ export function Workspace({
               />
             )}
           </aside>
+        )}
+        {!compact && (
+          <label className="editor-splitter">
+            <input
+              type="range"
+              min={32}
+              max={58}
+              step={1}
+              value={editorSplit}
+              aria-label={tr('Breite des Formulars', 'Form width')}
+              aria-orientation="vertical"
+              onChange={(event) => setEditorSplit(Number(event.target.value))}
+            />
+            <span className="editor-splitter-grip" aria-hidden="true">⋮</span>
+          </label>
         )}
 
         {(!compact || mobileView === 'sheet') && (
@@ -581,7 +620,13 @@ export function Workspace({
           }}
           className="xml-dialog"
         >
-          {xmlError ? <p role="alert">{xmlError}</p> : <pre>{xml}</pre>}
+          {xmlError ? (
+            <p role="alert">{xmlError}</p>
+          ) : (
+            <pre>{tokenizeXml(formatXml(xml ?? '')).map((token, index) => (
+              <span className={`xml-token-${token.kind}`} key={index}>{token.text}</span>
+            ))}</pre>
+          )}
           <button type="button" className="btn btn-tonal" onClick={() => { setXml(null); setXmlError(null) }}>{tr('Schließen', 'Close')}</button>
         </Dialog>
       )}

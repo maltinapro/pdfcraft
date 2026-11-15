@@ -4,6 +4,7 @@
 }
 
 .app-editor .editor-workspace {
+  display: grid;
   width: 100%;
   max-width: 1920px;
   align-self: center;
@@ -12,8 +13,9 @@
 
 .app-editor .editor-sidebar {
   display: flex;
-  width: clamp(360px, 25vw, 480px);
-  flex: 0 0 clamp(360px, 25vw, 480px);
+  width: auto;
+  min-width: 0;
+  flex: initial;
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-4);
@@ -180,9 +182,14 @@
 .preview-page-canvas canvas { display: block; max-width: 100%; }
 .zone-overlay { position: absolute; inset: 0; pointer-events: none; }
 .zone-overlay-area { position: absolute; min-width: 24px; min-height: 24px; border: 0; border-radius: var(--radius-s); background: transparent; opacity: 1; pointer-events: auto; cursor: pointer; }
-.zone-overlay-area::before { position: absolute; inset: -1.5%; border: 2px solid var(--zone-color); border-radius: inherit; background: color-mix(in srgb, var(--zone-color) 12%, transparent); content: ''; opacity: 0.62; pointer-events: none; }
+.zone-overlay-area::before { position: absolute; inset: 2px; border: 2px solid var(--zone-color); border-radius: inherit; background: color-mix(in srgb, var(--zone-color) 12%, transparent); content: ''; opacity: 0.62; pointer-events: none; }
 .zone-overlay-area:hover::before, .zone-overlay-area.active::before { opacity: 1; }
 .zone-overlay-area:focus-visible { z-index: 1; outline: 3px solid var(--color-primary); outline-offset: 2px; }
+.zone-overlay-label { position: absolute; z-index: 1; top: 3px; left: 7px; padding: 2px 6px; border-radius: var(--radius-full); background: var(--zone-color); color: white; font-size: 10px; font-weight: 650; line-height: 1.25; white-space: nowrap; pointer-events: none; }
+.editor-splitter { position: relative; display: grid; min-width: 24px; place-items: center; cursor: col-resize; }
+.editor-splitter input { position: absolute; z-index: 1; width: 24px; height: 100%; margin: 0; opacity: 0; writing-mode: vertical-lr; direction: rtl; cursor: col-resize; }
+.editor-splitter-grip { display: grid; width: 8px; height: 48px; place-items: center; border-radius: var(--radius-full); background: var(--color-outline-variant); color: var(--color-on-surface-variant); font-size: 20px; line-height: 1; }
+.editor-splitter:focus-within .editor-splitter-grip { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .zone-panel .item-card-header { flex-wrap: wrap; }
 .zone-panel .item-actions { flex-wrap: wrap; max-width: 100%; }
 .preview-buffer { position: absolute; inset: 0; overflow: auto; }
@@ -200,7 +207,13 @@
 .download-success-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .download-success .notice-close { position: absolute; top: var(--space-1); right: var(--space-2); min-width: 40px; min-height: 40px; border: 0; background: transparent; color: inherit; font-size: 24px; cursor: pointer; }
 .app-editor .ui-dialog.xml-dialog { width: min(1100px, calc(100vw - 32px)); max-height: 90dvh; }
-.xml-dialog pre { max-height: 68dvh; margin-block: var(--space-4); padding: var(--space-4); overflow: auto; border-radius: var(--radius-m); background: var(--color-surface-container); font-size: var(--type-label-m); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+.xml-dialog pre { max-height: 68dvh; margin-block: var(--space-4); padding: var(--space-4); overflow: auto; border-radius: var(--radius-m); background: var(--color-surface-container); font-size: var(--type-label-m); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.xml-token-tag { color: #8250df; }
+.xml-token-attribute { color: #0550ae; }
+.xml-token-value { color: #0a6b32; }
+.xml-token-text { color: var(--color-on-surface); }
+.xml-token-comment { color: var(--color-on-surface-variant); font-style: italic; }
+.xml-token-punctuation { color: var(--color-on-surface-variant); }
 
 @keyframes zone-enter {
   from { opacity: 0.7; transform: translateY(4px); }
@@ -222,6 +235,7 @@
   .app-editor .header-actions { gap: var(--space-1); }
   .app-editor .editor-workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
   .app-editor .editor-sidebar, .app-editor .editor-preview { width: 100%; flex: 1 1 100%; min-width: 0; border-right: 0; }
+  .editor-splitter { display: none; }
   .app-editor .editor-sidebar { padding: var(--space-3); padding-bottom: 0; }
   .app-editor .editor-preview { min-height: 0; }
   .editor-mobile-bar { z-index: 2; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom)); border-top: 1px solid var(--color-outline-variant); background: var(--color-surface-container); }
