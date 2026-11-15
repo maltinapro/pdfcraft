@@ -913,6 +913,9 @@ a.btn { text-decoration: none; display: inline-block; }
 }
 .header-overflow-label { color: var(--color-on-surface-variant); font-size: var(--type-label-m); font-weight: 600; }
 .header-overflow-menu .ui-segmented { width: 100%; }
+.language-selector { width: fit-content; }
+.header-overflow-menu .language-selector { justify-self: start; }
+.header-overflow-menu .language-selector .ui-segmented { width: auto; }
 .header-overflow-menu .ui-segment { flex: 1; padding-inline: 8px; }
 .header-overflow-menu .app-version { color: var(--color-on-surface-variant); font-size: var(--type-label-m); }
 .help-link { display: flex; min-height: 48px; align-items: center; gap: var(--space-2); color: var(--color-primary); }

@@ -4,9 +4,11 @@ import { SegmentedButton } from './ui'
 export function LangToggle() {
   const lang = useLang()
   return (
-    <SegmentedButton label={tr('Sprache', 'Language')} value={lang} options={[
-      { value: 'de', label: 'DE' },
-      { value: 'en', label: 'EN' },
-    ]} onChange={setLang} />
+    <div className="language-selector">
+      <SegmentedButton label={tr('Sprache', 'Language')} value={lang} options={[
+        { value: 'de', label: 'DE' },
+        { value: 'en', label: 'EN' },
+      ]} onChange={setLang} />
+    </div>
   )
 }

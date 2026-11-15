@@ -141,13 +141,45 @@ try {
           if (layout.navOverflow || layout.headerOverflow || layout.headerHeight > maxHeaderHeight) {
             throw new Error(`Shell overflow at ${language}/${theme}/${width}/${routeName}: ${JSON.stringify(layout)}`)
           }
+          if (route === 'more') {
+            await page.locator('.header-overflow > summary').click()
+            const languageWidth = await page.locator('.header-overflow-menu .language-selector').evaluate((element) => element.getBoundingClientRect().width)
+            if (languageWidth > 160) throw new Error(`Language selector is too wide at ${width}px: ${languageWidth}px`)
+            await page.locator('.header-overflow > summary').click()
+          }
           await page.screenshot({ path: resolve(output, `${language}-${theme}-${width}-${routeName}.png`), fullPage: true })
         }
         await context.close()
       }
     }
   }
-  console.log(`Saved ${2 * 2 * widths.length * routes.length} screenshots to ${output}`)
+  for (const theme of ['light', 'dark']) {
+    for (const width of widths) {
+      const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: theme })
+      const page = await context.newPage()
+      await page.goto(`${baseUrl}/`, { waitUntil: 'networkidle' })
+      const layout = await page.evaluate(() => ({
+        theme: document.documentElement.dataset.theme,
+        overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        background: getComputedStyle(document.body).backgroundColor,
+      }))
+      const expectedBackground = theme === 'dark' ? 'rgb(20, 18, 26)' : 'rgb(253, 248, 255)'
+      if (layout.theme !== theme || layout.overflow || layout.background !== expectedBackground) {
+        throw new Error(`Landing page layout/theme failed at ${theme}/${width}px: ${JSON.stringify(layout)}`)
+      }
+      await page.screenshot({ path: resolve(output, `landing-${theme}-${width}.png`), fullPage: true })
+      await context.close()
+    }
+  }
+  const overrideContext = await browser.newContext({ viewport: { width: 390, height: 900 }, colorScheme: 'light' })
+  await overrideContext.addInitScript(() => localStorage.setItem('pdfcraft.theme', 'dark'))
+  const overridePage = await overrideContext.newPage()
+  await overridePage.goto(`${baseUrl}/`, { waitUntil: 'networkidle' })
+  if (await overridePage.locator('html').getAttribute('data-theme') !== 'dark') {
+    throw new Error('Landing page did not honor the saved dark theme override')
+  }
+  await overrideContext.close()
+  console.log(`Saved ${2 * 2 * widths.length * routes.length + 2 * widths.length} screenshots to ${output}`)
 } catch (error) {
   if (String(error).includes('Executable doesn’t exist') || String(error).includes('Executable doesn\'t exist')) {
     console.error('Chromium is not installed. Run `npx playwright install chromium` from frontend/.')
