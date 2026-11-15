@@ -8,6 +8,14 @@ import { canvasScale } from '../lib/pdfSupport'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
+// One worker for all preview updates; otherwise every update starts a new worker that parses the 1.3 MB
+// pdf.js worker script again, which costs memory and time on phones
+let sharedWorker: InstanceType<typeof pdfjs.PDFWorker> | null = null
+const previewWorker = () => {
+  if (!sharedWorker || sharedWorker.destroyed) sharedWorker = new pdfjs.PDFWorker()
+  return sharedWorker
+}
+
 export function PdfCanvasPreview({ blob, onReady }: { blob: Blob; onReady?: () => void }) {
   const container = useRef<HTMLDivElement>(null)
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
@@ -17,7 +25,7 @@ export function PdfCanvasPreview({ blob, onReady }: { blob: Blob; onReady?: () =
     setFailedUrl(null)
     let task: ReturnType<typeof pdfjs.getDocument> | null = null
     void (async () => {
-      task = pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) })
+      task = pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()), worker: previewWorker() })
       const doc = await task.promise
       const host = container.current
       if (cancelled || !host) return
