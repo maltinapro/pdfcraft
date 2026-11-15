@@ -21,6 +21,7 @@ interface Props {
   /** Bank details, intro/closing text and e-invoice options only apply to invoices. */
   forInvoice?: boolean
   zone?: ZoneId
+  senderSection?: 'company' | 'appearance'
 }
 
 const ACCEPTED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml']
@@ -35,7 +36,7 @@ function readFileAsBase64(file: File): Promise<string> {
   })
 }
 
-export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'sender' }: Props) {
+export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'sender', senderSection = 'company' }: Props) {
   useLang()
   const [logoError, setLogoError] = useState<string | null>(null)
   const [signatureError, setSignatureError] = useState<string | null>(null)
@@ -89,7 +90,7 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
 
   return (
     <div className="form">
-      {zone === 'sender' && <section className="form-section" data-zone="sender">
+      {zone === 'sender' && senderSection === 'company' && <section className="form-section" data-zone="sender">
         <h3>Logo</h3>
         {settings.logo ? (
           <div className="logo-preview">
@@ -119,7 +120,7 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
         {logoError && <p className="form-error">{logoError}</p>}
       </section>}
 
-      {zone === 'sender' && <section className="form-section" data-zone="sender">
+      {zone === 'sender' && senderSection === 'company' && <section className="form-section" data-zone="sender">
         <h3>{tr('Unterschrift', 'Signature')}</h3>
         {settings.signature ? (
           <div className="logo-preview">
@@ -156,7 +157,7 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
         {signatureError && <p className="form-error">{signatureError}</p>}
       </section>}
 
-      {zone === 'sender' && <section className="form-section" data-zone="sender">
+      {zone === 'sender' && senderSection === 'company' && <section className="form-section" data-zone="sender">
         <h3>{tr('Firma', 'Company')}</h3>
         <TextField field="settings.sender.name" label={tr('Name', 'Name')} value={settings.sender.name} onChange={(v) => setSender('name', v)} />
         <TextField field="settings.sender.address" label={tr('Straße / Hausnummer', 'Street / house number')} value={settings.sender.address} onChange={(v) => setSender('address', v)} />
@@ -186,7 +187,7 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
         />
       </section>}
 
-      {forInvoice && zone === 'sender' && (
+      {forInvoice && zone === 'sender' && senderSection === 'company' && (
         <section className="form-section" data-zone="sender">
           <h3>{tr('Bankverbindung', 'Bank details')}</h3>
           <TextField field="settings.bank.name" label={tr('Bank', 'Bank')} value={settings.bank.name} onChange={(v) => setBank('name', v)} />
@@ -223,7 +224,7 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
         </section>
       )}
 
-      {zone === 'sender' && <section className="form-section" data-zone="sender">
+      {zone === 'sender' && senderSection === 'appearance' && <section className="form-section" data-zone="sender">
         <h3>{tr('Design', 'Design')}</h3>
         <div className="field">
           <span className="field-label">{tr('Dokumentvorlage', 'Document design')}</span>
@@ -270,7 +271,7 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
         </Field>
       </section>}
 
-      {zone === 'sender' && <section className="form-section" data-zone="sender">
+      {zone === 'sender' && senderSection === 'appearance' && <section className="form-section" data-zone="sender">
         <h3>{tr('Texte', 'Texts')}</h3>
         {forInvoice && (
           <>
@@ -281,7 +282,7 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
         <TextAreaField field="settings.footer" label={tr('Fußzeile', 'Footer')} value={settings.footer} onChange={(v) => set('footer', v)} rows={2} />
       </section>}
 
-      {forInvoice && zone === 'sender' && (
+      {forInvoice && zone === 'sender' && senderSection === 'appearance' && (
         <section className="form-section" data-zone="sender">
           <h3>{tr('E-Rechnung', 'E-invoice')}</h3>
           <label className="checkbox">
