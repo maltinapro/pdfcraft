@@ -4,15 +4,17 @@ import { RecipientPicker } from './MasterDataPickers'
 import { PostageSection } from './PostageSection'
 import { tr, useLang } from '../lib/i18n'
 import type { Doc, DocSpec } from '../lib/documents'
+import type { ZoneId } from '../lib/documents'
 
 interface Props {
   spec: DocSpec
   doc: Doc
   onChange: (doc: Doc) => void
+  zone: ZoneId
 }
 
 /** Generic form for all non-invoice documents, built from the type's `DocSpec`. */
-export function DocumentForm({ spec, doc, onChange }: Props) {
+export function DocumentForm({ spec, doc, onChange, zone }: Props) {
   useLang()
   const set = <K extends keyof Doc>(key: K, value: Doc[K]) => onChange({ ...doc, [key]: value })
   const setRecipient = (key: keyof Doc['recipient'], value: string) =>
@@ -20,7 +22,7 @@ export function DocumentForm({ spec, doc, onChange }: Props) {
 
   return (
     <div className="form">
-      <section className="form-section">
+      {zone === 'details' && <section className="form-section" data-zone="details">
         <h3>{spec.label}</h3>
         {!spec.letter && (
           <TextField field="number" label={spec.numberLabel ?? tr('Nummer', 'Number')} value={doc.number} onChange={(v) => set('number', v)} />
@@ -44,11 +46,14 @@ export function DocumentForm({ spec, doc, onChange }: Props) {
         {spec.deliveryDate && (
           <TextField field="deliveryDate" label={spec.deliveryDate} type="date" value={doc.deliveryDate} onChange={(v) => set('deliveryDate', v)} />
         )}
-      </section>
+        {spec.intro !== undefined && (
+          <TextAreaField field="intro" label={tr('Einleitung', 'Introduction')} value={doc.intro} onChange={(v) => set('intro', v)} />
+        )}
+      </section>}
 
-      <section className="form-section">
+      {zone === 'recipient' && <section className="form-section" data-zone="recipient">
         <h3>{tr('Empfänger', 'Recipient')}</h3>
-        <RecipientPicker recipient={doc.recipient} onPick={(recipient) => onChange({ ...doc, recipient })} />
+        <RecipientPicker recipient={doc.recipient} onPick={(recipient) => onChange({ ...doc, recipient })} autoFocus />
         <TextField field="recipient.name" label={tr('Name', 'Name')} value={doc.recipient.name} onChange={(v) => setRecipient('name', v)} />
         <TextField field="recipient.address" label={tr('Straße / Hausnummer', 'Street / house number')} value={doc.recipient.address} onChange={(v) => setRecipient('address', v)} />
         <TextField field="recipient.city" label={tr('PLZ / Ort', 'Postcode / city')} value={doc.recipient.city} onChange={(v) => setRecipient('city', v)} />
@@ -59,26 +64,26 @@ export function DocumentForm({ spec, doc, onChange }: Props) {
             <TextField field="recipient.buyerReference" label={tr('Leitweg-ID / Käuferreferenz', 'Leitweg ID / buyer reference')} value={doc.recipient.buyerReference ?? ''} onChange={(v) => setRecipient('buyerReference', v)} />
           </>
         )}
-      </section>
+      </section>}
 
-      <PostageSection postage={doc.postage} onChange={(postage) => set('postage', postage)} />
+      {zone === 'recipient' && <PostageSection postage={doc.postage} onChange={(postage) => set('postage', postage)} />}
 
-      {spec.letter && (
-        <section className="form-section">
+      {zone === 'items' && spec.letter && (
+        <section className="form-section" data-zone="items">
           <h3>{tr('Inhalt', 'Content')}</h3>
           <TextField field="subject" label={tr('Betreff', 'Subject')} value={doc.subject} onChange={(v) => set('subject', v)} />
           <TextAreaField field="body" label={tr('Text', 'Text')} rows={14} value={doc.body} onChange={(v) => set('body', v)} />
         </section>
       )}
 
-      {spec.reason && (
-        <section className="form-section">
+      {zone === 'details' && spec.reason && (
+        <section className="form-section" data-zone="details">
           <h3>{spec.reason}</h3>
           <TextAreaField field="reason" label={tr('Begründung (optional)', 'Reason (optional)')} value={doc.reason} onChange={(v) => set('reason', v)} />
         </section>
       )}
 
-      {spec.items !== 'none' && (
+      {zone === 'items' && spec.items !== 'none' && (
         <ItemsEditor
           items={doc.items}
           onChange={(items) => set('items', items)}
@@ -87,15 +92,10 @@ export function DocumentForm({ spec, doc, onChange }: Props) {
         />
       )}
 
-      {(spec.intro !== undefined || spec.closing !== undefined) && (
-        <section className="form-section">
+      {zone === 'items' && spec.closing !== undefined && (
+        <section className="form-section" data-zone="items">
           <h3>{tr('Texte', 'Texts')}</h3>
-          {spec.intro !== undefined && (
-            <TextAreaField field="intro" label={tr('Einleitung', 'Introduction')} value={doc.intro} onChange={(v) => set('intro', v)} />
-          )}
-          {spec.closing !== undefined && (
             <TextAreaField field="closing" label={spec.letter ? tr('Grußformel', 'Closing phrase') : tr('Schlusstext', 'Closing text')} value={doc.closing} onChange={(v) => set('closing', v)} />
-          )}
         </section>
       )}
     </div>

@@ -5,6 +5,15 @@ import { newItem, todayIso, type InvoiceItem, type PostageStamp, type Recipient 
 export type DocKind = 'invoice' | 'credit-note' | 'offer' | 'order' | 'delivery-note' | 'letter'
 export type ZoneId = 'sender' | 'recipient' | 'details' | 'items'
 
+export interface ZoneRect {
+  zone: number
+  page: number
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 export interface ZoneSpec {
   id: ZoneId
   number: number

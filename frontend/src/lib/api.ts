@@ -1,6 +1,6 @@
 import { friendlyApiError, parseValidationDetails, type ServerIssue } from './apiErrors'
 import { tr } from './i18n'
-import type { Doc, DocKind } from './documents'
+import type { Doc, DocKind, ZoneRect } from './documents'
 import type { Invoice, PostageStamp, Settings } from './types'
 
 export const API_BASE_URL =
@@ -204,6 +204,32 @@ async function request(method: string, path: string, payload?: unknown, signal?:
 const requestBlob = async (path: string, payload: unknown, signal?: AbortSignal): Promise<Blob> =>
   (await request('POST', path, payload, signal)).blob()
 
+export interface RenderedPdf {
+  blob: Blob
+  zones: ZoneRect[]
+}
+
+async function requestPreviewPdf(path: string, payload: unknown, signal?: AbortSignal): Promise<RenderedPdf> {
+  const response = await request('POST', `${path}?zones=1`, payload, signal)
+  let zones: ZoneRect[] = []
+  try {
+    const parsed: unknown = JSON.parse(response.headers.get('X-Pdfcraft-Zones') ?? '[]')
+    if (Array.isArray(parsed)) {
+      zones = parsed.filter(
+        (zone): zone is ZoneRect =>
+          typeof zone === 'object' &&
+          zone !== null &&
+          [1, 2, 3, 4].includes((zone as ZoneRect).zone) &&
+          Number.isInteger((zone as ZoneRect).page) &&
+          ['x', 'y', 'w', 'h'].every((key) => Number.isFinite((zone as unknown as Record<string, unknown>)[key])),
+      )
+    }
+  } catch {
+    // Older servers omit the optional header; the preview keeps its fixed-zone fallback.
+  }
+  return { blob: await response.blob(), zones }
+}
+
 /** Calls an endpoint with the purchased token only (no fallback to a free token). */
 export async function requestWithPaidToken<T>(method: 'GET' | 'POST', path: string, token: string): Promise<T> {
   const response = await send(method, path, token)
@@ -228,8 +254,8 @@ function forBackend<T extends { postage?: PostageStamp | null }>(document: T) {
 }
 
 /** Renders the invoice with `POST /v1/invoices`. */
-export function requestPdf(settings: Settings, invoice: Invoice, signal?: AbortSignal): Promise<Blob> {
-  return requestBlob('/v1/invoices', { settings, invoice: forBackend(invoice) }, signal)
+export function requestPdf(settings: Settings, invoice: Invoice, signal?: AbortSignal): Promise<RenderedPdf> {
+  return requestPreviewPdf('/v1/invoices', { settings, invoice: forBackend(invoice) }, signal)
 }
 
 /** Renders a credit note, offer, order confirmation, delivery note or letter with `POST /v1/documents`. */
@@ -238,8 +264,8 @@ export function requestDocument(
   settings: Settings,
   document: Doc,
   signal?: AbortSignal,
-): Promise<Blob> {
-  return requestBlob('/v1/documents', { type: kind, settings, document: forBackend(document) }, signal)
+): Promise<RenderedPdf> {
+  return requestPreviewPdf('/v1/documents', { type: kind, settings, document: forBackend(document) }, signal)
 }
 
 /** Documents per bulk request that the active token's plan allows (small fallback if the server cannot say). */

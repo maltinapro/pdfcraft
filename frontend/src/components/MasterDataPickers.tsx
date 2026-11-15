@@ -69,10 +69,11 @@ interface RecipientPickerProps {
   recipient: Recipient
   /** Called with the chosen recipient; the caller replaces all recipient fields. */
   onPick: (recipient: Recipient) => void
+  autoFocus?: boolean
 }
 
 /** "Choose saved recipient" and "Save recipient" for the recipient section of every document form. */
-export function RecipientPicker({ recipient, onPick }: RecipientPickerProps) {
+export function RecipientPicker({ recipient, onPick, autoFocus = false }: RecipientPickerProps) {
   useLang()
   const { contacts } = useMasterData()
   const [open, setOpen] = useState(false)
@@ -94,10 +95,10 @@ export function RecipientPicker({ recipient, onPick }: RecipientPickerProps) {
   return (
     <div className="picker">
       <div className="picker-actions">
-        <button type="button" className="btn btn-small" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <button type="button" className="btn btn-small btn-tonal" aria-expanded={open} autoFocus={autoFocus} onClick={() => setOpen(!open)}>
           {tr('Gespeicherten Empfänger wählen …', 'Choose saved recipient …')}
         </button>
-        <button type="button" className="btn btn-small" disabled={!recipient.name.trim()} onClick={save}>
+        <button type="button" className="btn btn-small btn-tonal" disabled={!recipient.name.trim()} onClick={save}>
           {tr('Empfänger speichern', 'Save recipient')}
         </button>
       </div>
@@ -146,7 +147,7 @@ export function ArticlePicker({ prices, onAdd }: ArticlePickerProps) {
 
   return (
     <>
-      <button type="button" className="btn" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button type="button" className="btn btn-tonal" aria-expanded={open} onClick={() => setOpen(!open)}>
         {tr('+ Artikel aus Liste', '+ Article from list')}
       </button>
       {open && (

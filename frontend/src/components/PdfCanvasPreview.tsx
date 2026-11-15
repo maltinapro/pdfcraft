@@ -1,72 +1,122 @@
 import { useEffect, useRef, useState } from 'react'
-// Legacy build: it carries polyfills for the newest JavaScript APIs the modern build relies on, which older
-// Chrome/Android WebView versions (and in-app browsers) lack; without them the preview stayed blank
+// Legacy build includes polyfills required by older Chrome and Android WebView versions.
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs'
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
 import { tr } from '../lib/i18n'
 import { canvasScale } from '../lib/pdfSupport'
+import type { ZoneId, ZoneRect } from '../lib/documents'
+import { ZoneOverlay } from './editor/ZoneOverlay'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
-// One worker for all preview updates; otherwise every update starts a new worker that parses the 1.3 MB
-// pdf.js worker script again, which costs memory and time on phones
 let sharedWorker: InstanceType<typeof pdfjs.PDFWorker> | null = null
 const previewWorker = () => {
   if (!sharedWorker || sharedWorker.destroyed) sharedWorker = new pdfjs.PDFWorker()
   return sharedWorker
 }
 
-export function PdfCanvasPreview({ blob, onReady }: { blob: Blob; onReady?: () => void }) {
+interface PageView {
+  number: number
+  widthMm: number
+  heightMm: number
+  canvas: HTMLCanvasElement
+}
+
+interface Props {
+  blob: Blob
+  zones: readonly ZoneRect[]
+  activeZone: ZoneId
+  zoom: 'fit-page' | 'fit-width'
+  page: number
+  onZoneSelect: (zone: ZoneId) => void
+  onReady?: (pages: number) => void
+}
+
+export function PdfCanvasPreview({ blob, zones, activeZone, zoom, page, onZoneSelect, onReady }: Props) {
   const container = useRef<HTMLDivElement>(null)
+  const [pages, setPages] = useState<PageView[]>([])
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     setFailedUrl(null)
+    setPages([])
     let task: ReturnType<typeof pdfjs.getDocument> | null = null
     void (async () => {
       task = pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()), worker: previewWorker() })
       const doc = await task.promise
       const host = container.current
       if (cancelled || !host) return
-      const width = host.clientWidth || window.innerWidth
-      const canvases: HTMLCanvasElement[] = []
-      for (let n = 1; n <= doc.numPages; n++) {
-        const page = await doc.getPage(n)
-        const base = page.getViewport({ scale: 1 })
-        const viewport = page.getViewport({ scale: canvasScale(width, window.devicePixelRatio || 1, base.width, base.height) })
+      const width = Math.max(host.clientWidth - 32, 240)
+      const availableHeight = Math.max(window.innerHeight - 180, 320)
+      const rendered: PageView[] = []
+      for (let number = 1; number <= doc.numPages; number++) {
+        const pdfPage = await doc.getPage(number)
+        const base = pdfPage.getViewport({ scale: 1 })
+        const fitWidth = width / base.width
+        const scale = zoom === 'fit-page' ? Math.min(fitWidth, availableHeight / base.height) : fitWidth
+        const cssWidth = base.width * scale
+        const viewport = pdfPage.getViewport({
+          scale: canvasScale(cssWidth, window.devicePixelRatio || 1, base.width, base.height),
+        })
         const canvas = document.createElement('canvas')
         canvas.width = Math.floor(viewport.width)
         canvas.height = Math.floor(viewport.height)
-        canvas.style.width = '100%'
-        await page.render({ canvas, viewport }).promise
+        canvas.style.width = `${cssWidth}px`
+        canvas.style.height = `${base.height * scale}px`
+        await pdfPage.render({ canvas, viewport }).promise
         if (cancelled) return
-        canvases.push(canvas)
+        rendered.push({
+          number,
+          widthMm: (base.width * 25.4) / 72,
+          heightMm: (base.height * 25.4) / 72,
+          canvas,
+        })
       }
-      host.replaceChildren(...canvases)
-      onReady?.()
+      if (cancelled) return
+      setPages(rendered)
+      onReady?.(doc.numPages)
     })()
       .catch((e: unknown) => {
         if (cancelled) return
         console.error('PDF preview failed', e)
-        container.current?.replaceChildren()
         setFailedUrl(URL.createObjectURL(blob))
       })
       .finally(() => void task?.destroy())
     return () => {
       cancelled = true
     }
-  }, [blob, onReady])
+  }, [blob, onReady, zoom])
+
+  useEffect(() => {
+    if (page > 1) container.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [page, pages])
 
   useEffect(() => () => void (failedUrl && URL.revokeObjectURL(failedUrl)), [failedUrl])
 
   return (
     <>
-      <div ref={container} className="preview-canvas" />
+      <div ref={container} className="preview-canvas">
+        {pages.map((item) => (
+          <div className="preview-page" data-page={item.number} key={item.number}>
+            <div className="preview-page-canvas" ref={(node) => {
+              if (node && item.canvas.parentElement !== node) node.replaceChildren(item.canvas)
+            }} />
+            <ZoneOverlay
+              page={item.number}
+              widthMm={item.widthMm}
+              heightMm={item.heightMm}
+              zones={zones}
+              active={activeZone}
+              onSelect={onZoneSelect}
+            />
+          </div>
+        ))}
+      </div>
       {failedUrl && (
         <div className="preview-error" role="alert">
           <strong>{tr('Die Vorschau kann in diesem Browser nicht angezeigt werden.', 'This browser cannot show the preview.')}</strong>{' '}
-          <a href={failedUrl} target="_blank" rel="noopener">
+          <a href={failedUrl} target="_blank" rel="noopener noreferrer">
             {tr('PDF öffnen', 'Open PDF')}
           </a>
         </div>

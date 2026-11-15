@@ -26,6 +26,8 @@ import {
   docSpec,
   loadDrafts,
   saveDrafts,
+  ZONES,
+  zoneForField,
   type DocDataKind,
   type DocDrafts,
   type DocKind,
@@ -71,7 +73,8 @@ export default function App() {
   const issue = useCallback(
     (kind: DocKind) => {
       const source = kind === 'invoice' ? invoice : drafts[kind as DocDataKind]
-      setArchive((current) => [makeEntry(kind, source, settings), ...current])
+      const entry = makeEntry(kind, source, settings)
+      setArchive((current) => [entry, ...current])
       // The stamp is used up with the download: the next document needs a new one
       if (kind === 'invoice') setInvoice((i) => ({ ...i, number: incrementNumber(i.number), postage: null }))
       else
@@ -79,6 +82,7 @@ export default function App() {
           ...d,
           [kind]: { ...d[kind as DocDataKind], number: incrementNumber(d[kind as DocDataKind].number), postage: null },
         }))
+      return entry
     },
     [invoice, drafts, settings],
   )
@@ -247,7 +251,6 @@ export default function App() {
     // `lang`: the message texts depend on the UI language
     [settings, invoice, lang],
   )
-
   const unsaved = unsavedCount(archive, lastBackup)
   const cancelled = cancelledNumbers(archive)
   const dismiss = () => setNotice(null)
@@ -335,26 +338,40 @@ export default function App() {
     )
   }
 
+  const documentIssues = spec.kind === 'invoice'
+    ? [...invoiceIssues, ...duplicate(invoice.number, 'invoice')]
+    : [...requiredIssues(spec, settings, drafts[spec.kind as DocDataKind]), ...exampleDataIssues(settings, false), ...duplicate(drafts[spec.kind as DocDataKind].number, spec.kind)]
+  const initialEditorZone = onSender
+    ? 'sender'
+    : !initial
+      ? 'sender'
+      : ZONES[spec.kind].find((zone) =>
+          documentIssues.some(
+            (issue) => issue.field && zoneForField(spec.kind, issue.field) === zone.id && (issue.blocking || issue.level === 'warning'),
+          ),
+        )?.id ?? 'recipient'
+
   if (spec.kind === 'invoice') {
     return (
       <Workspace
         key={onSender ? 'sender' : 'invoice'}
         route={route}
         unsaved={unsaved}
-        initialTab={onSender ? 'settings' : 'document'}
+        initialZone={initialEditorZone}
         saveState={saveState}
         kind="invoice"
         title={spec.label}
-        tabLabel={tr('Rechnung', 'Invoice')}
         fileName={`${tr('rechnung', 'invoice')}-${fileStem(invoice.number, tr('neu', 'new'))}`}
         settings={settings}
         onSettingsChange={setSettings}
         forInvoice
         data={{ settings, invoice }}
         render={(signal) => requestPdf(settings, invoice, signal)}
-        form={<InvoiceForm invoice={invoice} onChange={setInvoice} />}
-        issues={[...invoiceIssues, ...duplicate(invoice.number, 'invoice')]}
+        form={(zone) => <InvoiceForm invoice={invoice} onChange={setInvoice} zone={zone} />}
+        issues={documentIssues}
         onDownloaded={() => issue('invoice')}
+        onFollowUp={followUp}
+        onBackup={backup}
       />
     )
   }
@@ -368,23 +385,26 @@ export default function App() {
       unsaved={unsaved}
       kind={kind}
       title={spec.label}
-      tabLabel={spec.label}
+      initialZone={initialEditorZone}
       fileName={`${kind}-${fileStem(doc.number, tr('neu', 'new'))}`}
       settings={settings}
       onSettingsChange={setSettings}
       forInvoice={false}
-      issues={[...requiredIssues(spec, settings, doc), ...exampleDataIssues(settings, false), ...duplicate(doc.number, kind)]}
+      issues={documentIssues}
       saveState={saveState}
       onDownloaded={() => issue(kind)}
       data={{ kind, settings, doc }}
       render={(signal) => requestDocument(kind, settings, doc, signal)}
-      form={
+      form={(zone) => (
         <DocumentForm
           spec={spec}
           doc={doc}
+          zone={zone}
           onChange={(next) => setDrafts((current) => ({ ...current, [kind]: next }))}
         />
-      }
+      )}
+      onFollowUp={followUp}
+      onBackup={backup}
     />
   )
 }
