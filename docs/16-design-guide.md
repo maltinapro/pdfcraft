@@ -28,10 +28,10 @@ A document is divided into four **zones**. Each zone has a number, an icon, a co
 
 | # | Zone | Fields (invoice) | Area on the sheet | Color (light / dark) |
 | --- | --- | --- | --- | --- |
-| 1 | **Sender & look** (`sender`) | company, address, contact, tax numbers, bank, logo, signature, design, accent color, font, texts, e-invoice profile | header (0–45 mm), payment block, footer | violet `#4A2FB0` / `#D0BCFF` |
-| 2 | **Recipient** (`recipient`) | name, address, e-mail, VAT ID, buyer reference, saved recipients, postage | address field (45–92.4 mm) | coral `#C9411E` / `#FFB5A0` |
-| 3 | **Details** (`details`) | number, date, service date or period and due date (new fields, E08-08), references, subject, intro | reference line, title row | amber `#8D4E00` / `#FFB870` |
-| 4 | **Items** (`items`) | line items, articles, totals, closing text | table, totals, closing | green `#146C2E` / `#85D696` |
+| 1 | **Sender & look** (`sender`) | company, address, contact, tax numbers, bank, logo, signature, design, accent color, font, texts, e-invoice profile | header (0–45 mm), payment block, footer | violet `#4A2FB0` / `#CABEFF` |
+| 2 | **Recipient** (`recipient`) | name, address, e-mail, VAT ID, buyer reference, saved recipients, postage | address field (45–92.4 mm) | coral `#C9411E` / `#FFB4A2` |
+| 3 | **Details** (`details`) | number, date, service date or period and due date (new fields, E08-08), references, subject, intro | reference line, title row | amber `#8D4E00` / `#FFB778` |
+| 4 | **Items** (`items`) | line items, articles, totals, closing text | table, totals, closing | green `#006C50` / `#82D7B5` |
 
 Per document type: the letter has **Text** (subject, body) instead of Items; the delivery note shows items without prices; credit notes add the reference to the invoice in Details. The mapping lives in one place (`ZONES` next to `DOC_SPECS` in `frontend/src/lib/documents.ts`) and is unit-tested.
 
@@ -76,52 +76,80 @@ Top-level destinations get **one-word labels** (≤ 10 characters) and an icon:
 | --- | --- | --- | --- |
 | Start | Start | Home | create tiles, recent documents, getting started |
 | Documents | Belege | Documents | archive, bulk ZIP, cancel, follow-ups |
-| Contacts | Kunden | Customers | customers and articles (two tabs inside) |
-| More | Mehr | More | view e-invoice, data & backup, buy token, language, theme, legal |
+| Customers | Kunden | Customers | customers and articles (two tabs inside) |
+| More | Mehr | More | check e-invoice, data & backup, buy access, language, theme, legal |
 
 - **Compact / medium:** M3 **navigation bar** at the bottom (80 px, icon + label, active indicator pill). Replaces the header links that wrap today.
-- **Expanded:** the same four destinations as a **navigation rail** (left, 80 px) or as tabs in the top bar; the choice is made once in E07-04 and applied everywhere.
+- **Expanded (≥ 840 px):** the same four destinations as **tabs in the top bar** (icon + label, active indicator underneath). Decided: a navigation rail would take 80 px from the editor, which already needs form and preview side by side.
 - The backup reminder is a badge on *Mehr* (dot) and on *Data & backup* inside it.
 
 ## 4. Foundations
 
 ### 4.1 Color roles
 
-Defined once as CSS custom properties (`frontend/src/styles/tokens.css`), light and dark (`[data-theme="dark"]` and `prefers-color-scheme`). Components only use roles, never hex values.
+Defined once as CSS custom properties (`frontend/src/styles/tokens.css`), light and dark. Components only use roles, never hex values. The values below are **final**: copy them as they are.
+
+**Harmony with the logo (checked with Material's HCT color model, `@material/material-color-utilities`):**
+
+| Color | Hex | Hue | Chroma | Tone | Role |
+| --- | --- | --- | --- | --- | --- |
+| Logo navy | `#241259` | 296 | 42 | 13 | logo, landing hero only |
+| Logo violet | `#4A2FB0` | 294 | 63 | 31 | **seed** of the app scheme, primary |
+| Logo orange | `#F25D39` | 32 | 73 | 59 | logo, landing accent only (fails AA as text) |
+| Recipient coral | `#C9411E` | 33 | 73 | 47 | darker tone of the logo orange |
+| Details amber | `#8D4E00` | 61 | 44 | 40 | |
+| Items green | `#006C50` | 162 | – | 40 | the demo's `#146C2E` harmonized towards the violet |
+
+All neutrals are generated from the logo violet (`SchemeFidelity`, seed `#4A2FB0`), so grays carry a faint violet tint instead of today's bluish Tailwind slate (`#64748b`, `#f0f2f5`, hue ≈ 215). The coral is the logo orange at a darker tone, so violet + coral repeat the logo's two-color pairing. The demo's orange harmonized towards the violet would turn pink-red (`#B32639`), so the coral stays as it is.
 
 | Role | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `--color-primary` | `#4A2FB0` | `#D0BCFF` | brand actions, focus, links |
-| `--color-on-primary` | `#FFFFFF` | `#381E72` | text/icons on primary |
-| `--color-primary-container` | `#EADDFF` | `#4F378B` | tonal buttons, selected states |
-| `--color-on-primary-container` | `#21005D` | `#EADDFF` | text on primary container |
-| `--color-surface` | `#FEF7FF` | `#141218` | page background |
-| `--color-surface-container-low` | `#F7F2FA` | `#1D1B20` | editor panel |
-| `--color-surface-container` | `#F3EDF7` | `#211F26` | top bar, cards, footer bars |
-| `--color-surface-container-high` | `#ECE6F0` | `#2B2930` | preview canvas, dialogs |
-| `--color-surface-container-highest` | `#E6E0E9` | `#36343B` | filled text fields |
-| `--color-on-surface` | `#1D1B20` | `#E6E0E9` | text |
-| `--color-on-surface-variant` | `#49454F` | `#CAC4D0` | labels, supporting text |
-| `--color-outline` | `#79747E` | `#938F99` | field indicator at rest |
-| `--color-error` / `--color-error-container` | `#B3261E` / `#F9DEDC` | `#F2B8B5` / `#8C1D18` | errors |
-| `--color-warning` / `--color-warning-container` | `#8D4E00` / `#FFF8E1` | `#FFB870` / `#3E2D00` | warnings, example data |
-| `--color-success` | `#146C2E` | `#85D696` | saved, complete |
+| `--color-primary` | `#4A2FB0` | `#CABEFF` | brand actions, focus, links |
+| `--color-on-primary` | `#FFFFFF` | `#310498` | text/icons on primary |
+| `--color-primary-container` | `#E6DEFF` | `#482CAE` | tonal buttons, selected states, nav indicator |
+| `--color-on-primary-container` | `#1C0062` | `#E6DEFF` | text on primary container |
+| `--color-surface` | `#FDF8FF` | `#14121A` | page background |
+| `--color-surface-container-low` | `#F7F1FD` | `#1C1B22` | editor panel |
+| `--color-surface-container` | `#F1ECF7` | `#201F26` | top bar, navigation bar, cards, footer bars |
+| `--color-surface-container-high` | `#EBE6F1` | `#2B2931` | preview canvas, dialogs, menus |
+| `--color-surface-container-highest` | `#E6E0EC` | `#36343C` | filled text fields |
+| `--color-on-surface` | `#1C1B22` | `#E6E0EC` | text |
+| `--color-on-surface-variant` | `#484553` | `#C9C4D6` | labels, supporting text |
+| `--color-outline` | `#797585` | `#938E9F` | field indicator at rest, outlined buttons |
+| `--color-outline-variant` | `#C9C4D6` | `#484553` | dividers (decorative only) |
+| `--color-error` / `--color-on-error` | `#BA1A1A` / `#FFFFFF` | `#FFB4AB` / `#690005` | errors |
+| `--color-error-container` / `--color-on-error-container` | `#FFDAD6` / `#93000A` | `#93000A` / `#FFDAD6` | error banner |
+| `--color-warning` / `--color-warning-container` / `--color-on-warning-container` | `#8D4E00` / `#FFDCC1` / `#2E1500` | `#FFB778` / `#6C3A00` / `#FFDCC1` | warnings, example data, backup reminder |
+| `--color-success` / `--color-success-container` | `#006C50` / `#9DF4D0` | `#82D7B5` / `#00513B` | saved, complete |
+| `--color-scrim` | `#000000` at 32 % | `#000000` at 50 % | behind dialogs and bottom sheets |
 
-Zone colors (`--zone-<id>`, `--zone-<id>-container`, `--zone-<id>-on-container`, `--zone-<id>-tint`) take the values of the owner's demo:
+Zone colors (`--zone-<id>`, `--zone-<id>-container`, `--zone-<id>-on-container`; the overlay tint is the zone color at 12 % opacity):
 
 | Zone | primary L / D | container L / D | on-container L / D |
 | --- | --- | --- | --- |
-| sender | `#4A2FB0` / `#D0BCFF` | `#EADDFF` / `#381E72` | `#21005D` / `#EADDFF` |
-| recipient | `#C9411E` / `#FFB5A0` | `#FFDBD1` / `#72230B` | `#3B0900` / `#FFDBD1` |
-| details | `#8D4E00` / `#FFB870` | `#FFDCC2` / `#693C00` | `#2E1500` / `#FFDCC2` |
-| items | `#146C2E` / `#85D696` | `#C4EED0` / `#0F5223` | `#072711` / `#C4EED0` |
+| sender | `#4A2FB0` / `#CABEFF` | `#E6DEFF` / `#482CAE` | `#1C0062` / `#E6DEFF` |
+| recipient | `#C9411E` / `#FFB4A2` | `#FFDAD2` / `#891D00` | `#3C0700` / `#FFDAD2` |
+| details | `#8D4E00` / `#FFB778` | `#FFDCC1` / `#6C3A00` | `#2E1500` / `#FFDCC1` |
+| items | `#006C50` / `#82D7B5` | `#9DF4D0` / `#00513B` | `#002116` / `#9DF4D0` |
 
-Contrast (checked): all four light primaries reach ≥ 4.9:1 on white and on `surface`; all dark primaries ≥ 10:1 on `#141218`. The concept's lighter tones `#F25D39` (3.3:1) and `#16A34A` (3.3:1) **fail AA** for text and white-on-color buttons; they stay decorative only (logo, illustrations).
+Contrast (computed): primaries on `surface` light: sender 8.6:1, recipient 4.7:1, details 6.2:1, items 6.2:1; dark primaries on `#14121A` ≥ 9:1; `on-surface-variant` on a filled field 7.2:1 (both themes); `outline` on a filled field 3.5:1 (light) / 3.9:1 (dark), enough for UI parts (≥ 3:1).
+
+Contrast failures in today's app (fixed by E07-01, checked by its contrast test):
+
+| Today | Ratio | Replace with |
+| --- | --- | --- |
+| orange "Erstellen" link / white text on orange (`#F25D39`) | 3.3:1 | filled primary button (`#4A2FB0` + white, 9.0:1) |
+| petrol document-type color `#0D9488` on white | 3.7:1 | no document-type colors (see rules) |
+| dark-mode brand `#7C5CE0` on `#1A1D27` | 3.6:1 | `#CABEFF` on `#14121A` (10.9:1) |
+| `--muted` `#64748B` on `--bg` `#F0F2F5` | 4.2:1 | `on-surface-variant` `#484553` on `surface` |
+| blue focus ring `#BFDBFE` | < 3:1 | 2 px `primary` |
 
 Rules:
-- Zone colors appear only inside the editor; document-type colors (`DOC_SPECS[].color`) only on the dashboard and archive badges. Never both in one component.
-- Brand navy `#241259` and orange `#F25D39` belong to the logo and the landing hero, not to app controls.
+- **Accent colors are few:** primary (violet) for actions, the four zone colors inside the editor, and error/warning/success for status. Nothing else.
+- **Document types have no own color.** Today's `DOC_SPECS[].color` (six Tailwind hues: `#d6336c`, `#0d9488`, `#2563eb`, `#7c3aed`, `#f25d39`, `#4a2fb0`) is removed in E09-01; tiles and archive badges use icon + label on `surface-container`/`primary-container`. Together with the zones the app showed about ten accent hues; this is the main reason it looks restless.
+- Brand navy `#241259` and orange `#F25D39` belong to the logo and the landing hero, not to app controls. The app's header gradient is removed (flat `surface-container`).
 - The PDF accent color (`settings.accentColor`) is document content and never tints app UI.
+- Dark mode is not "inverted light": surfaces get lighter with elevation (`surface` → `surface-container-highest`); no shadows on dark surfaces except the A4 sheet; images (logo, signature) keep their colors on a white sheet.
 
 ### 4.2 Typography
 
@@ -191,11 +219,18 @@ All components live in `frontend/src/components/ui/` and only use tokens. Existi
 - Zone changes move focus to the zone header; live regions announce save state and preview updates politely.
 - `prefers-reduced-motion` and `prefers-color-scheme` are honored.
 
+### 8.1 Theme, high contrast and forced colors
+
+- **Theme setting** has three states, *System* (default), *Light*, *Dark*, as a segmented button in *Mehr* (today a single toggle that forgets "system" after the first click). `lib/theme.ts` stores `light`/`dark` in `pdfcraft.theme`; *System* removes the key and follows `prefers-color-scheme` live. `<html data-theme>` is set before first paint (inline script in `app/index.html`, as today) so there is no flash.
+- **`prefers-contrast: more`** (user asked the OS for more contrast): tokens switch to the high-contrast values of the same scheme (`SchemeFidelity`, contrast level 1): light `on-surface-variant` `#000000`, `outline` `#2D2A38`, `primary` `#2C008F`; dark `on-surface-variant` `#FFFFFF`, `outline` `#F3EDFF`, `primary` `#F3EDFF`. Filled fields additionally get a 1 px `outline` border; disabled content uses 60 % instead of 38 % opacity.
+- **`forced-colors: active`** (Windows contrast themes): the browser replaces all colors. Rules: every field, button, chip, card and the zone bar has a `1px solid transparent` border in normal mode so it becomes visible; focus uses `outline` (not `box-shadow`); selected states use `Highlight`/`HighlightText`; zone tints in the preview become outlines (`CanvasText`); icons use `currentColor`. `forced-color-adjust: none` only for the PDF canvas, logo/signature images and color swatches of the accent picker.
+- AC for E07: screenshots with Chrome DevTools "Emulate CSS media feature `forced-colors: active`" and `prefers-contrast: more` on Start and in the editor show every control and its boundary.
+
 ## 9. The M3 demo: adopt, adapt, reject
 
 | | What | Decision |
 | --- | --- | --- |
-| Adopt | Tonal surfaces without borders, filled fields with floating label, color-coded steps (AA tones from the demo), step header cards, sticky Back/Next footer with save status, item cards with live line total, totals card, segmented buttons, snackbar, click on the preview to jump | as specified above |
+| Adopt | Tonal surfaces without borders, filled fields with floating label, color-coded steps (the demo's AA tones, green harmonized to `#006C50` and neutrals derived from the logo, see 4.1), step header cards, sticky Back/Next footer with save status, item cards with live line total, totals card, segmented buttons, snackbar, click on the preview to jump | as specified above |
 | Adapt | Linear wizard → zones that can be visited in any order and are skipped when complete | returning users must not walk through four steps |
 | Adapt | HTML mock of the invoice as preview → the real Typst PDF with an overlay | an HTML copy would diverge from the PDF |
 | Adapt | Swipe on the whole form and global arrow keys → swipe on zone bar/sheet only, arrows only in the zone bar | text selection, iOS back gesture, keyboard users |
@@ -287,6 +322,24 @@ Heuristic review of the current app (DE/EN, light, 390 px and 1440 px). Severity
 | 13 | M | No service date field: the PDF and the XML (`ActualDeliverySupplyChainEvent`) use the invoice date as date of service; the due date is computed (invoice date + payment days) but the PDF only says "within 14 days". | E08-08 |
 | 14 | L | Hints are underlined orange link text (three lines each at 380 px sidebar width), hard to scan. | E07-02, E08-02 |
 
+Second pass (all app pages at 390 and 1440 px, light and dark, 15 Nov 2026):
+
+| # | Sev. | Finding | Fixed by |
+| --- | --- | --- | --- |
+| 15 | H | Start at 390 px: welcome card + backup banner push "Was möchten Sie erstellen?" to ~600 px; the first tile starts at ~720 px; the page is 2,680 px long. | E09-01 |
+| 16 | H | Belege: backup banner and GoBD notice stand above the list, which starts at ~820 px; there is no search and no visible "download again" per row. | E09-02 |
+| 17 | M | Belege: bulk actions (select all / ZIP / remove) are always visible but disabled and low-contrast until something is selected. | E09-02 |
+| 18 | M | Belege: follow-up buttons say only "Rechnung" or "Auftragsbestätigung", which reads like a filter, not like "create invoice from this offer". | E09-02 |
+| 19 | M | Kunden & Artikel: empty although two documents exist; "Aus ausgestellten Belegen übernehmen" has the same weight as "Neuer Kunde". | E09-03 |
+| 20 | M | Terms differ for the same thing: nav "Kunden" vs. tab "Empfänger"; breadcrumb "Übersicht" vs. "Start"; "Absender & Design" vs. "Firmendaten eintragen"; "Meine Belege" vs. "Archiv". | glossary 12.1, E07-04, E09 |
+| 21 | M | Daten & Sicherung: four stacked cards of equal weight; "Für Entwickler: Konfiguration für die API" sits on a user page. | E09-03 |
+| 22 | M | "E-Rechnung ansehen" looks active/outlined on every page; the active page is not clearly marked. | E07-04 |
+| 23 | M | Dark mode: backup banner turns olive-brown and dull; disabled buttons are hard to see; the header gradient is the same in both themes. | E07-01, E07-02 |
+| 24 | M | Colors: bluish slate grays, a blue focus ring and six document-type colors next to four zone colors (about ten accent hues); five text/background pairs fail AA (table in 4.1). | E07-01, E09-01 |
+| 25 | M | A failing PDF preview stayed a silent gray area (Pixel phones with an older Chrome/WebView; fixed in #158/#159, fallback "PDF öffnen"). Front-end errors are not counted, so nobody noticed. | E08-03, E12-06 |
+| 26 | L | Date field shows `MM/DD/YYYY` in a German UI on some browsers (browser locale instead of UI language). | E08-02 |
+| 27 | L | No designed state for windows over 1,600 px: the editor stretches; the dashboard content has no max width. | E07-04 |
+
 Kept because they work: auto-save status, issue summary that jumps to the field, live preview, archive follow-ups.
 
 **Usability check protocol** (before and after phase 4, E07-05 / E08-07): five tasks, measured as taps/clicks and time by one tester on 390 px and 1440 px: (1) first invoice from scratch, (2) second invoice for a saved customer with two saved articles, (3) credit note for an issued invoice, (4) download a backup, (5) open a received e-invoice. Results go into the epic files.
@@ -299,6 +352,56 @@ Kept because they work: auto-save status, issue summary that jumps to the field,
 - Migrate page by page; old and new styles may coexist during phase 4, but one page never mixes them.
 - Visual verification (mandatory, see `AGENTS.md`): screenshots in DE and EN, light and dark, at 390 px and 1440 px (plus 320 px for navigation changes); PDFs rendered with `PDF_OUT=<dir> cargo test v1::tests`, rasterized and viewed for every design.
 - User-visible changes get a short entry in "Neuigkeiten" (`frontend/index.html`).
+
+### 12.1 Glossary (fixed UI terms)
+
+Use exactly these words in labels, titles, breadcrumbs, buttons and docs. One concept, one word.
+
+| Concept | DE | EN | Not |
+| --- | --- | --- | --- |
+| start page | Start | Home | Übersicht, Dashboard |
+| issued documents | Belege | Documents | Meine Belege, Archiv (only in the GoBD notice) |
+| saved recipients | Kunden | Customers | Empfänger (only the zone name), Kontakte |
+| saved line items | Artikel | Articles | Produkte, Positionen (only zone 4) |
+| own company data + look | Absender & Aussehen | Sender & look | Absender & Design, Firmendaten, Einstellungen |
+| zone 2 | Empfänger | Recipient | Kunde (the zone is the person on the document) |
+| zone 3 | Details | Details | Rechnungsdaten, Kopf |
+| zone 4 | Positionen | Items | Artikel, Leistungen |
+| backup page | Daten & Sicherung | Data & backup | Export, Konfiguration |
+| e-invoice viewer | E-Rechnung prüfen | Check e-invoice | E-Rechnung ansehen, Viewer |
+| PDF download | PDF erstellen | Create PDF | Herunterladen, Download, Speichern |
+| purchased token | Zugang kaufen | Buy access | Token kaufen (the word "Token" stays in technical texts) |
+| follow-up action | „Rechnung aus diesem Angebot“ | "Invoice from this offer" | bare type names |
+
+### 12.2 Device test matrix
+
+The canvas preview runs on browsers we do not develop on. Every PR that touches the preview, the editor layout or pdf.js runs this matrix (real device where marked, otherwise emulation):
+
+| Device / browser | Why | How |
+| --- | --- | --- |
+| Google Pixel 9, Chrome stable (**real device**) | the owner's partner's phone; Chrome Android has no in-iframe PDF viewer | open the deployed preview, edit two fields, rotate |
+| Android, Chrome 2 major versions old or Android System WebView (in-app browser, e.g. links opened from mail or messenger apps) | pdf.js needs polyfills (legacy build, #158) | Playwright `devices['Pixel 7']` with `navigator.pdfViewerEnabled=false` and `Map.prototype.getOrInsertComputed`/`Math.sumPrecise` deleted |
+| Samsung Internet | second-largest Android browser | real device or BrowserStack, if available |
+| iPhone, Safari (current and previous iOS) | iOS shows only page 1 in iframes; on-screen keyboard and safe areas | real device or Playwright WebKit `devices['iPhone 15']` |
+| Desktop Chrome, Firefox, Safari | built-in PDF viewer path | manual |
+| Windows contrast theme / `forced-colors` | section 8.1 | Chrome DevTools rendering emulation |
+
+Record the result (device, browser version, pass/fail) in the PR description.
+
+### 12.3 Implementation playbook (for every phase-4 issue)
+
+Written so that a contributor or a small AI model can follow it step by step without design decisions of its own. If something is not covered here or in the issue, stop and ask instead of inventing.
+
+1. **Read** the issue in `docs/epics/EXX-*.md`, this guide's sections named in the issue, and `AGENTS.md`. Note the files listed under *Files*.
+2. **Branch** from the latest `main`: `feat/<epic>-<short-name>`.
+3. **Screenshots before:** `cd frontend && npm run dev`, then `node scripts/screenshots.mjs --out /tmp/before` (script added by E07-05; it covers every app page in DE/EN, light/dark, 390/1440 px and mocks the API when no backend runs).
+4. **Implement** with tokens and `components/ui/` only. Keep every `field` key, `data-field` attribute, `tr()` call and localStorage key unchanged unless the issue says otherwise.
+5. **Check:** `cd frontend && npm test && npm run build`; for backend changes `cd backend && cargo check && cargo test`; for template changes also `PDF_OUT=/tmp/pdf cargo test v1::tests` and look at the rasterized pages.
+6. **Screenshots after** into `/tmp/after`; compare page by page. Checklist per screenshot: nothing wraps in the top bar/navigation; no hex color outside `tokens.css` (`grep -rn "#[0-9a-fA-F]\{3,6\}" src --include=*.tsx --include=*.css` only hits `tokens.css`); text readable in dark mode; focus ring visible (Tab through the page); touch targets ≥ 48 px; terms match the glossary.
+7. **Docs:** tick the issue, update `docs/roadmap.md`, the epic file, `README.md`/`docs/` if behavior changed, "Neuigkeiten", `AGENTS.md`.
+8. **PR:** Conventional Commits title, `Closes #<n>`, before/after screenshots, device matrix result if the preview was touched.
+
+Do not: add dependencies the issue does not name, change API responses or the archive/backup format, use emoji as icons, add colors outside 4.1, remove features of the old UI, or add global keyboard shortcuts.
 
 ### Ideas for later (not planned)
 
