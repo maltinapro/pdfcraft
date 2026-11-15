@@ -82,6 +82,7 @@ For external customers. The template lives on the server (the same `invoice.typ`
 **Body:** the same JSON as the config export (`settings` + `invoice`; extra fields such as `schemaVersion` and item `id` are ignored).
 
 - Required: `settings.sender.{name,address,city}`, `invoice.{number,date,recipient.{name,address,city},items}`.
+- Optional invoice dates: `serviceDate` or the pair `serviceDateFrom` / `serviceDateTo`; `dueDate` overrides the due date derived from `settings.paymentDays`. Omitting them preserves the previous defaults (service date = invoice date, due date = invoice date + payment term).
 - Allowed values (fonts, locales, units, tax rates `19/7/0`, profiles `en16931`/`xrechnung`): see `frontend/src/lib/types.ts`.
 - Do **not** escape text yourself.
 - The logo is `settings.logo.base64` (max 1 MB decoded).
@@ -92,6 +93,8 @@ curl -X POST http://localhost:3000/v1/invoices \
   -H 'Authorization: Bearer <key>' -H 'content-type: application/json' \
   --data @pdfcraft-config.json -o invoice.pdf
 ```
+
+The browser preview adds `?zones=1` to single-document requests. This optional flag adds an `X-Pdfcraft-Zones` response header containing zone 3/4 rectangles as JSON (`zone`, one-based `page`, `x`, `y`, `w`, `h` in mm). The header is omitted without the flag; the browser positions zones 1/2 from the fixed DIN layout. Bulk endpoints are unchanged.
 
 ## `POST /v1/documents`
 

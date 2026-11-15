@@ -16,13 +16,13 @@ A full-stack **PDF Template Builder** that combines simple form-based configurat
 
 - 🗂️ **Dashboard with document types** — invoice, credit note (Stornorechnung), offer, order confirmation, delivery note and letter (DIN 5008 Form B); choose the shared Classic or Modern Minimal design; issued documents and their design settings are archived in the browser, with backup/restore, customer and article master data, follow-up documents and bulk ZIP download
 - 🔍 **E-invoice viewer and checker** — drop a received ZUGFeRD/Factur-X PDF or an XRechnung/CII/UBL XML (page `#/viewer`) and read it as a normal invoice, with a limited plausibility check (sums, mandatory fields); everything stays in the browser, nothing is uploaded
-- 🧾 **Form-based document configurator** — fill in invoice, credit note, offer, order, delivery note or letter; settings cover Classic or Modern Minimal design, logo, company address, bank details, accent color, font, footer and texts
+- 🧾 **Paper-first document configurator** — edit all six document types in four guided zones; click the PDF preview to open the matching fields. Invoice details include a service date/period and editable due date
 - 🖼️ **Logo upload** (PNG/JPG/SVG, ≤ 300 KB) sent to the backend as a base64 asset
 - ✍️ **Signature image** (PNG/JPG/SVG or PDF, ≤ 300 KB) printed below the closing text of every document; a PDF is converted to SVG and cropped on the server. This is a picture, not a digital signature (see [PDF signatures](docs/15-pdf-signatures.md) for what a cryptographic signature would take)
 - 💾 **Persistence** — settings and invoice draft are auto-saved in the browser (`localStorage`, versioned `schemaVersion`); export/import as JSON, reset to defaults
 - 🎨 **Responsive app shell** — shared design tokens, accessible navigation (bottom bar on compact screens, top tabs on wide screens), and a More page for e-invoice checks, backup, language and appearance
 - 🌗 **System, light and dark themes** — System follows the OS preference; an explicit choice is remembered in `localStorage` (`pdfcraft.theme`)
-- 👀 **Live PDF preview** — debounced re-render via the backend, shown in an iframe
+- 👀 **Live PDF preview** — debounced re-render via the backend; click the paper to navigate between document zones
 - 📐 **Typst-quality PDF output** via `typst-as-lib` + `typst-pdf` — no local Typst installation needed
 - 💉 **Data injection** via [minijinja](https://docs.rs/minijinja/) templating at render time
 - ⚡ **Fast PDFs** — a lean Typst template and a Rust-generated Factur-X/XRechnung XML render an invoice in under 10 ms
@@ -47,7 +47,7 @@ cd frontend && npm install && npm run dev
 
 Or with Docker: `docker compose up --build` (landing page http://localhost:8080, app http://localhost:8080/app/, backend http://localhost:3000).
 
-Open the frontend, fill in **Settings** and **Invoice**, and download the PDF. Input is saved in the browser; use **Exportieren / Importieren** for a JSON backup. The UI fetches a short-lived free token itself (Anubis challenge, PDFs carry an "Entwurf" watermark).
+Open the frontend, work through the document zones, and download the PDF. Input is saved in the browser; use **Daten & Sicherung** for a JSON backup. The UI fetches a short-lived free token itself (Anubis challenge, PDFs carry an "Entwurf" watermark).
 
 ## Architecture
 

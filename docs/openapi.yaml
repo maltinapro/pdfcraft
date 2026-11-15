@@ -21,6 +21,10 @@ info:
 
     **Request size.** Request bodies are limited to 2 MB (`413` above that).
 
+    For the browser preview only, add `?zones=1` to `POST /v1/invoices` or `POST /v1/documents`.
+    The response then includes `X-Pdfcraft-Zones`, JSON geometry for zones 3 and 4 in millimeters.
+    Without the flag this header is omitted; bulk responses are unchanged.
+
     The request examples are tested against the backend, so they stay valid.
   license:
     identifier: MIT
@@ -63,6 +67,15 @@ paths:
         | `delivery-note` | `number`, `date`, `recipient`, `items` (shown without prices) | `deliveryDate`, `reference`, `intro`, `closing` |
         | `letter` | `date`, `recipient`, `subject`, `body` | `reference`, `closing` |
       operationId: createDocument
+      parameters:
+      - description: Include PDF zone geometry in `X-Pdfcraft-Zones`; only `1` enables it.
+        in: path
+        name: zones
+        required: true
+        schema:
+          type:
+          - string
+          - 'null'
       requestBody:
         content:
           application/json:
@@ -285,6 +298,15 @@ paths:
         e-invoice XML (`factur-x.xml` for `en16931`, `xrechnung.xml` for `xrechnung`). If the data is not
         sufficient for a valid e-invoice, `invoice-draft.xml` is attached instead. Costs one rate-limit unit.
       operationId: createInvoice
+      parameters:
+      - description: Include PDF zone geometry in `X-Pdfcraft-Zones`; only `1` enables it.
+        in: path
+        name: zones
+        required: true
+        schema:
+          type:
+          - string
+          - 'null'
       requestBody:
         content:
           application/json:
@@ -730,6 +752,10 @@ components:
           description: Invoice date as `YYYY-MM-DD` (years 1970 to 2200).
           format: date
           type: string
+        dueDate:
+          description: Optional override for the due date (otherwise derived from the payment term).
+          format: date
+          type: string
         items:
           items:
             $ref: '#/components/schemas/Item'
@@ -744,6 +770,18 @@ components:
           description: Franking mark (Internetmarke PNG) printed into the address field.
         recipient:
           $ref: '#/components/schemas/Recipient'
+        serviceDate:
+          description: Optional date of service (defaults to the invoice date).
+          format: date
+          type: string
+        serviceDateFrom:
+          description: Optional inclusive start of the service period; use together with `serviceDateTo`.
+          format: date
+          type: string
+        serviceDateTo:
+          description: Optional inclusive end of the service period; use together with `serviceDateFrom`.
+          format: date
+          type: string
       required:
       - number
       - date

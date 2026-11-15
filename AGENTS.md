@@ -49,6 +49,8 @@ npm run build
 ```
 For E07 UI changes, install Chromium once with `npx playwright install chromium` and run `npm run screenshots -- --out /tmp/after`; inspect the captures at 320/390/768/1440 px, both languages and both themes.
 
+For E08 paper-first editor changes, inspect the zone editor and clickable PDF preview at the same sizes and themes. The screenshot script is automated only; the E08 five-task tap/time comparison must be run by a person against the E07-05 baseline before claiming usability improvement.
+
 ## Backend PDF Pipeline (Current)
 1. Receive `{ template, data }` in `POST /generate-pdf`
 2. Render template with minijinja (`template` + `data`)

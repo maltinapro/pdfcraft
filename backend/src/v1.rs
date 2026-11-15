@@ -892,6 +892,45 @@ mod tests {
                     && zone.h > 0.0
             }));
         }
+
+        let items: Vec<_> = (0..100)
+            .map(|index| {
+                json!({
+                    "description": format!("Position {index}: detailed service description"),
+                    "quantity": 1,
+                    "unit": "pcs",
+                    "price": 10,
+                    "taxRate": 19,
+                })
+            })
+            .collect();
+        let invoice: Invoice = serde_json::from_value(json!({
+            "number": "2026-MULTI",
+            "date": "2026-01-31",
+            "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+            "items": items,
+        }))
+        .unwrap();
+        let mut errors = Errors::default();
+        let checked = check_invoice(&invoice, "invoice", &mut errors);
+        assert!(errors.0.is_empty(), "{:?}", errors.0);
+        let (data, assets) = invoice_data(
+            &settings,
+            checked_settings.data,
+            &invoice,
+            checked,
+            Vec::new(),
+        );
+        let (pdf, zones) = render_pdf_with_zones(INVOICE_TEMPLATE, data, assets)
+            .await
+            .unwrap_or_else(|e| panic!("multi-page invoice: {}", e.details));
+        let item_zones: Vec<_> = zones.iter().filter(|zone| zone.zone == 4).collect();
+        assert!(pdf.starts_with(b"%PDF"));
+        assert!(item_zones.iter().any(|zone| zone.page == 1));
+        assert!(item_zones.iter().any(|zone| zone.page > 1));
+        if let Ok(dir) = std::env::var("PDF_OUT") {
+            std::fs::write(format!("{dir}/invoice-zone-multipage.pdf"), pdf).unwrap();
+        }
     }
 
     #[tokio::test]
@@ -1034,6 +1073,7 @@ mod tests {
                         .unwrap();
                     }
                 }
+
             }
         }
     }
