@@ -1,10 +1,9 @@
 import { NOT_CHECKED, type CheckResult } from '../lib/einvoice/check'
 import { tr, useLang } from '../lib/i18n'
+import { StatusIcon } from './icons'
 
 export const KOSIT_VALIDATOR_URL = 'https://github.com/itplr-kosit/validator'
 export const MUSTANG_URL = 'https://www.mustangproject.org/'
-
-const ICON: Record<CheckResult['status'], string> = { ok: '✓', warning: '!', error: '✕', skipped: '–' }
 
 export const findingCount = (results: CheckResult[]): number => results.filter((r) => r.status === 'warning' || r.status === 'error').length
 
@@ -26,7 +25,7 @@ export function EInvoiceChecks({ results }: { results: CheckResult[] }) {
       <ul className="ev-check-list">
         {results.map((r) => (
           <li key={r.id} className={`ev-check ev-check-${r.status}`}>
-            <span className="ev-check-icon" aria-hidden="true">{ICON[r.status]}</span>
+            <span className="ev-check-icon" aria-hidden="true"><StatusIcon status={r.status} /></span>
             <div>
               <p>
                 {r.title}

@@ -1,9 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AppHeader } from './AppHeader'
+import { AppIcon, StatusIcon } from './icons'
 import { FreeVersionHint } from './FreeVersionHint'
 import { FormIssuesContext, type FormIssuesValue } from './FormIssues'
 import { SettingsForm } from './SettingsForm'
-import { ThemeToggle } from './ThemeToggle'
 import { ValidationError } from '../lib/api'
 import { fieldTitle } from '../lib/apiErrors'
 import { tr, useLang } from '../lib/i18n'
@@ -19,6 +19,8 @@ const PREVIEW_DEBOUNCE_MS = 600
 
 interface Props {
   title: string
+  route: string
+  unsaved: number
   /** Document type (`DocKind`), used to name form fields in messages. */
   kind: string
   /** Download file name without extension. */
@@ -113,6 +115,8 @@ function IssueSummary({ issues, kind, onJump }: SummaryProps) {
 /** Form + live PDF preview + download, shared by all document types. */
 export function Workspace({
   title,
+  route,
+  unsaved,
   kind,
   fileName,
   settings,
@@ -291,10 +295,16 @@ export function Workspace({
 
   return (
     <div className="app">
-      <AppHeader title={title}>
-        <ThemeToggle />
-        <button className="btn btn-primary" onClick={download} disabled={loading || (!pdfBlob && !paused)}>
-          {tr('⬇ PDF herunterladen', '⬇ Download PDF')}
+      <AppHeader title={title} route={route} unsaved={unsaved}>
+        <button
+          className="btn btn-primary"
+          onClick={download}
+          disabled={loading || (!pdfBlob && !paused)}
+          aria-label={tr('PDF erstellen', 'Create PDF')}
+          title={tr('PDF erstellen', 'Create PDF')}
+        >
+          <AppIcon name="download" />
+          <span className="download-label">{tr('PDF erstellen', 'Create PDF')}</span>
         </button>
       </AppHeader>
 
@@ -303,7 +313,8 @@ export function Workspace({
       {downloaded && (
         <div className="notice notice-success" role="status">
           <span>
-            {tr('✓ PDF heruntergeladen und unter „Meine Belege“ vermerkt. Die Belege liegen nur in diesem Browser – ', '✓ PDF downloaded and listed under “My documents”. Your documents are only stored in this browser – ')}
+            <StatusIcon status="ok" />
+            {tr('PDF heruntergeladen und unter „Belege“ vermerkt. Die Belege liegen nur in diesem Browser – ', 'PDF downloaded and listed under “Documents”. Your documents are only stored in this browser – ')}
             <a href={routeHref('data')}>{tr('Sicherung herunterladen', 'download a backup')}</a>
           </span>
           <button type="button" className="notice-close" onClick={() => setDownloaded(false)} aria-label={tr('Schließen', 'Close')}>×</button>
@@ -353,13 +364,15 @@ export function Workspace({
             {saveState === 'saving' && tr('Speichere …', 'Saving …')}
             {saveState === 'saved' && (
               <>
-                {tr('✓ Automatisch in diesem Browser gespeichert · ', '✓ Saved automatically in this browser · ')}
+                <StatusIcon status="ok" />
+                {tr('Automatisch in diesem Browser gespeichert · ', 'Saved automatically in this browser · ')}
                 <a href={routeHref('data')}>{tr('Daten sichern', 'Back up data')}</a>
               </>
             )}
             {saveState === 'error' && (
               <>
-                {tr('⚠ Speichern im Browser nicht möglich – ', '⚠ Saving in the browser is not possible – ')}
+                <StatusIcon status="warning" />
+                {tr('Speichern im Browser nicht möglich – ', 'Saving in the browser is not possible – ')}
                 <a href={routeHref('data')}>{tr('bitte Daten sichern', 'please back up your data')}</a>
               </>
             )}

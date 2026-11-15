@@ -33,7 +33,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173/app/` (`/` is the German landing page, see [Demo System](07-demo-system.md)). The preview refreshes about 600 ms after you stop typing. The configuration is saved in the browser (`localStorage`, key `pdfcraft.config`). The theme follows the OS/browser (`prefers-color-scheme`) until you use the header toggle, which stores your choice in `localStorage` key `pdfcraft.theme`.
+Open `http://localhost:5173/app/` (`/` is the German landing page, see [Demo System](07-demo-system.md)). The preview refreshes about 600 ms after you stop typing. The configuration is saved in the browser (`localStorage`, key `pdfcraft.config`). The theme defaults to System and follows `prefers-color-scheme`; choose System, Light or Dark from More or the header menu. Explicit Light/Dark choices use `localStorage` key `pdfcraft.theme`; choosing System removes that key.
 
 The frontend talks to `http://localhost:3000` by default. To use another backend:
 
@@ -64,6 +64,20 @@ Manual UI checks:
 2. Switch the e-invoice profile to XRechnung; the sidebar lists missing data (contact name, phone, buyer reference).
 3. **Exportieren**, reload, **Importieren**; settings are restored.
 4. **PDF herunterladen** produces a PDF with an embedded `factur-x.xml` (EN 16931) or `xrechnung.xml`.
+
+## 3.1 Screenshot matrix
+
+The E07 screenshot runner starts Vite, mocks `/v1/*`, and seeds an issued invoice, an offer, a customer and an article:
+
+```bash
+cd frontend
+npx playwright install chromium
+npm run screenshots -- --out /tmp/pdfcraft-screenshots
+```
+
+It captures all app routes in German and English, light and dark, at 320, 390, 768 and 1440 px, and fails if the app header or navigation overflows. The browser download is a one-time setup; no backend is required.
+
+The separate five-task usability baseline (tap/click counts and elapsed time at 390 and 1440 px) still needs to be recorded by a tester before E08 begins.
 
 ## 4. Test the `/v1` API with tokens (needs Valkey)
 

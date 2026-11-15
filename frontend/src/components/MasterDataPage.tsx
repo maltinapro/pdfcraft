@@ -1,9 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { AppHeader } from './AppHeader'
 import { Field, TextField } from './Field'
-import { HeaderNav } from './HeaderNav'
 import { money, unitLabel } from './MasterDataPickers'
-import { ThemeToggle } from './ThemeToggle'
 import type { ArchiveEntry } from '../lib/archive'
 import { tr, useLang } from '../lib/i18n'
 import {
@@ -105,10 +103,7 @@ export function MasterDataPage({ tab, notice, onDismissNotice, archive, unsaved,
 
   return (
     <div className="app app-scroll">
-      <AppHeader title={tr('Kunden & Artikel', 'Customers & articles')}>
-        <HeaderNav route="contacts" unsaved={unsaved} />
-        <ThemeToggle />
-      </AppHeader>
+      <AppHeader title={tr('Kunden', 'Customers')} route={tab} unsaved={unsaved} />
 
       {notice && (
         <div className="notice" role="status" onClick={onDismissNotice}>

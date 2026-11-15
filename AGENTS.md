@@ -44,8 +44,10 @@ cargo check
 Frontend checks used in this project:
 ```bash
 cd frontend
+npm test
 npm run build
 ```
+For E07 UI changes, install Chromium once with `npx playwright install chromium` and run `npm run screenshots -- --out /tmp/after`; inspect the captures at 320/390/768/1440 px, both languages and both themes.
 
 ## Backend PDF Pipeline (Current)
 1. Receive `{ template, data }` in `POST /generate-pdf`

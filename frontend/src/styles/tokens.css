@@ -25,6 +25,8 @@
   --color-scrim: rgb(0 0 0 / 32%);
   --color-logo-navy: #241259;
   --color-logo-orange: #F25D39;
+  --color-white: #FFFFFF;
+  --color-black: #000000;
 
   --zone-sender: #4A2FB0;
   --zone-sender-container: #E6DEFF;
@@ -50,9 +52,16 @@
   --line-display: 48px;
   --line-headline: 32px;
   --line-title-l: 28px;
+  --line-title-m: 24px;
   --line-body: 24px;
   --line-body-m: 20px;
+  --line-label-l: 20px;
   --line-label-m: 16px;
+  --weight-display: 650;
+  --weight-headline: 500;
+  --weight-title: 600;
+  --weight-body: 400;
+  --weight-label: 500;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -173,7 +182,7 @@
 }
 
 @media (forced-colors: active) {
-  :where(input, select, textarea, button, .chip, .card, .form-section, .zone-bar) {
+  :where(input, select, textarea, button, .chip, .ui-chip, .card, .tile, .data-card, .archive-item, .form-section, .zone-bar, .ui-banner) {
     border: 1px solid transparent;
   }
 

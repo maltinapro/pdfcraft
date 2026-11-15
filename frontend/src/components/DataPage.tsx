@@ -1,7 +1,6 @@
 import { useRef } from 'react'
 import { AppHeader } from './AppHeader'
-import { HeaderNav } from './HeaderNav'
-import { ThemeToggle } from './ThemeToggle'
+import { AppIcon } from './icons'
 import { tr, uiLocale, useLang } from '../lib/i18n'
 
 interface Props {
@@ -25,10 +24,7 @@ export function DataPage({ notice, onDismissNotice, lastBackup, unsaved, onBacku
 
   return (
     <div className="app app-scroll">
-      <AppHeader title={tr('Daten & Sicherung', 'Data & backup')}>
-        <HeaderNav route="data" unsaved={unsaved} />
-        <ThemeToggle />
-      </AppHeader>
+      <AppHeader title={tr('Daten & Sicherung', 'Data & backup')} route="data" unsaved={unsaved} />
 
       {notice && (
         <div className="notice" role="status" onClick={onDismissNotice}>
@@ -62,7 +58,7 @@ export function DataPage({ notice, onDismissNotice, lastBackup, unsaved, onBacku
             {unsaved > 0 && ' · ' + (unsaved === 1 ? tr('1 neuer Beleg seitdem', '1 new document since') : tr(`${unsaved} neue Belege seitdem`, `${unsaved} new documents since`))}
           </p>
           <div className="data-actions">
-            <button className="btn btn-primary" onClick={onBackup}>{tr('⬇ Sicherung herunterladen', '⬇ Download backup')}</button>
+            <button className="btn btn-primary" onClick={onBackup}><AppIcon name="download" />{tr('Sicherung herunterladen', 'Download backup')}</button>
           </div>
         </section>
 

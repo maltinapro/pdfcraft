@@ -3,8 +3,6 @@ import { AppHeader } from './AppHeader'
 import { ArchiveList } from './ArchiveList'
 import { BackupBanner } from './BackupBanner'
 import { DocIcon } from './icons'
-import { HeaderNav } from './HeaderNav'
-import { ThemeToggle } from './ThemeToggle'
 import { DOC_SPECS, type DocKind } from '../lib/documents'
 import type { ArchiveEntry } from '../lib/archive'
 import { tr, useLang } from '../lib/i18n'
@@ -30,10 +28,7 @@ export function Dashboard({ notice, onDismissNotice, archive, cancelled, onFollo
   useLang()
   return (
     <div className="app app-scroll">
-      <AppHeader>
-        <HeaderNav route="" unsaved={unsaved} />
-        <ThemeToggle />
-      </AppHeader>
+      <AppHeader route="" unsaved={unsaved} />
 
       <FreeVersionHint />
 
@@ -70,7 +65,6 @@ export function Dashboard({ notice, onDismissNotice, archive, cancelled, onFollo
               <a
                 className="tile"
                 href={routeHref(spec.kind)}
-                style={{ ['--tile-color' as string]: spec.color }}
               >
                 <span className="tile-icon">
                   <DocIcon kind={spec.kind} size={26} />
@@ -82,7 +76,7 @@ export function Dashboard({ notice, onDismissNotice, archive, cancelled, onFollo
             </li>
           ))}
           <li>
-            <a className="tile" href={routeHref('viewer')} style={{ ['--tile-color' as string]: '#4A2FB0' }}>
+            <a className="tile" href={routeHref('viewer')}>
               <span className="tile-icon">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <circle cx="11" cy="11" r="6.5" />

@@ -16,7 +16,7 @@ GitHub issues are created **phase by phase** (epic issue + one sub-issue per tas
 | [E04](epics/E04-master-data.md) | Customer and article master data | 2 | – | done |
 | [E05](epics/E05-einvoice-viewer.md) | E-invoice viewer and checker | 2 | E01, E03-01 | done |
 | [E06](epics/E06-template-designs.md) | Additional template design | 3 | – | done (#150; implemented at user request while E03 remains in progress) |
-| [E07](epics/E07-design-system-app-shell.md) | Design system and app shell | 4 | – | open |
+| [E07](epics/E07-design-system-app-shell.md) | Design system and app shell | 4 | – | open (usability baseline pending) |
 | [E08](epics/E08-paper-first-editor.md) | Paper-first editor | 4 | E07 | open |
 | [E09](epics/E09-dashboard-app-pages.md) | Dashboard and app pages | 4 | E07 | open |
 | [E10](epics/E10-landing-static-pages.md) | Landing and static pages | 4 | E07-01 | open |
