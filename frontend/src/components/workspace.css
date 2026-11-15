@@ -214,6 +214,31 @@
 .xml-token-text { color: var(--color-on-surface); }
 .xml-token-comment { color: var(--color-on-surface-variant); font-style: italic; }
 .xml-token-punctuation { color: var(--color-on-surface-variant); }
+.app-editor .editor-sidebar,
+.app-editor .preview-canvas,
+.app-editor .ui-dialog,
+.app-editor .xml-dialog pre,
+.app-editor .ui-bottom-sheet { scrollbar-color: var(--color-outline-variant) transparent; scrollbar-width: thin; }
+.app-editor .editor-sidebar::-webkit-scrollbar,
+.app-editor .preview-canvas::-webkit-scrollbar,
+.app-editor .ui-dialog::-webkit-scrollbar,
+.app-editor .xml-dialog pre::-webkit-scrollbar,
+.app-editor .ui-bottom-sheet::-webkit-scrollbar { width: 10px; height: 10px; }
+.app-editor .editor-sidebar::-webkit-scrollbar-track,
+.app-editor .preview-canvas::-webkit-scrollbar-track,
+.app-editor .ui-dialog::-webkit-scrollbar-track,
+.app-editor .xml-dialog pre::-webkit-scrollbar-track,
+.app-editor .ui-bottom-sheet::-webkit-scrollbar-track { background: transparent; }
+.app-editor .editor-sidebar::-webkit-scrollbar-thumb,
+.app-editor .preview-canvas::-webkit-scrollbar-thumb,
+.app-editor .ui-dialog::-webkit-scrollbar-thumb,
+.app-editor .xml-dialog pre::-webkit-scrollbar-thumb,
+.app-editor .ui-bottom-sheet::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: var(--radius-full); background: var(--color-outline-variant); background-clip: content-box; }
+.app-editor .editor-sidebar::-webkit-scrollbar-thumb:hover,
+.app-editor .preview-canvas::-webkit-scrollbar-thumb:hover,
+.app-editor .ui-dialog::-webkit-scrollbar-thumb:hover,
+.app-editor .xml-dialog pre::-webkit-scrollbar-thumb:hover,
+.app-editor .ui-bottom-sheet::-webkit-scrollbar-thumb:hover { background-color: var(--color-outline); }
 
 @keyframes zone-enter {
   from { opacity: 0.7; transform: translateY(4px); }
