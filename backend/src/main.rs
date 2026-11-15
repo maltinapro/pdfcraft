@@ -503,6 +503,33 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn preview_zone_rectangles_follow_printable_page_area() {
+        let template = r#"
+            #set document(title: "Zone geometry test", author: "PDFCraft", date: datetime(year: 2026, month: 1, day: 1))
+            #set page(paper: "a4", margin: (left: 25mm, right: 20mm, top: 15mm, bottom: 20mm))
+            #metadata("zone 3 start") <pdfcraft-zone-3-start>
+            #block(height: 20mm)[Zone three]
+            #metadata("zone 3 end") <pdfcraft-zone-3-end>
+            #metadata("zone 4 start") <pdfcraft-zone-4-start>
+            #block(height: 20mm)[Zone four]
+            #metadata("zone 4 end") <pdfcraft-zone-4-end>
+        "#;
+        let (_, zones) = render_pdf_with_zones(template, serde_json::json!({}), Vec::new())
+            .await
+            .unwrap_or_else(|error| panic!("{}", error.details));
+
+        assert_eq!(zones.len(), 2);
+        assert_eq!((zones[0].zone, zones[1].zone), (3, 4));
+        for zone in &zones {
+            assert_eq!(zone.page, 1);
+            assert_eq!(zone.x, 25.0);
+            assert_eq!(zone.w, 165.0);
+            assert!(zone.h >= 4.0);
+        }
+        assert!((zones[0].y + zones[0].h - zones[1].y).abs() < 0.01);
+    }
+
+    #[tokio::test]
     async fn answers_server_busy_when_no_compile_slot_frees_up() {
         let all = u32::try_from(config::get().max_concurrent_compiles).unwrap();
         let _held = compile_slots().acquire_many(all).await.unwrap();

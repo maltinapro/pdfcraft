@@ -1591,10 +1591,23 @@ mod tests {
                 }
                 let assets = settings_assets(&s).unwrap_or_else(|e| panic!("{}", e.details));
                 let (data, assets) = invoice_data(&settings, sd, &raw, invoice, assets);
-                let pdf = render_pdf(INVOICE_TEMPLATE, data, assets)
+                let (pdf, zones) = render_pdf_with_zones(INVOICE_TEMPLATE, data, assets)
                     .await
                     .unwrap_or_else(|e| panic!("{design}: {}", e.details));
                 assert!(pdf.starts_with(b"%PDF"));
+                let details = zones.iter().find(|zone| zone.zone == 3).unwrap();
+                let items = zones.iter().find(|zone| zone.zone == 4).unwrap();
+                for zone in [details, items] {
+                    assert_eq!(zone.page, 1);
+                    assert_eq!(zone.x, 25.0);
+                    assert_eq!(zone.w, 165.0);
+                    assert!(zone.h >= 4.0);
+                }
+                assert!(details.y < items.y, "{design}: details must precede items");
+                assert!(
+                    details.y + details.h <= items.y + 0.01,
+                    "{design}: detail and item frames overlap"
+                );
                 if let Ok(dir) = std::env::var("PDF_OUT") {
                     std::fs::write(
                         format!(
