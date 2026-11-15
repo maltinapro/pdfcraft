@@ -61,4 +61,4 @@ Phase 1 = small, independent quick wins. Phase 2 = new user-facing features. Pha
 
 E01, E02 and E03 are independent and can run in parallel. E05 reuses the corpus from E01 and the page scaffold from E03-01. E04 can start any time. E06 only on demand.
 
-Phase 4: E07 first (tokens, components, navigation; E07-05 records the usability baseline), then E08 (the core of the redesign) and E09; E10 can start after E07-01. E11 is independent and can run in parallel, but must keep the DIN zone positions that the E08 preview overlay relies on. Each issue is one PR.
+Phase 4: E07 first (tokens, components, navigation; E07-05 records the usability baseline), then E08 (the core of the redesign; E08-08 adds service and due dates and can be done early) and E09; E10 can start after E07-01. E11 is independent and can run in parallel, but must keep the DIN zone positions that the E08 preview overlay relies on. Each issue is one PR.

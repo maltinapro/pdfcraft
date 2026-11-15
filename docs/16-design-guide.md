@@ -30,7 +30,7 @@ A document is divided into four **zones**. Each zone has a number, an icon, a co
 | --- | --- | --- | --- | --- |
 | 1 | **Sender & look** (`sender`) | company, address, contact, tax numbers, bank, logo, signature, design, accent color, font, texts, e-invoice profile | header (0–45 mm), payment block, footer | violet `#4A2FB0` / `#D0BCFF` |
 | 2 | **Recipient** (`recipient`) | name, address, e-mail, VAT ID, buyer reference, saved recipients, postage | address field (45–92.4 mm) | coral `#C9411E` / `#FFB5A0` |
-| 3 | **Details** (`details`) | number, date / period, due date, references, subject, intro | reference line, title row | amber `#8D4E00` / `#FFB870` |
+| 3 | **Details** (`details`) | number, date, service date or period and due date (new fields, E08-08), references, subject, intro | reference line, title row | amber `#8D4E00` / `#FFB870` |
 | 4 | **Items** (`items`) | line items, articles, totals, closing text | table, totals, closing | green `#146C2E` / `#85D696` |
 
 Per document type: the letter has **Text** (subject, body) instead of Items; the delivery note shows items without prices; credit notes add the reference to the invoice in Details. The mapping lives in one place (`ZONES` next to `DOC_SPECS` in `frontend/src/lib/documents.ts`) and is unit-tested.
@@ -204,6 +204,33 @@ All components live in `frontend/src/components/ui/` and only use tokens. Existi
 | Reject | "Fill example data" button that replaces the sender with another fictitious company and IBAN | creates invoices with wrong seller data |
 | Reject | "ZUGFeRD 2.2" badge and "conform" claims | only claim what CI validates (EN 16931 / XRechnung, see E01) |
 | Reject | `#F25D39` and `#16A34A` for text or white-on-color buttons | 3.3:1, fails AA |
+| Reject | The whole app (header, primary button) changing color per step | brand inconsistency; zone color only on zone elements (bar, header, focus, overlay) |
+
+### 9.1 Side-by-side check in the browser (15 Nov 2026)
+
+The demo was run as a Vite app and compared with the current editor (backend running, real PDF via pdf.js), same sample data, Chrome, 390 × 844 and 1440 × 900, DE, light and dark.
+
+| Measure | Current editor | M3 demo |
+| --- | --- | --- |
+| Top of the first input, 390 px | 437 px | 566 px |
+| Top of the first input, 1440 px | 337 px | 491 px |
+| Navigation levels in the editor (mobile) | 2 (Form/Preview + Invoice/Sender) | 1 (Wizard/Preview) + stepper |
+| Inputs | 38 (18 + 20 on two tabs) | 30 (no logo, signature, design, font, texts, e-invoice profile, exemption reason, contact name, postage, master-data pickers) |
+| Preview | real PDF; mobile fits the width; desktop fits the width, so only ~60 % of the page is visible | HTML copy; mobile at 95 % is cut off on both sides |
+
+What the demo does better and the zone editor must keep: one editor level, a clear header per step, Back/Next with the next step's name, item cards with a live line total, the totals inside the form, and the active area highlighted on the sheet.
+
+Problems found in the demo that the implementation must avoid:
+- **Vertical space:** hint banner + large step header card + section card push the first field ~130–155 px lower than today. Rule: on compact screens the zone header is a single 56 px row; hints appear at the field and in the issue summary, not as a banner above the form.
+- **Long labels** ("E-Mail-Adresse (für Rechnungsversand)") wrap into the value in two-column rows. Rule: labels are one line (ellipsis + full text as helper text); two-column rows only for short fields.
+- **Stepper overflow:** at 1440 px the fourth step is cut ("Positio…"), on mobile only numbers are left. Rule: the zone bar shows icon + label for the active zone, icon + state for the others on compact, and never scrolls horizontally.
+- **Truncated brand:** the logo text is cut to "PD" at 390 px. Rule: on compact only the logo mark is shown.
+- **Mobile preview state:** after switching to the preview the segmented button still marks "Assistent". Rule: segmented buttons always reflect the visible view.
+- **Dark mode:** the tonal "fill example data" button is almost invisible (on-container color on a dark container). Rule: every role pair is part of the E07-01 contrast test.
+
+### 9.2 The demo's PDF sheet
+
+The sheet in the demo is an HTML mock-up, not a Typst render: no DIN 5008 positions (address field not at 45 mm, no fold or punch marks), no EPC QR code, no payment block, monospaced figures, "#" in the title and web-style rounded tinted cards. It is not adopted as a design. Ideas that are adopted (see section 10 and E11): the information block to the right of the address field, a prominent amount due, a structured three-column footer (contact / bank / tax data), and separate service and due dates (E08-08).
 
 ## 10. PDF designs
 
@@ -229,6 +256,9 @@ The two current designs (*Classic*, *Modern Minimal*) differ only in title size/
 | Totals | ruled grid, right 58 % | no rules; "Amount due" in 20 pt accent | accent-filled box with on-accent total |
 | Payment block | text + EPC QR | two quiet columns (bank / QR) under a hairline | tinted card with QR |
 | Footer | centered free text | left-aligned, small, muted | accent hairline above the footer |
+| Structured footer (option, all designs) | three columns (contact / bank / tax data) built from the sender data, shown only when the free footer text is empty and the user turns it on | same, muted | same, accent labels |
+
+Content fixes for all designs, found when comparing the rendered PDF (15 Nov 2026): the tax category letter ("19 % S", "(S)") means nothing to readers and is shown only when a document mixes categories (with a legend); the Classic zebra row reads like a selection highlight and becomes a neutral tint; "Leistungszeitraum" currently repeats the invoice date and shows the real service date once E08-08 exists.
 
 Every design is defined as one Typst dictionary of tokens (sizes, weights, rule strokes, fills, header style, meta placement) consumed by a shared layout module, so `invoice.typ` and the five other document types cannot drift apart. A new design = one token dictionary + optional header/totals variants + allow-list entry + picker thumbnail.
 
@@ -252,6 +282,10 @@ Heuristic review of the current app (DE/EN, light, 390 px and 1440 px). Severity
 | 8 | M | Language and theme toggles and the "dev"/version badge take prime header space on every page. | E07-04 |
 | 9 | M | Emoji used as icons render differently per platform. | E07-03 |
 | 10 | L | Design picker: the two thumbnails are nearly identical. | E11 |
+| 11 | M | Item cards show no line total; the totals are only visible in the preview. On mobile the sticky save footer covers "Add item" / "Item from list". | E08-05 |
+| 12 | M | Desktop preview fits the width, so only the upper ~60 % of the page is visible; there is no "whole page" fit. | E08-03 |
+| 13 | M | No service date field: the PDF and the XML (`ActualDeliverySupplyChainEvent`) use the invoice date as date of service; the due date is computed (invoice date + payment days) but the PDF only says "within 14 days". | E08-08 |
+| 14 | L | Hints are underlined orange link text (three lines each at 380 px sidebar width), hard to scan. | E07-02, E08-02 |
 
 Kept because they work: auto-save status, issue summary that jumps to the field, live preview, archive follow-ups.
 
