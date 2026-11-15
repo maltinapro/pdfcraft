@@ -1,40 +1,35 @@
 import { useEffect, useState } from 'react'
 import { tr } from '../lib/i18n'
-import { applyTheme, storedTheme, systemTheme, type Theme } from '../lib/theme'
+import { applyTheme, storedTheme, type Theme } from '../lib/theme'
+import { SegmentedButton } from './ui'
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(() => storedTheme() ?? systemTheme())
+  const [theme, setTheme] = useState<Theme>(() => storedTheme() ?? 'system')
 
   useEffect(() => {
     applyTheme(theme)
   }, [theme])
 
   useEffect(() => {
-    if (storedTheme()) return
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => !storedTheme() && setTheme(systemTheme())
+    const onChange = () => theme === 'system' && applyTheme('system')
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
-  }, [])
-
-  const toggle = () => {
-    const next: Theme = theme === 'dark' ? 'light' : 'dark'
-    applyTheme(next, true)
-    setTheme(next)
-  }
+  }, [theme])
 
   return (
-    <button
-      className="btn"
-      onClick={toggle}
-      aria-label={
-        theme === 'dark'
-          ? tr('Helles Design aktivieren', 'Switch to light theme')
-          : tr('Dunkles Design aktivieren', 'Switch to dark theme')
-      }
-      title={theme === 'dark' ? tr('Helles Design', 'Light theme') : tr('Dunkles Design', 'Dark theme')}
-    >
-      {theme === 'dark' ? '☀️' : '🌙'}
-    </button>
+    <SegmentedButton
+      label={tr('Farbschema', 'Color theme')}
+      value={theme}
+      options={[
+        { value: 'system', label: tr('System', 'System') },
+        { value: 'light', label: tr('Hell', 'Light') },
+        { value: 'dark', label: tr('Dunkel', 'Dark') },
+      ]}
+      onChange={(next) => {
+        applyTheme(next, true)
+        setTheme(next)
+      }}
+    />
   )
 }

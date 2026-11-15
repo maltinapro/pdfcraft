@@ -2,8 +2,6 @@ import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react'
 import { AppHeader } from './AppHeader'
 import { EInvoiceChecks, findingCount } from './EInvoiceChecks'
 import { EInvoiceView } from './EInvoiceView'
-import { HeaderNav } from './HeaderNav'
-import { ThemeToggle } from './ThemeToggle'
 import { runChecks } from '../lib/einvoice/check'
 import { ExtractError, MAX_PDF_BYTES, extractEInvoice, type Extracted } from '../lib/einvoice/extract'
 import { prettyXml } from '../lib/einvoice/format'
@@ -93,10 +91,7 @@ export function ViewerPage({ unsaved }: { unsaved: number }) {
 
   return (
     <div className="app app-scroll viewer-app">
-      <AppHeader title={tr('E-Rechnung ansehen', 'View an e-invoice')}>
-        <HeaderNav route="viewer" unsaved={unsaved} />
-        <ThemeToggle />
-      </AppHeader>
+      <AppHeader title={tr('E-Rechnung prüfen', 'Check e-invoice')} route="viewer" unsaved={unsaved} />
 
       <main className="dashboard viewer-page">
         <section className="dashboard-hero viewer-intro">

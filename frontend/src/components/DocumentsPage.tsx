@@ -2,8 +2,6 @@ import { useMemo, useState } from 'react'
 import { AppHeader } from './AppHeader'
 import { ArchiveList } from './ArchiveList'
 import { BackupBanner } from './BackupBanner'
-import { HeaderNav } from './HeaderNav'
-import { ThemeToggle } from './ThemeToggle'
 import { DOC_SPECS, type DocKind } from '../lib/documents'
 import type { ArchiveEntry } from '../lib/archive'
 import { tr, useLang } from '../lib/i18n'
@@ -60,10 +58,7 @@ export function DocumentsPage({ notice, onDismissNotice, archive, cancelled, onF
 
   return (
     <div className="app app-scroll">
-      <AppHeader title={tr('Meine Belege', 'My documents')}>
-        <HeaderNav route="documents" unsaved={unsaved} />
-        <ThemeToggle />
-      </AppHeader>
+      <AppHeader title={tr('Belege', 'Documents')} route="documents" unsaved={unsaved} />
 
       {notice && (
         <div className="notice" role="status" onClick={onDismissNotice}>

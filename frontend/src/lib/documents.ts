@@ -34,8 +34,6 @@ export interface DocSpec {
   kind: DocKind
   label: string
   description: string
-  /** Accent color of the dashboard tile (CSS color). */
-  color: string
   /** Prefix of the suggested document number. */
   numberPrefix: string
   numberLabel?: string
@@ -60,7 +58,6 @@ export const DOC_SPECS: DocSpec[] = [
     kind: 'invoice',
     get label() { return tr('Rechnung', 'Invoice') },
     get description() { return tr('Rechnung mit Umsatzsteuer, Zahlungsinfos, EPC-QR-Code und optional ZUGFeRD / XRechnung.', 'Invoice with VAT, payment details, EPC QR code and optional ZUGFeRD / XRechnung.') },
-    color: '#4a2fb0',
     numberPrefix: '',
     get dateLabel() { return tr('Rechnungsdatum', 'Invoice date') },
     items: 'priced',
@@ -70,7 +67,6 @@ export const DOC_SPECS: DocSpec[] = [
     get numberLabel() { return tr('Nummer der Stornorechnung', 'Credit note number') },
     get label() { return tr('Stornorechnung', 'Credit note') },
     get description() { return tr('Storniert eine ausgestellte Rechnung mit Bezug zur Originalrechnung – auf Wunsch mit ZUGFeRD / XRechnung (Gutschrift).', 'Cancels an issued invoice with a reference to the original invoice – optionally with ZUGFeRD / XRechnung (credit note).') },
-    color: '#d6336c',
     numberPrefix: 'ST-',
     get dateLabel() { return tr('Datum', 'Date') },
     items: 'priced',
@@ -91,7 +87,6 @@ export const DOC_SPECS: DocSpec[] = [
     get numberLabel() { return tr('Angebotsnummer', 'Offer number') },
     get label() { return tr('Angebot', 'Offer') },
     get description() { return tr('Unverbindliches oder verbindliches Angebot mit Gültigkeitsdatum und Preisübersicht.', 'Non-binding or binding offer with validity date and price overview.') },
-    color: '#f25d39',
     numberPrefix: 'AN-',
     get dateLabel() { return tr('Angebotsdatum', 'Offer date') },
     items: 'priced',
@@ -105,7 +100,6 @@ export const DOC_SPECS: DocSpec[] = [
     get numberLabel() { return tr('Auftragsnummer', 'Order number') },
     get label() { return tr('Auftragsbestätigung', 'Order confirmation') },
     get description() { return tr('Bestätigt einen Auftrag mit Positionen, Preisen und voraussichtlichem Liefertermin.', 'Confirms an order with items, prices and expected delivery date.') },
-    color: '#0d9488',
     numberPrefix: 'AB-',
     get dateLabel() { return tr('Datum', 'Date') },
     items: 'priced',
@@ -119,7 +113,6 @@ export const DOC_SPECS: DocSpec[] = [
     get numberLabel() { return tr('Lieferscheinnummer', 'Delivery note number') },
     get label() { return tr('Lieferschein', 'Delivery note') },
     get description() { return tr('Lieferschein ohne Preise mit Mengen und Unterschriftsfeld für den Empfänger.', 'Delivery note without prices, with quantities and a signature field for the recipient.') },
-    color: '#2563eb',
     numberPrefix: 'LS-',
     get dateLabel() { return tr('Ausstellungsdatum', 'Issue date') },
     items: 'quantities',
@@ -132,7 +125,6 @@ export const DOC_SPECS: DocSpec[] = [
     kind: 'letter',
     get label() { return tr('Brief', 'Letter') },
     get description() { return tr('Geschäftsbrief nach DIN 5008 mit Absenderkopf, Adressfeld, Betreff und Freitext.', 'Business letter following DIN 5008 with sender header, address field, subject and free text.') },
-    color: '#7c3aed',
     numberPrefix: '',
     get dateLabel() { return tr('Datum', 'Date') },
     items: 'none',

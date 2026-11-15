@@ -20,8 +20,8 @@ A full-stack **PDF Template Builder** that combines simple form-based configurat
 - 🖼️ **Logo upload** (PNG/JPG/SVG, ≤ 300 KB) sent to the backend as a base64 asset
 - ✍️ **Signature image** (PNG/JPG/SVG or PDF, ≤ 300 KB) printed below the closing text of every document; a PDF is converted to SVG and cropped on the server. This is a picture, not a digital signature (see [PDF signatures](docs/15-pdf-signatures.md) for what a cryptographic signature would take)
 - 💾 **Persistence** — settings and invoice draft are auto-saved in the browser (`localStorage`, versioned `schemaVersion`); export/import as JSON, reset to defaults
-- 🎨 **Branded UI** — PDFCraft logo, favicon set and a modern landing page and configurator design (brand colors navy/orange/violet)
-- 🌙 **Dark mode** — follows the browser/OS setting (`prefers-color-scheme`); the configurator header has a toggle that is remembered in `localStorage` (`pdfcraft.theme`); the landing page follows the system setting
+- 🎨 **Responsive app shell** — shared design tokens, accessible navigation (bottom bar on compact screens, top tabs on wide screens), and a More page for e-invoice checks, backup, language and appearance
+- 🌗 **System, light and dark themes** — System follows the OS preference; an explicit choice is remembered in `localStorage` (`pdfcraft.theme`)
 - 👀 **Live PDF preview** — debounced re-render via the backend, shown in an iframe
 - 📐 **Typst-quality PDF output** via `typst-as-lib` + `typst-pdf` — no local Typst installation needed
 - 💉 **Data injection** via [minijinja](https://docs.rs/minijinja/) templating at render time

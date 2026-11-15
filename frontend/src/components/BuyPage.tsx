@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppHeader } from './AppHeader'
-import { HeaderNav } from './HeaderNav'
-import { ThemeToggle } from './ThemeToggle'
 import { loadPaidToken, savePaidToken, type PaidToken } from '../lib/api'
 import { tr, uiLocale, useLang } from '../lib/i18n'
 import {
@@ -247,10 +245,7 @@ export function BuyPage({ unsaved }: Props) {
 
   return (
     <div className="app app-scroll">
-      <AppHeader title={tr('Token kaufen', 'Buy a token')}>
-        <HeaderNav route="buy" unsaved={unsaved} />
-        <ThemeToggle />
-      </AppHeader>
+      <AppHeader title={tr('Zugang kaufen', 'Buy access')} route="buy" unsaved={unsaved} />
 
       <main className="dashboard data-page">
         <section className="dashboard-hero">

@@ -5,6 +5,7 @@ import { DataPage } from './components/DataPage'
 import { DocumentForm } from './components/DocumentForm'
 import { DocumentsPage } from './components/DocumentsPage'
 import { MasterDataPage } from './components/MasterDataPage'
+import { MorePage } from './components/MorePage'
 import { InvoiceForm } from './components/InvoiceForm'
 import { Workspace } from './components/Workspace'
 import { RateLimitedError, fetchBulkMax, requestBulk, requestDocument, requestPdf } from './lib/api'
@@ -39,6 +40,7 @@ import { exampleDataIssues, hasExampleSender, requiredIssues, validateInvoice } 
 import { DEFAULT_SETTINGS, defaultInvoice, type Invoice, type Settings } from './lib/types'
 import type { SaveState } from './components/Workspace'
 import './App.css'
+import './components/ui/ui.css'
 
 // Public viewer for received e-invoices: own chunk (XML reader, checks, pdf.js on demand)
 const ViewerPage = lazy(() => import('./components/ViewerPage').then((m) => ({ default: m.ViewerPage })))
@@ -292,6 +294,8 @@ export default function App() {
 
   if (route === 'buy' && purchases) return <BuyPage unsaved={unsaved} />
 
+  if (route === 'more') return <MorePage unsaved={unsaved} />
+
   if (route === 'viewer') {
     return (
       <Suspense fallback={null}>
@@ -335,6 +339,8 @@ export default function App() {
     return (
       <Workspace
         key={onSender ? 'sender' : 'invoice'}
+        route={route}
+        unsaved={unsaved}
         initialTab={onSender ? 'settings' : 'document'}
         saveState={saveState}
         kind="invoice"
@@ -358,6 +364,8 @@ export default function App() {
   return (
     <Workspace
       key={kind}
+      route={route}
+      unsaved={unsaved}
       kind={kind}
       title={spec.label}
       tabLabel={spec.label}
