@@ -43,11 +43,13 @@ export default defineConfig({
     },
     {
       name: 'app-version-html',
-      transformIndexHtml: (html) =>
-        html
+      transformIndexHtml: {
+        order: 'pre',
+        handler: (html) => html
           .replace(/(<link rel="stylesheet" href="\/src\/landing\.css"\s*\/?>)/, `${themeBootstrap}$1`)
           .replace('<!-- site-footer -->', () => readFileSync(footerFile, 'utf8'))
           .replaceAll('__APP_VERSION__', appVersion),
+      },
     },
   ],
   build: {
