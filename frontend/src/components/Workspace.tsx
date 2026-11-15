@@ -580,6 +580,11 @@ export function Workspace({
             >
               <div className="editor-sheet-content">
                 <div className="editor-sheet-navigation">
+                  <div className="editor-sheet-actions">
+                    <button type="button" className="btn btn-small" onClick={() => setSheetOpen(false)}>
+                      {tr('Vorschau zeigen', 'Show preview')}
+                    </button>
+                  </div>
                   <ZoneBar
                     zones={zones}
                     active={activeZone}
