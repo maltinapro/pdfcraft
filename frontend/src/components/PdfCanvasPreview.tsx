@@ -48,7 +48,7 @@ export function PdfCanvasPreview({ blob, zones, activeZone, zoom, page, onZoneSe
       const host = container.current
       if (cancelled || !host) return
       const width = Math.max(host.clientWidth - 32, 240)
-      const availableHeight = Math.max(host.clientHeight * 0.78 - 32, 240)
+      const availableHeight = Math.max(host.clientHeight - 32, 240)
       const rendered: PageView[] = []
       for (let number = 1; number <= doc.numPages; number++) {
         const pdfPage = await doc.getPage(number)

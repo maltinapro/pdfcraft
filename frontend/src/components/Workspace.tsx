@@ -107,7 +107,7 @@ function IssueSummary({ issues, kind, onJump, open }: SummaryProps) {
 }
 
 const fixedZones: ZoneRect[] = [
-  { zone: 1, page: 1, x: 25, y: 5, w: 160, h: 38 },
+  { zone: 1, page: 1, x: 25, y: 5, w: 170, h: 38 },
   { zone: 1, page: 1, x: 25, y: 250, w: 160, h: 35 },
   { zone: 2, page: 1, x: 25, y: 45, w: 85, h: 47.4 },
 ]
