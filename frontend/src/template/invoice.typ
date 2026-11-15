@@ -7,6 +7,7 @@
 {% if pay.qr %}#import "@preview/sepay:0.1.1": epc-qr-code
 {% endif %}
 #let accent = rgb("{{ settings.accentColor }}")
+#let modern = "{{ settings.design }}" == "modern-minimal"
 #let en = "{{ settings.locale }}" == "en-de"
 #let t(de, en-text) = if en { en-text } else { de }
 #let lines(text) = text.split("\n").join(linebreak())
@@ -77,9 +78,10 @@
 
 #grid(
   columns: (1fr, auto),
-  text(15pt, weight: "bold")[#t("Rechnung ", "Invoice ")#"{{ invoice.number }}"],
+  text(if modern { 18pt } else { 15pt }, weight: "bold", fill: if modern { accent } else { black })[#t("Rechnung ", "Invoice ")#"{{ invoice.number }}"],
   align(bottom)[#"{{ pay.place }}", *#"{{ invoice.dateText }}"*],
 )
+{% if settings.design == "modern-minimal" %}#line(length: 100%, stroke: 0.8pt + accent){% endif %}
 #v(4mm)
 
 {% if settings.intro %}#lines("{{ settings.intro }}")
@@ -95,12 +97,12 @@
   align: (center + horizon, left + horizon, right + horizon, right + horizon, right + horizon, right + horizon),
   stroke: none,
   inset: (x: 5pt, y: 6pt),
-  fill: (_, y) => if y > 0 and calc.even(y) { accent.lighten(85%) },
-  table.hline(y: 0, stroke: 0.8pt),
+  fill: (_, y) => if y > 0 and calc.even(y) { if modern { none } else { accent.lighten(85%) } },
+  table.hline(y: 0, stroke: if modern { 1pt + accent } else { 0.8pt }),
   table.header(
     head(t("Pos.", "Item")), align(left, head(t("Bezeichnung", "Description"))), head(t("Menge", "Qty")),
     head[#t("Einzelpreis", "Unit price")#net-note], head(t("USt.", "Tax")), head[#t("Gesamtpreis", "Total")#net-note],
-    table.hline(y: 1, stroke: 0.5pt),
+    table.hline(y: 1, stroke: if modern { 0.8pt + accent } else { 0.5pt }),
   ),
   ..rows.map(r => (r.at(0), strong(lines(r.at(1))), r.at(2), r.at(3), r.at(4), r.at(5))).flatten(),
   table.hline(y: rows.len() + 1, stroke: 0.8pt),

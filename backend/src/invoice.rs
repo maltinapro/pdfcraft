@@ -28,6 +28,7 @@ pub(crate) const UNITS: &[&str] = &[
     "pcs", "h", "d", "mo", "y", "flat", "kg", "m", "km", "m2", "l",
 ];
 pub(crate) const PROFILES: &[&str] = &["en16931", "xrechnung"];
+pub(crate) const DESIGNS: &[&str] = &["classic", "modern-minimal"];
 pub(crate) const TAX_RATES: &[i64] = &[19, 7, 0];
 
 const MAX_NUMBER: f64 = 1e9;
@@ -119,6 +120,9 @@ pub struct Settings {
     /// `en16931` attaches `factur-x.xml` (ZUGFeRD / Factur-X), `xrechnung` attaches `xrechnung.xml`.
     #[schema(default = "en16931")]
     pub einvoice_profile: Option<String>,
+    /// Document layout.
+    #[schema(default = "classic")]
+    pub design: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Default, Clone, ToSchema)]
@@ -209,7 +213,13 @@ pub(crate) fn text(e: &mut Errors, path: &str, value: &str, max: usize, required
     escape(value)
 }
 
-pub(crate) fn one_of(e: &mut Errors, path: &str, value: Option<&String>, allowed: &[&str], default: &str) -> String {
+pub(crate) fn one_of(
+    e: &mut Errors,
+    path: &str,
+    value: Option<&String>,
+    allowed: &[&str],
+    default: &str,
+) -> String {
     match value {
         None => default.to_string(),
         Some(v) if allowed.contains(&v.as_str()) => v.clone(),
@@ -321,7 +331,10 @@ pub fn check_settings(s: &Settings, e: &mut Errors) -> CheckedSettings {
         None => 14,
         Some(d) if d.fract() == 0.0 && (0.0..=365.0).contains(&d) => d as i64,
         Some(_) => {
-            e.add("settings.paymentDays", "must be a whole number between 0 and 365");
+            e.add(
+                "settings.paymentDays",
+                "must be a whole number between 0 and 365",
+            );
             14
         }
     };
@@ -333,6 +346,7 @@ pub fn check_settings(s: &Settings, e: &mut Errors) -> CheckedSettings {
         "locale": one_of(e, "settings.locale", s.locale.as_ref(), LOCALES, LOCALES[0]),
         "zugferd": s.zugferd.unwrap_or(true),
         "einvoiceProfile": one_of(e, "settings.einvoiceProfile", s.einvoice_profile.as_ref(), PROFILES, PROFILES[0]),
+        "design": one_of(e, "settings.design", s.design.as_ref(), DESIGNS, DESIGNS[0]),
         "footer": text(e, "settings.footer", &s.footer, MAX_LONG, false),
         "intro": text(e, "settings.intro", &s.intro, MAX_LONG, false),
         "closing": text(e, "settings.closing", &s.closing, MAX_LONG, false),
@@ -371,12 +385,18 @@ pub fn check_invoice(inv: &Invoice, path: &str, e: &mut Errors) -> JsonValue {
     let date = match valid_date(&inv.date) {
         Some(d) => d,
         None => {
-            e.add(&format!("{path}.date"), "must be a valid date as YYYY-MM-DD");
+            e.add(
+                &format!("{path}.date"),
+                "must be a valid date as YYYY-MM-DD",
+            );
             (1970, 1, 1)
         }
     };
     if inv.items.is_empty() || inv.items.len() > MAX_ITEMS {
-        e.add(&format!("{path}.items"), &format!("needs 1 to {MAX_ITEMS} items"));
+        e.add(
+            &format!("{path}.items"),
+            &format!("needs 1 to {MAX_ITEMS} items"),
+        );
     }
     let r = &inv.recipient;
     let rp = format!("{path}.recipient");
@@ -428,8 +448,18 @@ pub fn check_invoice(inv: &Invoice, path: &str, e: &mut Errors) -> JsonValue {
 pub fn file_stem(number: &str) -> String {
     let stem: String = number
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') {
+                c
+            } else {
+                '_'
+            }
+        })
         .take(80)
         .collect();
-    if stem.is_empty() { "invoice".into() } else { stem }
+    if stem.is_empty() {
+        "invoice".into()
+    } else {
+        stem
+    }
 }

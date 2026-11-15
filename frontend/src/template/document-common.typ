@@ -3,12 +3,13 @@
 // template and renders both with minijinja. All user text is passed as Typst string literals
 // (only `\` and `"` are escaped by the backend); amounts and dates are formatted there.
 #let accent = rgb("{{ settings.accentColor }}")
+#let modern = "{{ settings.design }}" == "modern-minimal"
 #let en = "{{ settings.locale }}" == "en-de"
 #let t(de, en-text) = if en { en-text } else { de }
 #let lines(text) = text.split("\n").join(linebreak())
 #let muted = luma(110)
 #let small(body) = text(8pt, fill: muted, body)
-#let doc-title(body) = text(15pt, weight: "bold", body)
+#let doc-title(body) = text(if modern { 17pt } else { 15pt }, weight: "bold", fill: if modern { accent } else { black }, body)
 
 #set text(10pt, font: ("{{ settings.font }}", "Libertinus Serif"), lang: if en { "en" } else { "de" })
 #set par(leading: 0.6em, spacing: 0.9em)
@@ -74,6 +75,7 @@
     doc-title[#label#if with-number and "{{ doc.number }}" != "" [ #"{{ doc.number }}"]],
     align(bottom)[#"{{ doc.dateText }}"],
   )
+  if modern { line(length: 100%, stroke: 0.8pt + accent) }
   v(4mm)
 }
 
@@ -107,12 +109,12 @@
       align: (center + horizon, left + horizon, right + horizon, right + horizon, right + horizon, right + horizon),
       stroke: none,
       inset: (x: 5pt, y: 6pt),
-      fill: (_, y) => if y > 0 and calc.even(y) { accent.lighten(85%) },
-      table.hline(y: 0, stroke: 0.8pt),
+      fill: (_, y) => if y > 0 and calc.even(y) { if modern { none } else { accent.lighten(85%) } },
+      table.hline(y: 0, stroke: if modern { 1pt + accent } else { 0.8pt }),
       table.header(
         head(t("Pos.", "Item")), align(left, head(t("Bezeichnung", "Description"))), head(t("Menge", "Qty")),
         head[#t("Einzelpreis", "Unit price")#net-note], head(t("USt.", "Tax")), head[#t("Gesamtpreis", "Total")#net-note],
-        table.hline(y: 1, stroke: 0.5pt),
+        table.hline(y: 1, stroke: if modern { 0.8pt + accent } else { 0.5pt }),
       ),
       ..item-rows.map(r => (r.at(0), strong(lines(r.at(1))), r.at(2), r.at(3), r.at(4), r.at(5))).flatten(),
       table.hline(y: item-rows.len() + 1, stroke: 0.8pt),
@@ -123,11 +125,11 @@
       align: (center + horizon, left + horizon, right + horizon),
       stroke: none,
       inset: (x: 5pt, y: 6pt),
-      fill: (_, y) => if y > 0 and calc.even(y) { accent.lighten(85%) },
-      table.hline(y: 0, stroke: 0.8pt),
+      fill: (_, y) => if y > 0 and calc.even(y) { if modern { none } else { accent.lighten(85%) } },
+      table.hline(y: 0, stroke: if modern { 1pt + accent } else { 0.8pt }),
       table.header(
         head(t("Pos.", "Item")), align(left, head(t("Bezeichnung", "Description"))), head(t("Menge", "Qty")),
-        table.hline(y: 1, stroke: 0.5pt),
+        table.hline(y: 1, stroke: if modern { 0.8pt + accent } else { 0.5pt }),
       ),
       ..item-rows.map(r => (r.at(0), strong(lines(r.at(1))), r.at(2))).flatten(),
       table.hline(y: item-rows.len() + 1, stroke: 0.8pt),

@@ -55,6 +55,7 @@ npm run build
 5. Return PDF with content headers
 
 ## Recent Changes Applied
+- Added E06 designs for all six document types. `settings.design` allows `classic` and `modern-minimal`, defaults old config and archive snapshots to Classic, and is persisted in issue-time snapshots. The single invoice and shared document templates keep DIN 5008 positioning unchanged; picker thumbnails are generated from real PDF renders. Render tests and benchmark cover both designs.
 - Replaced old Tectonic/LaTeX compilation path in backend handler with Typst-based flow.
 - Updated backend dependencies to Typst ecosystem:
   - `typst = "0.15.1"`
