@@ -12,6 +12,18 @@ const openapiFile = resolve(__dirname, '../docs/openapi.yaml')
 
 // Footer shared by the landing page and the SEO pages (placeholder `<!-- site-footer -->`)
 const footerFile = resolve(__dirname, 'partials/site-footer.html')
+const themeBootstrap = `<script>
+  (function () {
+    var theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    try {
+      var savedTheme = localStorage.getItem('pdfcraft.theme')
+      if (savedTheme === 'light' || savedTheme === 'dark') theme = savedTheme
+    } catch (e) {}
+    document.documentElement.dataset.theme = theme
+    document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#14121A' : '#241259'
+  })()
+</script>
+`
 
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(appVersion) },
@@ -32,7 +44,10 @@ export default defineConfig({
     {
       name: 'app-version-html',
       transformIndexHtml: (html) =>
-        html.replace('<!-- site-footer -->', () => readFileSync(footerFile, 'utf8')).replaceAll('__APP_VERSION__', appVersion),
+        html
+          .replace(/(<link rel="stylesheet" href="\/src\/landing\.css"\s*\/?>)/, `${themeBootstrap}$1`)
+          .replace('<!-- site-footer -->', () => readFileSync(footerFile, 'utf8'))
+          .replaceAll('__APP_VERSION__', appVersion),
     },
   ],
   build: {

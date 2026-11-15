@@ -10,6 +10,18 @@ const option = (name, fallback) => {
 const output = resolve(option('--out', '/tmp/pdfcraft-screenshots'))
 const widths = [320, 390, 768, 1440]
 const routes = ['', 'invoice', 'credit-note', 'offer', 'order', 'delivery-note', 'letter', 'sender', 'documents', 'contacts', 'articles', 'more', 'viewer', 'data', 'buy']
+const publicPages = [
+  ['/', 'landing'],
+  ['/zugferd-rechnung-erstellen/', 'zugferd'],
+  ['/xrechnung-generator/', 'xrechnung'],
+  ['/stornorechnung-gutschrift-e-rechnung/', 'stornorechnung'],
+  ['/e-rechnungspflicht/', 'erechnungspflicht'],
+  ['/zugferd-xrechnung-pruefen/', 'pruefen'],
+  ['/impressum.html', 'impressum'],
+  ['/datenschutz.html', 'datenschutz'],
+  ['/agb.html', 'agb'],
+  ['/widerruf.html', 'widerruf'],
+]
 
 const archive = [
   {
@@ -157,29 +169,32 @@ try {
     for (const width of widths) {
       const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: theme })
       const page = await context.newPage()
-      await page.goto(`${baseUrl}/`, { waitUntil: 'networkidle' })
-      const layout = await page.evaluate(() => ({
-        theme: document.documentElement.dataset.theme,
-        overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-        background: getComputedStyle(document.body).backgroundColor,
-      }))
-      const expectedBackground = theme === 'dark' ? 'rgb(20, 18, 26)' : 'rgb(253, 248, 255)'
-      if (layout.theme !== theme || layout.overflow || layout.background !== expectedBackground) {
-        throw new Error(`Landing page layout/theme failed at ${theme}/${width}px: ${JSON.stringify(layout)}`)
+      for (const [path, name] of publicPages) {
+        await page.goto(`${baseUrl}${path}`, { waitUntil: 'networkidle' })
+        const layout = await page.evaluate(() => ({
+          theme: document.documentElement.dataset.theme,
+          overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+          background: getComputedStyle(document.body).backgroundColor,
+        }))
+        const expectedBackground = theme === 'dark' ? 'rgb(20, 18, 26)' : 'rgb(253, 248, 255)'
+        if (layout.theme !== theme || layout.overflow || layout.background !== expectedBackground) {
+          throw new Error(`Public page layout/theme failed at ${name}/${theme}/${width}px: ${JSON.stringify(layout)}`)
+        }
+        await page.screenshot({ path: resolve(output, `${name}-${theme}-${width}.png`), fullPage: true })
       }
-      await page.screenshot({ path: resolve(output, `landing-${theme}-${width}.png`), fullPage: true })
       await context.close()
     }
   }
   const overrideContext = await browser.newContext({ viewport: { width: 390, height: 900 }, colorScheme: 'light' })
   await overrideContext.addInitScript(() => localStorage.setItem('pdfcraft.theme', 'dark'))
   const overridePage = await overrideContext.newPage()
-  await overridePage.goto(`${baseUrl}/`, { waitUntil: 'networkidle' })
-  if (await overridePage.locator('html').getAttribute('data-theme') !== 'dark') {
-    throw new Error('Landing page did not honor the saved dark theme override')
+  for (const [path, name] of publicPages) {
+    await overridePage.goto(`${baseUrl}${path}`, { waitUntil: 'networkidle' })
+    const theme = await overridePage.locator('html').getAttribute('data-theme')
+    if (theme !== 'dark') throw new Error(`${name} did not honor the saved dark theme override`)
   }
   await overrideContext.close()
-  console.log(`Saved ${2 * 2 * widths.length * routes.length + 2 * widths.length} screenshots to ${output}`)
+  console.log(`Saved ${2 * 2 * widths.length * routes.length + 2 * widths.length * publicPages.length} screenshots to ${output}`)
 } catch (error) {
   if (String(error).includes('Executable doesn’t exist') || String(error).includes('Executable doesn\'t exist')) {
     console.error('Chromium is not installed. Run `npx playwright install chromium` from frontend/.')
