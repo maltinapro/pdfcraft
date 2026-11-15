@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Field, TextField } from './Field'
 import { errorId, useFieldIssue, useFieldPropsFor } from './FormIssues'
-import { ArticlePicker } from './MasterDataPickers'
+import { ArticlePicker, money } from './MasterDataPickers'
 import { tr, useLang } from '../lib/i18n'
 import { getMasterData, saveArticleFromItem, setMasterData } from '../lib/masterData'
 import { TAX_RATES, UNITS, newItem, type InvoiceItem } from '../lib/types'
@@ -11,10 +11,11 @@ interface Props {
   onChange: (items: InvoiceItem[]) => void
   /** Show unit price and tax rate; without them only quantity and unit are edited. */
   prices?: boolean
+  negative?: boolean
   hint?: string
 }
 
-export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
+export function ItemsEditor({ items, onChange, prices = true, negative = false, hint }: Props) {
   useLang()
   const fieldProps = useFieldPropsFor()
   const listIssue = useFieldIssue('items')
@@ -38,6 +39,17 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
   }
 
   const [saved, setSaved] = useState<{ id: string; text: string; error?: boolean } | null>(null)
+  const totals = prices
+    ? items.reduce(
+        (sum, item) => {
+          const net = item.quantity * item.price * (negative ? -1 : 1)
+          sum.net += net
+          sum.taxes.set(item.taxRate, (sum.taxes.get(item.taxRate) ?? 0) + net * item.taxRate / 100)
+          return sum
+        },
+        { net: 0, taxes: new Map<number, number>() },
+      )
+    : null
 
   const saveAsArticle = (item: InvoiceItem) => {
     const { data, updated } = saveArticleFromItem(getMasterData(), item)
@@ -91,6 +103,7 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
               ⠿
             </span>
             <strong>{tr('Position', 'Item')} {index + 1}</strong>
+            {prices && <span className="item-line-total">{money(item.quantity * item.price * (negative ? -1 : 1))}</span>}
             <span className="item-actions">
               <button
                 type="button"
@@ -129,7 +142,7 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
                 onChange={(e) => setItem(item.id, { quantity: Number(e.target.value) })}
               />
             </Field>
-            <Field label={tr('Einheit', 'Unit')}>
+            <Field field={`items[${index}].unit`} label={tr('Einheit', 'Unit')}>
               <select value={item.unit} onChange={(e) => setItem(item.id, { unit: e.target.value })}>
                 {UNITS.map((u) => (
                   <option key={u.value} value={u.value}>
@@ -178,6 +191,24 @@ export function ItemsEditor({ items, onChange, prices = true, hint }: Props) {
           )}
         </div>
       ))}
+      {totals && (
+        <section className="items-totals" aria-label={tr('Summen', 'Totals')}>
+          <div className="items-totals-row items-totals-subtotal">
+            <strong>{tr('Zwischensumme netto', 'Subtotal net')}</strong>
+            <span>{money(totals.net)}</span>
+          </div>
+          {[...totals.taxes.entries()].sort(([a], [b]) => b - a).map(([rate, amount]) => (
+            <div className="items-totals-row" key={rate}>
+              <span>{tr(`USt. ${rate} %`, `VAT ${rate} %`)}</span>
+              <span>{money(amount)}</span>
+            </div>
+          ))}
+          <div className="items-totals-row items-totals-grand">
+            <strong>{tr('Gesamt', 'Total')}</strong>
+            <strong>{money(totals.net + [...totals.taxes.values()].reduce((sum, amount) => sum + amount, 0))}</strong>
+          </div>
+        </section>
+      )}
       <div className="items-add">
         <button
           type="button"

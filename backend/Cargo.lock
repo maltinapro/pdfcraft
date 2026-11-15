@@ -2409,6 +2409,7 @@ dependencies = [
  "typst",
  "typst-as-lib",
  "typst-kit",
+ "typst-layout",
  "typst-pdf",
  "usvg 0.50.0",
  "utoipa",

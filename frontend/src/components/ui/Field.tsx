@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { errorId, useFieldIssue, useFieldProps } from '../FormIssues'
+import { uiLocale } from '../../lib/i18n'
 
 interface FieldProps {
   label: string
@@ -32,8 +33,12 @@ interface TextFieldProps {
 
 export function TextField({ label, value, onChange, hint, type = 'text', placeholder, field }: TextFieldProps) {
   const props = useFieldProps(field)
+  const dateText =
+    type === 'date' && value && !Number.isNaN(new Date(`${value}T00:00:00`).getTime())
+      ? new Intl.DateTimeFormat(uiLocale(), { dateStyle: 'long' }).format(new Date(`${value}T00:00:00`))
+      : undefined
   return (
-    <Field label={label} hint={hint} field={field}>
+    <Field label={label} hint={dateText ?? hint} field={field}>
       <input type={type} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} {...props} />
     </Field>
   )

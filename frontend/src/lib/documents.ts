@@ -3,6 +3,121 @@ import { isObj, mergeObject, parsePostage, type Obj } from './storage'
 import { newItem, todayIso, type InvoiceItem, type PostageStamp, type Recipient } from './types'
 
 export type DocKind = 'invoice' | 'credit-note' | 'offer' | 'order' | 'delivery-note' | 'letter'
+export type ZoneId = 'sender' | 'recipient' | 'details' | 'items'
+
+export interface ZoneRect {
+  zone: number
+  page: number
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface ZoneSpec {
+  id: ZoneId
+  number: number
+  readonly label: string
+  fields: readonly string[]
+}
+
+const senderFields = [
+  'settings.logo',
+  'settings.signature',
+  'settings.sender.name',
+  'settings.sender.address',
+  'settings.sender.city',
+  'settings.sender.taxNr',
+  'settings.sender.vatId',
+  'settings.sender.email',
+  'settings.sender.phone',
+  'settings.sender.contactName',
+  'settings.design',
+  'settings.accentColor',
+  'settings.font',
+  'settings.locale',
+  'settings.footer',
+] as const
+const invoiceSettingsFields = [
+  'settings.bank.name',
+  'settings.bank.iban',
+  'settings.bank.bic',
+  'settings.intro',
+  'settings.closing',
+  'settings.zugferd',
+  'settings.einvoiceProfile',
+] as const
+const recipientFields = ['recipient.name', 'recipient.address', 'recipient.city', 'postage'] as const
+const invoiceRecipientFields = [
+  'recipient.name',
+  'recipient.address',
+  'recipient.city',
+  'recipient.email',
+  'recipient.vatId',
+  'recipient.buyerReference',
+  'postage',
+] as const
+const itemFields = ['items', 'items[*].description', 'items[*].quantity', 'items[*].unit', 'items[*].price', 'items[*].taxRate'] as const
+
+const zone = (id: ZoneId, number: number, label: () => string, fields: readonly string[]): ZoneSpec => ({
+  id,
+  number,
+  get label() {
+    return label()
+  },
+  fields,
+})
+
+/** Field ownership for the paper-first editor. Keep these keys aligned with the form controls. */
+export const ZONES: Record<DocKind, readonly ZoneSpec[]> = {
+  invoice: [
+    zone('sender', 1, () => tr('Absender & Aussehen', 'Sender & look'), [...senderFields, ...invoiceSettingsFields]),
+    zone('recipient', 2, () => tr('Empfänger', 'Recipient'), invoiceRecipientFields),
+    zone('details', 3, () => tr('Details', 'Details'), ['number', 'date', 'serviceDate', 'serviceDateFrom', 'serviceDateTo', 'dueDate', 'settings.paymentDays']),
+    zone('items', 4, () => tr('Positionen', 'Items'), [...itemFields, 'settings.exemptionReason']),
+  ],
+  'credit-note': [
+    zone('sender', 1, () => tr('Absender & Aussehen', 'Sender & look'), senderFields),
+    zone('recipient', 2, () => tr('Empfänger', 'Recipient'), [...recipientFields, 'recipient.email', 'recipient.vatId', 'recipient.buyerReference']),
+    zone('details', 3, () => tr('Details', 'Details'), ['number', 'date', 'reference', 'referenceDate', 'reason']),
+    zone('items', 4, () => tr('Positionen', 'Items'), [...itemFields, 'intro', 'closing']),
+  ],
+  offer: [
+    zone('sender', 1, () => tr('Absender & Aussehen', 'Sender & look'), senderFields),
+    zone('recipient', 2, () => tr('Empfänger', 'Recipient'), recipientFields),
+    zone('details', 3, () => tr('Details', 'Details'), ['number', 'date', 'reference', 'validUntil', 'intro']),
+    zone('items', 4, () => tr('Positionen', 'Items'), [...itemFields, 'closing']),
+  ],
+  order: [
+    zone('sender', 1, () => tr('Absender & Aussehen', 'Sender & look'), senderFields),
+    zone('recipient', 2, () => tr('Empfänger', 'Recipient'), recipientFields),
+    zone('details', 3, () => tr('Details', 'Details'), ['number', 'date', 'reference', 'deliveryDate', 'intro']),
+    zone('items', 4, () => tr('Positionen', 'Items'), [...itemFields, 'closing']),
+  ],
+  'delivery-note': [
+    zone('sender', 1, () => tr('Absender & Aussehen', 'Sender & look'), senderFields),
+    zone('recipient', 2, () => tr('Empfänger', 'Recipient'), recipientFields),
+    zone('details', 3, () => tr('Details', 'Details'), ['number', 'date', 'reference', 'deliveryDate', 'intro']),
+    zone('items', 4, () => tr('Positionen', 'Items'), [...itemFields.filter((field) => !field.endsWith('.price') && !field.endsWith('.taxRate')), 'closing']),
+  ],
+  letter: [
+    zone('sender', 1, () => tr('Absender & Aussehen', 'Sender & look'), senderFields),
+    zone('recipient', 2, () => tr('Empfänger', 'Recipient'), recipientFields),
+    zone('details', 3, () => tr('Details', 'Details'), ['date', 'reference']),
+    zone('items', 4, () => tr('Text', 'Text'), ['subject', 'body', 'closing']),
+  ],
+}
+
+export function zoneForField(kind: DocKind, field: string): ZoneId | undefined {
+  return ZONES[kind].find(({ fields }) =>
+    fields.some((key) => {
+      if (!key.includes('[*]')) return key === field
+      const [prefix, suffix] = key.split('[*]')
+      const index = field.match(new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\[(\\d+)\\]`))
+      return !!index && field.slice(index[0].length) === suffix
+    }),
+  )?.id
+}
 
 /** Data of every document type except the invoice (see `Invoice` in `types.ts`). */
 export interface Doc {

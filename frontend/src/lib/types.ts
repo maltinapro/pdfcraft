@@ -82,6 +82,10 @@ export interface Invoice {
   number: string
   /** ISO date, `YYYY-MM-DD`. */
   date: string
+  serviceDate?: string
+  serviceDateFrom?: string
+  serviceDateTo?: string
+  dueDate?: string
   recipient: Recipient
   items: InvoiceItem[]
   postage?: PostageStamp | null
@@ -183,6 +187,10 @@ export function defaultInvoice(): Invoice {
   return {
     number: `${year}-001`,
     date: todayIso(),
+    serviceDate: '',
+    serviceDateFrom: '',
+    serviceDateTo: '',
+    dueDate: '',
     recipient: {
       name: 'Kunde AG',
       address: 'Kundenweg 5',
@@ -196,4 +204,17 @@ export function defaultInvoice(): Invoice {
       newItem({ description: 'Hosting', quantity: 12, unit: 'mo', price: 15 }),
     ],
   }
+}
+
+export function addIsoDays(value: string, days: number): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match || !Number.isInteger(days)) return ''
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+  if (
+    date.getUTCFullYear() !== Number(match[1]) ||
+    date.getUTCMonth() !== Number(match[2]) - 1 ||
+    date.getUTCDate() !== Number(match[3])
+  ) return ''
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
 }

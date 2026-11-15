@@ -4,28 +4,30 @@
 
 ```
 Browser
-  └─ Form (Invoice / Settings tabs)
+  └─ Workspace (six document types, four guided zones)
        │  free token (Anubis → POST /v1/free-token), kept in localStorage
        │
        ▼  POST /v1/invoices  { settings, invoice }  + Bearer token
-  Rust / Axum              (backend/src/v1.rs, invoice.rs)
-       │  validates + escapes input; template = static frontend/src/template/invoice.typ
+  Rust / Axum              (backend/src/v1.rs, invoice.rs, documents.rs)
+       │  validates + escapes input; uses static Typst templates
        ├─ minijinja → renders template with the checked data (+ watermark for free tokens)
        ├─ typst-as-lib + Typst compile rendered source
        └─ typst-pdf → PDF/A-3b bytes (embedded ZUGFeRD XML)
               │
               ▼
-          iframe preview / download
+          pdf.js canvas preview / download
 ```
+
+The request arrow illustrates the invoice path; the other document types use `POST /v1/documents`. Only browser preview requests add `?zones=1`.
 
 ## How it works
 
-1. **Configure**: the forms edit a typed model (`InvoiceSettings`, `Invoice`).
-2. **Request**: `requestPdf()` in `api.ts` sends `{settings, invoice}` with the free token. The backend (`invoice.rs`) allow-lists designs, fonts, locales, units, tax rates, colors, numbers and dates, and escapes `\` and `"` (all user data goes into Typst string literals).
+1. **Configure**: `Workspace` edits the selected document through four guided zones. Invoice and document forms update their typed models (`InvoiceSettings`, `Invoice`, or the corresponding document type); drafts remain in browser storage.
+2. **Request**: `api.ts` sends invoice or document data with the free token. Preview requests add `?zones=1`; the flag affects only preview geometry and does not change the ordinary API contract. The backend allow-lists supported values and escapes `\` and `"` (all user data goes into Typst string literals).
 3. **Prepare**: `backend/src/einvoice.rs` computes amounts (fixed-point, cents, half away from zero) and display texts, and generates the Factur-X / XRechnung XML (CII, EN 16931). Any problem (missing VAT id, invalid IBAN, XRechnung gaps ...) turns the attachment into `invoice-draft.xml`.
 4. **Render**: the backend renders its embedded template with minijinja, using the prepared data; the logo is `assets.logo`, the XML is `assets.xml`.
 5. **Compile**: Typst only lays out the data (no template package, ~8 ms); typst-pdf exports PDF/A-3b and the template attaches the XML with `pdf.attach`. `backend/src/facturx.rs` adds the Factur-X XMP metadata.
-6. **Preview / download**: the PDF is shown via blob URL in an iframe, or downloaded.
+6. **Preview / download**: preview requests ask for zone 3/4 geometry using `?zones=1`; the backend returns it in `X-Pdfcraft-Zones` without changing ordinary API responses. The frontend displays the PDF blob on a pdf.js canvas, draws clickable zone outlines and opens the corresponding fields when a zone is selected. On compact screens the Fields/Sheet switch can hide the form behind the paper while the editor bar remains available; on wide screens a splitter adjusts the form/preview balance. Final PDFs can be downloaded and entered in the local archive.
 
 The shared `settings.design` choice is `classic` by default (including for older saved configs) or `modern-minimal`. Both variants are conditional styling in the same invoice and shared document templates, so the address field, reference line and DIN 5008 marks stay fixed; the design is part of config backups and issue-time archive snapshots. The settings form shows static previews rendered from the actual templates.
 
@@ -43,7 +45,7 @@ pdfcraft/
 │   ├── partials/site-footer.html     # Footer shared by the landing page and the SEO pages (`<!-- site-footer -->`)
 │   ├── <slug>/index.html             # Static SEO pages (zugferd-rechnung-erstellen, xrechnung-generator, stornorechnung-gutschrift-e-rechnung, e-rechnungspflicht, zugferd-xrechnung-pruefen)
 │   └── src/
-│       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/contacts` / `#/articles`, `#/data`, `#/sender` = invoice with the sender tab open, ...), shared settings, drafts
+│       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/contacts` / `#/articles`, `#/data`, `#/sender` = invoice with the sender zone open, ...), shared settings, drafts
 │       ├── components/               # Dashboard (tiles, latest documents), DocumentsPage (all issued documents), MasterDataPage (recipients and articles), MasterDataPickers (recipient/article pickers in the forms), DataPage (backup/restore/reset), Workspace (form + live preview + download),
 │       │                             # DocumentForm (generic, driven by DocSpec), InvoiceForm, ItemsEditor, SettingsForm, Field
 │       ├── lib/
@@ -127,7 +129,7 @@ The exit code is non-zero if any file is invalid. Add new cases (new field, tax 
 - **API changes** (fields, limits, error codes of `/v1/invoices`, `/v1/documents`, their bulk variants or `GET /v1/token`): `docs/openapi.yaml` is **generated** from the Rust code (`backend/src/openapi.rs`, `utoipa` derives on the request types in `invoice.rs`/`documents.rs`/`postage.rs`/`v1.rs` and `#[utoipa::path]` on the handlers), so keep the doc comments and `#[schema(...)]` attributes of the changed fields accurate, then regenerate with `cd backend && cargo test openapi_file_is_up_to_date` and commit the file; CI fails when it is outdated. Texts, shared error responses and examples are in `backend/src/openapi_overlay.yaml`; a new error code goes into its `errorCodes` list (`openapi_lists_every_error_code` fails otherwise) and into `frontend/src/lib/apiErrors.ts`. Update [the API reference](09-api-reference.md) if needed. The tests `openapi_request_examples_are_accepted` and `openapi_limits_match_the_validation` (`backend/src/v1.rs`) fail when an example is no longer accepted or a limit differs from the code; run `npx @redocly/cli@2.78.0 lint docs/openapi.yaml --max-problems 0` for the lint. The frontend build (`frontend/vite.config.ts`) publishes the file as `/api/openapi.yaml` and `frontend/api/index.html` renders it with the bundled Swagger UI (`swagger-ui-dist`).
 - **Postage (Internetmarke)**: backend `internetmarke.rs` (`mode_for` picks the main or the test API by token kind), UI `frontend/src/components/PostageSection.tsx` + `lib/postage.ts`; new `postage_*` error codes need a translation in `apiErrors.ts`, new mock behaviour goes into `backend/tools/mock_internetmarke.py` and the in-process mock of the `internetmarke.rs` tests; see [Internetmarke](14-internetmarke-integration.md).
 - **Error messages**: the API keeps stable English `{error, details}` responses; `frontend/src/lib/apiErrors.ts` (`friendlyApiError`, used by `lib/api.ts`) turns them into plain German/English sentences. When you add a validation message or error code in the backend, add its translation and field label there.
-- **Form validation UX**: inputs get a `field` key (the backend path without `invoice.`/`document.`, e.g. `recipient.name`, `items[0].price`, `settings.bank.iban`). `lib/validate.ts` produces `Issue`s (`requiredIssues` = blocking rules mirrored from the backend, `validateInvoice` = non-blocking e-invoice hints); backend `validation_error` responses arrive as a `ValidationError` with the same field keys (`lib/api.ts`). `Workspace` merges them (client findings win), shows one clickable summary that jumps to the input (switching tab/mobile view), marks inputs with a red border and an inline message only once they were touched, after a backend rejection or after a download attempt, and pauses the preview while required fields are missing. New inputs need a `field` prop and a label entry in `apiErrors.ts`; keep `requiredIssues` in line with `backend/src/invoice.rs` / `documents.rs`.
+- **Form validation UX**: inputs get a `field` key (the backend path without `invoice.`/`document.`, e.g. `recipient.name`, `items[0].price`, `settings.bank.iban`). `lib/validate.ts` produces `Issue`s (`requiredIssues` = blocking rules mirrored from the backend, `validateInvoice` = non-blocking e-invoice hints); backend `validation_error` responses arrive as a `ValidationError` with the same field keys (`lib/api.ts`). `Workspace` merges them (client findings win), shows one clickable summary that selects the field's zone, exposes the appropriate compact view and focuses the input, marks inputs with a red border and an inline message only once they were touched, after a backend rejection or after a download attempt, and pauses the preview while required fields are missing. New inputs need a `field` prop and a label entry in `apiErrors.ts`; keep `requiredIssues` in line with `backend/src/invoice.rs` / `documents.rs`.
 - **DIN 5008 layout**: all templates (`invoice.typ` and `document-common.typ`, which the other types share) follow DIN 5008 Form B: margins left 25 mm / right 20 mm / bottom 20 mm, address field from 45 mm (7 pt return line, no blank line between street and city), reference line at about 98.5 mm, fold marks at 105 and 210 mm and punch mark at 148.5 mm (drawn in the page `background`, together with the watermark). Keep both files in sync; the amounts show a non-breaking space before `%` (`einvoice.rs`). Only the layout is checked by hand, not certified.
 - **New document type**: add an entry to `DOC_SPECS` in `frontend/src/lib/documents.ts` (dashboard tile and form fields), a template `frontend/src/template/<type>.typ` that builds on `document-common.typ`, and the type in `Kind` in `backend/src/documents.rs` (slug, template, validation). Add an icon in `components/icons.tsx`. Drafts of all types except invoices live in `localStorage` key `pdfcraft.documents`.
 

@@ -66,12 +66,13 @@
   #"{{ invoice.recipient.city }}"
 ])
 
+#metadata("zone 3 start") <pdfcraft-zone-3-start>
 #grid(
   columns: (1fr, 1fr, 1fr),
   row-gutter: 3mm,
   {% if settings.sender.taxNr %}[#small(t("Steuernummer", "Tax ID")) \ #"{{ settings.sender.taxNr }}"],{% endif %}
   {% if settings.sender.vatId %}[#small(t("USt-IdNr.", "VAT ID")) \ #"{{ settings.sender.vatId }}"],{% endif %}
-  [#small(t("Leistungszeitraum", "Period of service")) \ #"{{ invoice.dateText }}"],
+  [#small(t("Leistungszeitraum", "Period of service")) \ #"{{ invoice.serviceDateText }}"],
   {% if invoice.recipient.buyerReference %}[#small(t("Käuferreferenz", "Buyer reference")) \ #"{{ invoice.recipient.buyerReference }}"],{% endif %}
 )
 #v(6mm)
@@ -87,6 +88,8 @@
 {% if settings.intro %}#lines("{{ settings.intro }}")
 #v(1em){% endif %}
 
+#metadata("zone 3 end") <pdfcraft-zone-3-end>
+#metadata("zone 4 start") <pdfcraft-zone-4-start>
 #let rows = (
 {% for item in invoice.items %}  ("{{ item.pos }}", "{{ item.description }}", "{{ item.qty }}", "{{ item.price }}", "{{ item.tax }}", "{{ item.net }}"),
 {% endfor %})
@@ -125,9 +128,12 @@
 {% endif %}
 #v(0.5em)
 #let days = {{ pay.days }}
+#let due_date = "{{ pay.dueDate }}"
 #let deadline = if days == 0 { t("sofort nach Erhalt", "upon receipt") } else if days == 1 { t("innerhalb von 1 Tag", "within 1 day") } else { t("innerhalb von " + str(days) + " Tagen", "within " + str(days) + " days") }
 #let sum = strong("{{ pay.sum }}")
 {% if settings.bank.iban %}#t[Bitte überweisen Sie den Gesamtbetrag in Höhe von #sum #deadline auf das unten angegebene Konto.][Please transfer the total amount of #sum #deadline to the account listed below.]
+
+#t[Zahlbar bis: #due_date.][Due by: #due_date.]
 
 #block(breakable: false, grid(
   columns: (1fr, auto),
@@ -141,6 +147,8 @@
   {% if pay.qr %}box(fill: white, epc-qr-code("{{ settings.sender.name }}", "{{ pay.ibanRaw }}", {% if pay.bic %}bic: "{{ pay.bic }}", {% endif %}{% if pay.amount %}amount: {{ pay.amount }}, {% endif %}text: "{{ invoice.number }}", width: 26mm, height: 26mm)){% else %}[]{% endif %},
 ))
 {% else %}#t[Bitte überweisen Sie den Gesamtbetrag in Höhe von #sum #deadline.][Please transfer the total amount of #sum #deadline.]
+
+#t[Zahlbar bis: #due_date.][Due by: #due_date.]
 {% endif %}
 {% if settings.closing %}
 #v(1em)
@@ -149,3 +157,4 @@
 {% if assets and assets.signature %}#v(4mm)
 #signature-image
 {% endif %}
+#metadata("zone 4 end") <pdfcraft-zone-4-end>

@@ -36,6 +36,7 @@ use std::{
 use typst::{
     diag::{FileError, FileResult},
     foundations::Bytes,
+    introspection::{Introspector, PagedPosition},
     syntax::{FileId, Source},
 };
 use typst_as_lib::{
@@ -184,19 +185,77 @@ impl Drop for VirtualFiles {
     }
 }
 
+#[derive(Serialize, Clone)]
+pub(crate) struct ZoneRect {
+    pub zone: u8,
+    pub page: usize,
+    pub x: f64,
+    pub y: f64,
+    pub w: f64,
+    pub h: f64,
+}
+
+fn zone_rects(introspector: &dyn Introspector) -> Vec<ZoneRect> {
+    let positions: HashMap<String, PagedPosition> = introspector
+        .query_labelled()
+        .into_iter()
+        .filter_map(|content| {
+            let label = content.label()?.resolve().to_string();
+            let position = introspector.position(content.location()?)?.as_paged()?;
+            Some((label, position))
+        })
+        .collect();
+
+    let mut rects = Vec::new();
+    for zone in [3_u8, 4] {
+        let Some(start) = positions.get(&format!("pdfcraft-zone-{zone}-start")) else {
+            continue;
+        };
+        let Some(end) = positions.get(&format!("pdfcraft-zone-{zone}-end")) else {
+            continue;
+        };
+        let start_page = start.page.get();
+        let end_page = end.page.get();
+        if start_page > end_page {
+            continue;
+        }
+        for page in start_page..=end_page {
+            let y = if page == start_page { start.point.y.to_mm() } else { 15.0 };
+            let bottom = if page == end_page { end.point.y.to_mm() } else { 277.0 };
+            let y = y.clamp(0.0, 293.0);
+            let bottom = bottom.clamp(y + 4.0, 297.0);
+            rects.push(ZoneRect {
+                zone,
+                page,
+                x: 25.0,
+                y,
+                w: 165.0,
+                h: bottom - y,
+            });
+        }
+    }
+    rects
+}
+
 fn compile_pdf(
     rendered: String,
     request_id: u64,
     assets: Vec<(String, Vec<u8>)>,
-) -> Result<Vec<u8>, String> {
+    include_zones: bool,
+) -> Result<(Vec<u8>, Vec<ZoneRect>), String> {
     let started = std::time::Instant::now();
     let c = compiler();
     let files = VirtualFiles::register(c, request_id, rendered, assets);
 
     let result = c.engine.with_world(files.source, |world| {
-        let doc = typst::compile(world)
+        let doc = typst::compile::<typst_layout::PagedDocument>(world)
             .output
             .map_err(|e| format!("Typst compilation error: {e:?}"))?;
+        let zones = if include_zones {
+            zone_rects(doc.introspector().as_ref())
+        } else {
+            Vec::new()
+        };
         let compiled = started.elapsed();
         let pdf = typst_pdf::pdf(&doc, &pdf_options())
             .map_err(|e| format!("Typst PDF generation error: {e:?}"))?;
@@ -206,7 +265,7 @@ fn compile_pdf(
             layout_ms = compiled.as_secs_f64() * 1000.0,
             pdf_export_ms = (started.elapsed() - compiled).as_secs_f64() * 1000.0
         );
-        Ok(pdf)
+        Ok((pdf, zones))
     });
     drop(files);
     tracing::debug!(event = "typst_compile", duration_ms = started.elapsed().as_secs_f64() * 1000.0);
@@ -350,6 +409,25 @@ pub(crate) async fn render_pdf(
     data: JsonValue,
     assets: Vec<(String, Vec<u8>)>,
 ) -> Result<Vec<u8>, ApiError> {
+    render_pdf_inner(template, data, assets, false)
+        .await
+        .map(|(pdf, _)| pdf)
+}
+
+pub(crate) async fn render_pdf_with_zones(
+    template: &str,
+    data: JsonValue,
+    assets: Vec<(String, Vec<u8>)>,
+) -> Result<(Vec<u8>, Vec<ZoneRect>), ApiError> {
+    render_pdf_inner(template, data, assets, true).await
+}
+
+async fn render_pdf_inner(
+    template: &str,
+    data: JsonValue,
+    assets: Vec<(String, Vec<u8>)>,
+    include_zones: bool,
+) -> Result<(Vec<u8>, Vec<ZoneRect>), ApiError> {
     let request_id = REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed);
     let rendered = fill_template(template, data, request_id, &assets)?;
 
@@ -358,10 +436,11 @@ pub(crate) async fn render_pdf(
     let _slot = acquire_slot(std::time::Duration::from_secs(config::get().compile_queue_timeout_secs)).await?;
     metrics::get().queue_wait.observe(queued.elapsed().as_secs_f64());
     let compiling = std::time::Instant::now();
-    let compiled = tokio::task::spawn_blocking(move || compile_pdf(rendered, request_id, assets)).await;
+    let compiled =
+        tokio::task::spawn_blocking(move || compile_pdf(rendered, request_id, assets, include_zones)).await;
     metrics::get().typst_compile.observe(compiling.elapsed().as_secs_f64());
     match compiled {
-        Ok(Ok(bytes)) => Ok(bytes),
+        Ok(Ok(result)) => Ok(result),
         Ok(Err(e)) => Err(ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "typst_compile_error", e)),
         Err(e) => Err(internal(e.to_string())),
     }
@@ -422,6 +501,33 @@ async fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn preview_zone_rectangles_follow_printable_page_area() {
+        let template = r#"
+            #set document(title: "Zone geometry test", author: "PDFCraft", date: datetime(year: 2026, month: 1, day: 1))
+            #set page(paper: "a4", margin: (left: 25mm, right: 20mm, top: 15mm, bottom: 20mm))
+            #metadata("zone 3 start") <pdfcraft-zone-3-start>
+            #block(height: 20mm)[Zone three]
+            #metadata("zone 3 end") <pdfcraft-zone-3-end>
+            #metadata("zone 4 start") <pdfcraft-zone-4-start>
+            #block(height: 20mm)[Zone four]
+            #metadata("zone 4 end") <pdfcraft-zone-4-end>
+        "#;
+        let (_, zones) = render_pdf_with_zones(template, serde_json::json!({}), Vec::new())
+            .await
+            .unwrap_or_else(|error| panic!("{}", error.details));
+
+        assert_eq!(zones.len(), 2);
+        assert_eq!((zones[0].zone, zones[1].zone), (3, 4));
+        for zone in &zones {
+            assert_eq!(zone.page, 1);
+            assert_eq!(zone.x, 25.0);
+            assert_eq!(zone.w, 165.0);
+            assert!(zone.h >= 4.0);
+        }
+        assert!((zones[0].y + zones[0].h - zones[1].y).abs() < 0.01);
+    }
 
     #[tokio::test]
     async fn answers_server_busy_when_no_compile_slot_frees_up() {

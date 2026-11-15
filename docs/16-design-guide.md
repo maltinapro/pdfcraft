@@ -48,17 +48,19 @@ Zone 1 holds settings that apply to **all** documents. Its panel says so ("Appli
 ### 2.3 Preview with zone overlay
 
 - The preview renders the **real PDF** from the backend with pdf.js (`PdfCanvasPreview`, already a lazy chunk) for all browsers, so the overlay can be positioned exactly; the native iframe viewer is replaced. The toolbar offers zoom, page navigation, "Open PDF" and "Show e-invoice XML" (read from the rendered PDF with the E05 extractor, read-only).
-- Zone areas are drawn as a light tint (`previewTint`, 6 % of the zone color) on hover/focus and permanently for the active zone. Clicking an area opens that zone and focuses its first field.
+- Each zone's clickable hit area follows its reported geometry; the visible outline is inset slightly so adjacent borders do not obscure the PDF. The active area is highlighted, and its label identifies the zone. Clicking an area opens that zone and focuses its first field.
 - Zone geometry: zones 1 and 2 are fixed by DIN 5008. Zones 3 and 4 depend on content; the backend reports them (Typst labels queried after compiling, returned as a small JSON header, no customer data). Fallback when the header is missing: fixed DIN areas only.
 - Double buffering, debouncing and "preview paused while blocking errors exist" stay as they are.
 
 ### 2.4 Layout per window size
 
-Window classes follow Material 3: **compact** < 600 px, **medium** 600–839 px, **expanded** ≥ 840 px (replaces today's 800 px breakpoint).
+The editor switches to its compact layout below **840 px**.
 
-- **Expanded:** split screen. Left: zone bar, zone panel (520–600 px), sticky footer. Right: preview on `surface-container-high`.
-- **Compact / medium:** the editor is a focused task: the global bottom navigation is hidden and replaced by an **editor bar** at the bottom (zone chips + Back/Next/Create). A segmented button in the top bar switches **Fields | Sheet**. In *Sheet* mode, tapping a zone opens a **bottom sheet** (up to 85 % height) with that zone's fields, so the user never loses sight of the document.
+- **Expanded (≥ 840 px):** form and PDF preview sit side by side, separated by a 24 px keyboard-accessible splitter. Both panes have a 360 px minimum; dragging the splitter adjusts the form share from 32 % to 58 %. The form has its zone navigation and sticky Back/Next/Create PDF actions.
+- **Compact (< 840 px):** the header's **Fields | Sheet** switch controls the workspace. *Fields* shows the active zone's form; *Sheet* shows the PDF so fields can be hidden while viewing the paper. A persistent editor bar keeps zone navigation and Back/Next/Create PDF available in either mode.
+- Tapping a zone in the editor bar while in *Sheet* opens a bottom sheet with that zone's fields. The sheet has its own sticky zone navigation and a **Show preview** action that closes the sheet without changing the selected zone. Preview-zone taps and issue-summary jumps open the appropriate fields and focus the target.
 - Swipe between zones is allowed only on the zone bar and the sheet handle, never across the form body (conflicts with text selection, horizontal input scrolling and the iOS back gesture).
+- Form controls follow the natural top-to-bottom field order within each zone; Tab/Shift+Tab use the browser's normal focus order. The zone bar and PDF are direct alternatives for moving between sections, not additional tab strips.
 
 ## 3. App shell and navigation
 
@@ -253,7 +255,7 @@ The demo was run as a Vite app and compared with the current editor (backend run
 | Inputs | 38 (18 + 20 on two tabs) | 30 (no logo, signature, design, font, texts, e-invoice profile, exemption reason, contact name, postage, master-data pickers) |
 | Preview | real PDF; mobile fits the width; desktop fits the width, so only ~60 % of the page is visible | HTML copy; mobile at 95 % is cut off on both sides |
 
-What the demo does better and the zone editor must keep: one editor level, a clear header per step, Back/Next with the next step's name, item cards with a live line total, the totals inside the form, and the active area highlighted on the sheet.
+What the demo does better and the zone editor must keep: one editor level, a clear header per step, Back/Next with the next step's name, item cards with a live line total, readable totals inside the form, and the active area highlighted on the sheet.
 
 Problems found in the demo that the implementation must avoid:
 - **Vertical space:** hint banner + large step header card + section card push the first field ~130–155 px lower than today. Rule: on compact screens the zone header is a single 56 px row; hints appear at the field and in the issue summary, not as a banner above the form.
@@ -321,7 +323,6 @@ Heuristic review of the current app (DE/EN, light, 390 px and 1440 px). Severity
 | 12 | M | Desktop preview fits the width, so only the upper ~60 % of the page is visible; there is no "whole page" fit. | E08-03 |
 | 13 | M | No service date field: the PDF and the XML (`ActualDeliverySupplyChainEvent`) use the invoice date as date of service; the due date is computed (invoice date + payment days) but the PDF only says "within 14 days". | E08-08 |
 | 14 | L | Hints are underlined orange link text (three lines each at 380 px sidebar width), hard to scan. | E07-02, E08-02 |
-
 Second pass (all app pages at 390 and 1440 px, light and dark, 15 Nov 2026):
 
 | # | Sev. | Finding | Fixed by |
@@ -339,10 +340,15 @@ Second pass (all app pages at 390 and 1440 px, light and dark, 15 Nov 2026):
 | 25 | M | A failing PDF preview stayed a silent gray area (Pixel phones with an older Chrome/WebView; fixed in #158/#159, fallback "PDF öffnen"). Front-end errors are not counted, so nobody noticed. | E08-03, E12-06 |
 | 26 | L | Date field shows `MM/DD/YYYY` in a German UI on some browsers (browser locale instead of UI language). | E08-02 |
 | 27 | L | No designed state for windows over 1,600 px: the editor stretches; the dashboard content has no max width. | E07-04 |
+| 28 | M | After the first E08 pass, the mobile zone controls could be obscured while editing, and the paper was not easy to reveal without leaving the editor. | E08 follow-up: persistent editor bar, sticky zone navigation and Show preview |
+| 29 | L | Item-total labels and amounts needed clearer separation; the form also had excess inset spacing and default-looking scrollbars. | E08 follow-up: aligned label/value totals, denser section padding and themed scrollbars |
+| 30 | M | The desktop form/preview balance was fixed, and zone outlines could visually crowd adjacent PDF content. | E08 follow-up: adjustable splitter and inset zone outlines |
 
 Kept because they work: auto-save status, issue summary that jumps to the field, live preview, archive follow-ups.
 
 **Usability check protocol** (before and after phase 4, E07-05 / E08-07): five tasks, measured as taps/clicks and time by one tester on 390 px and 1440 px: (1) first invoice from scratch, (2) second invoice for a saved customer with two saved articles, (3) credit note for an issued invoice, (4) download a backup, (5) open a received e-invoice. Results go into the epic files.
+
+For E08, automated screenshots cover 320/390/768/1440 px in DE/EN and light/dark. They are visual regression aids, not substitutes for the five-task comparison or the real-device checks in 12.2. Do not claim usability improvement until the E07-05 baseline and E08 results have both been recorded.
 
 ## 12. Implementation rules
 

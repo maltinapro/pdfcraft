@@ -9,10 +9,12 @@ interface Field {
   area: string
 }
 
-const sender = () => tr('Absender & Design › Firma', 'Sender & design › Company')
-const bank = () => tr('Absender & Design › Bankverbindung', 'Sender & design › Bank details')
-const design = () => tr('Absender & Design › Design', 'Sender & design › Design')
-const texts = () => tr('Absender & Design › Texte', 'Sender & design › Texts')
+const sender = () => tr('Absender & Aussehen', 'Sender & look')
+const bank = () => tr('Absender & Aussehen › Bankverbindung', 'Sender & look › Bank details')
+const design = () => tr('Absender & Aussehen › Design', 'Sender & look › Design')
+const texts = () => tr('Absender & Aussehen › Texte', 'Sender & look › Texts')
+const details = () => tr('Details', 'Details')
+const items = () => tr('Positionen', 'Items')
 const recipient = () => tr('Empfänger', 'Recipient')
 const itemArea = (n: number) => tr(`Positionen › Position ${n}`, `Items › Item ${n}`)
 
@@ -30,13 +32,13 @@ function settingsField(path: string): Field | null {
     'settings.bank.name': () => ({ label: tr('Bank', 'Bank'), area: bank() }),
     'settings.bank.iban': () => ({ label: 'IBAN', area: bank() }),
     'settings.bank.bic': () => ({ label: 'BIC', area: bank() }),
-    'settings.paymentDays': () => ({ label: tr('Zahlungsziel (Tage)', 'Payment term (days)'), area: bank() }),
+    'settings.paymentDays': () => ({ label: tr('Zahlungsziel (Tage)', 'Payment term (days)'), area: details() }),
     'settings.signature': () => ({ label: tr('Unterschrift', 'Signature'), area: tr('Absender & Design › Unterschrift', 'Sender & design › Signature') }),
-    'settings.exemptionReason': () => ({ label: tr('Grund der Steuerbefreiung', 'Reason for tax exemption'), area: bank() }),
+    'settings.exemptionReason': () => ({ label: tr('Grund der Steuerbefreiung', 'Reason for tax exemption'), area: items() }),
     'settings.accentColor': () => ({ label: tr('Akzentfarbe', 'Accent color'), area: design() }),
     'settings.font': () => ({ label: tr('Schriftart', 'Font'), area: design() }),
     'settings.locale': () => ({ label: tr('Dokumentsprache', 'Document language'), area: design() }),
-    'settings.einvoiceProfile': () => ({ label: tr('Profil', 'Profile'), area: tr('Absender & Design › E-Rechnung', 'Sender & design › E-invoice') }),
+    'settings.einvoiceProfile': () => ({ label: tr('Profil', 'Profile'), area: tr('Absender & Aussehen › E-Rechnung', 'Sender & look › E-invoice') }),
     'settings.intro': () => ({ label: tr('Einleitung', 'Introduction'), area: texts() }),
     'settings.closing': () => ({ label: tr('Schlusstext', 'Closing text'), area: texts() }),
     'settings.footer': () => ({ label: tr('Fußzeile', 'Footer'), area: texts() }),
@@ -51,6 +53,10 @@ function documentField(rest: string, kind: string): Field | null {
   const map: Record<string, () => Field> = {
     number: () => ({ label: numberLabel, area: here }),
     date: () => ({ label: spec?.dateLabel ?? tr('Datum', 'Date'), area: here }),
+    serviceDate: () => ({ label: tr('Leistungsdatum', 'Date of service'), area: details() }),
+    serviceDateFrom: () => ({ label: tr('Leistungszeitraum von', 'Service period from'), area: details() }),
+    serviceDateTo: () => ({ label: tr('Leistungszeitraum bis', 'Service period to'), area: details() }),
+    dueDate: () => ({ label: tr('Fälligkeitsdatum', 'Due date'), area: details() }),
     reference: () => ({ label: (spec?.reference?.label ?? tr('Referenz', 'Reference')).replace(/ \((?:optional|Nr\.)?\)?$/, ''), area: here }),
     referenceDate: () => ({ label: spec?.referenceDate ?? tr('Datum', 'Date'), area: here }),
     validUntil: () => ({ label: spec?.validUntil ?? tr('Gültig bis', 'Valid until'), area: here }),
@@ -102,6 +108,10 @@ function rule(message: string): string | null {
   let m = /^must be at most (\d+) characters$/.exec(message)
   if (m) return tr(`Höchstens ${m[1]} Zeichen`, `At most ${m[1]} characters`)
   if (message === 'must be a valid date as YYYY-MM-DD') return tr('Bitte ein gültiges Datum angeben', 'Please enter a valid date')
+  if (message === 'serviceDateFrom and serviceDateTo must be provided together') return tr('Bitte Start und Ende des Leistungszeitraums angeben', 'Enter both the start and end of the service period')
+  if (message === 'serviceDateFrom must not be after serviceDateTo') return tr('Der Leistungszeitraum endet vor seinem Beginn', 'The service period ends before it starts')
+  if (message === 'serviceDate cannot be combined with a service period') return tr('Ein Leistungsdatum kann nicht mit einem Leistungszeitraum kombiniert werden', 'A service date cannot be combined with a service period')
+  if (message === 'dueDate must not be before the invoice date') return tr('Das Fälligkeitsdatum darf nicht vor dem Rechnungsdatum liegen', 'The due date cannot be before the invoice date')
   if (message === 'must be a number between -1e9 and 1e9') return tr('Bitte eine Zahl angeben (max. 1 Milliarde)', 'Please enter a number (at most 1 billion)')
   if (message === 'must look like #1d4ed8') return tr('Bitte eine Farbe wie #1d4ed8 angeben', 'Please enter a color like #1d4ed8')
   if (message === 'must be a whole number between 0 and 365') return tr('Ganze Zahl zwischen 0 und 365', 'Whole number between 0 and 365')

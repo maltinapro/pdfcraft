@@ -225,6 +225,10 @@ pub fn build(
             date: doc.date.clone(),
             recipient: doc.recipient.clone(),
             items: doc.items.clone(),
+            service_date: None,
+            service_date_from: None,
+            service_date_to: None,
+            due_date: None,
             postage: None,
         };
         let prepared = einvoice::prepare(

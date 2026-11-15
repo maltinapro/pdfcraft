@@ -6,9 +6,9 @@ use crate::documents::{self, Document, Kind};
 use crate::einvoice;
 use crate::invoice::{check_invoice, check_settings, file_stem, Errors, Invoice, Settings};
 use crate::store::{self, Client};
-use crate::{decode_assets, render_pdf, ApiError};
+use crate::{decode_assets, render_pdf, render_pdf_with_zones, ApiError, ZoneRect};
 use axum::{
-    extract::{rejection::JsonRejection, Extension, Json, Request},
+    extract::{rejection::JsonRejection, Extension, Json, Query, Request},
     http::{header, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -217,6 +217,19 @@ fn validation_error(errors: Errors) -> ApiError {
     )
 }
 
+#[derive(Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
+pub(crate) struct PreviewQuery {
+    /// Include PDF zone geometry in `X-Pdfcraft-Zones`; only `1` enables it.
+    zones: Option<String>,
+}
+
+impl PreviewQuery {
+    fn includes_zones(&self) -> bool {
+        self.zones.as_deref() == Some("1")
+    }
+}
+
 fn bad_json(e: JsonRejection) -> ApiError {
     ApiError::new(e.status(), "invalid_request", e.body_text())
 }
@@ -259,10 +272,12 @@ fn settings_assets(settings: &crate::invoice::CheckedSettings) -> Result<Assets,
     tag = "Invoices",
     operation_id = "createInvoice",
     request_body = InvoiceRequest,
-    responses((status = 200, description = "The PDF (PDF/A-3b).", content_type = "application/pdf", body = Vec<u8>, headers(("Content-Disposition" = String, description = "`attachment; filename=\"…\"` with the suggested file name."))))
+    params(PreviewQuery),
+    responses((status = 200, description = "The PDF (PDF/A-3b).", content_type = "application/pdf", body = Vec<u8>, headers(("Content-Disposition" = String, description = "`attachment; filename=\"…\"` with the suggested file name."), ("X-Pdfcraft-Zones" = String, description = "Optional JSON array of zone rectangles in millimeters, present only for `?zones=1`."))))
 )]
 pub(crate) async fn single(
     Extension(client): Extension<Client>,
+    Query(preview): Query<PreviewQuery>,
     payload: Result<Json<InvoiceRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let Json(req) = payload.map_err(bad_json)?;
@@ -283,12 +298,17 @@ pub(crate) async fn single(
         assets,
     );
     let started = std::time::Instant::now();
-    let pdf = render_pdf(INVOICE_TEMPLATE, data, assets).await?;
+    let (pdf, zones) = if preview.includes_zones() {
+        render_pdf_with_zones(INVOICE_TEMPLATE, data, assets).await?
+    } else {
+        (render_pdf(INVOICE_TEMPLATE, data, assets).await?, Vec::new())
+    };
     crate::metrics::observe_pdf(&client, started.elapsed().as_secs_f64(), pdf.len());
     log_generated(&client, "single", 1, started, pdf.len());
     Ok(pdf_response(
         pdf,
         &format!("invoice-{}.pdf", file_stem(&req.invoice.number)),
+        preview.includes_zones().then_some(&zones),
     ))
 }
 
@@ -369,8 +389,8 @@ fn check_bulk_size(client: &Client, count: usize, field: &str) -> Result<(), Api
     Ok(())
 }
 
-fn pdf_response(pdf: Vec<u8>, file_name: &str) -> Response {
-    (
+fn pdf_response(pdf: Vec<u8>, file_name: &str, zones: Option<&[ZoneRect]>) -> Response {
+    let mut response = (
         StatusCode::OK,
         [
             (header::CONTENT_TYPE, "application/pdf".to_string()),
@@ -381,7 +401,15 @@ fn pdf_response(pdf: Vec<u8>, file_name: &str) -> Response {
         ],
         pdf,
     )
-        .into_response()
+        .into_response();
+    if let Some(zones) = zones {
+        if let Ok(json) = serde_json::to_string(zones) {
+            if let Ok(value) = json.parse() {
+                response.headers_mut().insert("x-pdfcraft-zones", value);
+            }
+        }
+    }
+    response
 }
 
 /// Makes `name` unique within one ZIP by inserting the position before `.pdf` when it repeats.
@@ -486,11 +514,13 @@ async fn render_all(
     path = "/v1/documents",
     tag = "Documents",
     operation_id = "createDocument",
+    params(PreviewQuery),
     request_body = DocumentRequest,
-    responses((status = 200, description = "The PDF (PDF/A-3b).", content_type = "application/pdf", body = Vec<u8>, headers(("Content-Disposition" = String, description = "`attachment; filename=\"…\"` with the suggested file name."))))
+    responses((status = 200, description = "The PDF (PDF/A-3b).", content_type = "application/pdf", body = Vec<u8>, headers(("Content-Disposition" = String, description = "`attachment; filename=\"…\"` with the suggested file name."), ("X-Pdfcraft-Zones" = String, description = "Optional JSON array of zone rectangles in millimeters, present only for `?zones=1`."))))
 )]
 pub(crate) async fn document_single(
     Extension(client): Extension<Client>,
+    Query(preview): Query<PreviewQuery>,
     payload: Result<Json<DocumentRequest>, JsonRejection>,
 ) -> Result<Response, ApiError> {
     let Json(req) = payload.map_err(bad_json)?;
@@ -515,12 +545,17 @@ pub(crate) async fn document_single(
         return Err(validation_error(errors));
     };
     let started = std::time::Instant::now();
-    let pdf = render_pdf(kind.template(), data, assets).await?;
+    let (pdf, zones) = if preview.includes_zones() {
+        render_pdf_with_zones(kind.template(), data, assets).await?
+    } else {
+        (render_pdf(kind.template(), data, assets).await?, Vec::new())
+    };
     crate::metrics::observe_pdf(&client, started.elapsed().as_secs_f64(), pdf.len());
     log_generated(&client, kind.slug(), 1, started, pdf.len());
     Ok(pdf_response(
         pdf,
         &documents::file_name(kind, &req.document),
+        preview.includes_zones().then_some(&zones),
     ))
 }
 
@@ -676,6 +711,229 @@ pub(crate) async fn bulk(
 mod tests {
     use super::*;
 
+    #[test]
+    fn preview_zone_header_is_opt_in() {
+        assert!(!PreviewQuery { zones: None }.includes_zones());
+        assert!(!PreviewQuery {
+            zones: Some("true".into()),
+        }
+        .includes_zones());
+        assert!(PreviewQuery {
+            zones: Some("1".into()),
+        }
+        .includes_zones());
+
+        let zones = [ZoneRect {
+            zone: 3,
+            page: 1,
+            x: 25.0,
+            y: 40.0,
+            w: 165.0,
+            h: 30.0,
+        }];
+        let response = pdf_response(Vec::new(), "invoice.pdf", Some(&zones));
+        let encoded = response.headers()["x-pdfcraft-zones"].to_str().unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(encoded).unwrap();
+        assert_eq!(parsed[0]["zone"], 3);
+        assert_eq!(parsed[0]["page"], 1);
+        assert_eq!(parsed[0]["w"], 165.0);
+        assert!(!pdf_response(Vec::new(), "invoice.pdf", None)
+            .headers()
+            .contains_key("x-pdfcraft-zones"));
+    }
+
+    #[test]
+    fn invoice_service_dates_are_optional_and_validate_as_a_period() {
+        let base = json!({
+            "number": "2026-001",
+            "date": "2026-01-31",
+            "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+            "items": [{"description": "Beratung", "quantity": 1, "unit": "h", "price": 95, "taxRate": 19}],
+        });
+        let check = |value: serde_json::Value| {
+            let invoice: Invoice = serde_json::from_value(value).unwrap();
+            let mut errors = Errors::default();
+            check_invoice(&invoice, "invoice", &mut errors);
+            errors.0
+        };
+        assert!(check(base.clone()).is_empty());
+
+        let mut period = base.clone();
+        period["serviceDateFrom"] = json!("2026-01-01");
+        period["serviceDateTo"] = json!("2026-01-31");
+        period["dueDate"] = json!("2026-03-02");
+        assert!(check(period.clone()).is_empty());
+
+        let mut incomplete = period.clone();
+        incomplete.as_object_mut().unwrap().remove("serviceDateTo");
+        assert!(check(incomplete)
+            .iter()
+            .any(|issue| issue.contains("serviceDateFrom and serviceDateTo")));
+
+        let mut reversed = period.clone();
+        reversed["serviceDateFrom"] = json!("2026-02-01");
+        assert!(check(reversed)
+            .iter()
+            .any(|issue| issue.contains("must not be after")));
+
+        let mut mixed = period.clone();
+        mixed["serviceDate"] = json!("2026-01-15");
+        assert!(check(mixed)
+            .iter()
+            .any(|issue| issue.contains("cannot be combined")));
+
+        let mut early_due = base;
+        early_due["dueDate"] = json!("2026-01-30");
+        assert!(check(early_due)
+            .iter()
+            .any(|issue| issue.contains("dueDate must not be before")));
+    }
+
+    #[tokio::test]
+    async fn invoice_service_period_and_due_date_reach_the_pdf_and_xml() {
+        let settings: Settings = serde_json::from_value(json!({
+            "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"},
+            "zugferd": true,
+        }))
+        .unwrap();
+        let invoice: Invoice = serde_json::from_value(json!({
+            "number": "2026-001",
+            "date": "2026-01-31",
+            "serviceDateFrom": "2026-01-01",
+            "serviceDateTo": "2026-01-31",
+            "dueDate": "2026-03-02",
+            "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+            "items": [{"description": "Beratung", "quantity": 1, "unit": "h", "price": 95, "taxRate": 19}],
+        }))
+        .unwrap();
+        let mut errors = Errors::default();
+        let checked_settings = check_settings(&settings, &mut errors);
+        let checked_invoice = check_invoice(&invoice, "invoice", &mut errors);
+        assert!(errors.0.is_empty(), "{:?}", errors.0);
+        let (data, assets) = invoice_data(
+            &settings,
+            checked_settings.data,
+            &invoice,
+            checked_invoice,
+            Vec::new(),
+        );
+        assert_eq!(
+            data["invoice"]["serviceDateText"],
+            "01.01.2026 – 31.01.2026"
+        );
+        assert_eq!(data["invoice"]["dueDateText"], "02.03.2026");
+        let xml = assets
+            .iter()
+            .find(|(name, _)| name == "xml")
+            .map(|(_, bytes)| std::str::from_utf8(bytes).unwrap())
+            .unwrap();
+        assert!(xml.contains("<ram:StartDateTime>"));
+        assert!(xml.contains("<ram:EndDateTime>"));
+        assert!(xml.contains("20260101"));
+        assert!(xml.contains("20260131"));
+        assert!(xml.contains("20260302"));
+        let pdf = render_pdf(INVOICE_TEMPLATE, data, assets)
+            .await
+            .unwrap_or_else(|e| panic!("{}", e.details));
+        assert!(pdf.starts_with(b"%PDF"));
+    }
+
+    #[tokio::test]
+    async fn preview_zone_geometry_renders_all_document_types() {
+        let settings: Settings = serde_json::from_value(json!({
+            "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"},
+            "zugferd": false,
+        }))
+        .unwrap();
+        let checked_settings = {
+            let mut errors = Errors::default();
+            let checked = check_settings(&settings, &mut errors);
+            assert!(errors.0.is_empty(), "{:?}", errors.0);
+            checked
+        };
+        let raw: Document = serde_json::from_value(json!({
+            "number": "2026-001",
+            "date": "2026-01-31",
+            "reference": "R-2026-007",
+            "referenceDate": "2026-01-02",
+            "validUntil": "2026-02-28",
+            "deliveryDate": "2026-02-03",
+            "subject": "Betreff",
+            "body": "Brieftext",
+            "reason": "Falsche Menge",
+            "intro": "Einleitung",
+            "closing": "Gruß",
+            "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+            "items": [{"description": "Beratung", "quantity": 2, "unit": "h", "price": 95, "taxRate": 19}],
+        }))
+        .unwrap();
+        for kind in Kind::ALL {
+            let mut errors = Errors::default();
+            let checked = documents::check_document(kind, &raw, false, &mut errors);
+            assert!(errors.0.is_empty(), "{}: {:?}", kind.slug(), errors.0);
+            let (data, assets) = documents::build(
+                kind,
+                &settings,
+                checked_settings.data.clone(),
+                &raw,
+                checked,
+                Vec::new(),
+            );
+            let (pdf, zones) = render_pdf_with_zones(kind.template(), data, assets)
+                .await
+                .unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details));
+            assert!(pdf.starts_with(b"%PDF"), "{}", kind.slug());
+            assert!(zones.iter().any(|zone| zone.zone == 3), "{}", kind.slug());
+            assert!(zones.iter().any(|zone| zone.zone == 4), "{}", kind.slug());
+            assert!(zones.iter().all(|zone| {
+                zone.page >= 1
+                    && zone.x.is_finite()
+                    && zone.y.is_finite()
+                    && zone.w > 0.0
+                    && zone.h > 0.0
+            }));
+        }
+
+        let items: Vec<_> = (0..100)
+            .map(|index| {
+                json!({
+                    "description": format!("Position {index}: detailed service description"),
+                    "quantity": 1,
+                    "unit": "pcs",
+                    "price": 10,
+                    "taxRate": 19,
+                })
+            })
+            .collect();
+        let invoice: Invoice = serde_json::from_value(json!({
+            "number": "2026-MULTI",
+            "date": "2026-01-31",
+            "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+            "items": items,
+        }))
+        .unwrap();
+        let mut errors = Errors::default();
+        let checked = check_invoice(&invoice, "invoice", &mut errors);
+        assert!(errors.0.is_empty(), "{:?}", errors.0);
+        let (data, assets) = invoice_data(
+            &settings,
+            checked_settings.data,
+            &invoice,
+            checked,
+            Vec::new(),
+        );
+        let (pdf, zones) = render_pdf_with_zones(INVOICE_TEMPLATE, data, assets)
+            .await
+            .unwrap_or_else(|e| panic!("multi-page invoice: {}", e.details));
+        let item_zones: Vec<_> = zones.iter().filter(|zone| zone.zone == 4).collect();
+        assert!(pdf.starts_with(b"%PDF"));
+        assert!(item_zones.iter().any(|zone| zone.page == 1));
+        assert!(item_zones.iter().any(|zone| zone.page > 1));
+        if let Ok(dir) = std::env::var("PDF_OUT") {
+            std::fs::write(format!("{dir}/invoice-zone-multipage.pdf"), pdf).unwrap();
+        }
+    }
+
     #[tokio::test]
     async fn render_all_keeps_order_and_names_the_failing_entry() {
         let client = Client {
@@ -816,6 +1074,7 @@ mod tests {
                         .unwrap();
                     }
                 }
+
             }
         }
     }
@@ -1171,6 +1430,13 @@ mod tests {
                 "number": "2026-001", "date": "2026-01-31", "recipient": recipient, "items": items,
             })
         };
+        let service_period_invoice = |items: &serde_json::Value| {
+            let mut value = invoice(items);
+            value["serviceDateFrom"] = json!("2026-01-01");
+            value["serviceDateTo"] = json!("2026-01-31");
+            value["dueDate"] = json!("2026-03-02");
+            value
+        };
         let credit_note = |items: &serde_json::Value| {
             json!({
                 "number": "G-2026-001", "date": "2026-02-10", "reference": "2026-001", "referenceDate": "2026-01-31",
@@ -1202,11 +1468,25 @@ mod tests {
                 invoice(&mixed_items),
             ),
             (
+                "en16931-service-period",
+                "factur-x.xml",
+                settings("en16931", "de-de"),
+                false,
+                service_period_invoice(&mixed_items),
+            ),
+            (
                 "xrechnung-mixed-rates",
                 "xrechnung.xml",
                 settings("xrechnung", "de-de"),
                 false,
                 invoice(&mixed_items),
+            ),
+            (
+                "xrechnung-service-period",
+                "xrechnung.xml",
+                settings("xrechnung", "de-de"),
+                false,
+                service_period_invoice(&mixed_items),
             ),
             (
                 "xrechnung-exempt",
@@ -1311,10 +1591,23 @@ mod tests {
                 }
                 let assets = settings_assets(&s).unwrap_or_else(|e| panic!("{}", e.details));
                 let (data, assets) = invoice_data(&settings, sd, &raw, invoice, assets);
-                let pdf = render_pdf(INVOICE_TEMPLATE, data, assets)
+                let (pdf, zones) = render_pdf_with_zones(INVOICE_TEMPLATE, data, assets)
                     .await
                     .unwrap_or_else(|e| panic!("{design}: {}", e.details));
                 assert!(pdf.starts_with(b"%PDF"));
+                let details = zones.iter().find(|zone| zone.zone == 3).unwrap();
+                let items = zones.iter().find(|zone| zone.zone == 4).unwrap();
+                for zone in [details, items] {
+                    assert_eq!(zone.page, 1);
+                    assert_eq!(zone.x, 25.0);
+                    assert_eq!(zone.w, 165.0);
+                    assert!(zone.h >= 4.0);
+                }
+                assert!(details.y < items.y, "{design}: details must precede items");
+                assert!(
+                    details.y + details.h <= items.y + 0.01,
+                    "{design}: detail and item frames overlap"
+                );
                 if let Ok(dir) = std::env::var("PDF_OUT") {
                     std::fs::write(
                         format!(
