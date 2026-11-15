@@ -1,0 +1,19 @@
+# E09 – Dashboard and app pages
+
+**Phase:** 4 · **Depends on:** E07 · **Status:** open
+
+## Goal
+Bring the start page and every other app page onto the new shell and components, with less scrolling and clearer priorities: creating an invoice is one tap from Start.
+
+## Context / links
+- [Design guide](../16-design-guide.md) sections 5–7, 11 (findings 4, 7, 15–21, 24), glossary 12.1.
+- Today: `Dashboard.tsx` (welcome card, seven equal tiles, recent documents), `DocumentsPage.tsx`, `ArchiveList.tsx`, `MasterDataPage.tsx`, `DataPage.tsx`, `BackupBanner.tsx`, `BuyPage.tsx`, `ViewerPage.tsx`, `FreeVersionHint.tsx`.
+
+## Definition of done
+- All app pages use the E07 shell and components; on a 390 px screen the start page shows the invoice action and the other document types without scrolling past the first screen.
+
+## Issues
+- [ ] **E09-01 Start page** – *Invoice* as a large primary card, the five other types as a compact grid (2 columns on compact, icon + label, no description on compact), "Getting started" as a checklist (company details, first document, first backup) that replaces the welcome card and disappears when done; the backup reminder moves to the *Mehr* badge (no banner above the tiles, finding 15); three recent documents; small link card "E-Rechnung prüfen". `DOC_SPECS[].color` is removed (guide 4.1). *Files:* `Dashboard.tsx`, `BackupBanner.tsx`, `FreeVersionHint.tsx`, `lib/documents.ts`. AC: all document types visible within the first 844 px at 390 px width; DE/EN, light/dark.
+- [ ] **E09-02 Belege** – Archive as an M3 list (type icon, number, recipient, date, gross amount, status chip "storniert"/"Gutschrift erstellt") with search, filter chips (type, period, cancelled) and a row overflow menu: *PDF erneut erstellen*, *„Rechnung aus diesem Angebot“* (full follow-up labels, finding 18), *Stornieren*, *Entfernen*. Selection mode starts with a long press or the "Auswählen" button; only then a contextual bar shows *ZIP* and *Entfernen* (finding 17). The GoBD notice becomes one line with "Mehr erfahren" below the list header; the backup reminder is not repeated here (finding 16). *Files:* `DocumentsPage.tsx`, `ArchiveList.tsx`, `lib/documents.ts` (`FOLLOW_UPS` labels). AC: list starts within the first 200 px below the top bar at 390 px; existing archive features (bulk ZIP split by plan, cancel, follow-ups, export/import) kept.
+- [ ] **E09-03 Kunden, Daten & Sicherung, Kaufen, Prüfen** – Apply the components. *Kunden* holds customers and articles as two tabs; when the lists are empty but issued documents exist, the empty state's single primary action is "Aus 2 Belegen übernehmen" (finding 19). *Daten & Sicherung* order: (1) backup download + last backup date, (2) restore, (3) "Alles löschen" as a danger section at the end; the API configuration export moves into a collapsed "Für Entwickler" disclosure at the very bottom (finding 21). *Mehr* lists E-Rechnung prüfen, Daten & Sicherung, Zugang kaufen, language, theme, legal links. *Files:* `MasterDataPage.tsx`, `DataPage.tsx`, `BuyPage.tsx`, `ViewerPage.tsx`, new `MorePage.tsx`. AC: screenshots per page in DE/EN, light/dark, 390/1440 px; terms match the glossary; buy flow consent checkboxes unchanged.
+- [ ] **E09-04 Empty, loading and error states** – One pattern for empty lists, loading and errors (icon, sentence, action); raw messages such as "Failed to fetch" are translated via `apiErrors.ts`. *Files:* new `components/ui/EmptyState.tsx`, `lib/apiErrors.ts`, every page. AC: every page has a designed empty state; no untranslated error text reaches the UI.

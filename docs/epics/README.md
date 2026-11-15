@@ -25,7 +25,7 @@ The code changes derived from the business plan ("Businessplan PDFCraft", digita
 ## GitHub issues
 
 - The Markdown files are the source of truth for scope and acceptance criteria; GitHub issues are used for tracking.
-- One issue per epic (label `epic`), one sub-issue per task (label `task`), plus the phase label `phase-1` … `phase-3`.
+- One issue per epic (label `epic`), one sub-issue per task (label `task`), plus the phase label `phase-1` … `phase-4`.
 - Issues are created **phase by phase**; the current state is tracked in [../roadmap.md](../roadmap.md). The issue title is `EXX-NN Title`; the body is the issue description plus acceptance criteria from the file.
 
 ## Template
