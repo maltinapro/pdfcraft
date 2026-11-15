@@ -980,7 +980,7 @@ a.btn { text-decoration: none; display: inline-block; }
   }
   .header-nav a > svg { width: 24px; height: 24px; }
   .header-nav a[aria-current='page']::after {
-    top: 4px;
+    top: 12px;
     right: auto;
     bottom: auto;
     left: 50%;
