@@ -69,13 +69,11 @@ paths:
       operationId: createDocument
       parameters:
       - description: Include PDF zone geometry in `X-Pdfcraft-Zones`; only `1` enables it.
-        in: path
+        in: query
         name: zones
-        required: true
+        required: false
         schema:
-          type:
-          - string
-          - 'null'
+          type: string
       requestBody:
         content:
           application/json:
@@ -300,13 +298,11 @@ paths:
       operationId: createInvoice
       parameters:
       - description: Include PDF zone geometry in `X-Pdfcraft-Zones`; only `1` enables it.
-        in: path
+        in: query
         name: zones
-        required: true
+        required: false
         schema:
-          type:
-          - string
-          - 'null'
+          type: string
       requestBody:
         content:
           application/json:

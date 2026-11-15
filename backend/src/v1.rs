@@ -218,6 +218,7 @@ fn validation_error(errors: Errors) -> ApiError {
 }
 
 #[derive(Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
 pub(crate) struct PreviewQuery {
     /// Include PDF zone geometry in `X-Pdfcraft-Zones`; only `1` enables it.
     zones: Option<String>,
