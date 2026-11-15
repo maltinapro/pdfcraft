@@ -193,16 +193,20 @@ export function ItemsEditor({ items, onChange, prices = true, negative = false, 
       ))}
       {totals && (
         <section className="items-totals" aria-label={tr('Summen', 'Totals')}>
-          <strong>{tr('Zwischensumme netto', 'Subtotal net')}</strong>
-          <span>{money(totals.net)}</span>
+          <div className="items-totals-row items-totals-subtotal">
+            <strong>{tr('Zwischensumme netto', 'Subtotal net')}</strong>
+            <span>{money(totals.net)}</span>
+          </div>
           {[...totals.taxes.entries()].sort(([a], [b]) => b - a).map(([rate, amount]) => (
             <div className="items-totals-row" key={rate}>
               <span>{tr(`USt. ${rate} %`, `VAT ${rate} %`)}</span>
               <span>{money(amount)}</span>
             </div>
           ))}
-          <strong>{tr('Gesamt', 'Total')}</strong>
-          <strong>{money(totals.net + [...totals.taxes.values()].reduce((sum, amount) => sum + amount, 0))}</strong>
+          <div className="items-totals-row items-totals-grand">
+            <strong>{tr('Gesamt', 'Total')}</strong>
+            <strong>{money(totals.net + [...totals.taxes.values()].reduce((sum, amount) => sum + amount, 0))}</strong>
+          </div>
         </section>
       )}
       <div className="items-add">
