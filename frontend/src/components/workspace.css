@@ -131,7 +131,6 @@
 .sender-summary-chip strong { color: var(--color-on-surface-variant); font-size: var(--type-body-m); font-weight: var(--weight-label); }
 
 .issue-summary {
-  max-height: 11rem;
   margin: 0;
   padding: var(--space-3);
   overflow: visible;
@@ -142,7 +141,6 @@
   color: var(--color-on-surface);
   font-size: var(--type-body-m);
 }
-.issue-summary[open] { overflow-y: auto; }
 .issue-summary-title { display: block; min-height: 32px; margin: 0; padding-block: 4px; font-weight: var(--weight-title); }
 .issue-summary.notes-only { border-left-color: var(--color-warning); }
 .issue-link:focus-visible { outline-color: var(--color-primary); }
@@ -181,9 +179,12 @@
 .preview-page-canvas { position: relative; }
 .preview-page-canvas canvas { display: block; max-width: 100%; }
 .zone-overlay { position: absolute; inset: 0; pointer-events: none; }
-.zone-overlay-area { position: absolute; min-width: 24px; min-height: 24px; border: 2px solid var(--zone-color); border-radius: var(--radius-s); background: color-mix(in srgb, var(--zone-color) 12%, transparent); opacity: 0.62; pointer-events: auto; cursor: pointer; }
-.zone-overlay-area:hover, .zone-overlay-area.active { opacity: 1; }
+.zone-overlay-area { position: absolute; min-width: 24px; min-height: 24px; border: 0; border-radius: var(--radius-s); background: transparent; opacity: 1; pointer-events: auto; cursor: pointer; }
+.zone-overlay-area::before { position: absolute; inset: -1.5%; border: 2px solid var(--zone-color); border-radius: inherit; background: color-mix(in srgb, var(--zone-color) 12%, transparent); content: ''; opacity: 0.62; pointer-events: none; }
+.zone-overlay-area:hover::before, .zone-overlay-area.active::before { opacity: 1; }
 .zone-overlay-area:focus-visible { z-index: 1; outline: 3px solid var(--color-primary); outline-offset: 2px; }
+.zone-panel .item-card-header { flex-wrap: wrap; }
+.zone-panel .item-actions { flex-wrap: wrap; max-width: 100%; }
 .preview-buffer { position: absolute; inset: 0; overflow: auto; }
 .preview-buffer.pending { visibility: hidden; }
 .preview-empty, .preview-loading, .preview-error, .preview-paused { z-index: 2; position: absolute; top: var(--space-3); left: 50%; max-width: min(90%, 560px); padding: var(--space-3) var(--space-4); transform: translateX(-50%); border-radius: var(--radius-m); background: var(--color-surface-container-highest); color: var(--color-on-surface); box-shadow: 0 2px 8px rgb(0 0 0 / 12%); }

@@ -415,7 +415,7 @@ export function Workspace({
   }, [pdfZones])
 
   const onPreviewZone = (zone: ZoneId) => selectZone(zone, true)
-  const summaryOpen = showAll || summary.some((issue) => issue.server)
+  const summaryOpen = showAll || summary.length > 0
 
   return (
     <div className="app app-editor">
