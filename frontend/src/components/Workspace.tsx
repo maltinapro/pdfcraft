@@ -163,6 +163,7 @@ export function Workspace({
   const focusField = useRef<string | null>(null)
   const sidebarRef = useRef<HTMLElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
+  const workspaceRef = useRef<HTMLDivElement>(null)
   const pendingPdfRef = useRef<RenderedPdf | null>(null)
   const lastKeyRef = useRef<string | null>(null)
   const renderRef = useRef(render)
@@ -301,6 +302,13 @@ export function Workspace({
     if (next) selectZone(next.id)
   }
 
+  const resizeEditor = useCallback((clientX: number) => {
+    const bounds = workspaceRef.current?.getBoundingClientRect()
+    if (!bounds) return
+    const availableWidth = Math.max(1, bounds.width - 24)
+    setEditorSplit(Math.round(Math.max(32, Math.min(58, ((clientX - bounds.left - 12) / availableWidth) * 100))))
+  }, [])
+
   const zoneBody = (zone: ZoneId) =>
     zone === 'sender' ? (
       <>
@@ -322,7 +330,7 @@ export function Workspace({
   const zonePanel = (
     <ZonePanel zone={activeSpec}>
       <FormIssuesContext.Provider value={formIssues}>
-        <div ref={panelRef}>{zoneBody(activeZone)}</div>
+        <div ref={!compact || mobileView === 'fields' ? panelRef : undefined}>{zoneBody(activeZone)}</div>
       </FormIssuesContext.Provider>
     </ZonePanel>
   )
@@ -485,6 +493,7 @@ export function Workspace({
 
       <div
         className={`workspace editor-workspace editor-view-${mobileView}`}
+        ref={workspaceRef}
         style={!compact ? { gridTemplateColumns: `minmax(360px, ${editorSplit}fr) 24px minmax(360px, ${100 - editorSplit}fr)` } : undefined}
       >
         {(!compact || mobileView === 'fields') && (
@@ -511,19 +520,42 @@ export function Workspace({
           </aside>
         )}
         {!compact && (
-          <label className="editor-splitter">
-            <input
-              type="range"
-              min={32}
-              max={58}
-              step={1}
-              value={editorSplit}
-              aria-label={tr('Breite des Formulars', 'Form width')}
-              aria-orientation="vertical"
-              onChange={(event) => setEditorSplit(Number(event.target.value))}
-            />
+          <div
+            className="editor-splitter"
+            role="separator"
+            tabIndex={0}
+            aria-label={tr('Breite des Formulars einstellen', 'Resize form width')}
+            aria-orientation="vertical"
+            aria-valuemin={32}
+            aria-valuemax={58}
+            aria-valuenow={editorSplit}
+            aria-valuetext={`${editorSplit}%`}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return
+              event.currentTarget.setPointerCapture(event.pointerId)
+              resizeEditor(event.clientX)
+            }}
+            onPointerMove={(event) => {
+              if (event.buttons === 1) resizeEditor(event.clientX)
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+                event.preventDefault()
+                setEditorSplit((value) => Math.max(32, value - 1))
+              } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+                event.preventDefault()
+                setEditorSplit((value) => Math.min(58, value + 1))
+              } else if (event.key === 'Home') {
+                event.preventDefault()
+                setEditorSplit(32)
+              } else if (event.key === 'End') {
+                event.preventDefault()
+                setEditorSplit(58)
+              }
+            }}
+          >
             <span className="editor-splitter-grip" aria-hidden="true">⋮</span>
-          </label>
+          </div>
         )}
 
         {(!compact || mobileView === 'sheet') && (
@@ -547,9 +579,18 @@ export function Workspace({
               onClose={() => setSheetOpen(false)}
             >
               <div className="editor-sheet-content">
+                <div className="editor-sheet-navigation">
+                  <ZoneBar
+                    zones={zones}
+                    active={activeZone}
+                    states={zoneStates}
+                    compact
+                    onSelect={(zone) => selectZone(zone, true)}
+                  />
+                </div>
                 <ZonePanel zone={activeSpec}>
                   <FormIssuesContext.Provider value={formIssues}>
-                    <div ref={panelRef}>{zoneBody(activeZone)}</div>
+                    <div ref={compact && mobileView === 'sheet' ? panelRef : undefined}>{zoneBody(activeZone)}</div>
                   </FormIssuesContext.Provider>
                 </ZonePanel>
               </div>
