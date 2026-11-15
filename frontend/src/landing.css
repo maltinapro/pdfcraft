@@ -126,7 +126,10 @@ body {
 }
 
 .button {
-  display: inline-block;
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
   margin: 4px 6px 4px 0;
   padding: 13px 24px;
   border-radius: 12px;

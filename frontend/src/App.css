@@ -89,12 +89,18 @@ body {
 }
 
 .tab {
+  display: flex;
   flex: 1;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
   padding: 12px;
   border: none;
   background: none;
   color: var(--muted2);
+  font: inherit;
   font-size: 0.9rem;
+  line-height: 1.2;
   cursor: pointer;
   border-bottom: 3px solid transparent;
   transition: color 0.15s, background 0.15s;
@@ -779,7 +785,7 @@ input[type='color'] {
 .save-status a { color: var(--brand); font-weight: 600; }
 .save-status[data-state='error'] { color: var(--err); }
 
-a.btn { text-decoration: none; display: inline-block; }
+a.btn { text-decoration: none; }
 
 .postage-stamp { display: flex; gap: 12px; align-items: center; }
 .postage-stamp img { width: 96px; height: auto; flex: none; border: 1px solid var(--border-soft); border-radius: 6px; background: var(--color-white); }
