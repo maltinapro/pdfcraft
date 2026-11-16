@@ -10,6 +10,13 @@ describe('archive designs', () => {
     expect(makeEntry('invoice', defaultInvoice(), settings).settings?.design).toBe('modern-minimal')
   })
 
+  it('keeps the contrast design when grouping archive entries', () => {
+    const settings = { ...DEFAULT_SETTINGS, design: 'contrast' as const }
+    const entry = makeEntry('invoice', defaultInvoice(), settings)
+
+    expect(groupBySettings([entry], DEFAULT_SETTINGS)[0].settings.design).toBe('contrast')
+  })
+
   it('loads legacy archive snapshots as classic', () => {
     const entry = makeEntry('offer', defaultDoc('offer'), DEFAULT_SETTINGS)
     const { design: _design, ...legacySettings } = entry.settings!

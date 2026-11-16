@@ -376,6 +376,8 @@ pub fn prepare(
     let tax: i128 = groups.iter().map(|g| g.tax).sum();
     let gross = net + tax;
     let has_exempt = groups.iter().any(|g| g.rate == 0);
+    // the tax category letter is only shown when taxable and exempt items are mixed
+    let mixed = has_exempt && groups.iter().any(|g| g.rate != 0);
     let category = |rate: i64| if rate == 0 { "E" } else { "S" };
 
     if let Some(items) = invoice_json["items"].as_array_mut() {
@@ -390,7 +392,11 @@ pub fn prepare(
             item["pos"] = json!((i + 1).to_string());
             item["qty"] = json!(format!("{}{NBSP}{unit}", decimal(line.qty, 0, true)));
             item["price"] = json!(format!("{}{NBSP}€", decimal(line.price, 2, true)));
-            item["tax"] = json!(format!("{}\u{a0}% {}", line.rate, category(line.rate)));
+            item["tax"] = json!(if mixed {
+                format!("{}\u{a0}% {}", line.rate, category(line.rate))
+            } else {
+                format!("{}\u{a0}%", line.rate)
+            });
             item["net"] = json!(format!("{}{NBSP}€", money(line.net)));
         }
     }
@@ -411,6 +417,7 @@ pub fn prepare(
             "amount": format!("{}{NBSP}€", money(g.tax)),
         })).collect::<Vec<_>>(),
         "exempt": has_exempt,
+        "mixed": mixed,
     });
 
     let sender = &raw.sender;

@@ -3,7 +3,7 @@
 //!
 //! Same rules as `invoice.rs`: strict validation, whitelisted values, all text escaped for Typst
 //! string literals. Each type has its own template (`frontend/src/template/<type>.typ`) that is
-//! appended to the shared `document-common.typ`. No e-invoice XML is produced for these types.
+//! appended to the shared `layout.typ`. No e-invoice XML is produced for these types.
 
 use crate::einvoice::{self, describe_items, german_date};
 use crate::invoice::{
@@ -18,7 +18,7 @@ use utoipa::ToSchema;
 
 const MAX_BODY: usize = 10_000;
 
-const COMMON: &str = include_str!("../../frontend/src/template/document-common.typ");
+const COMMON: &str = include_str!("../../frontend/src/template/layout.typ");
 
 /// Type of a document; selects the template.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, ToSchema)]

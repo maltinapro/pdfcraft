@@ -1,160 +1,23 @@
-// Static invoice template. Rendered by the backend with minijinja.
-// Amounts, display texts and the e-invoice XML are computed in
-// `backend/src/einvoice.rs`; this file only lays them out. All user text is
-// passed as Typst string literals (only `\` and `"` are escaped by the
-// backend); numbers, colors, fonts, units and locales are validated/whitelisted
-// in `backend/src/invoice.rs`. No Typst packages except `sepay` (EPC QR code).
-{% if pay.qr %}#import "@preview/sepay:0.1.1": epc-qr-code
-{% endif %}
-#let accent = rgb("{{ settings.accentColor }}")
-#let modern = "{{ settings.design }}" == "modern-minimal"
-#let en = "{{ settings.locale }}" == "en-de"
-#let t(de, en-text) = if en { en-text } else { de }
-#let lines(text) = text.split("\n").join(linebreak())
-#let muted = luma(110)
-#let small(body) = text(8pt, fill: muted, body)
+// Static invoice template: lays out the invoice on top of the shared layout (`layout.typ`, prepended
+// by the backend). Amounts, display texts and the e-invoice XML are computed in
+// `backend/src/einvoice.rs`. No Typst packages except `sepay` (EPC QR code, imported in the layout).
+#set document(title: t("Rechnung ", "Invoice ") + number)
 
-#set document(
-  title: t("Rechnung ", "Invoice ") + "{{ invoice.number }}",
-  author: "{{ settings.sender.name }}",
-  date: datetime(year: {{ invoice.date.year }}, month: {{ invoice.date.month }}, day: {{ invoice.date.day }}),
+#letterhead(
+  {% if settings.sender.taxNr %}(t("Steuernummer", "Tax ID"), "{{ settings.sender.taxNr }}"),{% endif %}
+  {% if settings.sender.vatId %}(t("USt-IdNr.", "VAT ID"), "{{ settings.sender.vatId }}"),{% endif %}
+  (t("Leistungszeitraum", "Period of service"), "{{ invoice.serviceDateText }}"),
+  {% if invoice.recipient.buyerReference %}(t("Käuferreferenz", "Buyer reference"), "{{ invoice.recipient.buyerReference }}"),{% endif %}
+  date-label: t("Rechnungsdatum", "Invoice date"),
 )
-#set text(10pt, font: ("{{ settings.font }}", "Libertinus Serif"), lang: if en { "en" } else { "de" })
-#set par(leading: 0.6em, spacing: 0.9em)
-#set page(
-  paper: "a4",
-  margin: (left: 25mm, right: 20mm, top: 15mm, bottom: 20mm),
-  {% if settings.footer %}footer: align(center, text(8pt, fill: luma(90), lines("{{ settings.footer }}"))),{% endif %}
-  background: [
-    // DIN 5008 fold marks (105 / 210 mm) and punch mark (148.5 mm)
-    #place(top + left, dy: 105mm, dx: 5mm, line(length: 4mm, stroke: 0.4pt + luma(120)))
-    #place(top + left, dy: 210mm, dx: 5mm, line(length: 4mm, stroke: 0.4pt + luma(120)))
-    #place(top + left, dy: 148.5mm, dx: 5mm, line(length: 8mm, stroke: 0.4pt + luma(120)))
-    {% if settings.watermark %}#align(center + horizon, rotate(-35deg, text(100pt, weight: "bold", fill: luma(85%), "{{ settings.watermark }}"))){% endif %}
-  ],
-)
-// Handwritten signature (image, SVG or PDF): at most 15 mm high and 60 mm wide
-{% if assets and assets.signature %}#let signature-image = context {
-  let img(..size) = image("{{ assets.signature }}", ..size, alt: t("Unterschrift", "Signature"))
-  let natural = measure(img())
-  if natural.width * (15mm / natural.height) > 60mm { img(width: 60mm) } else { img(height: 15mm) }
-}
-{% endif %}{% if einvoice %}#pdf.attach("/{{ einvoice.file }}", read("{{ assets.xml }}", encoding: none), relationship: "{{ einvoice.relationship }}", mime-type: "text/xml", description: "{{ einvoice.description }}")
-{% endif %}
-// Header: logo and sender (DIN 5008, window envelope: address starts at 45 mm)
-#block(height: 30mm, width: 100%, grid(
-  columns: (1fr, 1fr),
-  {% if assets and assets.logo %}image("{{ assets.logo }}", height: 24mm, fit: "contain", alt: "Logo"){% else %}[]{% endif %},
-  align(right, [
-    *#"{{ settings.sender.name }}"* \
-    #"{{ settings.sender.address }}" \
-    #"{{ settings.sender.city }}"
-    {% if settings.sender.email %}\ #"{{ settings.sender.email }}"{% endif %}
-    {% if settings.sender.phone %}\ Tel: #"{{ settings.sender.phone }}"{% endif %}
-  ]),
-))
+#doc-heading(t("Rechnung", "Invoice"), place: "{{ pay.place }}")
 
-#block(height: {% if invoice.postage %}calc.max(47.4mm, {{ invoice.postage.heightMm }}mm + 20mm){% else %}47.4mm{% endif %}, width: 100%, [
-  {% if invoice.postage %}// Franking mark (Internetmarke) in the top right of the 85 mm address field; the recipient starts below it
-  #place(top + left, dx: 85mm - {{ invoice.postage.widthMm }}mm, image("{{ assets.postage }}", width: {{ invoice.postage.widthMm }}mm, alt: "Frankiervermerk"))
-  #box(width: 83mm - {{ invoice.postage.widthMm }}mm, text(7pt, underline[#"{{ settings.sender.name }}", #"{{ settings.sender.address }}", #"{{ settings.sender.city }}"])) \
-  #v(1mm + calc.max(0mm, {{ invoice.postage.heightMm }}mm - 3.5mm))
-  {% else %}#text(7pt, underline[#"{{ settings.sender.name }}", #"{{ settings.sender.address }}", #"{{ settings.sender.city }}"]) \
-  #v(1mm)
-  {% endif %}  #"{{ invoice.recipient.name }}" \
-  #"{{ invoice.recipient.address }}" \
-  #"{{ invoice.recipient.city }}"
-])
-
-#metadata("zone 3 start") <pdfcraft-zone-3-start>
-#grid(
-  columns: (1fr, 1fr, 1fr),
-  row-gutter: 3mm,
-  {% if settings.sender.taxNr %}[#small(t("Steuernummer", "Tax ID")) \ #"{{ settings.sender.taxNr }}"],{% endif %}
-  {% if settings.sender.vatId %}[#small(t("USt-IdNr.", "VAT ID")) \ #"{{ settings.sender.vatId }}"],{% endif %}
-  [#small(t("Leistungszeitraum", "Period of service")) \ #"{{ invoice.serviceDateText }}"],
-  {% if invoice.recipient.buyerReference %}[#small(t("Käuferreferenz", "Buyer reference")) \ #"{{ invoice.recipient.buyerReference }}"],{% endif %}
-)
-#v(6mm)
-
-#grid(
-  columns: (1fr, auto),
-  text(if modern { 18pt } else { 15pt }, weight: "bold", fill: if modern { accent } else { black })[#t("Rechnung ", "Invoice ")#"{{ invoice.number }}"],
-  align(bottom)[#"{{ pay.place }}", *#"{{ invoice.dateText }}"*],
-)
-{% if settings.design == "modern-minimal" %}#line(length: 100%, stroke: 0.8pt + accent){% endif %}
-#v(4mm)
-
-{% if settings.intro %}#lines("{{ settings.intro }}")
-#v(1em){% endif %}
-
+#intro-text
 #metadata("zone 3 end") <pdfcraft-zone-3-end>
 #metadata("zone 4 start") <pdfcraft-zone-4-start>
-#let rows = (
-{% for item in invoice.items %}  ("{{ item.pos }}", "{{ item.description }}", "{{ item.qty }}", "{{ item.price }}", "{{ item.tax }}", "{{ item.net }}"),
-{% endfor %})
-#let head(body) = strong(body)
-#let net-note = text(7pt, weight: "regular", fill: muted)[\ (#t("netto", "net"))]
-#table(
-  columns: (auto, 1fr, auto, auto, auto, auto),
-  align: (center + horizon, left + horizon, right + horizon, right + horizon, right + horizon, right + horizon),
-  stroke: none,
-  inset: (x: 5pt, y: 6pt),
-  fill: (_, y) => if y > 0 and calc.even(y) { if modern { none } else { accent.lighten(85%) } },
-  table.hline(y: 0, stroke: if modern { 1pt + accent } else { 0.8pt }),
-  table.header(
-    head(t("Pos.", "Item")), align(left, head(t("Bezeichnung", "Description"))), head(t("Menge", "Qty")),
-    head[#t("Einzelpreis", "Unit price")#net-note], head(t("USt.", "Tax")), head[#t("Gesamtpreis", "Total")#net-note],
-    table.hline(y: 1, stroke: if modern { 0.8pt + accent } else { 0.5pt }),
-  ),
-  ..rows.map(r => (r.at(0), strong(lines(r.at(1))), r.at(2), r.at(3), r.at(4), r.at(5))).flatten(),
-  table.hline(y: rows.len() + 1, stroke: 0.8pt),
-)
-
-#align(right, block(width: 58%, breakable: false, {
-  grid(
-    columns: (1fr, auto), inset: (x: 0pt, y: 4pt), align: (left, right),
-    strong(t("Gesamtpreis netto:", "Total net:")), strong("{{ invoice.totals.net }}"),
-    grid.hline(stroke: 0.5pt),
-    {% for tax in invoice.totals.taxes %}text(fill: muted)[#t("zzgl. Umsatzsteuer ", "plus VAT ")#"{{ tax.rate }}" (#"{{ tax.cat }}"):], text(fill: muted, "{{ tax.amount }}"),
-    {% endfor %}grid.hline(stroke: 1.5pt),
-    text(13pt, strong(t("Gesamtbetrag:", "Total amount:"))), text(13pt, strong("{{ invoice.totals.gross }}")),
-    grid.hline(stroke: 1.5pt),
-  )
-}))
-{% if invoice.totals.exempt %}
-#v(2mm)
-#small("{{ settings.exemptionReason }}")
-{% endif %}
+#items-table()
+#totals-block(t("Gesamtbetrag", "Total amount"), due-label: t("Zu zahlen", "Amount due"))
 #v(0.5em)
-#let days = {{ pay.days }}
-#let due_date = "{{ pay.dueDate }}"
-#let deadline = if days == 0 { t("sofort nach Erhalt", "upon receipt") } else if days == 1 { t("innerhalb von 1 Tag", "within 1 day") } else { t("innerhalb von " + str(days) + " Tagen", "within " + str(days) + " days") }
-#let sum = strong("{{ pay.sum }}")
-{% if settings.bank.iban %}#t[Bitte überweisen Sie den Gesamtbetrag in Höhe von #sum #deadline auf das unten angegebene Konto.][Please transfer the total amount of #sum #deadline to the account listed below.]
-
-#t[Zahlbar bis: #due_date.][Due by: #due_date.]
-
-#block(breakable: false, grid(
-  columns: (1fr, auto),
-  [
-    #t("Kontoinhaber:in", "Account holder"): #"{{ settings.sender.name }}" \
-    {% if settings.bank.name %}#t("Kreditinstitut", "Bank"): #"{{ settings.bank.name }}" \
-    {% endif %}IBAN: *#"{{ pay.iban }}"* \
-    {% if settings.bank.bic %}BIC: #"{{ settings.bank.bic }}" \
-    {% endif %}#t("Verwendungszweck", "Reference"): #"{{ invoice.number }}"
-  ],
-  {% if pay.qr %}box(fill: white, epc-qr-code("{{ settings.sender.name }}", "{{ pay.ibanRaw }}", {% if pay.bic %}bic: "{{ pay.bic }}", {% endif %}{% if pay.amount %}amount: {{ pay.amount }}, {% endif %}text: "{{ invoice.number }}", width: 26mm, height: 26mm)){% else %}[]{% endif %},
-))
-{% else %}#t[Bitte überweisen Sie den Gesamtbetrag in Höhe von #sum #deadline.][Please transfer the total amount of #sum #deadline.]
-
-#t[Zahlbar bis: #due_date.][Due by: #due_date.]
-{% endif %}
-{% if settings.closing %}
-#v(1em)
-#lines("{{ settings.closing }}")
-{% endif %}
-{% if assets and assets.signature %}#v(4mm)
-#signature-image
-{% endif %}
+#payment-block
+#closing-text
 #metadata("zone 4 end") <pdfcraft-zone-4-end>

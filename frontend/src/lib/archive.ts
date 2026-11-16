@@ -2,7 +2,7 @@ import { isObj } from './storage'
 import { tr } from './i18n'
 import type { Issue } from './validate'
 import { docSpec, type Doc, type DocDataKind, type DocKind } from './documents'
-import { newItem, type Invoice, type InvoiceItem, type Settings, type StampInfo } from './types'
+import { DESIGNS, newItem, type Invoice, type InvoiceItem, type Settings, type StampInfo } from './types'
 
 /** A document that was downloaded. Issued documents are final: they are never edited, only cancelled or copied. */
 export interface ArchiveEntry {
@@ -152,7 +152,7 @@ export function groupBySettings(entries: ArchiveEntry[], current: Settings): { s
       ? {
           ...current,
           ...entry.settings,
-          design: entry.settings.design === 'modern-minimal' ? 'modern-minimal' : 'classic',
+          design: DESIGNS.some((d) => d.value === entry.settings?.design) ? entry.settings.design : 'classic',
           logo: current.logo,
           signature: current.signature,
         }

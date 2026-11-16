@@ -28,7 +28,7 @@ pub(crate) const UNITS: &[&str] = &[
     "pcs", "h", "d", "mo", "y", "flat", "kg", "m", "km", "m2", "l",
 ];
 pub(crate) const PROFILES: &[&str] = &["en16931", "xrechnung"];
-pub(crate) const DESIGNS: &[&str] = &["classic", "modern-minimal"];
+pub(crate) const DESIGNS: &[&str] = &["classic", "modern-minimal", "contrast"];
 pub(crate) const TAX_RATES: &[i64] = &[19, 7, 0];
 
 const MAX_NUMBER: f64 = 1e9;

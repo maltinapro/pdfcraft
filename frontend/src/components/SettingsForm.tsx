@@ -172,6 +172,7 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
                 />
                 <img src={design.preview} alt="" />
                 <span>{design.label}</span>
+                <small>{design.description}</small>
               </label>
             ))}
           </div>

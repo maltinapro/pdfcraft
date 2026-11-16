@@ -17,7 +17,7 @@ export interface Bank {
   bic: string
 }
 
-export type Design = 'classic' | 'modern-minimal'
+export type Design = 'classic' | 'modern-minimal' | 'contrast'
 
 export interface Logo {
   fileName: string
@@ -110,8 +110,24 @@ export const LOCALES = [
 ] as const
 
 export const DESIGNS = [
-  { value: 'classic', get label() { return tr('Klassisch', 'Classic') }, preview: '/design-previews/classic.png' },
-  { value: 'modern-minimal', get label() { return tr('Modern Minimal', 'Modern Minimal') }, preview: '/design-previews/modern-minimal.png' },
+  {
+    value: 'classic',
+    get label() { return tr('Klassisch', 'Classic') },
+    get description() { return tr('Tabelle mit Linien, zentrierte Fußzeile', 'Ruled table, centered footer') },
+    preview: '/design-previews/classic.png',
+  },
+  {
+    value: 'modern-minimal',
+    get label() { return tr('Modern Minimal', 'Modern Minimal') },
+    get description() { return tr('Viel Weißraum, große Rechnungsnummer', 'Lots of white space, large number') },
+    preview: '/design-previews/modern-minimal.png',
+  },
+  {
+    value: 'contrast',
+    get label() { return tr('Kontrast', 'Contrast') },
+    get description() { return tr('Farbband, farbige Tabellenkopfzeile', 'Color band, filled table header') },
+    preview: '/design-previews/contrast.png',
+  },
 ] as const
 
 export const UNITS = [

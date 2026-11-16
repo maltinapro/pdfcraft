@@ -948,6 +948,7 @@ components:
           enum:
           - classic
           - modern-minimal
+          - contrast
           type: string
         einvoiceProfile:
           default: en16931
