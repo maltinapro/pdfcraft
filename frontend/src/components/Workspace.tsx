@@ -444,7 +444,7 @@ export function Workspace({
       const found = await extractEInvoice(new Uint8Array(await pdfBlob.arrayBuffer()), `${fileName}.pdf`)
       setXml(found.xml)
       setXmlError(null)
-    } catch (e) {
+    } catch {
       setXml(null)
       setXmlError(tr('In diesem PDF wurde keine E-Rechnungs-XML gefunden.', 'No e-invoice XML was found in this PDF.'))
     }

@@ -69,6 +69,7 @@ export function ArchiveList({ entries, statuses, onFollowUp, onRerender, onDelet
             )}
             <div
               className="doc-row-main"
+              role="presentation"
               onPointerDown={() => startPress(e.id)}
               onPointerUp={cancelPress}
               onPointerLeave={cancelPress}

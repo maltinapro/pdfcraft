@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     io::Read,
-    sync::{Mutex, OnceLock},
+    sync::{Mutex, OnceLock, PoisonError},
     time::{Duration, Instant},
 };
 
@@ -244,7 +244,7 @@ impl Client {
     }
 
     pub async fn products(&self) -> Result<Vec<Product>, ApiError> {
-        if let Some((at, list)) = &*self.products.lock().unwrap() {
+        if let Some((at, list)) = &*self.products.lock().unwrap_or_else(PoisonError::into_inner) {
             if at.elapsed() < PRODUCT_CACHE {
                 return Ok(list.clone());
             }
@@ -271,7 +271,8 @@ impl Client {
                 raw = body["shortSalesProducts"].as_array().map_or(0, Vec::len)
             );
         }
-        *self.products.lock().unwrap() = Some((Instant::now(), list.clone()));
+        *self.products.lock().unwrap_or_else(PoisonError::into_inner) =
+            Some((Instant::now(), list.clone()));
         Ok(list)
     }
 

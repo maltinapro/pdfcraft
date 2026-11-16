@@ -75,6 +75,7 @@ export function BuyPage({ unsaved }: Props) {
     let cancelled = false
     setCollecting('waiting')
     void (async () => {
+      // oxlint-disable-next-line no-unmodified-loop-condition -- the effect cleanup sets `cancelled`
       for (let i = 0; i < POLL_TRIES && !cancelled; i++) {
         try {
           if (pending.renewal) {

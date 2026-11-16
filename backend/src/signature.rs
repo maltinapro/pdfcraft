@@ -3,21 +3,31 @@
 //! The SVG is cropped to its visible content so a signature on a full A4 page is not shrunk.
 
 use hayro_svg::{
-    hayro_interpret::{InterpreterSettings, RenderContent},
-    hayro_syntax::Pdf,
-    RenderCache, SvgRenderSettings,
+    hayro_interpret::InterpreterSettings, hayro_syntax::Pdf, RenderCache, SvgRenderSettings,
 };
 use std::sync::Arc;
 
 /// First page of a PDF as SVG text with a transparent background; `None` if it cannot be read.
+///
+/// Parsing and probing an untrusted PDF is CPU bound, so on the multi-threaded server runtime the
+/// work runs through `block_in_place` and does not stall the other tasks of the worker thread.
 pub fn pdf_to_svg(bytes: &[u8]) -> Option<String> {
+    match tokio::runtime::Handle::try_current().map(|h| h.runtime_flavor()) {
+        Ok(tokio::runtime::RuntimeFlavor::MultiThread) => {
+            tokio::task::block_in_place(|| convert(bytes))
+        }
+        _ => convert(bytes),
+    }
+}
+
+fn convert(bytes: &[u8]) -> Option<String> {
     let data = bytes.to_vec();
     // The PDF is untrusted input: a parser bug must not take the request handler down.
     std::panic::catch_unwind(move || {
         let pdf = Pdf::new(Arc::new(data)).ok()?;
         let page = pdf.pages().first()?;
         let settings = InterpreterSettings {
-            render_content: RenderContent::PAGE,
+            render_annotations: false,
             ..InterpreterSettings::default()
         };
         let svg = hayro_svg::convert(

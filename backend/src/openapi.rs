@@ -55,7 +55,7 @@ fn object<'a>(value: &'a mut Value, what: &str) -> &'a mut Map<String, Value> {
 pub fn spec() -> Value {
     let mut spec = serde_json::to_value(ApiDoc::openapi()).expect("the specification serializes");
     let mut overlay: Value =
-        serde_yaml::from_str(OVERLAY).expect("openapi_overlay.yaml is valid YAML");
+        serde_norway::from_str(OVERLAY).expect("openapi_overlay.yaml is valid YAML");
 
     for key in ["info", "servers", "security", "tags"] {
         spec[key] = overlay[key].take();
@@ -208,18 +208,18 @@ fn complete_operations(spec: &mut Value, overlay: &mut Value) {
 pub fn yaml() -> String {
     let spec = spec();
     // Top-level keys in reading order; everything below is sorted alphabetically.
-    let mut document = serde_yaml::Mapping::new();
+    let mut document = serde_norway::Mapping::new();
     document.insert(
         "openapi".into(),
-        serde_yaml::to_value(&spec["openapi"]).unwrap(),
+        serde_norway::to_value(&spec["openapi"]).unwrap(),
     );
     for key in ["info", "servers", "security", "tags", "paths", "components"] {
-        document.insert(key.into(), serde_yaml::to_value(&spec[key]).unwrap());
+        document.insert(key.into(), serde_norway::to_value(&spec[key]).unwrap());
     }
-    quote_dates(&serde_yaml::to_string(&document).expect("the specification serializes to YAML"))
+    quote_dates(&serde_norway::to_string(&document).expect("the specification serializes to YAML"))
 }
 
-/// `serde_yaml` leaves date-like strings unquoted, which YAML 1.1 parsers read as dates.
+/// `serde_norway` leaves date-like strings unquoted, which YAML 1.1 parsers read as dates.
 fn quote_dates(yaml: &str) -> String {
     let is_date = |s: &str| {
         s.len() == 10

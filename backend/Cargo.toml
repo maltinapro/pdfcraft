@@ -2,6 +2,7 @@
 name = "pdfcraft-backend"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 
 [dependencies]
 axum = { version = "0.8", features = ["json"] }
@@ -17,9 +18,9 @@ typst-kit = { version = "0.15.1", default-features = false, features = ["scan-fo
 tower-http = { version = "0.7", features = ["cors"] }
 base64 = "0.23.1"
 lopdf = "0.47.0"
-hayro-svg = { version = "0.9", default-features = false }
-usvg = { version = "0.50", default-features = false }
-resvg = { version = "0.50", default-features = false }
+hayro-svg = { version = "0.7", default-features = false }
+usvg = { version = "0.47", default-features = false }
+resvg = { version = "0.47", default-features = false }
 tiny-skia = "0.12"
 zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 redis = { version = "1.0", features = ["tokio-comp", "connection-manager", "cluster-async"] }
@@ -31,7 +32,7 @@ tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 prometheus-client = "0.26.0"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json", "form"] }
 utoipa = "6"
-serde_yaml = "0.9"
+serde_norway = "0.9"
 
 # Typst is extremely slow unoptimized; keep `cargo run` fast too.
 [profile.dev]

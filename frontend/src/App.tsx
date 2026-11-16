@@ -253,6 +253,7 @@ export default function App() {
       ...exampleDataIssues(settings, true),
     ],
     // `lang`: the message texts depend on the UI language
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [settings, invoice, lang],
   )
   const unsaved = unsavedCount(archive, lastBackup)

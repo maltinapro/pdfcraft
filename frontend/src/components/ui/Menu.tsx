@@ -31,7 +31,7 @@ export function Menu({ label, children }: Props) {
   return (
     <details className="ui-menu" ref={ref}>
       <summary aria-label={label} title={label}><AppIcon name="overflow" /></summary>
-      <div className="ui-menu-content" onClick={() => { if (ref.current) ref.current.open = false }}>{children}</div>
+      <div className="ui-menu-content" role="presentation" onClick={() => { if (ref.current) ref.current.open = false }}>{children}</div>
     </details>
   )
 }

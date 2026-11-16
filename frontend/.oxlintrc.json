@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "jsx-a11y", "oxc"],
+  "categories": { "correctness": "error", "suspicious": "warn" },
+  "rules": {
+    // Automatic JSX runtime.
+    "react/react-in-jsx-scope": "off",
+    // React-compiler style hints that flag deliberate patterns (state derived from storage/props in effects, refs for
+    // debouncing); the hooks rules that matter (rules-of-hooks, exhaustive-deps) stay on.
+    "react/set-state-in-effect": "off",
+    "react/refs": "off",
+    "react/purity": "off",
+    "react/globals": "off",
+    "react/memo-dependencies": "off",
+    "react/exhaustive-effect-dependencies": "off",
+    "react/no-unstable-nested-components": "off",
+    // ARIA roles on generic elements (status, group, region, separator) are valid and used consistently.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // Dialogs and pickers move focus on purpose when they open.
+    "jsx-a11y/no-autofocus": "off",
+    // `Error` has no `cause` option in the ES2020 target.
+    "eslint/preserve-caught-error": "off",
+    "eslint/no-shadow": "off",
+    "eslint/no-underscore-dangle": "off"
+  },
+  "env": { "browser": true, "es2022": true },
+  "ignorePatterns": ["dist", "public", "node_modules"]
+}

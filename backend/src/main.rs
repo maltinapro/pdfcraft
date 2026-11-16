@@ -30,7 +30,7 @@ use std::{
     collections::HashMap,
     sync::{
         atomic::{AtomicU64, Ordering},
-        Arc, Mutex, OnceLock,
+        Arc, Mutex, OnceLock, PoisonError,
     },
 };
 use typst::{
@@ -60,14 +60,24 @@ struct RequestSources {
 
 impl FileResolver for RequestSources {
     fn resolve_binary(&self, id: FileId) -> FileResult<Cow<'_, Bytes>> {
-        match self.assets.lock().unwrap().get(&id) {
+        match self
+            .assets
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(&id)
+        {
             Some(bytes) => Ok(Cow::Owned(bytes.clone())),
             None => Err(FileError::NotFound(id.vpath().get_without_slash().into())),
         }
     }
 
     fn resolve_source(&self, id: FileId) -> FileResult<Cow<'_, Source>> {
-        match self.sources.lock().unwrap().get(&id) {
+        match self
+            .sources
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .get(&id)
+        {
             Some(src) => Ok(Cow::Owned(src.clone())),
             None => Err(FileError::NotFound(id.vpath().get_without_slash().into())),
         }

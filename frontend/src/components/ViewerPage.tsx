@@ -86,6 +86,8 @@ export function ViewerPage({ unsaved }: { unsaved: number }) {
     void open(e.dataTransfer.files[0])
   }
 
+  // `lang`: the message texts depend on the UI language
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   const results = useMemo(() => (loaded ? runChecks(loaded.view) : []), [loaded, lang])
   const findings = findingCount(results)
   const xml = useMemo(() => (loaded ? prettyXml(loaded.extracted.xml) : ''), [loaded])
@@ -157,6 +159,8 @@ export function ViewerPage({ unsaved }: { unsaved: number }) {
             </div>
             {tab === 'invoice' && <EInvoiceView view={loaded.view} />}
             {tab === 'check' && <EInvoiceChecks results={results} />}
+            {/* keyboard users need to scroll the XML */}
+            {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
             {tab === 'xml' && <pre className="ev-xml" tabIndex={0}>{xml}</pre>}
           </Card>
         )}
