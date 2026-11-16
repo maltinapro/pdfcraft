@@ -15,7 +15,7 @@
 }
 
 /* App bar */
-.app-editor .app-header { height: 64px; background: var(--color-surface-container); border-bottom: 0; }
+.app-editor .app-header { z-index: 20; height: 64px; background: var(--color-surface-container); border-bottom: 0; }
 .app-editor .app-header-editor .app-page-title { flex: 1; max-width: none; color: var(--color-on-surface); font-size: var(--type-title-m); font-weight: var(--weight-title); }
 .app-editor .app-page-title::before { margin-right: var(--space-2); color: var(--color-on-surface-variant); content: '/'; font-weight: 400; }
 .app-editor .header-download { min-height: 40px; padding: 0 var(--space-4); border-color: transparent; background: var(--color-primary); color: var(--color-on-primary); }
