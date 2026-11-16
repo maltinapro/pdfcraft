@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FormIssuesContext, errorId, type FormIssuesValue } from './FormIssues'
 import { SelectField, TextField } from './ui/Field'
 import { Stepper } from './editor/Stepper'
+import { ZoneOverlay } from './editor/ZoneOverlay'
 import { IssueSummary, PreviewPaused } from './workspace/IssueSummary'
 import { ZONES } from '../lib/documents'
 import { setLang } from '../lib/i18n'
@@ -98,5 +99,17 @@ describe('Stepper', () => {
     expect(html).toContain('Not visited')
     expect(html.match(/aria-selected="true"/g)).toHaveLength(1)
     expect(html.match(/role="tab"/g)).toHaveLength(zones.length)
+  })
+})
+
+describe('ZoneOverlay', () => {
+  const zones = [{ zone: 4, page: 1, x: 0, y: 0, w: 10, h: 10 }]
+  const render = (itemsLabel?: string) =>
+    renderToStaticMarkup(createElement(ZoneOverlay, { page: 1, widthMm: 210, heightMm: 297, zones, active: 'items', itemsLabel, onSelect: () => {} }))
+
+  it('names zone 4 "Items" by default and with the document specific label for letters', () => {
+    expect(render()).toContain('4 · Items')
+    expect(render('Text')).toContain('4 · Text')
+    expect(render('Text')).not.toContain('Items')
   })
 })

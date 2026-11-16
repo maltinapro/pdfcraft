@@ -27,13 +27,14 @@ interface Props {
   blob: Blob
   zones: readonly ZoneRect[]
   activeZone: ZoneId
+  itemsLabel?: string
   zoom: 'fit-page' | 'fit-width'
   page: number
   onZoneSelect: (zone: ZoneId) => void
   onReady?: (pages: number) => void
 }
 
-export function PdfCanvasPreview({ blob, zones, activeZone, zoom, page, onZoneSelect, onReady }: Props) {
+export function PdfCanvasPreview({ blob, zones, activeZone, itemsLabel, zoom, page, onZoneSelect, onReady }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const [pages, setPages] = useState<PageView[]>([])
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
@@ -115,6 +116,7 @@ export function PdfCanvasPreview({ blob, zones, activeZone, zoom, page, onZoneSe
               heightMm={item.heightMm}
               zones={zones}
               active={activeZone}
+              itemsLabel={itemsLabel}
               onSelect={onZoneSelect}
             />
           </div>

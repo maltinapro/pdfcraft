@@ -129,6 +129,7 @@ export function Workspace({
     return result
   }, [allIssues, documentKind, visited, zones])
 
+  const itemsLabel = documentKind === 'letter' ? zones.find((zone) => zone.id === 'items')?.label : undefined
   const activeSpec = zones.find((zone) => zone.id === activeZone) ?? zones[0]
 
   const touch = useCallback((field: string) => {
@@ -417,6 +418,7 @@ export function Workspace({
                   blob={pdfBlob}
                   zones={displayZones}
                   activeZone={activeZone}
+                  itemsLabel={itemsLabel}
                   zoom={zoom}
                   page={page}
                   onZoneSelect={onPreviewZone}
@@ -431,6 +433,7 @@ export function Workspace({
                     blob={pendingPdf.blob}
                     zones={[...fixedZones, ...pendingPdf.zones.filter((zone) => zone.zone === 3 || zone.zone === 4)]}
                     activeZone={activeZone}
+                    itemsLabel={itemsLabel}
                     zoom={zoom}
                     page={page}
                     onZoneSelect={onPreviewZone}
