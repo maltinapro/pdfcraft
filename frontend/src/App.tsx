@@ -1,13 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { BuyPage } from './components/BuyPage'
 import { Dashboard } from './components/Dashboard'
-import { DataPage } from './components/DataPage'
-import { DocumentForm } from './components/DocumentForm'
-import { DocumentsPage } from './components/DocumentsPage'
-import { MasterDataPage } from './components/MasterDataPage'
-import { MorePage } from './components/MorePage'
-import { InvoiceForm } from './components/InvoiceForm'
-import { Workspace } from './components/Workspace'
 import { downloadBlob } from './lib/download'
 import { RateLimitedError, fetchBulkMax, requestBulk, requestDocument, requestPdf } from './lib/api'
 import {
@@ -47,14 +39,28 @@ import './App.css'
 import './components/ui/ui.css'
 import './components/pages.css'
 
-// Public viewer for received e-invoices: own chunk (XML reader, checks, pdf.js on demand)
+// Every page except the dashboard is its own chunk, so the start page does not load the editor,
+// the shop or the viewer (XML reader, checks, pdf.js on demand).
+const BuyPage = lazy(() => import('./components/BuyPage').then((m) => ({ default: m.BuyPage })))
+const DataPage = lazy(() => import('./components/DataPage').then((m) => ({ default: m.DataPage })))
+const DocumentsPage = lazy(() => import('./components/DocumentsPage').then((m) => ({ default: m.DocumentsPage })))
+const MasterDataPage = lazy(() => import('./components/MasterDataPage').then((m) => ({ default: m.MasterDataPage })))
+const MorePage = lazy(() => import('./components/MorePage').then((m) => ({ default: m.MorePage })))
 const ViewerPage = lazy(() => import('./components/ViewerPage').then((m) => ({ default: m.ViewerPage })))
+const InvoiceForm = lazy(() => import('./components/InvoiceForm').then((m) => ({ default: m.InvoiceForm })))
+const DocumentForm = lazy(() => import('./components/DocumentForm').then((m) => ({ default: m.DocumentForm })))
+// The editor loads its forms in parallel instead of one after the other
+const Workspace = lazy(() =>
+  Promise.all([import('./components/Workspace'), import('./components/InvoiceForm'), import('./components/DocumentForm')]).then(
+    ([m]) => ({ default: m.Workspace }),
+  ),
+)
 
 const fileStem = (value: string, fallback: string) => value.replace(/[^\w.-]+/g, '_') || fallback
 
 handlePaymentReturn()
 
-export default function App() {
+function AppRoutes() {
   const lang = useLang() // re-render the whole tree when the UI language changes
   const route = useRoute()
   const purchases = useOffers().enabled
@@ -315,9 +321,7 @@ export default function App() {
 
   if (route === 'viewer') {
     return (
-      <Suspense fallback={null}>
-        <ViewerPage unsaved={unsaved} />
-      </Suspense>
+      <ViewerPage unsaved={unsaved} />
     )
   }
 
@@ -421,5 +425,13 @@ export default function App() {
       onFollowUp={followUp}
       onBackup={backup}
     />
+  )
+}
+
+export default function App() {
+  return (
+    <Suspense fallback={null}>
+      <AppRoutes />
+    </Suspense>
   )
 }

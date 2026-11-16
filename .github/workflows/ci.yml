@@ -45,6 +45,19 @@ jobs:
 
   backend:
     runs-on: ubuntu-26.04
+    # Valkey for the store tests (`store::tests::valkey_*`, skipped when VALKEY_URL is not set)
+    services:
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      VALKEY_URL: redis://127.0.0.1:6379
     defaults:
       run:
         working-directory: backend

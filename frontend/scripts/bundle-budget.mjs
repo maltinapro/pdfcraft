@@ -6,10 +6,12 @@ import { join } from 'node:path'
 const assets = join(import.meta.dirname, '..', 'dist', 'assets')
 
 const budgets = [
-  { pattern: /^app-.*\.js$/, limitKb: 390 },
-  { pattern: /^app-.*\.css$/, limitKb: 71.7 },
+  { pattern: /^app-.*\.js$/, limitKb: 280 },
+  { pattern: /^app-.*\.css$/, limitKb: 47 },
   { pattern: /^landing-.*\.css$/, limitKb: 25.3 },
   { pattern: /^pdf-.*\.js$/, limitKb: 550.1 },
+  { pattern: /^Workspace-.*\.js$/, limitKb: 33 },
+  { pattern: /^Workspace-.*\.css$/, limitKb: 24.3 },
   { pattern: /^ViewerPage-.*\.js$/, limitKb: 44.2 },
   { pattern: /^ViewerPage-.*\.css$/, limitKb: 10.6 },
 ]

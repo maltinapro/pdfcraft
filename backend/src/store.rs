@@ -720,3 +720,187 @@ pub async fn run_cli(args: &[String]) -> bool {
     }
     true
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_only_well_formed_tokens() {
+        assert_eq!(
+            parse_token("pf_abc123_deadBEEF"),
+            Some((Kind::Free, "abc123", "deadBEEF"))
+        );
+        assert_eq!(parse_token("pk_01_02"), Some((Kind::Paid, "01", "02")));
+        for bad in [
+            "",
+            "pf",
+            "pf_abc",
+            "pf__abc",
+            "pf_abc_",
+            "px_abc_def",
+            "pf_xyz_abc",
+            "pf_abc_xyz",
+            "pf_abc_def_ghi",
+            "******",
+        ] {
+            assert_eq!(parse_token(bad), None, "{bad:?}");
+        }
+        let long = "a".repeat(65);
+        assert_eq!(parse_token(&format!("pf_{long}_aa")), None);
+        assert_eq!(parse_token(&format!("pf_aa_{long}")), None);
+    }
+
+    #[test]
+    fn hashes_are_stable_hex_and_secrets_are_random() {
+        assert_eq!(
+            hash_secret("abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+        let a = random_hex(16);
+        assert_eq!(a.len(), 32);
+        assert!(a.bytes().all(|b| b.is_ascii_hexdigit()));
+        assert_ne!(a, random_hex(16));
+    }
+
+    #[test]
+    fn constant_time_comparison_checks_length_and_content() {
+        assert!(ct_eq(b"abc", b"abc"));
+        assert!(!ct_eq(b"abc", b"abd"));
+        assert!(!ct_eq(b"abc", b"abcd"));
+        assert!(!ct_eq(b"", b"a"));
+        assert!(ct_eq(b"", b""));
+    }
+
+    #[test]
+    fn tokens_are_kept_after_their_end_only_when_paid() {
+        assert_eq!(expire_at(Kind::Free, 1_000), 1_000);
+        assert_eq!(
+            expire_at(Kind::Paid, 1_000),
+            1_000 + config::get().paid_retention_days * 86_400
+        );
+    }
+
+    #[test]
+    fn reads_cli_options() {
+        let args: Vec<String> = ["create", "--plan", "starter", "--days"]
+            .map(String::from)
+            .to_vec();
+        assert_eq!(arg_value(&args, "--plan").as_deref(), Some("starter"));
+        assert_eq!(arg_value(&args, "--days"), None);
+        assert_eq!(arg_value(&args, "--missing"), None);
+    }
+
+    /// Needs a Valkey: `VALKEY_URL=redis://127.0.0.1:6379 cargo test store::tests::valkey`.
+    /// Skipped without `VALKEY_URL`. All keys are unique per run, so a shared Valkey is fine.
+    #[tokio::test]
+    async fn valkey_tokens_markers_and_rate_limit() {
+        if std::env::var("VALKEY_URL").is_err() {
+            eprintln!("skipped: VALKEY_URL is not set");
+            return;
+        }
+        init().await;
+        assert!(is_configured(), "Valkey must be reachable at VALKEY_URL");
+
+        // creating, looking up and rejecting a wrong secret
+        let created = create_token(Kind::Paid, "starter", 30, 3_600)
+            .await
+            .unwrap();
+        assert!(created.token.starts_with("pk_"));
+        let client = lookup(&created.token).await.unwrap().expect("valid token");
+        assert_eq!(client.kind, Kind::Paid);
+        assert_eq!(client.plan, "starter");
+        assert_eq!(client.limit, 30);
+        assert_eq!(client.id, created.id);
+        let wrong = format!("pk_{}_{}", created.id, "0".repeat(32));
+        assert!(lookup(&wrong).await.unwrap().is_none());
+        let as_free = created.token.replacen("pk_", "pf_", 1);
+        assert!(lookup(&as_free).await.unwrap().is_none(), "kind must match");
+        assert!(lookup("garbage").await.unwrap().is_none());
+
+        // only the hash is stored
+        let stored: String = redis::cmd("HGET")
+            .arg(format!("{TOKEN_PREFIX}{}", created.id))
+            .arg("h")
+            .query_async(&mut conn().unwrap())
+            .await
+            .unwrap();
+        assert_eq!(stored.len(), 64);
+        assert!(!created.token.contains(&stored));
+
+        // extending moves the end; unknown and free ids are not extended
+        let end = token_until(&created.id).await.unwrap().unwrap();
+        let extended = extend_paid_token(&created.id, 86_400)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(extended, end + 86_400);
+        assert_eq!(
+            extend_paid_token_to(&created.id, end).await.unwrap(),
+            Some(extended)
+        );
+        let later = extended + 10;
+        assert_eq!(
+            extend_paid_token_to(&created.id, later).await.unwrap(),
+            Some(later)
+        );
+        assert!(paid_token_exists(&created.id).await.unwrap());
+        assert_eq!(extend_paid_token("ffffffffffff", 5).await.unwrap(), None);
+        let free = create_token(Kind::Free, "free", 5, 600).await.unwrap();
+        assert!(!paid_token_exists(&free.id).await.unwrap());
+        assert_eq!(extend_paid_token(&free.id, 5).await.unwrap(), None);
+
+        // expired tokens do not authenticate but stay readable (paid retention)
+        let expired = create_token(Kind::Paid, "starter", 30, 0).await.unwrap();
+        assert!(lookup(&expired.token).await.unwrap().is_none());
+        assert!(paid_token_exists(&expired.id).await.unwrap());
+
+        // the index lists created tokens and revoking removes them
+        let mut seen = Vec::new();
+        for_each_token(|id, _| seen.push(id)).await.unwrap();
+        assert!(seen.contains(&created.id));
+        assert!(delete_token(&created.id).await.unwrap());
+        assert!(!delete_token(&created.id).await.unwrap());
+        assert!(lookup(&created.token).await.unwrap().is_none());
+        let active = count_active_tokens().await.unwrap();
+        assert!(active.contains_key(&("free".to_string(), "free".to_string())));
+
+        // one-time markers and values
+        let key = format!("pdfcraft:test:{}", random_hex(8));
+        assert!(mark_once(&key, 30).await.unwrap());
+        assert!(!mark_once(&key, 30).await.unwrap());
+        delete_key(&key).await.unwrap();
+        assert!(mark_once(&key, 30).await.unwrap());
+        delete_key(&key).await.unwrap();
+        put(&key, "v", 30).await.unwrap();
+        assert_eq!(get_value(&key).await.unwrap().as_deref(), Some("v"));
+        assert_eq!(take_value(&key).await.unwrap().as_deref(), Some("v"));
+        assert_eq!(take_value(&key).await.unwrap(), None);
+
+        // token bucket: the capacity is used up, then the request has to wait
+        let limited = Client {
+            id: random_hex(6),
+            kind: Kind::Free,
+            plan: "free".into(),
+            limit: 3,
+            created: None,
+        };
+        for _ in 0..3 {
+            assert!(take(&limited, 1).await.unwrap().is_ok());
+        }
+        let wait = take(&limited, 1).await.unwrap().unwrap_err();
+        assert!((1..=60).contains(&wait), "wait {wait}");
+        // a cost above the capacity can never be served
+        let big = Client {
+            id: random_hex(6),
+            ..limited.clone()
+        };
+        assert!(take(&big, 5).await.unwrap().is_err());
+        // buckets are per token
+        let other = Client {
+            id: random_hex(6),
+            ..limited.clone()
+        };
+        assert!(take(&other, 1).await.unwrap().is_ok());
+    }
+}
