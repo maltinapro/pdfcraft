@@ -26,8 +26,12 @@ use utoipa::ToSchema;
 mod warm_up;
 pub use warm_up::warm_up;
 
-/// The same template the frontend ships; compiled into the binary.
-const INVOICE_TEMPLATE: &str = include_str!("../../frontend/src/template/invoice.typ");
+/// The same template the frontend ships (shared layout plus the invoice body); compiled into the binary.
+const INVOICE_TEMPLATE: &str = concat!(
+    include_str!("../../frontend/src/template/layout.typ"),
+    "\n",
+    include_str!("../../frontend/src/template/invoice.typ")
+);
 
 /// Virtual files of one render job (logo, signature, stamp, e-invoice XML) by name.
 type Assets = Vec<(String, Vec<u8>)>;

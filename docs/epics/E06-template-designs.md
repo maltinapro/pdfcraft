@@ -6,7 +6,7 @@
 Today there is one layout; users can change accent color, font and footer. Add a selectable design setting and prove it with **one** more design. Every design must be kept in sync for six document types, DIN 5008 placement and the e-invoice must stay intact, so more designs are added only after this one has been used.
 
 ## Context / links
-- Templates in `frontend/src/template/` (`invoice.typ`, `document-common.typ` for the other five types), `backend/src/documents.rs` (`include_str!`), `backend/src/invoice.rs` (validates settings), `frontend/src/lib/types.ts`, `SettingsForm.tsx`.
+- Templates in `frontend/src/template/` (`invoice.typ`, `document-common.typ` for the other five types, merged into the shared `layout.typ` by E11), `backend/src/documents.rs` (`include_str!`), `backend/src/invoice.rs` (validates settings), `frontend/src/lib/types.ts`, `SettingsForm.tsx`.
 - Tests `renders_invoice_with_and_without_watermark` and `renders_every_document_type` (`PDF_OUT=<dir>`).
 - Not planned: plan gating (there is no plan model, see the roadmap), custom per-customer templates.
 

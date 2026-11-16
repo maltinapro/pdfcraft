@@ -272,7 +272,7 @@ The sheet in the demo is an HTML mock-up, not a Typst render: no DIN 5008 positi
 
 ## 10. PDF designs
 
-The two current designs (*Classic*, *Modern Minimal*) differ only in title size/color, one rule under the title and zebra rows; in the picker they look identical. Phase 4 ([E11](epics/E11-distinct-pdf-designs.md)) turns designs into **clearly different characters** built from a shared layout and a small set of design tokens.
+Before E11 the two designs (*Classic*, *Modern Minimal*) differed only in title size/color, one rule under the title and zebra rows; in the picker they looked identical. E11 is implemented (status below): the three designs *Classic*, *Modern Minimal* and *Contrast* (value `contrast`) follow the axes in 10.2 and share one layout module (`frontend/src/template/layout.typ`). Phase 4 ([E11](epics/E11-distinct-pdf-designs.md)) turns designs into **clearly different characters** built from a shared layout and a small set of design tokens.
 
 ### 10.1 Invariants (all designs)
 
@@ -284,7 +284,7 @@ The two current designs (*Classic*, *Modern Minimal*) differ only in title size/
 
 ### 10.2 Design axes
 
-| Axis | Classic | Modern Minimal (redefined) | Contrast (new, working title) |
+| Axis | Classic | Modern Minimal (redefined) | Contrast (new, value `contrast`) |
 | --- | --- | --- | --- |
 | Character | traditional business letter, sober | airy, editorial, accent used sparingly | bold, brand-forward |
 | Header (0–45 mm) | logo left, sender block right | small logo, sender as one muted line under it; generous white space | full-bleed accent band (0–27 mm) with sender in on-accent color, logo on a white rounded plate |

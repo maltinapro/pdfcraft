@@ -14,7 +14,7 @@ A full-stack **PDF Template Builder** that combines simple form-based configurat
 
 ## Features
 
-- 🗂️ **Dashboard with document types** — invoice, credit note (Stornorechnung), offer, order confirmation, delivery note and letter (DIN 5008 Form B); choose the shared Classic or Modern Minimal design; issued documents and their design settings are archived in the browser, with backup/restore, customer and article master data, follow-up documents and bulk ZIP download
+- 🗂️ **Dashboard with document types** — invoice, credit note (Stornorechnung), offer, order confirmation, delivery note and letter (DIN 5008 Form B); choose one of three PDF designs (Classic, Modern Minimal, Contrast); issued documents and their design settings are archived in the browser, with backup/restore, customer and article master data, follow-up documents and bulk ZIP download
 - 🔍 **E-invoice viewer and checker** — drop a received ZUGFeRD/Factur-X PDF or an XRechnung/CII/UBL XML (page `#/viewer`) and read it as a normal invoice, with a limited plausibility check (sums, mandatory fields); everything stays in the browser, nothing is uploaded
 - 🧾 **Paper-first document configurator** — edit all six document types in four guided zones; click the PDF preview to open the matching fields. On desktop, adjust the form/preview split; on mobile, switch between fields and paper while zone navigation stays available. Invoice details include a service date/period and editable due date
 - 🖼️ **Logo upload** (PNG/JPG/SVG, ≤ 300 KB) sent to the backend as a base64 asset

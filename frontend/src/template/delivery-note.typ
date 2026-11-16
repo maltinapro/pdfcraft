@@ -1,12 +1,11 @@
 // Delivery note (Lieferschein): quantities only, no prices; signature line for the recipient
-#set document(title: t("Lieferschein ", "Delivery note ") + "{{ doc.number }}")
+#set document(title: t("Lieferschein ", "Delivery note ") + number)
 
-#metadata("zone 3 start") <pdfcraft-zone-3-start>
-#facts(
+#letterhead(
   {% if doc.reference %}(t("Ihre Bestellung", "Your order"), "{{ doc.reference }}"),{% endif %}
   (t("Lieferdatum", "Delivery date"), {% if doc.deliveryDateText %}"{{ doc.deliveryDateText }}"{% else %}"{{ doc.dateText }}"{% endif %}),
 )
-#heading-row(t("Lieferschein", "Delivery note"))
+#doc-heading(t("Lieferschein", "Delivery note"))
 
 #intro-text
 #metadata("zone 3 end") <pdfcraft-zone-3-end>

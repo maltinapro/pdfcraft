@@ -1,10 +1,9 @@
 // Letter (Brief, DIN 5008 style): subject, free text and a closing with the sender's name
 #set document(title: "{{ doc.subject }}")
 
-#metadata("zone 3 start") <pdfcraft-zone-3-start>
-#facts(
+#letterhead(
   {% if doc.reference %}(t("Ihr Zeichen", "Your reference"), "{{ doc.reference }}"),{% endif %}
-  (t("Datum", "Date"), "{{ doc.dateText }}"),
+  with-date: true,
 )
 
 #metadata("zone 3 end") <pdfcraft-zone-3-end>

@@ -23,6 +23,16 @@ describe('parseConfig', () => {
     expect(config.settings.design).toBe('modern-minimal')
   })
 
+  it('accepts the contrast design', () => {
+    const config = parseConfig({
+      schemaVersion: 1,
+      settings: { ...DEFAULT_SETTINGS, design: 'contrast' },
+      invoice: defaultInvoice(),
+    })
+
+    expect(config.settings.design).toBe('contrast')
+  })
+
   it('falls back to the classic design for an unsupported value', () => {
     const config = parseConfig({
       schemaVersion: 1,
