@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react'
 import { AppHeader } from './AppHeader'
 import { EInvoiceChecks, findingCount } from './EInvoiceChecks'
 import { EInvoiceView } from './EInvoiceView'
+import { Banner, Button, Card, SegmentedButton } from './ui'
 import { runChecks } from '../lib/einvoice/check'
 import { ExtractError, MAX_PDF_BYTES, extractEInvoice, type Extracted } from '../lib/einvoice/extract'
 import { prettyXml } from '../lib/einvoice/format'
@@ -93,16 +94,14 @@ export function ViewerPage({ unsaved }: { unsaved: number }) {
     <div className="app app-scroll viewer-app">
       <AppHeader title={tr('E-Rechnung prüfen', 'Check e-invoice')} route="viewer" unsaved={unsaved} />
 
-      <main className="dashboard viewer-page">
-        <section className="dashboard-hero viewer-intro">
-          <h1>{tr('ZUGFeRD / XRechnung anzeigen und prüfen', 'View and check ZUGFeRD / XRechnung')}</h1>
-          <p>
-            {tr(
-              'Ziehen Sie eine empfangene E-Rechnung hierher (PDF mit eingebettetem XML oder eine XML-Datei) und lesen Sie sie wie eine normale Rechnung. Die Datei wird nur in Ihrem Browser gelesen und nicht hochgeladen.',
-              'Drop a received e-invoice here (a PDF with embedded XML or an XML file) and read it like an ordinary invoice. The file is only read in your browser and is not uploaded.',
-            )}
-          </p>
-        </section>
+      <main className="page viewer-page">
+        <h1>{tr('ZUGFeRD / XRechnung anzeigen und prüfen', 'View and check ZUGFeRD / XRechnung')}</h1>
+        <p className="page-lead">
+          {tr(
+            'Ziehen Sie eine empfangene E-Rechnung hierher (PDF mit eingebettetem XML oder eine XML-Datei) und lesen Sie sie wie eine normale Rechnung. Die Datei wird nur in Ihrem Browser gelesen und nicht hochgeladen.',
+            'Drop a received e-invoice here (a PDF with embedded XML or an XML file) and read it like an ordinary invoice. The file is only read in your browser and is not uploaded.',
+          )}
+        </p>
 
         <div
           className={`viewer-drop${dragging ? ' is-dragging' : ''}`}
@@ -114,9 +113,9 @@ export function ViewerPage({ unsaved }: { unsaved: number }) {
           onDrop={onDrop}
         >
           <p>{busy ? tr('Datei wird gelesen …', 'Reading the file …') : tr('Datei hierher ziehen oder', 'Drop a file here or')}</p>
-          <button className="btn btn-primary" onClick={() => input.current?.click()} disabled={busy}>
+          <Button onClick={() => input.current?.click()} disabled={busy}>
             {tr('Datei auswählen …', 'Choose a file …')}
-          </button>
+          </Button>
           <input
             ref={input}
             type="file"
@@ -131,39 +130,35 @@ export function ViewerPage({ unsaved }: { unsaved: number }) {
         </div>
 
         {error && (
-          <div className="viewer-error" role="alert">
+          <Banner tone="error" className="viewer-error">
             <strong>{fileName}</strong>: {error}
-          </div>
+          </Banner>
         )}
 
         {loaded && (
-          <section className="viewer-result" aria-label={tr('Gelesene Rechnung', 'Invoice read')}>
+          <Card className="viewer-result" aria-label={tr('Gelesene Rechnung', 'Invoice read')}>
             <p className="viewer-source">
               {loaded.extracted.source === 'pdf'
                 ? tr(`Aus dem PDF „${fileName}“ gelesen, Anhang „${loaded.extracted.fileName}“.`, `Read from the PDF "${fileName}", attachment "${loaded.extracted.fileName}".`)
                 : tr(`Aus der XML-Datei „${fileName}“ gelesen.`, `Read from the XML file "${fileName}".`)}
             </p>
-            <div className="tabs viewer-tabs" role="tablist">
-              {(['invoice', 'check', 'xml'] as const).map((id) => (
-                <button key={id} role="tab" aria-selected={tab === id} className={`tab${tab === id ? ' active' : ''}`} onClick={() => setTab(id)}>
-                  {id === 'invoice' && tr('Rechnung', 'Invoice')}
-                  {id === 'check' && (
-                    <>
-                      {tr('Plausibilitätsprüfung', 'Plausibility check')}
-                      {findings > 0 && <span className="tab-badge">{findings}</span>}
-                    </>
-                  )}
-                  {id === 'xml' && 'XML'}
-                </button>
-              ))}
-            </div>
-            <div className="viewer-actions">
-              <button className="btn" onClick={() => window.print()}>{tr('Drucken', 'Print')}</button>
+            <div className="viewer-tabs">
+              <SegmentedButton
+                label={tr('Ansicht', 'View')}
+                value={tab}
+                options={[
+                  { value: 'invoice', label: tr('Rechnung', 'Invoice') },
+                  { value: 'check', label: `${tr('Prüfung', 'Check')}${findings > 0 ? ` (${findings})` : ''}` },
+                  { value: 'xml', label: 'XML' },
+                ]}
+                onChange={setTab}
+              />
+              <Button variant="text" onClick={() => window.print()}>{tr('Drucken', 'Print')}</Button>
             </div>
             {tab === 'invoice' && <EInvoiceView view={loaded.view} />}
             {tab === 'check' && <EInvoiceChecks results={results} />}
             {tab === 'xml' && <pre className="ev-xml" tabIndex={0}>{xml}</pre>}
-          </section>
+          </Card>
         )}
       </main>
     </div>

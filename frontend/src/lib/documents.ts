@@ -347,14 +347,14 @@ export function clearDrafts(): void {
 /** Documents that can be created from an issued document (the document chain). */
 const followUps = (): Record<DocKind, { to: DocKind; label: string }[]> => ({
   offer: [
-    { to: 'order', label: tr('Auftragsbestätigung', 'Order confirmation') },
-    { to: 'invoice', label: tr('Rechnung', 'Invoice') },
+    { to: 'order', label: tr('Auftragsbestätigung aus diesem Angebot', 'Order confirmation from this offer') },
+    { to: 'invoice', label: tr('Rechnung aus diesem Angebot', 'Invoice from this offer') },
   ],
   order: [
-    { to: 'delivery-note', label: tr('Lieferschein', 'Delivery note') },
-    { to: 'invoice', label: tr('Rechnung', 'Invoice') },
+    { to: 'delivery-note', label: tr('Lieferschein aus dieser Auftragsbestätigung', 'Delivery note from this order confirmation') },
+    { to: 'invoice', label: tr('Rechnung aus dieser Auftragsbestätigung', 'Invoice from this order confirmation') },
   ],
-  'delivery-note': [{ to: 'invoice', label: tr('Rechnung', 'Invoice') }],
+  'delivery-note': [{ to: 'invoice', label: tr('Rechnung aus diesem Lieferschein', 'Invoice from this delivery note') }],
   invoice: [{ to: 'credit-note', label: tr('Stornieren', 'Issue credit note') }],
   'credit-note': [],
   letter: [],

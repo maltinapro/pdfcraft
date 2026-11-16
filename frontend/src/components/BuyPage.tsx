@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppHeader } from './AppHeader'
+import { Banner, Button, Card, EmptyState } from './ui'
 import { loadPaidToken, savePaidToken, type PaidToken } from '../lib/api'
+import { friendlyError } from '../lib/apiErrors'
 import { tr, uiLocale, useLang } from '../lib/i18n'
 import {
   cancelSubscription,
@@ -92,7 +94,7 @@ export function BuyPage({ unsaved }: Props) {
             return
           }
         } catch (e) {
-          if (!cancelled) setMessage(e instanceof Error ? e.message : String(e))
+          if (!cancelled) setMessage(friendlyError(e))
         }
         await new Promise((resolve) => window.setTimeout(resolve, POLL_MS))
       }
@@ -109,7 +111,7 @@ export function BuyPage({ unsaved }: Props) {
     try {
       window.location.href = await startCheckout(offer, { subscription, renew })
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : String(e))
+      setMessage(friendlyError(e))
       setBusy(null)
     }
   }
@@ -129,7 +131,7 @@ export function BuyPage({ unsaved }: Props) {
       setMessage(tr('Das Abonnement wurde gekündigt.', 'The subscription was cancelled.'))
       await refresh()
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : String(e))
+      setMessage(friendlyError(e))
     } finally {
       setBusy(null)
     }
@@ -204,18 +206,17 @@ export function BuyPage({ unsaved }: Props) {
           aria-label={tr('Token', 'Token')}
           onChange={(e) => setEntered(e.target.value)}
         />
-        <button className="btn" type="submit" disabled={busy !== null || !entered.trim()}>
+        <Button variant="tonal" type="submit" disabled={busy !== null || !entered.trim()}>
           {busy === 'restore' ? '…' : tr('Token eintragen', 'Use this token')}
-        </button>
+        </Button>
       </form>
     </>
   )
 
   const restoreCard = (
-    <section className="data-card">
-      <h2>{tr('Token bereits gekauft?', 'Already bought a token?')}</h2>
+    <Card heading={tr('Token bereits gekauft?', 'Already bought a token?')}>
       {restoreForm}
-    </section>
+    </Card>
   )
 
   const subscriptionToggle = (
@@ -247,46 +248,42 @@ export function BuyPage({ unsaved }: Props) {
     <div className="app app-scroll">
       <AppHeader title={tr('Zugang kaufen', 'Buy access')} route="buy" unsaved={unsaved} />
 
-      <main className="dashboard data-page">
-        <section className="dashboard-hero">
-          <h1>{tr('Token kaufen', 'Buy a token')}</h1>
-          <p>
-            {tr(
-              'Ein gekauftes Token erzeugt PDFs ohne Wasserzeichen und mit höherem Limit. Es gibt kein Benutzerkonto: Das Token ist Ihr Zugang und wird nach der Zahlung einmalig angezeigt. Die Zahlung läuft über Mollie.',
-              'A purchased token creates PDFs without a watermark and with a higher limit. There is no user account: the token is your access and is shown once after payment. Payment is handled by Mollie.',
-            )}
-          </p>
-        </section>
+      <main className="page page-narrow">
+        <h1>{tr('Token kaufen', 'Buy a token')}</h1>
+        <p className="page-lead">
+          {tr(
+            'Ein gekauftes Token erzeugt PDFs ohne Wasserzeichen und mit höherem Limit. Es gibt kein Benutzerkonto: Das Token ist Ihr Zugang und wird nach der Zahlung einmalig angezeigt. Die Zahlung läuft über Mollie.',
+            'A purchased token creates PDFs without a watermark and with a higher limit. There is no user account: the token is your access and is shown once after payment. Payment is handled by Mollie.',
+          )}
+        </p>
 
-        {message && (
-          <div className="notice" role="status" onClick={() => setMessage(null)}>
-            {message}
-          </div>
+        {message && <Banner onDismiss={() => setMessage(null)}>{message}</Banner>}
+
+        {collecting === 'waiting' && (
+          <Card tone="primary">
+            <EmptyState
+              tone="loading"
+              title={tr('Zahlung wird verarbeitet …', 'Processing your payment …')}
+              text={tr('Das dauert normalerweise nur wenige Sekunden. Bitte diese Seite geöffnet lassen.', 'This usually takes only a few seconds. Please keep this page open.')}
+            />
+          </Card>
+        )}
+        {collecting === 'slow' && (
+          <Card tone="primary">
+            <EmptyState
+              icon="warning"
+              title={tr('Zahlung noch nicht bestätigt', 'Payment not confirmed yet')}
+              text={tr(
+                'Ist sie noch offen, kann es etwas dauern (z. B. bei Überweisung). Sie können später auf diese Seite zurückkehren.',
+                'If it is still open it can take a while (e.g. bank transfer). You can come back to this page later.',
+              )}
+            >
+              <Button variant="tonal" onClick={() => setAttempt((n) => n + 1)}>{tr('Erneut prüfen', 'Check again')}</Button>
+            </EmptyState>
+          </Card>
         )}
 
-        {collecting !== 'idle' && (
-          <section className="data-card data-card-main" role="status">
-            <h2>{tr('Zahlung wird verarbeitet …', 'Processing your payment …')}</h2>
-            {collecting === 'waiting' ? (
-              <p>{tr('Das dauert normalerweise nur wenige Sekunden. Bitte diese Seite geöffnet lassen.', 'This usually takes only a few seconds. Please keep this page open.')}</p>
-            ) : (
-              <>
-                <p>
-                  {tr(
-                    'Die Zahlung ist noch nicht bestätigt. Ist sie noch offen, kann es etwas dauern (z. B. bei Überweisung). Sie können später auf diese Seite zurückkehren.',
-                    'The payment is not confirmed yet. If it is still open it can take a while (e.g. bank transfer). You can come back to this page later.',
-                  )}
-                </p>
-                <div className="data-actions">
-                  <button className="btn" onClick={() => setAttempt((n) => n + 1)}>{tr('Erneut prüfen', 'Check again')}</button>
-                </div>
-              </>
-            )}
-          </section>
-        )}
-
-        <section className="data-card">
-          <h2>{tr('Vor dem Kauf', 'Before you buy')}</h2>
+        <Card heading={tr('Vor dem Kauf', 'Before you buy')}>
           <p>
             {tr(
               'Preise in Euro, inklusive gesetzlicher Umsatzsteuer, soweit diese anfällt. Beide Kästchen sind für Kauf und Verlängerung nötig.',
@@ -312,11 +309,10 @@ export function BuyPage({ unsaved }: Props) {
               )}
             </span>
           </label>
-        </section>
+        </Card>
 
         {paid && (
-          <section className="data-card data-card-main">
-            <h2>{fresh ? tr('Ihr neues Token', 'Your new token') : tr('Ihr Token', 'Your token')}</h2>
+          <Card tone="primary" heading={fresh ? tr('Ihr neues Token', 'Your new token') : tr('Ihr Token', 'Your token')}>
             {fresh && (
               <p className="data-status" data-state="warn">
                 {tr(
@@ -348,17 +344,17 @@ export function BuyPage({ unsaved }: Props) {
                 aria-label={tr('Token', 'Token')}
                 onFocus={(e) => e.currentTarget.select()}
               />
-              <button className="btn" onClick={() => setShown((v) => !v)}>{shown ? tr('Verbergen', 'Hide') : tr('Anzeigen', 'Show')}</button>
-              <button className="btn" onClick={() => void navigator.clipboard?.writeText(paid.token)}>{tr('Kopieren', 'Copy')}</button>
-              <button className="btn" onClick={download}>{tr('Als Datei speichern', 'Save as file')}</button>
+              <Button variant="tonal" onClick={() => setShown((v) => !v)}>{shown ? tr('Verbergen', 'Hide') : tr('Anzeigen', 'Show')}</Button>
+              <Button variant="tonal" onClick={() => void navigator.clipboard?.writeText(paid.token)}>{tr('Kopieren', 'Copy')}</Button>
+              <Button variant="tonal" onClick={download}>{tr('Als Datei speichern', 'Save as file')}</Button>
             </div>
-            <div className="data-actions">
+            <div className="card-actions">
               {info?.subscription && (
-                <button className="btn btn-danger" disabled={busy !== null} onClick={() => void cancel()}>
+                <Button variant="danger" disabled={busy !== null} onClick={() => void cancel()}>
                   {busy === 'cancel' ? tr('Kündige …', 'Cancelling …') : tr('Abonnement kündigen', 'Cancel subscription')}
-                </button>
+                </Button>
               )}
-              <button className="btn" onClick={forget}>{tr('Aus diesem Browser entfernen', 'Remove from this browser')}</button>
+              <Button variant="text" onClick={forget}>{tr('Aus diesem Browser entfernen', 'Remove from this browser')}</Button>
             </div>
             {renewOffers.length > 0 && (
               <>
@@ -378,19 +374,18 @@ export function BuyPage({ unsaved }: Props) {
                 {purchaseNote}
               </>
             )}
-          </section>
+          </Card>
         )}
 
 
         {!paid ? (
-          <section className="data-card">
-            <h2>{tr('Angebote', 'Offers')}</h2>
+          <Card heading={tr('Angebote', 'Offers')}>
             {subscriptionToggle}
             <div className="offer-grid">{offerCards}</div>
             {purchaseNote}
-          </section>
+          </Card>
         ) : (
-          <details className="data-card other-token">
+          <details className="ui-card ui-card-default other-token">
             <summary>{tr('Anderen Tarif oder neues Token kaufen', 'Buy another plan or a new token')}</summary>
             <p>
               {tr(
@@ -418,9 +413,9 @@ function OfferCard({ offer, currency, busy, label, disabled, onBuy }: { offer: O
       <span>{duration(offer.days)}</span>
       <span className="offer-price">{price(offer.amount, currency)}</span>
       <span className="offer-limit">{tr(`${offer.limitPerMinute} Belege/Minute`, `${offer.limitPerMinute} documents/minute`)}</span>
-      <button className="btn btn-primary" disabled={disabled || busy !== null} onClick={onBuy}>
+      <Button disabled={disabled || busy !== null} onClick={onBuy}>
         {busy === id ? '…' : label}
-      </button>
+      </Button>
     </div>
   )
 }

@@ -46,7 +46,7 @@ pdfcraft/
 │   ├── <slug>/index.html             # Static SEO pages (zugferd-rechnung-erstellen, xrechnung-generator, stornorechnung-gutschrift-e-rechnung, e-rechnungspflicht, zugferd-xrechnung-pruefen)
 │   └── src/
 │       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/contacts` / `#/articles`, `#/data`, `#/sender` = invoice with the sender zone open, ...), shared settings, drafts
-│       ├── components/               # Dashboard (tiles, latest documents), DocumentsPage (all issued documents), MasterDataPage (recipients and articles), MasterDataPickers (recipient/article pickers in the forms), DataPage (backup/restore/reset), Workspace (form + live preview + download),
+│       ├── components/               # Dashboard (Start: invoice card, type grid, checklist, latest documents), DocumentsPage + ArchiveList (Belege: search, filter chips, row menu, selection mode), MasterDataPage (Kunden/Artikel tabs), MasterDataPickers (recipient/article pickers in the forms), DataPage (backup/restore/reset), MorePage, BuyPage, ViewerPage (all on `components/ui/` + `pages.css`; `lib/archiveFilter.ts`, `lib/onboarding.ts`), Workspace (form + live preview + download),
 │       │                             # DocumentForm (generic, driven by DocSpec), InvoiceForm, ItemsEditor, SettingsForm, Field
 │       ├── lib/
 │       │   ├── documents.ts          # DOC_SPECS (one entry per document type), drafts in localStorage

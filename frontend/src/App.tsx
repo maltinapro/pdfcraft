@@ -10,7 +10,6 @@ import { InvoiceForm } from './components/InvoiceForm'
 import { Workspace } from './components/Workspace'
 import { RateLimitedError, fetchBulkMax, requestBulk, requestDocument, requestPdf } from './lib/api'
 import {
-  cancelledNumbers,
   duplicateNumberIssue,
   clearArchive,
   followUpDraft,
@@ -33,6 +32,8 @@ import {
   type DocKind,
 } from './lib/documents'
 import { clearLastBackup, exportBackup, loadLastBackup, readBackup, saveLastBackup, unsavedCount } from './lib/backup'
+import { friendlyError } from './lib/apiErrors'
+import { entryStatuses } from './lib/archiveFilter'
 import { tr, useLang } from './lib/i18n'
 import { getMasterData, masterDataFromArchive, mergeMasterData, resetMasterData, setMasterData, useMasterData } from './lib/masterData'
 import { handlePaymentReturn, useOffers } from './lib/purchase'
@@ -43,6 +44,7 @@ import { DEFAULT_SETTINGS, defaultInvoice, type Invoice, type Settings } from '.
 import type { SaveState } from './components/Workspace'
 import './App.css'
 import './components/ui/ui.css'
+import './components/pages.css'
 
 // Public viewer for received e-invoices: own chunk (XML reader, checks, pdf.js on demand)
 const ViewerPage = lazy(() => import('./components/ViewerPage').then((m) => ({ default: m.ViewerPage })))
@@ -98,6 +100,27 @@ export default function App() {
       window.location.hash = routeHref(target)
     },
     [],
+  )
+
+  // Renders the PDF of an issued document again from its stored snapshot (sender/design of the issue time, current logo)
+  const rerender = useCallback(
+    async (entry: ArchiveEntry) => {
+      try {
+        const snapshot = groupBySettings([entry], settings)[0].settings
+        const { blob } = entry.kind === 'invoice'
+          ? await requestPdf(snapshot, entry.invoice!)
+          : await requestDocument(entry.kind, snapshot, entry.doc!)
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${entry.kind}-${entry.number.replace(/[^\w.-]+/g, '_') || tr('neu', 'new')}.pdf`
+        link.click()
+        URL.revokeObjectURL(url)
+      } catch (e) {
+        setNotice(friendlyError(e))
+      }
+    },
+    [settings],
   )
 
   const bulk = useCallback(
@@ -252,7 +275,7 @@ export default function App() {
     [settings, invoice, lang],
   )
   const unsaved = unsavedCount(archive, lastBackup)
-  const cancelled = cancelledNumbers(archive)
+  const statuses = useMemo(() => entryStatuses(archive), [archive])
   const dismiss = () => setNotice(null)
 
   if (route === 'documents') {
@@ -261,12 +284,12 @@ export default function App() {
         notice={notice}
         onDismissNotice={dismiss}
         archive={archive}
-        cancelled={cancelled}
+        statuses={statuses}
         onFollowUp={followUp}
+        onRerender={(entry) => void rerender(entry)}
         onBulk={bulk}
         onDeleteEntries={(ids) => setArchive((a) => a.filter((e) => !ids.includes(e.id)))}
         unsaved={unsaved}
-        onBackup={backup}
       />
     )
   }
@@ -329,11 +352,12 @@ export default function App() {
         notice={notice}
         onDismissNotice={dismiss}
         archive={archive}
-        cancelled={cancelled}
+        statuses={statuses}
         onFollowUp={followUp}
+        onRerender={(entry) => void rerender(entry)}
         unsaved={unsaved}
-        onBackup={backup}
-        showWelcome={hasExampleSender(settings)}
+        companyDone={!hasExampleSender(settings)}
+        lastBackup={lastBackup}
       />
     )
   }

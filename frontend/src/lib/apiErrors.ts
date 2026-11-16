@@ -221,3 +221,15 @@ export function friendlyApiError(status: number, code: string | undefined, detai
       return tr(`Die Anfrage ist fehlgeschlagen (HTTP ${status}).`, `The request failed (HTTP ${status}).`)
   }
 }
+
+export const unreachableMessage = (): string =>
+  tr('Der Server ist nicht erreichbar. Bitte Internetverbindung prüfen.', 'The server cannot be reached. Please check your connection.')
+
+/** Raw browser network errors ("Failed to fetch", "Load failed", …) are shown as one translated sentence; other messages pass through. */
+export function friendlyError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  if (/failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(message)) {
+    return unreachableMessage()
+  }
+  return message
+}

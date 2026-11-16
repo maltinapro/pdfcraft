@@ -1,4 +1,4 @@
-import { friendlyApiError, parseValidationDetails, type ServerIssue } from './apiErrors'
+import { friendlyApiError, parseValidationDetails, unreachableMessage, type ServerIssue } from './apiErrors'
 import { tr } from './i18n'
 import type { Doc, DocKind, ZoneRect } from './documents'
 import type { Invoice, PostageStamp, Settings } from './types'
@@ -127,6 +127,8 @@ function fetchFreeToken(): Promise<string> {
     const response = await fetch(`${API_BASE_URL}/v1/free-token`, {
       method: 'POST',
       credentials: 'include',
+    }).catch(() => {
+      throw new Error(unreachableMessage())
     })
     if (response.status === 403) {
       throw new Error(
@@ -168,7 +170,7 @@ async function send(method: string, path: string, token: string, body?: string, 
     })
   } catch (e) {
     if (signal?.aborted) throw e
-    throw new Error(tr('Der Server ist nicht erreichbar. Bitte Internetverbindung prüfen.', 'The server cannot be reached. Please check your connection.'))
+    throw new Error(unreachableMessage())
   }
 }
 

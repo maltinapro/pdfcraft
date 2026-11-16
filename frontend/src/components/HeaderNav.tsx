@@ -1,6 +1,7 @@
 import { tr, useLang } from '../lib/i18n'
 import { routeHref } from '../lib/router'
 import { AppIcon } from './icons'
+import { useHideNavOnScroll } from '../lib/useHideNavOnScroll'
 
 interface Props {
   route: string
@@ -16,6 +17,7 @@ const destinations = [
 
 export function HeaderNav({ route, unsaved }: Props) {
   useLang()
+  useHideNavOnScroll()
   const active = route === '' || ['invoice', 'credit-note', 'offer', 'order', 'delivery-note', 'letter', 'sender'].includes(route)
     ? ''
     : route === 'contacts' || route === 'articles'

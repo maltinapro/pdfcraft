@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { AppHeader } from './AppHeader'
 import { AppIcon } from './icons'
+import { Banner, Button, Card } from './ui'
 import { tr, uiLocale, useLang } from '../lib/i18n'
 
 interface Props {
@@ -26,29 +27,22 @@ export function DataPage({ notice, onDismissNotice, lastBackup, unsaved, onBacku
     <div className="app app-scroll">
       <AppHeader title={tr('Daten & Sicherung', 'Data & backup')} route="data" unsaved={unsaved} />
 
-      {notice && (
-        <div className="notice" role="status" onClick={onDismissNotice}>
-          {notice}
-        </div>
-      )}
+      <main className="page page-narrow">
+        {notice && <Banner onDismiss={onDismissNotice}>{notice}</Banner>}
 
-      <main className="dashboard data-page">
-        <section className="dashboard-hero">
-          <h1>{tr('Daten & Sicherung', 'Data & backup')}</h1>
+        <h1>{tr('Daten & Sicherung', 'Data & backup')}</h1>
+        <p className="page-lead">
+          {tr(
+            'PDFCraft hat kein Benutzerkonto und speichert nichts auf unseren Servern. Ihre Angaben und Belege liegen ausschließlich in diesem Browser auf diesem Gerät.',
+            'PDFCraft has no user account and stores nothing on our servers. Your details and documents are kept only in this browser on this device.',
+          )}
+        </p>
+
+        <Card tone="primary" heading={tr('Sicherung', 'Backup')}>
           <p>
             {tr(
-              'PDFCraft hat kein Benutzerkonto und speichert nichts auf unseren Servern. Ihre Angaben und Belege liegen ausschließlich in diesem Browser auf diesem Gerät.',
-              'PDFCraft has no user account and stores nothing on our servers. Your details and documents are kept only in this browser on this device.',
-            )}
-          </p>
-        </section>
-
-        <section className="data-card data-card-main">
-          <h2>{tr('Sicherung', 'Backup')}</h2>
-          <p>
-            {tr(
-              'Laden Sie Ihre Daten regelmäßig als Datei herunter und bewahren Sie diese an einem sicheren Ort auf (z. B. Cloud-Speicher oder USB-Stick). Die Datei enthält Absender, Logo, Unterschrift, Entwürfe, gespeicherte Empfänger und Artikel sowie alle Belege.',
-              'Download your data as a file regularly and keep it in a safe place (e.g. cloud storage or a USB stick). The file contains sender, logo, signature, drafts, saved recipients and articles, and all documents.',
+              'Laden Sie Ihre Daten regelmäßig als Datei herunter und bewahren Sie diese an einem sicheren Ort auf (z. B. Cloud-Speicher oder USB-Stick). Die Datei enthält Absender, Logo, Unterschrift, Entwürfe, gespeicherte Kunden und Artikel sowie alle Belege.',
+              'Download your data as a file regularly and keep it in a safe place (e.g. cloud storage or a USB stick). The file contains sender, logo, signature, drafts, saved customers and articles, and all documents.',
             )}
           </p>
           <p className="data-status" data-state={unsaved > 0 || !when ? 'warn' : 'ok'}>
@@ -57,21 +51,20 @@ export function DataPage({ notice, onDismissNotice, lastBackup, unsaved, onBacku
               : tr('Noch nicht gesichert.', 'Not backed up yet.')}
             {unsaved > 0 && ' · ' + (unsaved === 1 ? tr('1 neuer Beleg seitdem', '1 new document since') : tr(`${unsaved} neue Belege seitdem`, `${unsaved} new documents since`))}
           </p>
-          <div className="data-actions">
-            <button className="btn btn-primary" onClick={onBackup}><AppIcon name="download" />{tr('Sicherung herunterladen', 'Download backup')}</button>
+          <div className="card-actions">
+            <Button icon={<AppIcon name="download" />} onClick={onBackup}>{tr('Sicherung herunterladen', 'Download backup')}</Button>
           </div>
-        </section>
+        </Card>
 
-        <section className="data-card">
-          <h2>{tr('Wiederherstellen', 'Restore')}</h2>
+        <Card heading={tr('Wiederherstellen', 'Restore')}>
           <p>
             {tr(
-              'Neuer Computer oder Browser-Daten gelöscht? Laden Sie hier Ihre Sicherung hoch. Aktuelle Absenderdaten und Entwürfe werden ersetzt, Belege sowie Empfänger und Artikel aus der Datei werden ergänzt.',
-              'New computer or browser data cleared? Upload your backup here. Current sender details and drafts are replaced, documents, recipients and articles from the file are added.',
+              'Neuer Computer oder Browser-Daten gelöscht? Laden Sie hier Ihre Sicherung hoch. Aktuelle Absenderdaten und Entwürfe werden ersetzt, Belege sowie Kunden und Artikel aus der Datei werden ergänzt.',
+              'New computer or browser data cleared? Upload your backup here. Current sender details and drafts are replaced, documents, customers and articles from the file are added.',
             )}
           </p>
-          <div className="data-actions">
-            <button className="btn" onClick={() => restoreRef.current?.click()}>{tr('Sicherung hochladen …', 'Upload backup …')}</button>
+          <div className="card-actions">
+            <Button variant="tonal" onClick={() => restoreRef.current?.click()}>{tr('Sicherung hochladen …', 'Upload backup …')}</Button>
             <input
               ref={restoreRef}
               type="file"
@@ -83,9 +76,21 @@ export function DataPage({ notice, onDismissNotice, lastBackup, unsaved, onBacku
               }}
             />
           </div>
-        </section>
+        </Card>
 
-        <details className="data-card">
+        <Card tone="danger" heading={tr('Alles löschen', 'Delete everything')}>
+          <p>
+            {tr(
+              'Entfernt Absenderdaten, Logo, Unterschrift, Entwürfe, Kunden, Artikel und alle Belege aus diesem Browser. Das lässt sich nicht rückgängig machen – sichern Sie vorher.',
+              'Removes sender details, logo, signature, drafts, customers, articles and all documents from this browser. This cannot be undone – back up first.',
+            )}
+          </p>
+          <div className="card-actions">
+            <Button variant="danger" onClick={onReset}>{tr('Alle Daten löschen …', 'Delete all data …')}</Button>
+          </div>
+        </Card>
+
+        <details className="ui-card ui-card-default">
           <summary>{tr('Für Entwickler: Konfiguration für die API', 'For developers: configuration for the API')}</summary>
           <p>
             {tr(
@@ -93,9 +98,9 @@ export function DataPage({ notice, onDismissNotice, lastBackup, unsaved, onBacku
               'Only sender, design and the invoice as pdfcraft-config.json – directly usable for POST /v1/invoices. Contains no documents.',
             )}
           </p>
-          <div className="data-actions">
-            <button className="btn" onClick={onExportConfig}>{tr('Konfiguration exportieren', 'Export configuration')}</button>
-            <button className="btn" onClick={() => configRef.current?.click()}>{tr('Konfiguration importieren', 'Import configuration')}</button>
+          <div className="card-actions">
+            <Button variant="tonal" onClick={onExportConfig}>{tr('Konfiguration exportieren', 'Export configuration')}</Button>
+            <Button variant="tonal" onClick={() => configRef.current?.click()}>{tr('Konfiguration importieren', 'Import configuration')}</Button>
             <input
               ref={configRef}
               type="file"
@@ -108,19 +113,6 @@ export function DataPage({ notice, onDismissNotice, lastBackup, unsaved, onBacku
             />
           </div>
         </details>
-
-        <section className="data-card data-card-danger">
-          <h2>{tr('Alles löschen', 'Delete everything')}</h2>
-          <p>
-            {tr(
-              'Entfernt Absenderdaten, Logo, Unterschrift, Entwürfe, Empfänger, Artikel und alle Belege aus diesem Browser. Das lässt sich nicht rückgängig machen – sichern Sie vorher.',
-              'Removes sender details, logo, signature, drafts, recipients, articles and all documents from this browser. This cannot be undone – back up first.',
-            )}
-          </p>
-          <div className="data-actions">
-            <button className="btn btn-danger" onClick={onReset}>{tr('Alle Daten löschen …', 'Delete all data …')}</button>
-          </div>
-        </section>
       </main>
     </div>
   )
