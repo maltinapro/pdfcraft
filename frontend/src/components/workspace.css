@@ -42,11 +42,13 @@
 .editor-splitter:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
 
 /* Stepper */
-.stepper { position: sticky; z-index: 2; top: 0; display: flex; align-items: center; padding: var(--space-2) 0; background: var(--color-surface-container-low); }
-.stepper-item { display: flex; min-width: 0; flex: 1 1 0; align-items: center; }
+.stepper { position: sticky; z-index: 2; top: 0; display: flex; align-items: flex-start; padding: var(--space-2) 0; background: var(--color-surface-container-low); }
+.stepper-item { display: flex; min-width: 0; flex: 1 1 0; align-items: flex-start; }
 .stepper-item:first-child { flex: none; }
-.stepper-line { height: 2px; flex: 1; margin: 0 -4px; background: var(--color-outline-variant); }
-.step { display: grid; width: 48px; height: 48px; flex: none; place-items: center; padding: 0; border: 0; border-radius: var(--radius-full); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.stepper-line { height: 2px; flex: 1; margin: 21px -2px 0; background: var(--color-outline-variant); }
+.step { display: flex; min-width: 48px; min-height: 56px; flex: none; flex-direction: column; align-items: center; gap: 2px; padding: 4px 2px 0; border: 0; border-radius: var(--radius-full); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.step-label { max-width: 76px; overflow: hidden; color: var(--color-on-surface-variant); font-size: 11px; font-weight: var(--weight-label); line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.step.active .step-label { color: var(--zone-color); font-weight: var(--weight-title); }
 .step-circle { display: grid; width: 32px; height: 32px; place-items: center; border-radius: var(--radius-full); background: var(--color-surface-container-highest); color: var(--color-on-surface-variant); font-size: var(--type-label-l); font-weight: 600; transition: background var(--motion-state), color var(--motion-state); }
 .step.step-complete .step-circle { background: var(--zone-container); color: var(--zone-on-container); }
 .step.step-warnings .step-circle { background: var(--color-warning-container); color: var(--color-on-warning-container); }
@@ -54,7 +56,7 @@
 .step.active .step-circle { background: var(--zone-color); color: var(--color-surface); box-shadow: 0 0 0 4px color-mix(in srgb, var(--zone-color) 24%, transparent); }
 .step.active.step-errors .step-circle { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-error) 40%, transparent); }
 .step:hover:not(.active) .step-circle { filter: brightness(0.96); }
-.step:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; }
+.step:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; border-radius: var(--radius-m); }
 
 /* Step panel */
 .zone-panel { min-width: 0; padding: var(--space-2) 0 var(--space-4); animation: zone-enter var(--motion-zone) var(--motion-easing); }
@@ -275,6 +277,7 @@
   .app-editor .editor-sidebar { padding: 0 var(--space-3); }
   .editor-footer { margin-inline: calc(-1 * var(--space-3)); padding-inline: var(--space-3); }
   .preview-zoom button { padding: 0 var(--space-2); }
+  .app-editor .ui-segment { padding: 0 8px; font-size: 14px; white-space: nowrap; }
   .editor-footer-actions .btn { padding: 0 var(--space-3); gap: var(--space-1); }
 }
 

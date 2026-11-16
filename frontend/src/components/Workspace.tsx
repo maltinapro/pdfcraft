@@ -189,7 +189,13 @@ export function Workspace({
   )
   const problems = allIssues.filter((issue) => issue.blocking || issue.server)
   const paused = problems.length > 0
-  const summary = allIssues.filter((issue) => (issue.blocking || issue.server ? revealed(issue) : true))
+  const isLastZone = activeZone === zones[zones.length - 1].id
+  // Errors stay visible on every step; notes only where they can be fixed.
+  const summary = allIssues.filter(
+    (issue) =>
+      (issue.blocking || issue.server ? revealed(issue) : true) &&
+      (issue.level === 'error' || !issue.field || zoneForField(documentKind, issue.field) === activeZone),
+  )
 
   const zoneStates = useMemo(() => {
     const result = {} as Record<ZoneId, ZoneState>
@@ -269,7 +275,7 @@ export function Workspace({
         setVisited((prev) => new Set(prev).add(zone))
         if (zone === 'sender') {
           setSenderSection(
-            /^(settings\.(design|accentColor|font|locale|intro|closing|footer|zugferd|einvoiceProfile))/.test(field)
+            /^(settings\.(design|accentColor|font|locale|intro|closing|footer|zugferd|einvoiceProfile|logo|signature))/.test(field)
               ? 'appearance'
               : 'company',
           )
@@ -309,7 +315,7 @@ export function Workspace({
           value={senderSection}
           options={[
             { value: 'company', label: tr('Firma & Bank', 'Company & bank') },
-            { value: 'appearance', label: tr('Aussehen & Texte', 'Look & text') },
+            { value: 'appearance', label: tr('Logo & Aussehen', 'Logo & look') },
           ]}
           onChange={setSenderSection}
         />
@@ -458,10 +464,12 @@ export function Workspace({
   return (
     <div className={`app app-editor editor-zone-${activeZone}`}>
       <AppHeader title={title} route={route} unsaved={unsaved} editor>
-        <button type="button" className="btn btn-primary header-download" onClick={download} aria-label={tr('PDF herunterladen', 'Download PDF')}>
-          <AppIcon name="download" size={20} />
-          <span className="download-label">{tr('PDF herunterladen', 'Download PDF')}</span>
-        </button>
+        {!isLastZone && (
+          <button type="button" className="btn btn-primary header-download" onClick={download} aria-label={tr('PDF herunterladen', 'Download PDF')}>
+            <AppIcon name="download" size={20} />
+            <span className="download-label">{tr('PDF herunterladen', 'Download PDF')}</span>
+          </button>
+        )}
       </AppHeader>
 
       {!compact && <FreeVersionHint />}

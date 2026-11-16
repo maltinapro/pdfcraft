@@ -14,7 +14,7 @@ interface Props {
   onSelect: (id: ZoneSpec['id']) => void
 }
 
-/** Numbered step circles joined by lines; the title of the active step is shown by the panel below. */
+/** Numbered step circles with a short label, joined by lines; the full title of the active step is shown by the panel below. */
 export function Stepper({ zones, active, states, onSelect }: Props) {
   return (
     <nav className="stepper" role="tablist" aria-orientation="horizontal" aria-label={tr('Schritte', 'Steps')}>
@@ -67,6 +67,7 @@ export function Stepper({ zones, active, states, onSelect }: Props) {
                   zone.number
                 )}
               </span>
+              <span className="step-label">{zone.id === 'sender' ? tr('Absender', 'Sender') : zone.label}</span>
             </button>
           </div>
         )
