@@ -190,7 +190,7 @@ All components live in `frontend/src/components/ui/` and only use tokens. Existi
 - **Filled select:** same frame plus a chevron; native `<select>` for accessibility and mobile pickers.
 - **Textarea:** same frame, grows with content up to 8 lines.
 - **Buttons:** *filled* (one primary per view, zone color inside the editor, `primary` elsewhere), *tonal* (secondary: Back, Add item, Choose saved recipient), *text* (tertiary), *icon* (40 px visual, 48 px hit area), *danger tonal* (remove). Height 40 px, `radius-full`, `label-l`.
-- **Segmented button:** language, sender sub-sections (company & bank / look & text), design variants; check icon in the selected segment.
+- **Segmented button:** language, sender sub-sections (company & bank / logo & look), design variants; check icon in the selected segment.
 - **Chips:** *assist* (zone summary "Muster GmbH ✓ Change"), *filter* (archive), *status* (open issues count in the top bar; tap = jump to the first issue).
 - **Zone bar:** horizontal, 28 px number circles, 2 px connectors; label visible for the active zone (compact) or all zones (expanded); roving tabindex, arrow keys only while the bar has focus.
 - **Zone header:** tonal card in the zone container color: "02 · Recipient", title, one-sentence purpose, zone icon.
