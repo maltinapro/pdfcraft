@@ -21,6 +21,21 @@ The three **H** findings:
 
 Things that are in good shape and need no action: no `any` and no `@ts-ignore` in the frontend, `npm audit` reports 0 vulnerabilities, all outgoing HTTP calls have timeouts and disable redirects, Typst runs in `spawn_blocking` behind a semaphore with a queue timeout, secrets and customer data are not logged or stored, and the backend test suite is fast and free of timing-based tests.
 
+## Resolution status
+
+All findings were worked on in PR #209. Status by area (commits of that PR):
+
+| Area | Findings | Status |
+| --- | --- | --- |
+| CI and tooling | T-01 (`cargo fmt --check`), T-02 (clippy `-D warnings`), T-03 (`cargo-deny`, `backend/deny.toml`), T-04 (oxlint instead of ESLint: TypeScript 7 has no JS API for typescript-eslint), T-05 (frontend lint/audit/test/build/budget in CI), T-06 (`npm run budget`), T-07, T-08 | Fixed |
+| Dependencies | D-01 (`serde_norway`; `serde_yaml` stays as a transitive Typst dependency, ignored in `deny.toml` with reasons), D-02, D-04, D-05 | Fixed |
+| Backend | B-01 (`block_in_place` for PDF to SVG), B-02 (`store.rs` tests, Valkey service in CI), B-03 (`v1`, `einvoice`, `internetmarke` split), B-04 (poisoned locks) | Fixed |
+| Security and containers | S-01 (CSP and security headers in nginx, backend and edge), S-02 (non-root, read-only containers, Helm security contexts) | Fixed (base images pinned to distro/major tags, not digests) |
+| Frontend | W-01 (`POST /v1/client-errors`, `pdfcraft_client_errors_total{kind,browser}`), W-02 (lazy routes; app chunk 374 to 254 kB), W-03 (`Workspace.tsx` 650 to 459 lines, e-invoice parser split; `App.tsx`, `BuyPage.tsx`, `SettingsForm.tsx` stay at 320 to 437 lines: accepted, they are single cohesive components), W-04, W-08, W-09, W-10, W-13, request timeouts | Fixed / accepted as noted |
+| Tests | Q-01 (component tests with `react-dom/server`, no DOM dependency) | Fixed |
+
+Not done or not verifiable here: D-06 (dependency table in `docs/10`), the E12-07 benchmark and preview latency re-measurement (`cd backend && cargo test --release bench_render -- --ignored --nocapture`), the E08 usability comparison, real-device checks, and `docs/13-observability.md` plus a dashboard panel for the client-errors metric. Remaining findings not listed above keep the action in the tables below.
+
 ## Measured baseline
 
 | Item | Epic baseline (15 Nov) | Measured 16 Nov | Note |
