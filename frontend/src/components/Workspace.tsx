@@ -1,12 +1,13 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type TouchEvent as ReactTouchEvent } from 'react'
 import { AppHeader } from './AppHeader'
 import { FreeVersionHint } from './FreeVersionHint'
 import { FormIssuesContext, type FormIssuesValue } from './FormIssues'
 import { SettingsForm } from './SettingsForm'
+import { AppIcon } from './icons'
 import { EditorFooter } from './editor/EditorFooter'
-import { ZoneBar, type ZoneState } from './editor/ZoneBar'
+import { Stepper, type ZoneState } from './editor/Stepper'
 import { ZonePanel } from './editor/ZonePanel'
-import { BottomSheet, Dialog, SegmentedButton } from './ui'
+import { Dialog, SegmentedButton } from './ui'
 import { ValidationError, type RenderedPdf } from '../lib/api'
 import { fieldTitle } from '../lib/apiErrors'
 import { type ArchiveEntry } from '../lib/archive'
@@ -79,7 +80,9 @@ function IssueSummary({ issues, kind, onJump, open }: SummaryProps) {
   const errors = issues.filter((issue) => issue.level === 'error').length
   const title =
     errors === 0
-      ? tr('Hinweise', 'Notes')
+      ? issues.length === 1
+        ? tr('1 Hinweis', '1 note')
+        : tr(`${issues.length} Hinweise`, `${issues.length} notes`)
       : errors === 1
         ? tr('1 Angabe prüfen', '1 entry needs attention')
         : tr(`${errors} Angaben prüfen`, `${errors} entries need attention`)
@@ -139,8 +142,7 @@ export function Workspace({
   const [activeZone, setActiveZone] = useState<ZoneId>(initialZoneState)
   const [senderSection, setSenderSection] = useState<'company' | 'appearance'>('company')
   const [editorSplit, setEditorSplit] = useState(38)
-  const [mobileView, setMobileView] = useState<'fields' | 'sheet'>('fields')
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [mobileView, setMobileView] = useState<'form' | 'preview'>('form')
   const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 839px)').matches)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
@@ -187,7 +189,13 @@ export function Workspace({
   )
   const problems = allIssues.filter((issue) => issue.blocking || issue.server)
   const paused = problems.length > 0
-  const summary = allIssues.filter((issue) => (issue.blocking || issue.server ? revealed(issue) : true))
+  const isLastZone = activeZone === zones[zones.length - 1].id
+  // Errors stay visible on every step; notes only where they can be fixed.
+  const summary = allIssues.filter(
+    (issue) =>
+      (issue.blocking || issue.server ? revealed(issue) : true) &&
+      (issue.level === 'error' || !issue.field || zoneForField(documentKind, issue.field) === activeZone),
+  )
 
   const zoneStates = useMemo(() => {
     const result = {} as Record<ZoneId, ZoneState>
@@ -205,7 +213,6 @@ export function Workspace({
   }, [allIssues, documentKind, visited, zones])
 
   const activeSpec = zones.find((zone) => zone.id === activeZone) ?? zones[0]
-  const senderSummary = `${settings.sender.name} · ${settings.design === 'classic' ? tr('Klassisch', 'Classic') : 'Modern Minimal'}`
 
   const touch = useCallback((field: string) => {
     setTouched((prev) => (prev.has(field) ? prev : new Set(prev).add(field)))
@@ -246,27 +253,19 @@ export function Workspace({
       focusField.current = ''
     }, 20)
     return () => window.clearTimeout(timer)
-  }, [activeZone, focusRequest, mobileView, sheetOpen])
+  }, [activeZone, focusRequest, mobileView])
 
   useEffect(() => {
     if (!paused) setShowAll(false)
   }, [paused])
 
-  const selectZone = useCallback(
-    (zone: ZoneId, openSheet = false) => {
-      setActiveZone(zone)
-      setVisited((prev) => new Set(prev).add(zone))
-      if (openSheet) {
-        setMobileView('sheet')
-        setSheetOpen(true)
-      } else if (compact && mobileView === 'sheet') {
-        setSheetOpen(true)
-      }
-      focusField.current = null
-      setFocusRequest((request) => request + 1)
-    },
-    [compact, mobileView],
-  )
+  const selectZone = useCallback((zone: ZoneId) => {
+    setActiveZone(zone)
+    setVisited((prev) => new Set(prev).add(zone))
+    setMobileView('form')
+    focusField.current = null
+    setFocusRequest((request) => request + 1)
+  }, [])
 
   const jumpTo = useCallback(
     (field: string) => {
@@ -276,14 +275,13 @@ export function Workspace({
         setVisited((prev) => new Set(prev).add(zone))
         if (zone === 'sender') {
           setSenderSection(
-            /^(settings\.(design|accentColor|font|locale|intro|closing|footer|zugferd|einvoiceProfile))/.test(field)
+            /^(settings\.(design|accentColor|font|locale|intro|closing|footer|zugferd|einvoiceProfile|logo|signature))/.test(field)
               ? 'appearance'
               : 'company',
           )
         }
       }
-      setMobileView('fields')
-      setSheetOpen(false)
+      setMobileView('form')
       focusField.current = field
       setFocusRequest((request) => request + 1)
     },
@@ -317,7 +315,7 @@ export function Workspace({
           value={senderSection}
           options={[
             { value: 'company', label: tr('Firma & Bank', 'Company & bank') },
-            { value: 'appearance', label: tr('Aussehen & Texte', 'Look & text') },
+            { value: 'appearance', label: tr('Logo & Aussehen', 'Logo & look') },
           ]}
           onChange={setSenderSection}
         />
@@ -328,12 +326,30 @@ export function Workspace({
     )
 
   const zonePanel = (
-    <ZonePanel zone={activeSpec}>
+    <ZonePanel zone={activeSpec} total={zones.length}>
       <FormIssuesContext.Provider value={formIssues}>
-        <div ref={!compact || mobileView === 'fields' ? panelRef : undefined}>{zoneBody(activeZone)}</div>
+        <div ref={panelRef}>{zoneBody(activeZone)}</div>
       </FormIssuesContext.Provider>
     </ZonePanel>
   )
+
+  const swipe = useRef<{ x: number; y: number } | null>(null)
+  const swipeHandlers = compact
+    ? {
+        onTouchStart: (event: ReactTouchEvent) => {
+          const target = event.target as HTMLElement
+          swipe.current = target.closest('input, select, textarea, [draggable="true"]') ? null : { x: event.touches[0].clientX, y: event.touches[0].clientY }
+        },
+        onTouchEnd: (event: ReactTouchEvent) => {
+          const start = swipe.current
+          swipe.current = null
+          if (!start) return
+          const dx = event.changedTouches[0].clientX - start.x
+          const dy = event.changedTouches[0].clientY - start.y
+          if (Math.abs(dx) > 72 && Math.abs(dx) > Math.abs(dy) * 2) changeZone(dx < 0 ? 1 : -1)
+        },
+      }
+    : {}
 
   const promotePending = useCallback((blob: Blob) => {
     const next = pendingPdfRef.current
@@ -443,29 +459,20 @@ export function Workspace({
     return [...fixedZones, ...backendZones]
   }, [pdfZones])
 
-  const onPreviewZone = (zone: ZoneId) => selectZone(zone, true)
-  const summaryOpen = showAll || summary.length > 0
+  const onPreviewZone = (zone: ZoneId) => selectZone(zone)
 
   return (
     <div className={`app app-editor editor-zone-${activeZone}`}>
-      <AppHeader title={title} route={route} unsaved={unsaved}>
-        {compact && (
-          <SegmentedButton
-            label={tr('Ansicht', 'View')}
-            value={mobileView}
-            options={[
-              { value: 'fields', label: tr('Felder', 'Fields') },
-              { value: 'sheet', label: tr('Blatt', 'Sheet') },
-            ]}
-            onChange={(view) => {
-              setMobileView(view)
-              setSheetOpen(false)
-            }}
-          />
+      <AppHeader title={title} route={route} unsaved={unsaved} editor>
+        {!isLastZone && (
+          <button type="button" className="btn btn-primary header-download" onClick={download} aria-label={tr('PDF herunterladen', 'Download PDF')}>
+            <AppIcon name="download" size={20} />
+            <span className="download-label">{tr('PDF herunterladen', 'Download PDF')}</span>
+          </button>
         )}
       </AppHeader>
 
-      <FreeVersionHint />
+      {!compact && <FreeVersionHint />}
 
       {downloaded && (
         <section className="download-success" role="status">
@@ -491,32 +498,42 @@ export function Workspace({
         </section>
       )}
 
+      {compact && (
+        <div className="editor-tabs" role="tablist" aria-label={tr('Ansicht', 'View')}>
+          {(['form', 'preview'] as const).map((view) => (
+            <button
+              type="button"
+              role="tab"
+              key={view}
+              aria-selected={mobileView === view}
+              className={mobileView === view ? 'active' : undefined}
+              onClick={() => setMobileView(view)}
+            >
+              {view === 'form' ? tr('Formular', 'Form') : tr('Vorschau', 'Preview')}
+              {view === 'form' && problems.length > 0 && <span className="editor-tab-badge" aria-label={tr(`${problems.length} offen`, `${problems.length} open`)}>{problems.length}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div
         className={`workspace editor-workspace editor-view-${mobileView}`}
         ref={workspaceRef}
-        style={!compact ? { gridTemplateColumns: `minmax(360px, ${editorSplit}fr) 24px minmax(360px, ${100 - editorSplit}fr)` } : undefined}
+        style={!compact ? { gridTemplateColumns: `minmax(360px, ${editorSplit}fr) 16px minmax(360px, ${100 - editorSplit}fr)` } : undefined}
       >
-        {(!compact || mobileView === 'fields') && (
-          <aside className="sidebar editor-sidebar" ref={sidebarRef}>
-            {!compact && <ZoneBar zones={zones} active={activeZone} states={zoneStates} onSelect={(zone) => selectZone(zone)} />}
-            {activeZone !== 'sender' && zoneStates.sender.status === 'complete' && (
-              <button type="button" className="sender-summary-chip" onClick={() => selectZone('sender')}>
-                <span>{tr('Absender & Aussehen', 'Sender & look')}</span>
-                <strong>{senderSummary} ✓</strong>
-              </button>
-            )}
-            {summary.length > 0 && <IssueSummary issues={summary} kind={kind} onJump={jumpTo} open={summaryOpen} />}
+        {(!compact || mobileView === 'form') && (
+          <aside className="sidebar editor-sidebar" ref={sidebarRef} {...swipeHandlers}>
+            <Stepper zones={zones} active={activeZone} states={zoneStates} onSelect={selectZone} />
+            {summary.length > 0 && <IssueSummary issues={summary} kind={kind} onJump={jumpTo} open={showAll} />}
             {zonePanel}
-            {!compact && (
-              <EditorFooter
-                active={activeZone}
-                zones={zones}
-                saveState={saveState}
-                onBack={() => changeZone(-1)}
-                onNext={() => changeZone(1)}
-                onCreate={download}
-              />
-            )}
+            <EditorFooter
+              active={activeZone}
+              zones={zones}
+              saveState={saveState}
+              onBack={() => changeZone(-1)}
+              onNext={() => changeZone(1)}
+              onCreate={download}
+            />
           </aside>
         )}
         {!compact && (
@@ -554,52 +571,28 @@ export function Workspace({
               }
             }}
           >
-            <span className="editor-splitter-grip" aria-hidden="true">⋮</span>
+            <span className="editor-splitter-grip" aria-hidden="true" />
           </div>
         )}
 
-        {(!compact || mobileView === 'sheet') && (
+        {(!compact || mobileView === 'preview') && (
           <main className="preview editor-preview">
             <div className="preview-toolbar">
               <div className="preview-zoom" role="group" aria-label={tr('Zoom', 'Zoom')}>
                 <button type="button" aria-pressed={zoom === 'fit-page'} onClick={() => setZoom('fit-page')}>{tr('Ganze Seite', 'Fit page')}</button>
                 <button type="button" aria-pressed={zoom === 'fit-width'} onClick={() => setZoom('fit-width')}>{tr('Seitenbreite', 'Fit width')}</button>
               </div>
-              <div className="preview-pages">
-                <button type="button" className="btn btn-small" disabled={page <= 1} onClick={() => setPage((n) => Math.max(1, n - 1))} aria-label={tr('Vorherige Seite', 'Previous page')}>‹</button>
-                <span>{tr(`Seite ${page} von ${pageCount || '…'}`, `Page ${page} of ${pageCount || '…'}`)}</span>
-                <button type="button" className="btn btn-small" disabled={!pageCount || page >= pageCount} onClick={() => setPage((n) => Math.min(pageCount, n + 1))} aria-label={tr('Nächste Seite', 'Next page')}>›</button>
-              </div>
-              {previewUrl && <button type="button" className="btn btn-small" onClick={openPdf}>{tr('PDF öffnen', 'Open PDF')}</button>}
-              {settings.zugferd && <button type="button" className="btn btn-small" onClick={() => void showXml()} disabled={!pdfBlob}>{tr('E-Rechnungs-XML', 'E-invoice XML')}</button>}
-            </div>
-            <BottomSheet
-              open={compact && mobileView === 'sheet' && sheetOpen}
-              title={activeSpec.label}
-              onClose={() => setSheetOpen(false)}
-            >
-              <div className="editor-sheet-content">
-                <div className="editor-sheet-navigation">
-                  <div className="editor-sheet-actions">
-                    <button type="button" className="btn btn-small" onClick={() => setSheetOpen(false)}>
-                      {tr('Vorschau zeigen', 'Show preview')}
-                    </button>
-                  </div>
-                  <ZoneBar
-                    zones={zones}
-                    active={activeZone}
-                    states={zoneStates}
-                    compact
-                    onSelect={(zone) => selectZone(zone, true)}
-                  />
+              {pageCount > 1 && (
+                <div className="preview-pages">
+                  <button type="button" disabled={page <= 1} onClick={() => setPage((n) => Math.max(1, n - 1))} aria-label={tr('Vorherige Seite', 'Previous page')}>‹</button>
+                  <span>{tr(`Seite ${page} von ${pageCount}`, `Page ${page} of ${pageCount}`)}</span>
+                  <button type="button" disabled={page >= pageCount} onClick={() => setPage((n) => Math.min(pageCount, n + 1))} aria-label={tr('Nächste Seite', 'Next page')}>›</button>
                 </div>
-                <ZonePanel zone={activeSpec}>
-                  <FormIssuesContext.Provider value={formIssues}>
-                    <div ref={compact && mobileView === 'sheet' ? panelRef : undefined}>{zoneBody(activeZone)}</div>
-                  </FormIssuesContext.Provider>
-                </ZonePanel>
-              </div>
-            </BottomSheet>
+              )}
+              <span className="preview-toolbar-spacer" />
+              {settings.zugferd && <button type="button" className="preview-chip" onClick={() => void showXml()} disabled={!pdfBlob}>ZUGFeRD XML</button>}
+              {previewUrl && <button type="button" className="preview-chip" onClick={openPdf}>{tr('PDF öffnen', 'Open PDF')}</button>}
+            </div>
             {paused && <PreviewPaused count={problems.length} onShow={revealProblems} />}
             {!paused && error && <PreviewError message={error} />}
             {loading && <div className="preview-loading">{tr('Aktualisiere Vorschau …', 'Updating preview …')}</div>}
@@ -635,26 +628,6 @@ export function Workspace({
           </main>
         )}
       </div>
-
-      {compact && (
-        <div className="editor-mobile-bar">
-          <ZoneBar
-            zones={zones}
-            active={activeZone}
-            states={zoneStates}
-            compact
-            onSelect={(zone) => selectZone(zone, mobileView === 'sheet')}
-          />
-          <EditorFooter
-            active={activeZone}
-            zones={zones}
-            saveState={saveState}
-            onBack={() => changeZone(-1)}
-            onNext={() => changeZone(1)}
-            onCreate={download}
-          />
-        </div>
-      )}
 
       {(xml !== null || xmlError !== null) && (
         <Dialog

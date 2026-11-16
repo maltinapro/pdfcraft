@@ -91,73 +91,6 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
   return (
     <div className="form">
       {zone === 'sender' && senderSection === 'company' && <section className="form-section" data-zone="sender">
-        <h3>Logo</h3>
-        {settings.logo ? (
-          <div className="logo-preview">
-            <img src={`data:${settings.logo.mimeType};base64,${settings.logo.base64}`} alt={tr('Logo', 'Logo')} />
-            <span>{settings.logo.fileName}</span>
-            <button type="button" className="btn btn-small" onClick={() => set('logo', null)}>
-              {tr('Entfernen', 'Remove')}
-            </button>
-          </div>
-        ) : (
-          <label className="logo-upload">
-            <span className="btn">{tr('Logo auswählen …', 'Choose logo …')}</span>
-            <input
-              type="file"
-              hidden
-              accept={ACCEPTED_LOGO_TYPES.join(',')}
-              onChange={(e) => {
-                void onLogoSelected(e.target.files?.[0])
-                e.target.value = ''
-              }}
-            />
-            <span className="field-hint">
-              {tr(`PNG, JPG oder SVG, höchstens ${MAX_LOGO_BYTES / 1024} KB. Erscheint oben auf jedem Dokument.`, `PNG, JPG or SVG, at most ${MAX_LOGO_BYTES / 1024} KB. Shown at the top of every document.`)}
-            </span>
-          </label>
-        )}
-        {logoError && <p className="form-error">{logoError}</p>}
-      </section>}
-
-      {zone === 'sender' && senderSection === 'company' && <section className="form-section" data-zone="sender">
-        <h3>{tr('Unterschrift', 'Signature')}</h3>
-        {settings.signature ? (
-          <div className="logo-preview">
-            {settings.signature.mimeType === 'application/pdf' ? (
-              <span className="file-badge">PDF</span>
-            ) : (
-              <img src={`data:${settings.signature.mimeType};base64,${settings.signature.base64}`} alt={tr('Unterschrift', 'Signature')} />
-            )}
-            <span>{settings.signature.fileName}</span>
-            <button type="button" className="btn btn-small" onClick={() => set('signature', null)}>
-              {tr('Entfernen', 'Remove')}
-            </button>
-          </div>
-        ) : (
-          <label className="logo-upload">
-            <span className="btn">{tr('Unterschrift auswählen …', 'Choose signature …')}</span>
-            <input
-              type="file"
-              hidden
-              accept={ACCEPTED_SIGNATURE_TYPES.join(',')}
-              onChange={(e) => {
-                void onSignatureSelected(e.target.files?.[0])
-                e.target.value = ''
-              }}
-            />
-            <span className="field-hint">
-              {tr(
-                `Eingescannte Unterschrift als PNG, JPG, SVG oder PDF (erste Seite, wird zugeschnitten), höchstens ${MAX_LOGO_BYTES / 1024} KB. Wird unter dem Schlusstext gedruckt. Das ist ein Bild und keine digitale Signatur.`,
-                `Scanned signature as PNG, JPG, SVG or PDF (first page, cropped automatically), at most ${MAX_LOGO_BYTES / 1024} KB. Printed below the closing text. This is an image, not a digital signature.`,
-              )}
-            </span>
-          </label>
-        )}
-        {signatureError && <p className="form-error">{signatureError}</p>}
-      </section>}
-
-      {zone === 'sender' && senderSection === 'company' && <section className="form-section" data-zone="sender">
         <h3>{tr('Firma', 'Company')}</h3>
         <TextField field="settings.sender.name" label={tr('Name', 'Name')} value={settings.sender.name} onChange={(v) => setSender('name', v)} />
         <TextField field="settings.sender.address" label={tr('Straße / Hausnummer', 'Street / house number')} value={settings.sender.address} onChange={(v) => setSender('address', v)} />
@@ -227,7 +160,6 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
       {zone === 'sender' && senderSection === 'appearance' && <section className="form-section" data-zone="sender">
         <h3>{tr('Design', 'Design')}</h3>
         <div className="field">
-          <span className="field-label">{tr('Dokumentvorlage', 'Document design')}</span>
           <div className="design-options" role="radiogroup" aria-label={tr('Dokumentvorlage', 'Document design')}>
             {DESIGNS.map((design) => (
               <label className={`design-option${settings.design === design.value ? ' selected' : ''}`} key={design.value}>
@@ -269,6 +201,73 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
             ))}
           </select>
         </Field>
+      </section>}
+
+      {zone === 'sender' && senderSection === 'appearance' && <section className="form-section" data-zone="sender">
+        <h3>Logo</h3>
+        {settings.logo ? (
+          <div className="logo-preview">
+            <img src={`data:${settings.logo.mimeType};base64,${settings.logo.base64}`} alt={tr('Logo', 'Logo')} />
+            <span>{settings.logo.fileName}</span>
+            <button type="button" className="btn btn-small" onClick={() => set('logo', null)}>
+              {tr('Entfernen', 'Remove')}
+            </button>
+          </div>
+        ) : (
+          <label className="logo-upload">
+            <span className="btn">{tr('Logo auswählen …', 'Choose logo …')}</span>
+            <input
+              type="file"
+              hidden
+              accept={ACCEPTED_LOGO_TYPES.join(',')}
+              onChange={(e) => {
+                void onLogoSelected(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+            <span className="field-hint">
+              {tr(`PNG, JPG oder SVG, höchstens ${MAX_LOGO_BYTES / 1024} KB. Erscheint oben auf jedem Dokument.`, `PNG, JPG or SVG, at most ${MAX_LOGO_BYTES / 1024} KB. Shown at the top of every document.`)}
+            </span>
+          </label>
+        )}
+        {logoError && <p className="form-error">{logoError}</p>}
+      </section>}
+
+      {zone === 'sender' && senderSection === 'appearance' && <section className="form-section" data-zone="sender">
+        <h3>{tr('Unterschrift', 'Signature')}</h3>
+        {settings.signature ? (
+          <div className="logo-preview">
+            {settings.signature.mimeType === 'application/pdf' ? (
+              <span className="file-badge">PDF</span>
+            ) : (
+              <img src={`data:${settings.signature.mimeType};base64,${settings.signature.base64}`} alt={tr('Unterschrift', 'Signature')} />
+            )}
+            <span>{settings.signature.fileName}</span>
+            <button type="button" className="btn btn-small" onClick={() => set('signature', null)}>
+              {tr('Entfernen', 'Remove')}
+            </button>
+          </div>
+        ) : (
+          <label className="logo-upload">
+            <span className="btn">{tr('Unterschrift auswählen …', 'Choose signature …')}</span>
+            <input
+              type="file"
+              hidden
+              accept={ACCEPTED_SIGNATURE_TYPES.join(',')}
+              onChange={(e) => {
+                void onSignatureSelected(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+            <span className="field-hint">
+              {tr(
+                `Eingescannte Unterschrift als PNG, JPG, SVG oder PDF (erste Seite, wird zugeschnitten), höchstens ${MAX_LOGO_BYTES / 1024} KB. Wird unter dem Schlusstext gedruckt. Das ist ein Bild und keine digitale Signatur.`,
+                `Scanned signature as PNG, JPG, SVG or PDF (first page, cropped automatically), at most ${MAX_LOGO_BYTES / 1024} KB. Printed below the closing text. This is an image, not a digital signature.`,
+              )}
+            </span>
+          </label>
+        )}
+        {signatureError && <p className="form-error">{signatureError}</p>}
       </section>}
 
       {zone === 'sender' && senderSection === 'appearance' && <section className="form-section" data-zone="sender">
