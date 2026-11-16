@@ -25,9 +25,15 @@ const APP_PATHS = {
   sun: ['M12 3v2', 'M12 19v2', 'm5.64 5.64 1.42 1.42', 'm16.94 16.94 1.42 1.42', 'M3 12h2', 'M19 12h2', 'm5.64 18.36 1.42-1.42', 'm16.94 7.06 1.42-1.42', 'M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z'],
   moon: ['M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 8.5 8.5 0 1 0 20.5 14.5z'],
   system: ['M3 4h18v13H3z', 'M8 21h8', 'M12 17v4'],
+  search: ['M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13z', 'm16 16 5 5'],
+  circle: ['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z'],
+  forward: ['m9 6 6 6-6 6'],
+  cloud: ['M7 18a4.5 4.5 0 0 1-.5-8.97A6 6 0 0 1 18 8.5a4.75 4.75 0 0 1-.5 9.5H7z'],
+  articles: ['M4 6h16', 'M4 12h16', 'M4 18h10'],
+  store: ['M4 9l1.5-5h13L20 9', 'M4 9v11h16V9', 'M4 9a2.67 2.67 0 0 0 5.33 0 2.67 2.67 0 0 0 5.34 0A2.67 2.67 0 0 0 20 9', 'M10 20v-5h4v5'],
 } as const
 
-type AppIconName = keyof typeof APP_PATHS
+export type AppIconName = keyof typeof APP_PATHS
 
 function Svg({ paths, size = 24 }: { paths: readonly string[]; size?: number }) {
   return (

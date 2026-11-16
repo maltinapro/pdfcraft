@@ -11,6 +11,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 export function Button({ variant = 'filled', icon, label, children, className = '', ...props }: Props) {
   return (
     <button
+      type="button"
       {...props}
       className={`ui-button ui-button-${variant}${className ? ` ${className}` : ''}`}
       aria-label={label ?? props['aria-label']}

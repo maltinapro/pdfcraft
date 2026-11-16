@@ -182,7 +182,7 @@
 }
 
 @media (forced-colors: active) {
-  :where(input, select, textarea, button, .chip, .ui-chip, .card, .tile, .data-card, .archive-item, .form-section, .zone-bar, .ui-banner) {
+  :where(input, select, textarea, button, .chip, .ui-chip, .card, .ui-card, .ui-empty, .start-tile, .start-primary, .doc-row, .link-row, .master-row, .form-section, .zone-bar, .ui-banner) {
     border: 1px solid transparent;
   }
 

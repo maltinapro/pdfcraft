@@ -147,11 +147,20 @@ try {
               headerHeight: header?.getBoundingClientRect().height ?? 0,
               navOverflow: !!nav && nav.scrollWidth > nav.clientWidth + 1,
               headerOverflow: !!header && header.scrollWidth > header.clientWidth + 1,
+              pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+              listTop: (document.querySelector('.doc-row')?.getBoundingClientRect().top ?? 0) - (header?.getBoundingClientRect().height ?? 0),
+              startBottom: Math.max(0, ...[...document.querySelectorAll('.start-primary, .start-tile')].map((element) => element.getBoundingClientRect().bottom)),
             }
           })
           const maxHeaderHeight = width < 840 ? 64 : 72
-          if (layout.navOverflow || layout.headerOverflow || layout.headerHeight > maxHeaderHeight) {
+          if (layout.navOverflow || layout.headerOverflow || layout.pageOverflow || layout.headerHeight > maxHeaderHeight) {
             throw new Error(`Shell overflow at ${language}/${theme}/${width}/${routeName}: ${JSON.stringify(layout)}`)
+          }
+          if (route === '' && width < 840 && layout.startBottom > 844 - 80) {
+            throw new Error(`Start page document types are below the first screen at ${language}/${theme}/${width}: ${layout.startBottom}px`)
+          }
+          if (route === 'documents' && width < 840 && layout.listTop > 200) {
+            throw new Error(`Document list starts too low at ${language}/${theme}/${width}: ${layout.listTop}px below the top bar`)
           }
           if (route === 'more') {
             await page.locator('.header-overflow > summary').click()

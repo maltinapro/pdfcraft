@@ -9,7 +9,7 @@ import { Stepper, type ZoneState } from './editor/Stepper'
 import { ZonePanel } from './editor/ZonePanel'
 import { Dialog, SegmentedButton } from './ui'
 import { ValidationError, type RenderedPdf } from '../lib/api'
-import { fieldTitle } from '../lib/apiErrors'
+import { fieldTitle, friendlyError } from '../lib/apiErrors'
 import { type ArchiveEntry } from '../lib/archive'
 import { FOLLOW_UPS, ZONES, zoneForField, type DocKind, type ZoneId } from '../lib/documents'
 import { tr, useLang } from '../lib/i18n'
@@ -394,7 +394,7 @@ export function Workspace({
           setError(null)
           setServerIssues(e.issues.map((issue) => ({ level: 'error', field: issue.field, message: issue.message, blocking: true, server: true })))
         } else {
-          setError(e instanceof Error ? e.message : String(e))
+          setError(friendlyError(e))
         }
         setLoading(false)
       }

@@ -1,10 +1,12 @@
-import { FreeVersionHint } from './FreeVersionHint'
 import { AppHeader } from './AppHeader'
 import { ArchiveList } from './ArchiveList'
-import { BackupBanner } from './BackupBanner'
-import { DocIcon } from './icons'
-import { DOC_SPECS, type DocKind } from '../lib/documents'
+import { FreeVersionHint } from './FreeVersionHint'
+import { AppIcon, DocIcon } from './icons'
+import { Banner, Card, EmptyState } from './ui'
+import { DOC_SPECS, docSpec, type DocKind } from '../lib/documents'
 import type { ArchiveEntry } from '../lib/archive'
+import type { EntryStatus } from '../lib/archiveFilter'
+import { onboardingOpen, onboardingSteps } from '../lib/onboarding'
 import { tr, useLang } from '../lib/i18n'
 import { routeHref } from '../lib/router'
 
@@ -14,104 +16,100 @@ interface Props {
   notice: string | null
   onDismissNotice: () => void
   archive: ArchiveEntry[]
-  /** Numbers of invoices that already have a credit note. */
-  cancelled: Set<string>
+  statuses: Map<string, EntryStatus>
   onFollowUp: (entry: ArchiveEntry, target: DocKind) => void
+  onRerender: (entry: ArchiveEntry) => void
   unsaved: number
-  onBackup: () => void
-  /** First visit: sender still shows the example data. */
-  showWelcome?: boolean
+  /** The sender no longer shows the example data. */
+  companyDone: boolean
+  lastBackup: string | null
 }
 
-/** Start page: one tile per document type (see `DOC_SPECS`) and the latest documents. */
-export function Dashboard({ notice, onDismissNotice, archive, cancelled, onFollowUp, unsaved, onBackup, showWelcome = false }: Props) {
+/** Start page: the invoice is one tap away, the other document types follow, then getting started and the latest documents. */
+export function Dashboard({ notice, onDismissNotice, archive, statuses, onFollowUp, onRerender, unsaved, companyDone, lastBackup }: Props) {
   useLang()
+  const invoice = docSpec('invoice')
+  const others = DOC_SPECS.filter((spec) => spec.kind !== 'invoice')
+  const steps = onboardingSteps({ companyDone, documents: archive.length, lastBackup })
   return (
     <div className="app app-scroll">
       <AppHeader route="" unsaved={unsaved} />
 
-      <FreeVersionHint />
+      <main className="page">
+        {notice && <Banner onDismiss={onDismissNotice}>{notice}</Banner>}
 
-      {notice && (
-        <div className="notice" role="status" onClick={onDismissNotice}>
-          {notice}
-        </div>
-      )}
+        <h1>{tr('Was möchten Sie erstellen?', 'What would you like to create?')}</h1>
 
-      <main className="dashboard">
-        {showWelcome && (
-          <section className="welcome" aria-label={tr('Erste Schritte', 'Getting started')}>
-            <div>
-              <h2>{tr('Willkommen! In zwei Schritten zum ersten Dokument', 'Welcome! Two steps to your first document')}</h2>
-              <ol>
-                <li>{tr('Tragen Sie einmalig Ihre Firmendaten ein (Name, Adresse, Bankverbindung, optional Logo).', 'Enter your company details once (name, address, bank details, optional logo).')}</li>
-                <li>{tr('Wählen Sie unten eine Dokumentart – die Vorschau zeigt sofort, wie das PDF aussieht.', 'Choose a document type below – the preview instantly shows what the PDF looks like.')}</li>
-              </ol>
-            </div>
-            <a className="btn btn-primary" href={routeHref('sender')}>{tr('Firmendaten eintragen', 'Enter company details')}</a>
-          </section>
+        {invoice && (
+          <a className="start-primary" href={routeHref('invoice')}>
+            <span className="start-primary-icon"><DocIcon kind="invoice" size={28} /></span>
+            <span>
+              <strong>{invoice.label}</strong>
+              <small>{tr('Mit E-Rechnung (ZUGFeRD, XRechnung) und Live-Vorschau', 'With e-invoice (ZUGFeRD, XRechnung) and live preview')}</small>
+            </span>
+            <AppIcon name="forward" />
+          </a>
         )}
 
-        <BackupBanner unsaved={unsaved} onBackup={onBackup} />
-
-        <section className="dashboard-hero">
-          <h1>{tr('Was möchten Sie erstellen?', 'What would you like to create?')}</h1>
-          <p>{tr('Wählen Sie eine Dokumentart. Ihre Absenderdaten und das Design gelten für alle Dokumente.', 'Choose a document type. Your sender details and design apply to all documents.')}</p>
-        </section>
-
-        <ul className="tiles">
-          {DOC_SPECS.map((spec) => (
+        <ul className="start-grid">
+          {others.map((spec) => (
             <li key={spec.kind}>
-              <a
-                className="tile"
-                href={routeHref(spec.kind)}
-              >
-                <span className="tile-icon">
-                  <DocIcon kind={spec.kind} size={26} />
+              <a className="start-tile" href={routeHref(spec.kind)}>
+                <span className="start-tile-icon"><DocIcon kind={spec.kind} size={22} /></span>
+                <span className="start-tile-text">
+                  <span className="start-tile-title">{spec.label}</span>
+                  <span className="start-tile-desc">{spec.description}</span>
                 </span>
-                <span className="tile-title">{spec.label}</span>
-                <span className="tile-text">{spec.description}</span>
-                <span className="tile-cta">{tr('Erstellen', 'Create')} <span aria-hidden="true">→</span></span>
               </a>
             </li>
           ))}
           <li>
-            <a className="tile" href={routeHref('viewer')}>
-              <span className="tile-icon">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="11" cy="11" r="6.5" />
-                  <path d="m20 20-4.2-4.2" />
-                </svg>
+            <a className="start-tile" href={routeHref('viewer')}>
+              <span className="start-tile-icon"><AppIcon name="viewer" size={22} /></span>
+              <span className="start-tile-text">
+                <span className="start-tile-title">{tr('E-Rechnung prüfen', 'Check e-invoice')}</span>
+                <span className="start-tile-desc">
+                  {tr('Empfangene ZUGFeRD- oder XRechnung-Datei lesen und prüfen. Bleibt in Ihrem Browser.', 'Read and check a received ZUGFeRD or XRechnung file. It stays in your browser.')}
+                </span>
               </span>
-              <span className="tile-title">{tr('E-Rechnung ansehen', 'View e-invoice')}</span>
-              <span className="tile-text">
-                {tr(
-                  'Empfangene ZUGFeRD- oder XRechnung-Datei lesen und prüfen. Bleibt in Ihrem Browser.',
-                  'Read and check a received ZUGFeRD or XRechnung file. It stays in your browser.',
-                )}
-              </span>
-              <span className="tile-cta">{tr('Öffnen', 'Open')} <span aria-hidden="true">→</span></span>
             </a>
           </li>
         </ul>
 
+        {onboardingOpen(steps) && (
+          <Card heading={tr('Erste Schritte', 'Getting started')} aria-label={tr('Erste Schritte', 'Getting started')}>
+            <ul className="checklist">
+              {steps.map((step) => (
+                <li key={step.id} className={step.done ? 'checklist-done' : undefined}>
+                  <a href={routeHref(step.route)}>
+                    <span className="checklist-mark" aria-hidden="true"><AppIcon name="check" size={16} /></span>
+                    <span className="checklist-label">{step.label}</span>
+                    <span className="sr-only">{step.done ? tr('erledigt', 'done') : tr('offen', 'open')}</span>
+                    {!step.done && <span className="checklist-go" aria-hidden="true"><AppIcon name="forward" size={20} /></span>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
 
-        <section className="archive">
-          <div className="section-head">
-            <h2>{tr('Zuletzt erstellt', 'Recently created')}</h2>
-            {archive.length > 0 && (
-              <a href={routeHref('documents')}>{tr(`Alle ${archive.length} Belege anzeigen →`, `Show all ${archive.length} documents →`)}</a>
+        <FreeVersionHint />
+
+        <section aria-labelledby="recent-heading">
+          <div className="page-section-head">
+            <h2 id="recent-heading">{tr('Zuletzt erstellt', 'Recently created')}</h2>
+            {archive.length > RECENT && (
+              <a href={routeHref('documents')}>{tr(`Alle ${archive.length} anzeigen`, `Show all ${archive.length}`)}</a>
             )}
           </div>
           {archive.length === 0 ? (
-            <p className="archive-empty">
-              {tr(
-                'Sobald Sie ein PDF herunterladen, erscheint es hier. Von dort aus können Sie es stornieren oder den nächsten Beleg daraus erstellen.',
-                'Once you download a PDF it appears here. From there you can cancel it or create the next document from it.',
-              )}
-            </p>
+            <EmptyState
+              icon="documents"
+              title={tr('Noch keine Belege', 'No documents yet')}
+              text={tr('Sobald Sie ein PDF herunterladen, erscheint es hier – mit Stornieren und Folgebelegen.', 'Once you download a PDF it appears here – with cancel and follow-up documents.')}
+            />
           ) : (
-            <ArchiveList entries={archive.slice(0, RECENT)} cancelled={cancelled} onFollowUp={onFollowUp} />
+            <ArchiveList entries={archive.slice(0, RECENT)} statuses={statuses} onFollowUp={onFollowUp} onRerender={onRerender} />
           )}
         </section>
       </main>

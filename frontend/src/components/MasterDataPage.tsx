@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { AppHeader } from './AppHeader'
 import { Field, TextField } from './Field'
+import { AppIcon } from './icons'
+import { Banner, Button, EmptyState, Menu, MenuItem, SegmentedButton } from './ui'
 import { money, unitLabel } from './MasterDataPickers'
 import type { ArchiveEntry } from '../lib/archive'
 import { tr, useLang } from '../lib/i18n'
@@ -98,6 +100,11 @@ export function MasterDataPage({ tab, notice, onDismissNotice, archive, unsaved,
 
   const shownContacts = sortedContacts(searchContacts(contacts, query))
   const shownArticles = sortedArticles(searchArticles(articles, query))
+  const importable = archive.length > 0 && (
+    <Button variant="tonal" onClick={onImportArchive}>
+      {tr(`Aus ${archive.length} Belegen übernehmen`, `Import from ${archive.length} documents`)}
+    </Button>
+  )
   const editing = tab === 'contacts' ? contact !== null : article !== null
   const full = tab === 'contacts' ? contacts.length >= MAX_CONTACTS : articles.length >= MAX_ARTICLES
 
@@ -105,84 +112,69 @@ export function MasterDataPage({ tab, notice, onDismissNotice, archive, unsaved,
     <div className="app app-scroll">
       <AppHeader title={tr('Kunden', 'Customers')} route={tab} unsaved={unsaved} />
 
-      {notice && (
-        <div className="notice" role="status" onClick={onDismissNotice}>
-          {notice}
-        </div>
-      )}
+      <main className="page page-narrow">
+        {notice && <Banner onDismiss={onDismissNotice}>{notice}</Banner>}
 
-      <main className="dashboard data-page">
-        <section className="dashboard-hero">
-          <h1>{tr('Kunden & Artikel', 'Customers & articles')}</h1>
-          <p>
-            {tr(
-              'Wiederkehrende Empfänger und Standardleistungen speichern und in jedem Dokument per Klick einfügen. Die Daten liegen nur in diesem Browser (nicht auf dem Server) und sind Teil der Sicherung.',
-              'Save recurring recipients and standard services and add them to any document with a click. The data stays in this browser only (not on the server) and is part of the backup.',
-            )}
-          </p>
-        </section>
+        <h1>{tr('Kunden & Artikel', 'Customers & articles')}</h1>
+        <p className="page-lead">
+          {tr(
+            'Wiederkehrende Kunden und Standardleistungen speichern und in jedem Dokument per Klick einfügen. Die Daten liegen nur in diesem Browser (nicht auf dem Server) und sind Teil der Sicherung.',
+            'Save recurring customers and standard services and add them to any document with a click. The data stays in this browser only (not on the server) and is part of the backup.',
+          )}
+        </p>
 
-        <nav className="tabs master-tabs" aria-label={tr('Stammdaten', 'Master data')}>
-          <button type="button" className={`tab${tab === 'contacts' ? ' active' : ''}`} aria-current={tab === 'contacts' ? 'page' : undefined} onClick={() => goTo('contacts')}>
-            {tr('Empfänger', 'Recipients')} ({contacts.length})
-          </button>
-          <button type="button" className={`tab${tab === 'articles' ? ' active' : ''}`} aria-current={tab === 'articles' ? 'page' : undefined} onClick={() => goTo('articles')}>
-            {tr('Artikel', 'Articles')} ({articles.length})
-          </button>
-        </nav>
+        <SegmentedButton
+          label={tr('Stammdaten', 'Master data')}
+          value={tab}
+          options={[
+            { value: 'contacts', label: `${tr('Kunden', 'Customers')} (${contacts.length})` },
+            { value: 'articles', label: `${tr('Artikel', 'Articles')} (${articles.length})` },
+          ]}
+          onChange={(next) => goTo(next as 'contacts' | 'articles')}
+        />
 
-        <section className="data-card">
-          <div className="archive-toolbar">
+        <div className="doc-tools">
+          <label className="ui-search">
+            <AppIcon name="search" size={20} />
             <input
-              type="text"
-              className="master-search"
+              type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={tab === 'contacts' ? tr('Empfänger suchen …', 'Search recipients …') : tr('Artikel suchen …', 'Search articles …')}
-              aria-label={tab === 'contacts' ? tr('Empfänger suchen', 'Search recipients') : tr('Artikel suchen', 'Search articles')}
+              placeholder={tab === 'contacts' ? tr('Kunden suchen …', 'Search customers …') : tr('Artikel suchen …', 'Search articles …')}
+              aria-label={tab === 'contacts' ? tr('Kunden suchen', 'Search customers') : tr('Artikel suchen', 'Search articles')}
             />
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={editing || full}
-              onClick={() => {
-                setError(null)
-                if (tab === 'contacts') setContact(emptyContact())
-                else setArticle(emptyArticle())
-              }}
-            >
-              {tab === 'contacts' ? tr('+ Neuer Empfänger', '+ New recipient') : tr('+ Neuer Artikel', '+ New article')}
-            </button>
-            <button
-              type="button"
-              className="btn"
-              disabled={archive.length === 0}
-              title={archive.length === 0 ? tr('Noch keine Belege vorhanden', 'No documents yet') : undefined}
-              onClick={onImportArchive}
-            >
-              {tr('Aus ausgestellten Belegen übernehmen', 'Import from issued documents')}
-            </button>
-          </div>
-          {error && <p className="form-error" role="alert">{error}</p>}
+          </label>
+          <Button
+            disabled={editing || full}
+            onClick={() => {
+              setError(null)
+              if (tab === 'contacts') setContact(emptyContact())
+              else setArticle(emptyArticle())
+            }}
+          >
+            {tab === 'contacts' ? tr('Neuer Kunde', 'New customer') : tr('Neuer Artikel', 'New article')}
+          </Button>
+        </div>
+        {error && <Banner tone="error">{error}</Banner>}
 
-          {tab === 'contacts' && contact && (
-            <form className="master-form" onSubmit={saveContact}>
-              <h2>{contacts.some((c) => c.id === contact.id) ? tr('Empfänger bearbeiten', 'Edit recipient') : tr('Neuer Empfänger', 'New recipient')}</h2>
+        {tab === 'contacts' && contact && (
+            <form className="ui-card master-form" onSubmit={saveContact}>
+              <h2>{contacts.some((c) => c.id === contact.id) ? tr('Kunde bearbeiten', 'Edit customer') : tr('Neuer Kunde', 'New customer')}</h2>
               <TextField label={tr('Name', 'Name')} value={contact.name} onChange={(v) => setContact({ ...contact, name: v.slice(0, 200) })} />
               <TextField label={tr('Straße / Hausnummer', 'Street / house number')} value={contact.address} onChange={(v) => setContact({ ...contact, address: v.slice(0, 200) })} />
               <TextField label={tr('PLZ / Ort', 'Postcode / city')} value={contact.city} onChange={(v) => setContact({ ...contact, city: v.slice(0, 200) })} />
               <TextField label={tr('E-Mail', 'E-mail')} type="email" value={contact.email} onChange={(v) => setContact({ ...contact, email: v.slice(0, 200) })} />
               <TextField label={tr('USt-IdNr.', 'VAT ID')} value={contact.vatId} onChange={(v) => setContact({ ...contact, vatId: v.slice(0, 200) })} />
               <TextField label={tr('Leitweg-ID / Käuferreferenz', 'Leitweg ID / buyer reference')} value={contact.buyerReference} onChange={(v) => setContact({ ...contact, buyerReference: v.slice(0, 200) })} />
-              <div className="data-actions">
-                <button type="submit" className="btn btn-primary">{tr('Speichern', 'Save')}</button>
-                <button type="button" className="btn" onClick={() => { setContact(null); setError(null) }}>{tr('Abbrechen', 'Cancel')}</button>
+              <div className="card-actions">
+                <Button type="submit">{tr('Speichern', 'Save')}</Button>
+                <Button variant="text" onClick={() => { setContact(null); setError(null) }}>{tr('Abbrechen', 'Cancel')}</Button>
               </div>
             </form>
           )}
 
           {tab === 'articles' && article && (
-            <form className="master-form" onSubmit={saveArticle}>
+            <form className="ui-card master-form" onSubmit={saveArticle}>
               <h2>{articles.some((a) => a.id === article.id) ? tr('Artikel bearbeiten', 'Edit article') : tr('Neuer Artikel', 'New article')}</h2>
               <TextField label={tr('Beschreibung', 'Description')} value={article.description} onChange={(v) => setArticle({ ...article, description: v.slice(0, 2000) })} />
               <div className="item-row">
@@ -204,55 +196,70 @@ export function MasterDataPage({ tab, notice, onDismissNotice, archive, unsaved,
                   </select>
                 </Field>
               </div>
-              <div className="data-actions">
-                <button type="submit" className="btn btn-primary">{tr('Speichern', 'Save')}</button>
-                <button type="button" className="btn" onClick={() => { setArticle(null); setError(null) }}>{tr('Abbrechen', 'Cancel')}</button>
+              <div className="card-actions">
+                <Button type="submit">{tr('Speichern', 'Save')}</Button>
+                <Button variant="text" onClick={() => { setArticle(null); setError(null) }}>{tr('Abbrechen', 'Cancel')}</Button>
               </div>
             </form>
           )}
 
           {tab === 'contacts' ? (
             contacts.length === 0 ? (
-              <p className="archive-empty">{tr('Noch keine Empfänger. Legen Sie einen an oder speichern Sie ihn direkt im Dokumentformular.', 'No recipients yet. Create one or save it directly in a document form.')}</p>
+              <EmptyState
+                icon="customers"
+                title={tr('Noch keine Kunden', 'No customers yet')}
+                text={tr('Legen Sie einen Kunden an oder speichern Sie ihn direkt im Dokumentformular.', 'Create a customer or save one directly in a document form.')}
+              >
+                {importable}
+              </EmptyState>
             ) : shownContacts.length === 0 ? (
-              <p className="archive-empty">{tr('Keine Treffer.', 'No matches.')}</p>
+              <EmptyState icon="search" title={tr('Keine Treffer', 'No matches')} />
             ) : (
-              <ul className="archive-list">
+              <ul className="master-list">
                 {shownContacts.map((c) => (
-                  <li key={c.id} className="archive-item">
-                    <div className="archive-main">
+                  <li key={c.id} className="master-row">
+                    <button type="button" className="master-row-main" onClick={() => { setError(null); setContact(c) }}>
                       <strong>{c.name}</strong>
-                      <span className="archive-sub">{[c.address, c.city, c.email, c.vatId].filter(Boolean).join(' · ')}</span>
-                    </div>
-                    <div className="archive-actions">
-                      <button type="button" className="btn btn-small" onClick={() => { setError(null); setContact(c) }}>{tr('Bearbeiten', 'Edit')}</button>
-                      <button type="button" className="btn btn-small btn-danger" onClick={() => removeContact(c)}>{tr('Löschen', 'Delete')}</button>
-                    </div>
+                      <span>{[c.address, c.city, c.email, c.vatId].filter(Boolean).join(' · ')}</span>
+                    </button>
+                    <Menu label={tr(`Aktionen für ${c.name}`, `Actions for ${c.name}`)}>
+                      <MenuItem onClick={() => { setError(null); setContact(c) }}>{tr('Bearbeiten', 'Edit')}</MenuItem>
+                      <MenuItem danger onClick={() => removeContact(c)}>{tr('Löschen', 'Delete')}</MenuItem>
+                    </Menu>
                   </li>
                 ))}
               </ul>
             )
           ) : articles.length === 0 ? (
-            <p className="archive-empty">{tr('Noch keine Artikel. Legen Sie einen an oder speichern Sie eine Position direkt im Dokumentformular.', 'No articles yet. Create one or save a line directly in a document form.')}</p>
+            <EmptyState
+              icon="articles"
+              title={tr('Noch keine Artikel', 'No articles yet')}
+              text={tr('Legen Sie einen Artikel an oder speichern Sie eine Position direkt im Dokumentformular.', 'Create an article or save a line directly in a document form.')}
+            >
+              {importable}
+            </EmptyState>
           ) : shownArticles.length === 0 ? (
-            <p className="archive-empty">{tr('Keine Treffer.', 'No matches.')}</p>
+            <EmptyState icon="search" title={tr('Keine Treffer', 'No matches')} />
           ) : (
-            <ul className="archive-list">
+            <ul className="master-list">
               {shownArticles.map((a) => (
-                <li key={a.id} className="archive-item">
-                  <div className="archive-main">
+                <li key={a.id} className="master-row">
+                  <button type="button" className="master-row-main" onClick={() => { setError(null); setArticle({ ...a, price: String(a.price) }) }}>
                     <strong>{a.description}</strong>
-                    <span className="archive-sub">{money(a.price)} / {unitLabel(a.unit)} · {a.taxRate} %</span>
-                  </div>
-                  <div className="archive-actions">
-                    <button type="button" className="btn btn-small" onClick={() => { setError(null); setArticle({ ...a, price: String(a.price) }) }}>{tr('Bearbeiten', 'Edit')}</button>
-                    <button type="button" className="btn btn-small btn-danger" onClick={() => removeArticle(a)}>{tr('Löschen', 'Delete')}</button>
-                  </div>
+                    <span>{money(a.price)} / {unitLabel(a.unit)} · {a.taxRate} %</span>
+                  </button>
+                  <Menu label={tr(`Aktionen für ${a.description}`, `Actions for ${a.description}`)}>
+                    <MenuItem onClick={() => { setError(null); setArticle({ ...a, price: String(a.price) }) }}>{tr('Bearbeiten', 'Edit')}</MenuItem>
+                    <MenuItem danger onClick={() => removeArticle(a)}>{tr('Löschen', 'Delete')}</MenuItem>
+                  </Menu>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+
+          {(contacts.length > 0 || articles.length > 0) && archive.length > 0 && (
+            <div className="card-actions">{importable}</div>
+          )}
       </main>
     </div>
   )

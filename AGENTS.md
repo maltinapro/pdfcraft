@@ -53,6 +53,8 @@ For E08 paper-first editor changes, inspect the zone editor and clickable PDF pr
 
 The E08 editor uses a resizable desktop form/preview split and, below 840 px, Form/Preview tabs under a slim app bar (no bottom navigation, no bottom sheet) with a stepper with short labels and a sticky Back/Next footer; tapping a preview zone switches to the form. Filled M3 fields are scoped to the editor (`.app-editor`). Recent follow-up checks also cover compact form spacing, themed scrollbars, separated item totals and preview-zone outlines. Keep E08-07 open until the five-task comparison and real-device checks are recorded; automated screenshots are not a substitute.
 
+E09 app pages (Start, Belege, Kunden, Daten & Sicherung, Mehr, Kaufen, Prüfen) are built from `components/ui/` (Card, Banner, EmptyState, Menu, Button, ButtonLink, Chip, SegmentedButton) and `components/pages.css` with tokens only; `npm run screenshots` also fails when a route overflows horizontally, when the start page's document types sit below 844 px minus the bottom nav at 390 px, or when the first Belege row starts more than 200 px below the top bar. UI error texts go through `friendlyError` in `lib/apiErrors.ts`. The backup reminder is only the Mehr badge/nav dot (no banner).
+
 ## Backend PDF Pipeline (Current)
 1. Receive `{ template, data }` in `POST /generate-pdf`
 2. Render template with minijinja (`template` + `data`)

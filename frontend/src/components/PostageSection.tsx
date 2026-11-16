@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Field } from './Field'
 import { tr, uiLocale, useLang } from '../lib/i18n'
 import { ApiError } from '../lib/api'
+import { friendlyError } from '../lib/apiErrors'
 import { buyStamp, forgetProducts, loadProducts, recoverStamp, type PostageProduct } from '../lib/postage'
 import type { PostageStamp } from '../lib/types'
 
@@ -43,7 +44,7 @@ export function PostageSection({ postage, onChange }: Props) {
         setLoginRequired(list.loginRequired)
         setProductCode((current) => current ?? list.products[0]?.productCode ?? null)
       })
-      .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : String(e)))
+      .catch((e: unknown) => setLoadError(friendlyError(e)))
   }
 
   useEffect(load, [])
@@ -76,7 +77,7 @@ export function PostageSection({ postage, onChange }: Props) {
       setBalance(purchase.walletBalanceCents)
       setPassword('')
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(friendlyError(e))
       if (e instanceof ApiError && e.code === 'postage_download_failed') {
         setLostOrder(/order (\S+)/.exec(e.details ?? '')?.[1] ?? null)
       }
@@ -99,7 +100,7 @@ export function PostageSection({ postage, onChange }: Props) {
       setLostOrder(null)
       setPassword('')
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(friendlyError(e))
     } finally {
       setBuying(false)
     }
