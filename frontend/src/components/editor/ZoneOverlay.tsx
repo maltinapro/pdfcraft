@@ -7,6 +7,8 @@ interface Props {
   heightMm: number
   zones: readonly ZoneRect[]
   active: ZoneId
+  /** Name of zone 4 when it is not "Items" (letters have a text). */
+  itemsLabel?: string
   onSelect: (zone: ZoneId) => void
 }
 
@@ -24,12 +26,14 @@ const zoneLabels: Record<number, [string, string]> = {
   4: ['4 · Positionen', '4 · Items'],
 }
 
-export function ZoneOverlay({ page, widthMm, heightMm, zones, active, onSelect }: Props) {
+export function ZoneOverlay({ page, widthMm, heightMm, zones, active, itemsLabel, onSelect }: Props) {
   const areas = zones.filter((area) => area.page === page && zoneByNumber[area.zone])
   return (
     <div className="zone-overlay" aria-label={tr('Dokumentbereiche', 'Document zones')}>
       {areas.map((area, index) => {
         const zone = zoneByNumber[area.zone]
+        const [de, en] = zoneLabels[area.zone]
+        const label = area.zone === 4 && itemsLabel ? [`4 · ${itemsLabel}`, `4 · ${itemsLabel}`] : [de, en]
         return (
           <button
             type="button"
@@ -41,10 +45,10 @@ export function ZoneOverlay({ page, widthMm, heightMm, zones, active, onSelect }
               width: `${(area.w / widthMm) * 100}%`,
               height: `${(area.h / heightMm) * 100}%`,
             }}
-            aria-label={tr(`${zoneLabels[area.zone][0]} öffnen`, `Open ${zoneLabels[area.zone][1]}`)}
+            aria-label={tr(`${label[0]} öffnen`, `Open ${label[1]}`)}
             onClick={() => onSelect(zone)}
           >
-            <span className="zone-overlay-label">{tr(...zoneLabels[area.zone])}</span>
+            <span className="zone-overlay-label">{tr(label[0], label[1])}</span>
           </button>
         )
       })}
