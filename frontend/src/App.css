@@ -786,6 +786,7 @@ a.btn { text-decoration: none; }
 .app.app-scroll { padding-bottom: 0; }
 
 @media (max-width: 839px) {
+  :root { --nav-height: 64px; }
   .app-header {
     height: 56px;
     gap: 4px;
@@ -801,7 +802,8 @@ a.btn { text-decoration: none; }
     right: 0;
     bottom: 0;
     left: 0;
-    height: calc(80px + env(safe-area-inset-bottom));
+    height: calc(var(--nav-height) + env(safe-area-inset-bottom));
+    transition: transform var(--motion-state);
     align-items: stretch;
     justify-content: space-around;
     gap: 0;
@@ -812,36 +814,39 @@ a.btn { text-decoration: none; }
   .header-nav a {
     flex: 1 1 25%;
     min-width: 0;
-    height: 72px;
+    height: 56px;
     flex-direction: column;
+    justify-content: flex-start;
     gap: 2px;
-    padding: 8px 2px;
+    padding: 6px 2px 0;
     border-radius: var(--radius-l);
     font-size: var(--type-label-m);
     line-height: var(--line-label-m);
   }
   .header-nav a > svg { width: 24px; height: 24px; }
   .header-nav a[aria-current='page']::after {
-    top: 12px;
+    top: 4px;
     right: auto;
     bottom: auto;
     left: 50%;
     width: 56px;
-    height: 32px;
+    height: 28px;
     border-radius: var(--radius-full);
     transform: translateX(-50%);
     z-index: -1;
     background: var(--color-primary-container);
   }
   .header-nav a[aria-current='page'] { color: var(--color-on-surface-variant); }
-  .app { height: 100dvh; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
-  .app.app-scroll { min-height: 100dvh; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .app { height: 100dvh; padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom)); }
+  .app.app-scroll { min-height: 100dvh; padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom)); }
+  :root[data-nav-hidden] .header-nav { transform: translateY(100%); }
+  :root[data-nav-hidden] .app.app-scroll { padding-bottom: env(safe-area-inset-bottom); }
   .header-actions > .btn-primary { width: 48px; padding: 0; }
   .download-label { display: none; }
 }
 
 @media (min-width: 600px) and (max-width: 839px) {
-  .header-nav a { flex-direction: row; font-size: var(--type-label-l); }
+  .header-nav a { flex-direction: row; justify-content: center; padding-top: 0; font-size: var(--type-label-l); }
   .header-nav a[aria-current='page']::after { top: 50%; left: 50%; width: 64px; height: 40px; transform: translate(-50%, -50%); }
 }
 

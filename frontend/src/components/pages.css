@@ -110,7 +110,8 @@ button.doc-row-main { padding: 0; border: 0; background: transparent; font: inhe
 .selection-bar {
   position: sticky;
   z-index: 5;
-  bottom: calc(80px + env(safe-area-inset-bottom) + var(--space-2));
+  bottom: calc(var(--nav-height, 0px) + env(safe-area-inset-bottom) + var(--space-2));
+  transition: bottom var(--motion-state);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -172,3 +173,7 @@ button.doc-row-main { padding: 0; border: 0; background: transparent; font: inhe
 .master-form .item-row { flex-wrap: wrap; }
 .master-row-main { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .master-row-main:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: var(--radius-s); }
+
+@media (max-width: 839px) {
+  :root[data-nav-hidden] .selection-bar { bottom: calc(env(safe-area-inset-bottom) + var(--space-2)); }
+}

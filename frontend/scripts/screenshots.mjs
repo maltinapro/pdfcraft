@@ -156,7 +156,7 @@ try {
           if (layout.navOverflow || layout.headerOverflow || layout.pageOverflow || layout.headerHeight > maxHeaderHeight) {
             throw new Error(`Shell overflow at ${language}/${theme}/${width}/${routeName}: ${JSON.stringify(layout)}`)
           }
-          if (route === '' && width < 840 && layout.startBottom > 844 - 80) {
+          if (route === '' && width < 840 && layout.startBottom > 844 - 64) {
             throw new Error(`Start page document types are below the first screen at ${language}/${theme}/${width}: ${layout.startBottom}px`)
           }
           if (route === 'documents' && width < 840 && layout.listTop > 200) {

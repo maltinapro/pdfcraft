@@ -82,7 +82,7 @@ Top-level destinations get **one-word labels** (≤ 10 characters) and an icon:
 | Customers | Kunden | Customers | customers and articles (two tabs inside) |
 | More | Mehr | More | check e-invoice, data & backup, buy access, language, theme, legal |
 
-- **Compact / medium:** M3 **navigation bar** at the bottom (80 px, icon + label, active indicator pill). Replaces the header links that wrap today.
+- **Compact / medium:** M3 **navigation bar** at the bottom (64 px, icon + label, active indicator pill). Replaces the header links that wrap today. On the list pages it slides away while scrolling down and returns on scroll up, at the top and at the end of the page (`lib/useHideNavOnScroll.ts`, `data-nav-hidden` on `<html>`).
 - **Expanded (≥ 840 px):** the same four destinations as **tabs in the top bar** (icon + label, active indicator underneath). Decided: a navigation rail would take 80 px from the editor, which already needs form and preview side by side.
 - The backup reminder is a badge on *Mehr* (dot) and on *Data & backup* inside it.
 
