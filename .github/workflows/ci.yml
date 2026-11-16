@@ -48,7 +48,7 @@ jobs:
     # Valkey for the store tests (`store::tests::valkey_*`, skipped when VALKEY_URL is not set)
     services:
       valkey:
-        image: valkey/valkey:8-alpine
+        image: valkey/valkey:9-alpine
         ports:
           - 6379:6379
         options: >-
