@@ -34,7 +34,7 @@ All findings were worked on in PR #209. Status by area (commits of that PR):
 | Frontend | W-01 (`POST /v1/client-errors`, `pdfcraft_client_errors_total{kind,browser}`), W-02 (lazy routes; app chunk 374 to 254 kB), W-03 (`Workspace.tsx` 650 to 459 lines, e-invoice parser split; `App.tsx`, `BuyPage.tsx`, `SettingsForm.tsx` stay at 320 to 437 lines: accepted, they are single cohesive components), W-04, W-08, W-09, W-10, W-13, request timeouts | Fixed / accepted as noted |
 | Tests | Q-01 (component tests with `react-dom/server`, no DOM dependency) | Fixed |
 
-Not done or not verifiable here: D-06 (dependency table in `docs/10`), the E12-07 benchmark and preview latency re-measurement (`cd backend && cargo test --release bench_render -- --ignored --nocapture`), the E08 usability comparison, real-device checks, and `docs/13-observability.md` plus a dashboard panel for the client-errors metric. Remaining findings not listed above keep the action in the tables below.
+D-06 is done (dependency table in `docs/10`), as are the client-errors docs (`docs/13`), the technical dashboard panel and the privacy sentence. The render benchmark is re-measured (see Performance baseline). Not done or not verifiable here: preview latency and memory measurements, the E08 usability comparison and real-device checks. Remaining findings not listed above keep the action in the tables below.
 
 ## Measured baseline
 
@@ -163,7 +163,7 @@ Every point of the checklist in E12-01 has a result. The numbered findings are i
 | D-03 | transitive | Duplicates that come from the Typst/krilla/hayro stack and are not removable from here, for example `rand` 0.8 (via `lipsum`), `quick-xml`, `skrifa`/`read-fonts`, `miniz_oxide`, `num-bigint`, `roxmltree`, `weezl`, `syn` 2/3, `imagesize`. | L | accepted: upstream versions; re-check at every Typst update |
 | D-04 | `backend/Cargo.toml:8` | `tokio` uses `features = ["full"]`; the code uses `rt-multi-thread`, `macros`, `net`, `time`, `sync` (no `fs`, `process`, `signal`). | L | E12-04 **Fixed** in the E12 findings batch. |
 | D-05 | `frontend/package.json` | `swagger-ui-dist` 5.34.1 → 5.35.0. | L | E12-04 **Fixed** in the E12 findings batch. |
-| D-06 | `docs/10` | No table that says why each runtime dependency exists. | L | E12-04 |
+| D-06 | `docs/10` | No table that says why each runtime dependency exists. | L | E12-04 **Fixed**: table in `docs/10`. |
 | D-07 | transitive (`syntect` → `yaml-rust`) | `yaml-rust` 0.4 is old and unmaintained. Only reachable through Typst. | L | accepted: transitive; `cargo-deny` reports it, with an ignore entry that names this review |
 
 ### Security
@@ -214,12 +214,12 @@ Every point of the checklist in E12-01 has a result. The numbered findings are i
 
 ## Performance baseline
 
-Not re-measured in this review. E12-07 measures before and after E08 and fills in this table.
+Rendering re-measured on 16 Nov 2026 after the E12 changes (release build, `bench_render`). Preview latency, memory, and the "after E08" column still need a manual run.
 
 | Measurement | Baseline source | Value | After E08 |
 | --- | --- | --- | --- |
-| `bench_render`, 3 items | `AGENTS.md` step 37, step 57 | ~5 ms (Classic 8.5 / Modern 10.4 / Contrast 11.5 ms with the E11 designs) | open |
-| `bench_render`, 60 items | same | ~28 ms (Classic 39.5 / 40.0 / 42.1 ms) | open |
+| `bench_render`, 3 items | `AGENTS.md` step 37, step 57 | ~5 ms (Classic 8.5 / Modern 10.4 / Contrast 11.5 ms with the E11 designs) | Classic 8.9 / Modern 10.6 / Contrast 11.7 ms (within noise) |
+| `bench_render`, 60 items | same | ~28 ms (Classic 39.5 / 40.0 / 42.1 ms) | Classic 39.1 / Modern 38.6 / Contrast 40.9 ms; bulk 20 x 60 items 422 / 419 / 427 ms parallel |
 | Preview latency, 4× CPU throttling, 390 px | – | open | open |
 | Memory after 50 preview updates | – | open | open |
 | Lighthouse mobile, `/` and `/api/` | `AGENTS.md` step 56 | 100 / 100 | open |
