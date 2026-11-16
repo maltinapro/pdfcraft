@@ -153,7 +153,29 @@ The exit code is non-zero if any file is invalid. Add new cases (new field, tax 
 | Keys / rate limit | Valkey (`redis` crate) |
 | CORS | [tower-http](https://docs.rs/tower-http/) |
 
+### Dependency rationale
+
+Every direct dependency and why it is there (`backend/Cargo.toml`). `cargo deny check` (in `backend/`) audits licenses and advisories; ignored advisories in `deny.toml` carry a reason.
+
+| Crate | Why |
+| --- | --- |
+| `axum`, `tokio`, `tower-http` | HTTP server, async runtime (only the needed features), CORS |
+| `serde`, `serde_json`, `serde_norway` | Request/response types; YAML for the OpenAPI overlay (`serde_yaml` stays only as a transitive Typst dependency) |
+| `minijinja` | Fills the Typst templates |
+| `typst`, `typst-layout`, `typst-pdf`, `typst-as-lib`, `typst-kit` | Typst compile, layout, PDF/A export, in-memory fonts; bumped together |
+| `lopdf` | Factur-X XMP post-processing (`facturx.rs`) |
+| `hayro-svg`, `usvg`, `resvg`, `tiny-skia` | Convert a signature PDF to SVG and crop it to the visible content (`signature.rs`) |
+| `zip` | Bulk ZIP responses |
+| `redis` | Valkey: tokens, rate limit, one-time markers |
+| `sha2`, `rand`, `ed25519-dalek` | Token hashing and generation, Anubis pass verification |
+| `base64` | Logo, signature and stamp payloads |
+| `reqwest` | Outgoing calls to Mollie and Deutsche Post (timeouts, no redirects) |
+| `tracing`, `tracing-subscriber`, `prometheus-client` | JSON logs and metrics |
+| `utoipa` | Generates `docs/openapi.yaml` from the code |
+
+Frontend: `react`/`vite` (app), `pdfjs-dist` (legacy build; preview and viewer), `@fontsource-variable/inter` (self-hosted font), `swagger-ui-dist` (lazy API reference), `vitest` (tests), `oxlint` (lint; typescript-eslint cannot be used with TypeScript 7), `playwright` (screenshots).
+
 ## CI and dependency updates
 
-- `.github/workflows/ci.yml` runs on every PR and on `main`: frontend `npm ci && npm run build` (type check + build) and backend `cargo check --locked --all-targets` + `cargo test --locked` (with dependency caching). `helm-lint.yml` lints the chart when `deploy/` changes. The job `einvoice` renders the e-invoice corpus (see "E-invoice conformance check" above), downloads the pinned Mustang CLI (checksum verified, cached) and fails if Mustang reports any file as invalid. The backend tests also fail when the generated `docs/openapi.yaml` is outdated; the job `openapi` lints it with the pinned Redocly CLI (warnings fail the job). Make the `CI` jobs (`frontend`, `backend`, `einvoice`, `openapi`) required checks in the branch protection of `main`.
+- `.github/workflows/ci.yml` runs on every PR and on `main`: frontend `npm ci`, `npm run lint` (oxlint), `npm audit`, `npm test`, `npm run build` and `npm run budget` (bundle limits); backend `cargo fmt --check`, `cargo check --locked --all-targets`, `cargo clippy --locked --all-targets -- -D warnings` and `cargo test --locked` (with a Valkey service so the `store.rs` tests run); job `deny` runs `cargo deny check` (with dependency caching). `helm-lint.yml` lints the chart when `deploy/` changes. The job `einvoice` renders the e-invoice corpus (see "E-invoice conformance check" above), downloads the pinned Mustang CLI (checksum verified, cached) and fails if Mustang reports any file as invalid. The backend tests also fail when the generated `docs/openapi.yaml` is outdated; the job `openapi` lints it with the pinned Redocly CLI (warnings fail the job). Make the `CI` jobs (`frontend`, `backend`, `einvoice`, `openapi`) required checks in the branch protection of `main`.
 - `renovate.json` configures Renovate (npm, cargo, GitHub Actions, Dockerfiles, Helm values). Updates run weekly (Monday before 06:00), minor/patch updates are grouped per ecosystem, Typst crates are bumped together. The issue "Dependency Dashboard" gives the overview. Requires the Renovate GitHub App to be installed for the repository (https://github.com/apps/renovate).

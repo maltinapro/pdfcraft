@@ -15,11 +15,18 @@ use tracing_subscriber::EnvFilter;
 /// for readable local output.
 pub fn init_logging() {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    let builder = tracing_subscriber::fmt().with_env_filter(filter).with_target(true);
+    let builder = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_target(true);
     if std::env::var("LOG_FORMAT").is_ok_and(|v| v.eq_ignore_ascii_case("text")) {
         builder.init();
     } else {
-        builder.json().flatten_event(true).with_current_span(false).with_span_list(false).init();
+        builder
+            .json()
+            .flatten_event(true)
+            .with_current_span(false)
+            .with_span_list(false)
+            .init();
     }
 }
 
@@ -44,14 +51,30 @@ pub async fn access_log(req: Request, next: Next) -> Response {
     crate::metrics::http_request(&method, &route, status, elapsed.as_secs_f64());
     let client = response.extensions().get::<Client>();
     let (token_id, token_kind, token_plan) = match client {
-        Some(c) => (Some(c.id.as_str()), Some(c.kind.label()), Some(c.plan.as_str())),
+        Some(c) => (
+            Some(c.id.as_str()),
+            Some(c.kind.label()),
+            Some(c.plan.as_str()),
+        ),
         None => (None, None, None),
     };
-    let token_age_s = client.and_then(|c| c.created).map(|t| crate::store::now().saturating_sub(t));
+    let token_age_s = client
+        .and_then(|c| c.created)
+        .map(|t| crate::store::now().saturating_sub(t));
     if route == "/health" {
         tracing::debug!(event = "http_request", method, route, status, duration_ms);
     } else {
-        tracing::info!(event = "http_request", method, route, status, duration_ms, token_id, token_kind, token_plan, token_age_s);
+        tracing::info!(
+            event = "http_request",
+            method,
+            route,
+            status,
+            duration_ms,
+            token_id,
+            token_kind,
+            token_plan,
+            token_age_s
+        );
     }
     response
 }

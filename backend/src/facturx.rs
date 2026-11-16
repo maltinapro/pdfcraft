@@ -32,7 +32,9 @@ fn name_of(obj: &Object) -> Option<String> {
 /// Finds an attached `factur-x.xml` / `xrechnung.xml` and returns its name and content.
 fn find_invoice_xml(doc: &Document) -> Option<(String, String)> {
     for object in doc.objects.values() {
-        let Object::Dictionary(spec) = object else { continue };
+        let Object::Dictionary(spec) = object else {
+            continue;
+        };
         if spec.get(b"Type").ok().and_then(|t| t.as_name().ok()) != Some(b"Filespec".as_slice()) {
             continue;
         }
@@ -51,7 +53,9 @@ fn find_invoice_xml(doc: &Document) -> Option<(String, String)> {
         })?;
         let stream_id = ef.get(b"F").ok()?.as_reference().ok()?;
         let stream = doc.get_object(stream_id).ok()?.as_stream().ok()?;
-        let content = stream.decompressed_content().unwrap_or_else(|_| stream.content.clone());
+        let content = stream
+            .decompressed_content()
+            .unwrap_or_else(|_| stream.content.clone());
         return Some((file_name, String::from_utf8_lossy(&content).into_owned()));
     }
     None
@@ -124,7 +128,8 @@ pub fn add_facturx_xmp(pdf: Vec<u8>) -> Vec<u8> {
 fn mentions_invoice_xml(pdf: &[u8]) -> bool {
     XML_NAMES.iter().any(|name| {
         let name = name.as_bytes();
-        pdf.windows(name.len()).any(|w| w.eq_ignore_ascii_case(name))
+        pdf.windows(name.len())
+            .any(|w| w.eq_ignore_ascii_case(name))
     })
 }
 
@@ -145,7 +150,9 @@ fn try_add(pdf: &[u8]) -> Result<Option<Vec<u8>>, String> {
         .map_err(|e| e.to_string())?
         .as_stream_mut()
         .map_err(|e| e.to_string())?;
-    let content = stream.decompressed_content().unwrap_or_else(|_| stream.content.clone());
+    let content = stream
+        .decompressed_content()
+        .unwrap_or_else(|_| stream.content.clone());
     let xmp = String::from_utf8(content).map_err(|e| e.to_string())?;
     let Some(patched) = patch_xmp(&xmp, &file_name, level) else {
         return Ok(None);

@@ -7,8 +7,8 @@
 
 use crate::einvoice::{self, describe_items, german_date};
 use crate::invoice::{
-    number, one_of, text, valid_date, Errors, Invoice, Item, Recipient, Settings, MAX_ITEMS, MAX_LONG, MAX_SHORT, TAX_RATES,
-    UNITS,
+    number, one_of, text, valid_date, Errors, Invoice, Item, Recipient, Settings, MAX_ITEMS,
+    MAX_LONG, MAX_SHORT, TAX_RATES, UNITS,
 };
 use crate::postage::{self, Postage};
 use serde::Deserialize;
@@ -32,7 +32,13 @@ pub enum Kind {
 }
 
 impl Kind {
-    pub const ALL: [Kind; 5] = [Kind::CreditNote, Kind::Offer, Kind::Order, Kind::DeliveryNote, Kind::Letter];
+    pub const ALL: [Kind; 5] = [
+        Kind::CreditNote,
+        Kind::Offer,
+        Kind::Order,
+        Kind::DeliveryNote,
+        Kind::Letter,
+    ];
 
     pub fn parse(value: &str) -> Option<Kind> {
         Kind::ALL.into_iter().find(|k| k.slug() == value)
@@ -60,9 +66,16 @@ impl Kind {
 
     /// Complete Typst source: shared preamble plus the type's own layout (built once).
     pub fn template(self) -> &'static str {
-        static TEMPLATES: LazyLock<Vec<String>> =
-            LazyLock::new(|| Kind::ALL.iter().map(|k| format!("{COMMON}\n{}", k.body())).collect());
-        let position = Kind::ALL.iter().position(|k| *k == self).expect("every kind is in Kind::ALL");
+        static TEMPLATES: LazyLock<Vec<String>> = LazyLock::new(|| {
+            Kind::ALL
+                .iter()
+                .map(|k| format!("{COMMON}\n{}", k.body()))
+                .collect()
+        });
+        let position = Kind::ALL
+            .iter()
+            .position(|k| *k == self)
+            .expect("every kind is in Kind::ALL");
         &TEMPLATES[position]
     }
 
@@ -254,7 +267,13 @@ pub fn file_name(kind: Kind, doc: &Document) -> String {
     let stem: String = doc
         .number
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') {
+                c
+            } else {
+                '_'
+            }
+        })
         .take(80)
         .collect();
     if stem.is_empty() {
@@ -306,11 +325,15 @@ mod tests {
 
     #[test]
     fn credit_note_xml_references_the_invoice() {
-        let raw: Settings = serde_json::from_value(json!({"zugferd": true, "vatId": "DE123456789"})).unwrap();
+        let raw: Settings =
+            serde_json::from_value(json!({"zugferd": true, "vatId": "DE123456789"})).unwrap();
         let mut doc = sample(Kind::CreditNote);
         doc.reference_date = "2026-01-15".into();
         let (data, assets) = build(Kind::CreditNote, &raw, json!({}), &doc, json!({}), vec![]);
-        let xml = assets.iter().find(|(k, _)| k == "xml").map(|(_, v)| String::from_utf8_lossy(v).to_string());
+        let xml = assets
+            .iter()
+            .find(|(k, _)| k == "xml")
+            .map(|(_, v)| String::from_utf8_lossy(v).to_string());
         let xml = xml.expect("xml asset");
         assert!(xml.contains("<ram:TypeCode>381</ram:TypeCode>"), "{xml}");
         assert!(xml.contains("InvoiceReferencedDocument") && xml.contains("R-1"));

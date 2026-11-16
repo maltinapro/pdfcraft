@@ -1,11 +1,12 @@
 import { friendlyApiError, parseValidationDetails, unreachableMessage, type ServerIssue } from './apiErrors'
+import { fetchWithTimeout, RequestTimeoutError, SHORT_TIMEOUT_MS } from './fetchTimeout'
+import { API_BASE_URL } from './config'
+import { reportClientError } from './clientErrors'
 import { tr } from './i18n'
 import type { Doc, DocKind, ZoneRect } from './documents'
 import type { Invoice, PostageStamp, Settings } from './types'
 
-export const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ??
-  'http://localhost:3000'
+export { API_BASE_URL }
 
 // Development shortcut: a token created with `pdfcraft-backend tokens create-free`
 const DEV_TOKEN = import.meta.env.VITE_API_TOKEN as string | undefined
@@ -15,6 +16,10 @@ const TOKEN_KEY = 'pdfcraft.freeToken'
 interface StoredToken {
   token: string
   expiresAt: number
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 const PAID_TOKEN_KEY = 'pdfcraft.paidToken'
@@ -30,8 +35,10 @@ export interface PaidToken {
 export function loadPaidToken(): PaidToken | null {
   try {
     const raw = localStorage.getItem(PAID_TOKEN_KEY)
-    const stored = raw ? (JSON.parse(raw) as PaidToken) : null
-    return stored && typeof stored.token === 'string' && stored.token.startsWith('pk_') ? stored : null
+    const stored: unknown = raw ? JSON.parse(raw) : null
+    if (!isRecord(stored) || typeof stored.token !== 'string' || !stored.token.startsWith('pk_')) return null
+    if (!Number.isFinite(stored.expiresAt) || typeof stored.plan !== 'string' || !Number.isFinite(stored.limitPerMinute)) return null
+    return stored as unknown as PaidToken
   } catch {
     return null
   }
@@ -66,7 +73,8 @@ function loadToken(): string | null {
   try {
     const raw = localStorage.getItem(TOKEN_KEY)
     if (!raw) return null
-    const stored = JSON.parse(raw) as StoredToken
+    const stored: unknown = JSON.parse(raw)
+    if (!isRecord(stored) || typeof stored.token !== 'string' || typeof stored.expiresAt !== 'number') return null
     // Small margin so a token does not expire during a request
     return stored.expiresAt * 1000 > Date.now() + 5000 ? stored.token : null
   } catch {
@@ -124,11 +132,12 @@ let pendingToken: Promise<string> | null = null
 /** Requests a free token; the browser needs the Anubis cookie from the challenge on /app. */
 function fetchFreeToken(): Promise<string> {
   pendingToken ??= (async () => {
-    const response = await fetch(`${API_BASE_URL}/v1/free-token`, {
-      method: 'POST',
-      credentials: 'include',
-    }).catch(() => {
-      throw new Error(unreachableMessage())
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/v1/free-token`,
+      { method: 'POST', credentials: 'include' },
+      SHORT_TIMEOUT_MS,
+    ).catch((error: unknown) => {
+      throw error instanceof RequestTimeoutError ? error : new Error(unreachableMessage())
     })
     if (response.status === 403) {
       throw new Error(
@@ -162,7 +171,7 @@ function fetchFreeToken(): Promise<string> {
 
 async function send(method: string, path: string, token: string, body?: string, signal?: AbortSignal): Promise<Response> {
   try {
-    return await fetch(`${API_BASE_URL}${path}`, {
+    return await fetchWithTimeout(`${API_BASE_URL}${path}`, {
       method,
       headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), Authorization: `Bearer ${token}` },
       body,
@@ -170,6 +179,8 @@ async function send(method: string, path: string, token: string, body?: string, 
     })
   } catch (e) {
     if (signal?.aborted) throw e
+    reportClientError('fetch_failed')
+    if (e instanceof RequestTimeoutError) throw e
     throw new Error(unreachableMessage())
   }
 }

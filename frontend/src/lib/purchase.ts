@@ -8,6 +8,7 @@ import {
   type PaidToken,
 } from './api'
 import { useSyncExternalStore } from 'react'
+import { fetchWithTimeout, SHORT_TIMEOUT_MS } from './fetchTimeout'
 import { tr } from './i18n'
 
 export interface Offer {
@@ -48,7 +49,15 @@ export interface PendingOrder {
 export function loadPending(): PendingOrder | null {
   try {
     const raw = localStorage.getItem(PENDING_KEY)
-    return raw ? (JSON.parse(raw) as PendingOrder) : null
+    const stored: unknown = raw ? JSON.parse(raw) : null
+    if (typeof stored !== 'object' || stored === null) return null
+    const { order, renewal, previousEnd } = stored as Record<string, unknown>
+    if (typeof order !== 'string' || !order) return null
+    return {
+      order,
+      renewal: renewal === true,
+      ...(typeof previousEnd === 'number' ? { previousEnd } : {}),
+    }
   } catch {
     return null
   }
@@ -66,7 +75,7 @@ export function savePending(pending: PendingOrder | null) {
 /** What can be bought; `enabled: false` (or an unreachable server) hides the purchase UI. */
 export async function fetchOffers(): Promise<Offers> {
   try {
-    const response = await fetch(`${API_BASE_URL}/v1/checkout/offers`)
+    const response = await fetchWithTimeout(`${API_BASE_URL}/v1/checkout/offers`, {}, SHORT_TIMEOUT_MS)
     if (!response.ok) return { enabled: false, currency: 'EUR', offers: [] }
     const offers = (await response.json()) as Partial<Offers>
     return offers.enabled && offers.offers?.length
@@ -80,17 +89,21 @@ export async function fetchOffers(): Promise<Offers> {
 /** Starts a Mollie payment and returns the page to send the customer to. */
 export async function startCheckout(offer: Offer, options: { subscription: boolean; renew?: PaidToken }): Promise<string> {
   const tokenId = options.renew ? /^pk_([0-9a-f]+)_/.exec(options.renew.token)?.[1] : undefined
-  const response = await fetch(`${API_BASE_URL}/v1/checkout`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      plan: offer.plan,
-      days: offer.days,
-      subscription: options.subscription,
-      tokenId,
-      locale: tr('de', 'en'),
-    }),
-  })
+  const response = await fetchWithTimeout(
+    `${API_BASE_URL}/v1/checkout`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        plan: offer.plan,
+        days: offer.days,
+        subscription: options.subscription,
+        tokenId,
+        locale: tr('de', 'en'),
+      }),
+    },
+    SHORT_TIMEOUT_MS,
+  )
   if (!response.ok) throw await apiError(response, 'invoice')
   const { checkoutUrl, order } = (await response.json()) as { checkoutUrl: string; order: string }
   savePending({ order, renewal: !!options.renew, previousEnd: options.renew?.expiresAt })
@@ -104,7 +117,7 @@ export function claimToken(order: string): Promise<PaidToken | null> {
   const running = claims.get(order)
   if (running) return running
   const claim = (async () => {
-    const response = await fetch(`${API_BASE_URL}/v1/tokens/claim?order=${encodeURIComponent(order)}`)
+    const response = await fetchWithTimeout(`${API_BASE_URL}/v1/tokens/claim?order=${encodeURIComponent(order)}`, {}, SHORT_TIMEOUT_MS)
     if (response.status === 404) return null
     if (!response.ok) throw await apiError(response, 'invoice')
     const claimed = (await response.json()) as PaidToken

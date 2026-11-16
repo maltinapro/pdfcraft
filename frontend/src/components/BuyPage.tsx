@@ -3,6 +3,7 @@ import { AppHeader } from './AppHeader'
 import { Banner, Button, Card, EmptyState } from './ui'
 import { loadPaidToken, savePaidToken, type PaidToken } from '../lib/api'
 import { friendlyError } from '../lib/apiErrors'
+import { downloadBlob } from '../lib/download'
 import { tr, uiLocale, useLang } from '../lib/i18n'
 import {
   cancelSubscription,
@@ -74,6 +75,7 @@ export function BuyPage({ unsaved }: Props) {
     let cancelled = false
     setCollecting('waiting')
     void (async () => {
+      // oxlint-disable-next-line no-unmodified-loop-condition -- the effect cleanup sets `cancelled`
       for (let i = 0; i < POLL_TRIES && !cancelled; i++) {
         try {
           if (pending.renewal) {
@@ -155,12 +157,7 @@ export function BuyPage({ unsaved }: Props) {
   const download = () => {
     if (!paid) return
     const blob = new Blob([`${paid.token}\n`], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `pdfcraft-token-${paid.plan}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(blob, `pdfcraft-token-${paid.plan}.txt`)
   }
 
   const forget = () => {

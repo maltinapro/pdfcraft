@@ -84,7 +84,10 @@ pub fn check(postage: &Postage, path: &str, e: &mut Errors) -> Option<Checked> {
     let png = match BASE64.decode(postage.base64.trim()) {
         Ok(bytes) if bytes.len() <= MAX_BYTES => bytes,
         Ok(_) => {
-            e.add(&path, &format!("must not be larger than {} KB", MAX_BYTES / 1024));
+            e.add(
+                &path,
+                &format!("must not be larger than {} KB", MAX_BYTES / 1024),
+            );
             return None;
         }
         Err(_) => {
@@ -92,16 +95,26 @@ pub fn check(postage: &Postage, path: &str, e: &mut Errors) -> Option<Checked> {
             return None;
         }
     };
-    let Some((w, h, dpi)) = inspect(&png).filter(|(w, h, _)| (1..=MAX_PIXELS).contains(w) && (1..=MAX_PIXELS).contains(h)) else {
+    let Some((w, h, dpi)) = inspect(&png)
+        .filter(|(w, h, _)| (1..=MAX_PIXELS).contains(w) && (1..=MAX_PIXELS).contains(h))
+    else {
         e.add(&path, "must be a valid PNG image");
         return None;
     };
     let (width_mm, height_mm) = (size_mm(w, dpi), size_mm(h, dpi));
     if width_mm > MAX_WIDTH_MM || height_mm > MAX_HEIGHT_MM {
-        e.add(&path, &format!("is {width_mm} x {height_mm} mm; the franking mark must fit into the address field"));
+        e.add(
+            &path,
+            &format!(
+                "is {width_mm} x {height_mm} mm; the franking mark must fit into the address field"
+            ),
+        );
         return None;
     }
-    Some(Checked { width_mm, height_mm })
+    Some(Checked {
+        width_mm,
+        height_mm,
+    })
 }
 
 /// Validates the optional stamp of a document and returns it with its template data.
@@ -126,7 +139,11 @@ pub(crate) fn test_png(width: u32, height: u32, dpi: Option<u32>) -> Vec<u8> {
         for byte in data {
             crc ^= u32::from(*byte);
             for _ in 0..8 {
-                crc = if crc & 1 == 1 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
+                crc = if crc & 1 == 1 {
+                    (crc >> 1) ^ 0xEDB8_8320
+                } else {
+                    crc >> 1
+                };
             }
         }
         !crc
@@ -186,7 +203,9 @@ mod tests {
     use super::*;
 
     fn encoded(png: &[u8]) -> Postage {
-        Postage { base64: BASE64.encode(png) }
+        Postage {
+            base64: BASE64.encode(png),
+        }
     }
 
     #[test]
@@ -200,7 +219,11 @@ mod tests {
     #[test]
     fn real_stamp_sizes_are_placed_one_to_one() {
         // Pixel sizes of FRANKING_ZONE / DPI300 stamps measured by gruncellka/porto-data (marks.json)
-        for (w, h, mm_w, mm_h) in [(437, 236, 37.0, 20.0), (732, 236, 62.0, 20.0), (732, 384, 62.0, 32.5)] {
+        for (w, h, mm_w, mm_h) in [
+            (437, 236, 37.0, 20.0),
+            (732, 236, 62.0, 20.0),
+            (732, 384, 62.0, 32.5),
+        ] {
             let mut e = Errors::default();
             let checked = check(&encoded(&test_png(w, h, None)), "invoice", &mut e).unwrap();
             assert!(e.0.is_empty());
@@ -218,15 +241,28 @@ mod tests {
     #[test]
     fn rejects_everything_that_is_not_a_reasonably_sized_png() {
         for (value, what) in [
-            (Postage { base64: "not base64!".into() }, "base64"),
-            (encoded(b"GIF89a....................................."), "PNG"),
+            (
+                Postage {
+                    base64: "not base64!".into(),
+                },
+                "base64",
+            ),
+            (
+                encoded(b"GIF89a....................................."),
+                "PNG",
+            ),
             (encoded(&test_png(2000, 100, None)), "address field"),
             (encoded(&test_png(0, 100, None)), "PNG"),
             (encoded(&vec![0u8; MAX_BYTES + 1]), "larger"),
         ] {
             let mut e = Errors::default();
             assert!(check(&value, "document", &mut e).is_none());
-            assert!(e.0.iter().any(|m| m.contains(what) && m.starts_with("document.postage")), "{what}: {:?}", e.0);
+            assert!(
+                e.0.iter()
+                    .any(|m| m.contains(what) && m.starts_with("document.postage")),
+                "{what}: {:?}",
+                e.0
+            );
         }
     }
 }

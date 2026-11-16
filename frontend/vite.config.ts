@@ -8,31 +8,20 @@ const appVersion = process.env.APP_VERSION || 'dev'
 
 // The OpenAPI spec lives in docs/ (source of truth) and is published as /api/openapi.yaml next to the reference page
 // (api/index.html). The Docker build copies it to /docs/openapi.yaml, the same place relative to the build root.
-const openapiFile = resolve(__dirname, '../docs/openapi.yaml')
+const openapiFile = resolve(import.meta.dirname, '../docs/openapi.yaml')
 
 // Header and footer shared by all static pages (placeholders `<!-- site-header -->` and `<!-- site-footer -->`).
 // `<html lang="en">` pages get the `*.en.html` variants. The header marks the link to the current page with
 // `aria-current="page"` at build time, so it needs no JavaScript.
 const partial = (name: string, html: string) => {
   const lang = /<html[^>]*\slang="en"/.test(html) ? '.en' : ''
-  return readFileSync(resolve(__dirname, `partials/${name}${lang}.html`), 'utf8')
+  return readFileSync(resolve(import.meta.dirname, `partials/${name}${lang}.html`), 'utf8')
 }
 const currentPage = (header: string, pagePath: string) => {
   const path = pagePath.split(/[?#]/)[0].replace(/index\.html$/, '')
   return path === '/' ? header : header.replaceAll(`<a href="${path}"`, `<a href="${path}" aria-current="page"`)
 }
-const themeBootstrap = `<script>
-  (function () {
-    var theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    try {
-      var savedTheme = localStorage.getItem('pdfcraft.theme')
-      if (savedTheme === 'light' || savedTheme === 'dark') theme = savedTheme
-    } catch (e) {}
-    document.documentElement.dataset.theme = theme
-    document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#14121A' : '#241259'
-  })()
-</script>
-`
+const themeBootstrap = '<script src="/static-theme.js"></script>\n'
 
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(appVersion) },
@@ -78,19 +67,19 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        landing: resolve(__dirname, 'index.html'),
-        app: resolve(__dirname, 'app/index.html'),
-        api: resolve(__dirname, 'api/index.html'),
+        landing: resolve(import.meta.dirname, 'index.html'),
+        app: resolve(import.meta.dirname, 'app/index.html'),
+        api: resolve(import.meta.dirname, 'api/index.html'),
         // SEO pages: one HTML file each (+ an entry in public/sitemap.xml and partials/site-footer.html)
-        zugferd: resolve(__dirname, 'zugferd-rechnung-erstellen/index.html'),
-        xrechnung: resolve(__dirname, 'xrechnung-generator/index.html'),
-        stornorechnung: resolve(__dirname, 'stornorechnung-gutschrift-e-rechnung/index.html'),
-        erechnungspflicht: resolve(__dirname, 'e-rechnungspflicht/index.html'),
-        pruefen: resolve(__dirname, 'zugferd-xrechnung-pruefen/index.html'),
-        impressum: resolve(__dirname, 'impressum.html'),
-        datenschutz: resolve(__dirname, 'datenschutz.html'),
-        agb: resolve(__dirname, 'agb.html'),
-        widerruf: resolve(__dirname, 'widerruf.html'),
+        zugferd: resolve(import.meta.dirname, 'zugferd-rechnung-erstellen/index.html'),
+        xrechnung: resolve(import.meta.dirname, 'xrechnung-generator/index.html'),
+        stornorechnung: resolve(import.meta.dirname, 'stornorechnung-gutschrift-e-rechnung/index.html'),
+        erechnungspflicht: resolve(import.meta.dirname, 'e-rechnungspflicht/index.html'),
+        pruefen: resolve(import.meta.dirname, 'zugferd-xrechnung-pruefen/index.html'),
+        impressum: resolve(import.meta.dirname, 'impressum.html'),
+        datenschutz: resolve(import.meta.dirname, 'datenschutz.html'),
+        agb: resolve(import.meta.dirname, 'agb.html'),
+        widerruf: resolve(import.meta.dirname, 'widerruf.html'),
       },
       output: {
         // Emit assets with a .mjs extension (the pdf.js worker) as .js: some servers (nginx:alpine) send .mjs as

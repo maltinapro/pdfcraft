@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { DocIcon } from './icons'
 import { Chip, Menu, MenuItem } from './ui'
 import { FOLLOW_UPS, docSpec, type DocKind } from '../lib/documents'
@@ -35,6 +35,8 @@ export function ArchiveList({ entries, statuses, onFollowUp, onRerender, onDelet
     if (timer.current !== null) window.clearTimeout(timer.current)
     timer.current = null
   }
+  // A pending long press must not fire after the list is gone
+  useEffect(() => () => cancelPress(), [])
   const startPress = (id: string) => {
     if (!onLongPress) return
     cancelPress()
@@ -69,6 +71,7 @@ export function ArchiveList({ entries, statuses, onFollowUp, onRerender, onDelet
             )}
             <div
               className="doc-row-main"
+              role="presentation"
               onPointerDown={() => startPress(e.id)}
               onPointerUp={cancelPress}
               onPointerLeave={cancelPress}

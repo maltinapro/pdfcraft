@@ -23,6 +23,9 @@
   --color-success: #006C50;
   --color-success-container: #9DF4D0;
   --color-scrim: rgb(0 0 0 / 32%);
+  --code-tag: #8250DF;
+  --code-attribute: #0550AE;
+  --code-value: #0A6B32;
   --color-logo-navy: #241259;
   --color-logo-orange: #F25D39;
   --color-white: #FFFFFF;
@@ -138,6 +141,9 @@
   --color-success: #82D7B5;
   --color-success-container: #00513B;
   --color-scrim: rgb(0 0 0 / 50%);
+  --code-tag: #D2A8FF;
+  --code-attribute: #79C0FF;
+  --code-value: #7EE787;
   --zone-sender: #CABEFF;
   --zone-sender-container: #482CAE;
   --zone-sender-on-container: #E6DEFF;

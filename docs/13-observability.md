@@ -67,6 +67,7 @@ Labels are bounded: `kind` (`free`/`paid`), `plan` (`free` + the configured `PAI
 | `pdfcraft_tokens_created_total` | counter | `kind`, `plan` | tokens created (free tokens via Anubis, paid via Mollie/CLI) |
 | `pdfcraft_free_token_requests_total` | counter | `result` | `issued`, `recovered`, `challenge_required`, `already_issued`, `free_token_disabled`, `store_unavailable` |
 | `pdfcraft_postage_stamps_total` | counter | `result` | Internetmarke purchases: `bought`, `recovered` (paid order fetched again) or the API error code (`postage_login_failed`, `postage_wallet_insufficient`, `postage_price_changed`, `postage_download_failed`, ...) |
+| `pdfcraft_client_errors_total` | counter | `kind`, `browser` | front-end errors reported by `POST /v1/client-errors` (needs an Anubis pass; once per pass and kind; nothing is stored or logged). `kind`: `preview_render`, `pdf_worker`, `fetch_failed`, `chunk_load`; `browser`: coarse bucket from the user agent. Panel "Front-end errors by kind and browser" in the technical dashboard |
 | `pdfcraft_tokens_active` | gauge | `kind`, `plan` | currently valid tokens (scanned from Valkey every minute; every replica reports the same value, use `max`) |
 | `pdfcraft_invoices_total` | counter | `kind`, `plan`, `endpoint` | generated PDFs (`single`/`bulk`/document type) |
 | `pdfcraft_paid_token_invoices_total` | counter | `token_id`, `plan` | PDFs per paid token |

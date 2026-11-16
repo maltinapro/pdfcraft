@@ -211,15 +211,12 @@
 .download-success .notice-close { position: absolute; top: var(--space-1); right: var(--space-2); min-width: 40px; min-height: 40px; border: 0; background: transparent; color: inherit; font-size: 24px; cursor: pointer; }
 .app-editor .ui-dialog.xml-dialog { width: min(1100px, calc(100vw - 32px)); max-height: 90dvh; }
 .xml-dialog pre { max-height: 68dvh; margin-block: var(--space-4); padding: var(--space-4); overflow: auto; border-radius: var(--radius-m); background: var(--color-surface-container); font-size: var(--type-label-m); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-.xml-token-tag { color: #8250df; }
-.xml-token-attribute { color: #0550ae; }
-.xml-token-value { color: #0a6b32; }
+.xml-token-tag { color: var(--code-tag); }
+.xml-token-attribute { color: var(--code-attribute); }
+.xml-token-value { color: var(--code-value); }
 .xml-token-text { color: var(--color-on-surface); }
 .xml-token-comment { color: var(--color-on-surface-variant); font-style: italic; }
 .xml-token-punctuation { color: var(--color-on-surface-variant); }
-:root[data-theme='dark'] .xml-token-tag { color: #d2a8ff; }
-:root[data-theme='dark'] .xml-token-attribute { color: #79c0ff; }
-:root[data-theme='dark'] .xml-token-value { color: #7ee787; }
 
 .app-editor .editor-sidebar,
 .app-editor .preview-canvas,

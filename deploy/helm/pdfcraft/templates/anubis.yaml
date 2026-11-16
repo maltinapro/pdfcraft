@@ -60,6 +60,9 @@ spec:
       containers:
         - name: anubis
           image: {{ .Values.anubis.image }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
           ports:
             - containerPort: 8923
             - name: metrics
@@ -70,7 +73,7 @@ spec:
             - name: BIND
               value: ":8923"
             - name: TARGET
-              value: http://{{ .Release.Name }}-frontend:80
+              value: http://{{ .Release.Name }}-frontend:8080
             - name: DIFFICULTY
               value: {{ .Values.anubis.difficulty | quote }}
             - name: POLICY_FNAME

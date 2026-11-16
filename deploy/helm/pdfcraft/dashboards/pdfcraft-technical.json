@@ -893,6 +893,48 @@
           "mode": "multi"
         }
       }
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Front-end errors by kind and browser",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 55
+      },
+      "targets": [
+        {
+          "expr": "sum by (kind, browser) (increase(pdfcraft_client_errors_total{namespace=~\"$namespace\"}[1h]))",
+          "legendFormat": "{{kind}} / {{browser}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     }
   ]
 }

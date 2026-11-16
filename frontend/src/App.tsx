@@ -1,13 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
-import { BuyPage } from './components/BuyPage'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Dashboard } from './components/Dashboard'
-import { DataPage } from './components/DataPage'
-import { DocumentForm } from './components/DocumentForm'
-import { DocumentsPage } from './components/DocumentsPage'
-import { MasterDataPage } from './components/MasterDataPage'
-import { MorePage } from './components/MorePage'
-import { InvoiceForm } from './components/InvoiceForm'
-import { Workspace } from './components/Workspace'
+import { downloadBlob } from './lib/download'
 import { RateLimitedError, fetchBulkMax, requestBulk, requestDocument, requestPdf } from './lib/api'
 import {
   duplicateNumberIssue,
@@ -46,14 +39,28 @@ import './App.css'
 import './components/ui/ui.css'
 import './components/pages.css'
 
-// Public viewer for received e-invoices: own chunk (XML reader, checks, pdf.js on demand)
+// Every page except the dashboard is its own chunk, so the start page does not load the editor,
+// the shop or the viewer (XML reader, checks, pdf.js on demand).
+const BuyPage = lazy(() => import('./components/BuyPage').then((m) => ({ default: m.BuyPage })))
+const DataPage = lazy(() => import('./components/DataPage').then((m) => ({ default: m.DataPage })))
+const DocumentsPage = lazy(() => import('./components/DocumentsPage').then((m) => ({ default: m.DocumentsPage })))
+const MasterDataPage = lazy(() => import('./components/MasterDataPage').then((m) => ({ default: m.MasterDataPage })))
+const MorePage = lazy(() => import('./components/MorePage').then((m) => ({ default: m.MorePage })))
 const ViewerPage = lazy(() => import('./components/ViewerPage').then((m) => ({ default: m.ViewerPage })))
+const InvoiceForm = lazy(() => import('./components/InvoiceForm').then((m) => ({ default: m.InvoiceForm })))
+const DocumentForm = lazy(() => import('./components/DocumentForm').then((m) => ({ default: m.DocumentForm })))
+// The editor loads its forms in parallel instead of one after the other
+const Workspace = lazy(() =>
+  Promise.all([import('./components/Workspace'), import('./components/InvoiceForm'), import('./components/DocumentForm')]).then(
+    ([m]) => ({ default: m.Workspace }),
+  ),
+)
 
 const fileStem = (value: string, fallback: string) => value.replace(/[^\w.-]+/g, '_') || fallback
 
 handlePaymentReturn()
 
-export default function App() {
+function AppRoutes() {
   const lang = useLang() // re-render the whole tree when the UI language changes
   const route = useRoute()
   const purchases = useOffers().enabled
@@ -110,12 +117,7 @@ export default function App() {
         const { blob } = entry.kind === 'invoice'
           ? await requestPdf(snapshot, entry.invoice!)
           : await requestDocument(entry.kind, snapshot, entry.doc!)
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `${entry.kind}-${entry.number.replace(/[^\w.-]+/g, '_') || tr('neu', 'new')}.pdf`
-        link.click()
-        URL.revokeObjectURL(url)
+        downloadBlob(blob, `${entry.kind}-${entry.number.replace(/[^\w.-]+/g, '_') || tr('neu', 'new')}.pdf`)
       } catch (e) {
         setNotice(friendlyError(e))
       }
@@ -123,9 +125,15 @@ export default function App() {
     [settings],
   )
 
+  // Cancels a running bulk download (rate-limit waits included) when the app unmounts
+  const bulkAbort = useRef<AbortController | null>(null)
+  useEffect(() => () => bulkAbort.current?.abort(), [])
+
   const bulk = useCallback(
     async (kind: DocKind, entries: ArchiveEntry[]) => {
       // One ZIP per distinct sender/design snapshot, so every document keeps its issue-time data
+      bulkAbort.current?.abort()
+      const { signal } = (bulkAbort.current = new AbortController())
       const groups = groupBySettings(entries, settings)
       // The plan limits the size of one request: split into several ZIP files if needed
       const max = await fetchBulkMax()
@@ -141,19 +149,17 @@ export default function App() {
         // Every document costs one rate-limit unit: wait for the bucket to refill between the parts
         for (let attempt = 0; ; attempt++) {
           try {
-            blob = await requestBulk(kind, part.settings, documents)
+            blob = await requestBulk(kind, part.settings, documents, signal)
             break
           } catch (e) {
             if (!(e instanceof RateLimitedError) || attempt >= 3) throw e
-            await new Promise((resolve) => setTimeout(resolve, Math.min(e.retryAfter, 60) * 1000))
+            await new Promise<void>((resolve, reject) => {
+              const wait = setTimeout(resolve, Math.min(e.retryAfter, 60) * 1000)
+              signal.addEventListener('abort', () => { clearTimeout(wait); reject(e) }, { once: true })
+            })
           }
         }
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = parts.length > 1 ? `${kind}-bulk-${index + 1}.zip` : `${kind}-bulk.zip`
-        link.click()
-        URL.revokeObjectURL(url)
+        downloadBlob(blob, parts.length > 1 ? `${kind}-bulk-${index + 1}.zip` : `${kind}-bulk.zip`)
       }
     },
     [settings],
@@ -172,12 +178,7 @@ export default function App() {
   }, [settings, invoice, drafts])
 
   const backup = useCallback(() => {
-    const url = URL.createObjectURL(exportBackup(settings, invoice, drafts, archive, masterData))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `pdfcraft-backup-${new Date().toISOString().slice(0, 10)}.json`
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(exportBackup(settings, invoice, drafts, archive, masterData), `pdfcraft-backup-${new Date().toISOString().slice(0, 10)}.json`)
     const now = new Date().toISOString()
     saveLastBackup(now)
     setLastBackup(now)
@@ -218,12 +219,7 @@ export default function App() {
   )
 
   const exportJson = useCallback(() => {
-    const url = URL.createObjectURL(exportConfig(settings, invoice))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'pdfcraft-config.json'
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(exportConfig(settings, invoice), 'pdfcraft-config.json')
   }, [settings, invoice])
 
   const onImport = useCallback(async (file: File | undefined) => {
@@ -272,6 +268,7 @@ export default function App() {
       ...exampleDataIssues(settings, true),
     ],
     // `lang`: the message texts depend on the UI language
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [settings, invoice, lang],
   )
   const unsaved = unsavedCount(archive, lastBackup)
@@ -324,9 +321,7 @@ export default function App() {
 
   if (route === 'viewer') {
     return (
-      <Suspense fallback={null}>
-        <ViewerPage unsaved={unsaved} />
-      </Suspense>
+      <ViewerPage unsaved={unsaved} />
     )
   }
 
@@ -430,5 +425,13 @@ export default function App() {
       onFollowUp={followUp}
       onBackup={backup}
     />
+  )
+}
+
+export default function App() {
+  return (
+    <Suspense fallback={null}>
+      <AppRoutes />
+    </Suspense>
   )
 }

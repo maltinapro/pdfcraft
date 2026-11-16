@@ -131,6 +131,7 @@ try {
               contacts: [{ id: 'screenshot-contact', name: 'Beispielkunde GmbH', address: 'Beispielstraße 1', city: '10115 Berlin', vatId: '', email: '', buyerReference: '' }],
               articles: [{ id: 'screenshot-article', description: 'Beratung', unit: 'h', price: 95, taxRate: 19 }],
             }))
+            // oxlint-disable-next-line no-eval -- the mock is passed in as source text and has to run in the page
             ;(0, eval)(mockFetch)
           },
           { language, theme, archive, mockFetch },

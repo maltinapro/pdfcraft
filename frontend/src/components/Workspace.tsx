@@ -7,22 +7,23 @@ import { AppIcon } from './icons'
 import { EditorFooter } from './editor/EditorFooter'
 import { Stepper, type ZoneState } from './editor/Stepper'
 import { ZonePanel } from './editor/ZonePanel'
-import { Dialog, SegmentedButton } from './ui'
-import { ValidationError, type RenderedPdf } from '../lib/api'
-import { fieldTitle, friendlyError } from '../lib/apiErrors'
+import { SegmentedButton } from './ui'
+import type { RenderedPdf } from '../lib/api'
 import { type ArchiveEntry } from '../lib/archive'
+import { downloadBlob } from '../lib/download'
 import { FOLLOW_UPS, ZONES, zoneForField, type DocKind, type ZoneId } from '../lib/documents'
 import { tr, useLang } from '../lib/i18n'
 import { routeHref } from '../lib/router'
 import type { Issue } from '../lib/validate'
 import type { Settings } from '../lib/types'
-import type { ZoneRect } from '../lib/documents'
-import { formatXml, tokenizeXml } from '../lib/xmlDisplay'
+import { EditorSplitter, SPLIT_MAX, SPLIT_MIN } from './workspace/EditorSplitter'
+import { IssueSummary, PreviewError, PreviewPaused } from './workspace/IssueSummary'
+import { usePreview } from './workspace/usePreview'
+import { XmlDialog } from './workspace/XmlDialog'
+import { fixedZones } from './workspace/zones'
 import './workspace.css'
 
 const PdfCanvasPreview = lazy(() => import('./PdfCanvasPreview').then((m) => ({ default: m.PdfCanvasPreview })))
-
-const PREVIEW_DEBOUNCE_MS = 600
 
 interface Props {
   title: string
@@ -45,76 +46,6 @@ interface Props {
 }
 
 export type SaveState = 'saving' | 'saved' | 'error'
-
-function PreviewError({ message }: { message: string }) {
-  return (
-    <div className="preview-error" role="alert">
-      <strong>{`${tr('Vorschau fehlgeschlagen', 'Preview failed')}: ${message}`}</strong>
-    </div>
-  )
-}
-
-function PreviewPaused({ count, onShow }: { count: number; onShow: () => void }) {
-  return (
-    <div className="preview-paused">
-      <span>
-        {count === 1
-          ? tr('Vorschau pausiert: 1 Angabe fehlt oder ist ungültig.', 'Preview paused: 1 entry is missing or invalid.')
-          : tr(`Vorschau pausiert: ${count} Angaben fehlen oder sind ungültig.`, `Preview paused: ${count} entries are missing or invalid.`)}
-      </span>
-      <button type="button" className="btn btn-small" onClick={onShow}>
-        {tr('Anzeigen', 'Show')}
-      </button>
-    </div>
-  )
-}
-
-interface SummaryProps {
-  issues: Issue[]
-  kind: string
-  onJump: (field: string) => void
-  open: boolean
-}
-
-function IssueSummary({ issues, kind, onJump, open }: SummaryProps) {
-  const errors = issues.filter((issue) => issue.level === 'error').length
-  const title =
-    errors === 0
-      ? issues.length === 1
-        ? tr('1 Hinweis', '1 note')
-        : tr(`${issues.length} Hinweise`, `${issues.length} notes`)
-      : errors === 1
-        ? tr('1 Angabe prüfen', '1 entry needs attention')
-        : tr(`${errors} Angaben prüfen`, `${errors} entries need attention`)
-  return (
-    <details className={errors === 0 ? 'issue-summary notes-only' : 'issue-summary'} open={open}>
-      <summary className="issue-summary-title">{title}</summary>
-      <ul>
-        {issues.map((issue) => {
-          const where = issue.field ? fieldTitle(issue.field, kind) : null
-          const text = where ? `${where}: ${issue.message}` : issue.message
-          return (
-            <li key={`${issue.field ?? ''}|${issue.message}`} className={`issue issue-${issue.level}`}>
-              {issue.field ? (
-                <button type="button" className="issue-link" onClick={() => onJump(issue.field as string)}>
-                  {text}
-                </button>
-              ) : (
-                text
-              )}
-            </li>
-          )
-        })}
-      </ul>
-    </details>
-  )
-}
-
-const fixedZones: ZoneRect[] = [
-  { zone: 1, page: 1, x: 110, y: 5, w: 85, h: 38 },
-  { zone: 1, page: 1, x: 25, y: 250, w: 160, h: 35 },
-  { zone: 2, page: 1, x: 25, y: 45, w: 85, h: 47.4 },
-]
 
 export function Workspace({
   title,
@@ -144,13 +75,6 @@ export function Workspace({
   const [editorSplit, setEditorSplit] = useState(38)
   const [mobileView, setMobileView] = useState<'form' | 'preview'>('form')
   const [compact, setCompact] = useState(() => window.matchMedia('(max-width: 839px)').matches)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
-  const [pdfZones, setPdfZones] = useState<ZoneRect[]>([])
-  const [pendingPdf, setPendingPdf] = useState<RenderedPdf | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [serverIssues, setServerIssues] = useState<Issue[]>([])
   const [touched, setTouched] = useState<ReadonlySet<string>>(new Set())
   const [showAll, setShowAll] = useState(false)
   const [visited, setVisited] = useState<ReadonlySet<ZoneId>>(() => new Set([initialZoneState]))
@@ -158,7 +82,6 @@ export function Workspace({
   const [issuedEntry, setIssuedEntry] = useState<ArchiveEntry | null>(null)
   const [zoom, setZoom] = useState<'fit-page' | 'fit-width'>('fit-page')
   const [page, setPage] = useState(1)
-  const [pageCount, setPageCount] = useState(0)
   const [xml, setXml] = useState<string | null>(null)
   const [xmlError, setXmlError] = useState<string | null>(null)
   const [focusRequest, setFocusRequest] = useState(initialZoneState === 'recipient' ? 1 : 0)
@@ -166,15 +89,9 @@ export function Workspace({
   const sidebarRef = useRef<HTMLElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const workspaceRef = useRef<HTMLDivElement>(null)
-  const pendingPdfRef = useRef<RenderedPdf | null>(null)
-  const lastKeyRef = useRef<string | null>(null)
-  const renderRef = useRef(render)
-  renderRef.current = render
 
-  const key = useMemo(() => JSON.stringify(data), [data])
   const blocking = useMemo(() => issues.some((issue) => issue.blocking), [issues])
-  const blockingRef = useRef(blocking)
-  blockingRef.current = blocking
+  const { previewUrl, pdfBlob, pdfZones, pendingPdf, loading, error, setError, serverIssues, pageCount, setPageCount, pendingReady } = usePreview({ data, blocking, render })
 
   const allIssues = useMemo(() => {
     const covered = new Set(issues.map((issue) => issue.field).filter(Boolean))
@@ -304,7 +221,7 @@ export function Workspace({
     const bounds = workspaceRef.current?.getBoundingClientRect()
     if (!bounds) return
     const availableWidth = Math.max(1, bounds.width - 24)
-    setEditorSplit(Math.round(Math.max(32, Math.min(58, ((clientX - bounds.left - 12) / availableWidth) * 100))))
+    setEditorSplit(Math.round(Math.max(SPLIT_MIN, Math.min(SPLIT_MAX, ((clientX - bounds.left - 12) / availableWidth) * 100))))
   }, [])
 
   const zoneBody = (zone: ZoneId) =>
@@ -351,70 +268,7 @@ export function Workspace({
       }
     : {}
 
-  const promotePending = useCallback((blob: Blob) => {
-    const next = pendingPdfRef.current
-    if (!next || next.blob !== blob) return
-    setPdfBlob(next.blob)
-    setPdfZones(next.zones)
-    setPendingPdf(null)
-    pendingPdfRef.current = null
-    setError(null)
-    setServerIssues([])
-    setLoading(false)
-  }, [])
-  const pendingReady = useCallback(
-    (count: number) => {
-      setPageCount(count)
-      if (pendingPdf) promotePending(pendingPdf.blob)
-    },
-    [pendingPdf, promotePending],
-  )
 
-  useEffect(() => {
-    if (key === lastKeyRef.current) return
-    if (blockingRef.current) {
-      setLoading(false)
-      setError(null)
-      setServerIssues([])
-      return
-    }
-    const controller = new AbortController()
-    const timer = window.setTimeout(async () => {
-      setLoading(true)
-      try {
-        const rendered = await renderRef.current(controller.signal)
-        if (controller.signal.aborted) return
-        lastKeyRef.current = key
-        pendingPdfRef.current = rendered
-        setPendingPdf(rendered)
-        if (!pdfBlob) setError(null)
-      } catch (e) {
-        if (controller.signal.aborted) return
-        if (e instanceof ValidationError) {
-          setError(null)
-          setServerIssues(e.issues.map((issue) => ({ level: 'error', field: issue.field, message: issue.message, blocking: true, server: true })))
-        } else {
-          setError(friendlyError(e))
-        }
-        setLoading(false)
-      }
-    }, PREVIEW_DEBOUNCE_MS)
-
-    return () => {
-      window.clearTimeout(timer)
-      controller.abort()
-    }
-  }, [key, pdfBlob])
-
-  useEffect(() => {
-    if (!pdfBlob) {
-      setPreviewUrl(null)
-      return
-    }
-    const url = URL.createObjectURL(pdfBlob)
-    setPreviewUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [pdfBlob])
 
   const download = () => {
     if (paused) {
@@ -425,12 +279,7 @@ export function Workspace({
       setError(tr('Die Vorschau wird noch erstellt. Bitte gleich erneut versuchen.', 'The preview is still being created. Please try again in a moment.'))
       return
     }
-    const url = URL.createObjectURL(pdfBlob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${fileName}.pdf`
-    link.click()
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    downloadBlob(pdfBlob, `${fileName}.pdf`)
     const entry = onDownloaded?.()
     setIssuedEntry(entry ?? null)
     setDownloaded(true)
@@ -448,7 +297,7 @@ export function Workspace({
       const found = await extractEInvoice(new Uint8Array(await pdfBlob.arrayBuffer()), `${fileName}.pdf`)
       setXml(found.xml)
       setXmlError(null)
-    } catch (e) {
+    } catch {
       setXml(null)
       setXmlError(tr('In diesem PDF wurde keine E-Rechnungs-XML gefunden.', 'No e-invoice XML was found in this PDF.'))
     }
@@ -537,42 +386,7 @@ export function Workspace({
           </aside>
         )}
         {!compact && (
-          <div
-            className="editor-splitter"
-            role="separator"
-            tabIndex={0}
-            aria-label={tr('Breite des Formulars einstellen', 'Resize form width')}
-            aria-orientation="vertical"
-            aria-valuemin={32}
-            aria-valuemax={58}
-            aria-valuenow={editorSplit}
-            aria-valuetext={`${editorSplit}%`}
-            onPointerDown={(event) => {
-              if (event.button !== 0) return
-              event.currentTarget.setPointerCapture(event.pointerId)
-              resizeEditor(event.clientX)
-            }}
-            onPointerMove={(event) => {
-              if (event.buttons === 1) resizeEditor(event.clientX)
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-                event.preventDefault()
-                setEditorSplit((value) => Math.max(32, value - 1))
-              } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-                event.preventDefault()
-                setEditorSplit((value) => Math.min(58, value + 1))
-              } else if (event.key === 'Home') {
-                event.preventDefault()
-                setEditorSplit(32)
-              } else if (event.key === 'End') {
-                event.preventDefault()
-                setEditorSplit(58)
-              }
-            }}
-          >
-            <span className="editor-splitter-grip" aria-hidden="true" />
-          </div>
+          <EditorSplitter value={editorSplit} onChange={setEditorSplit} onDrag={resizeEditor} />
         )}
 
         {(!compact || mobileView === 'preview') && (
@@ -630,24 +444,14 @@ export function Workspace({
       </div>
 
       {(xml !== null || xmlError !== null) && (
-        <Dialog
-          open
-          title={tr('E-Rechnungs-XML', 'E-invoice XML')}
+        <XmlDialog
+          xml={xml}
+          error={xmlError}
           onClose={() => {
             setXml(null)
             setXmlError(null)
           }}
-          className="xml-dialog"
-        >
-          {xmlError ? (
-            <p role="alert">{xmlError}</p>
-          ) : (
-            <pre>{tokenizeXml(formatXml(xml ?? '')).map((token, index) => (
-              <span className={`xml-token-${token.kind}`} key={index}>{token.text}</span>
-            ))}</pre>
-          )}
-          <button type="button" className="btn btn-tonal" onClick={() => { setXml(null); setXmlError(null) }}>{tr('Schließen', 'Close')}</button>
-        </Dialog>
+        />
       )}
     </div>
   )

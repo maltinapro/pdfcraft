@@ -1,0 +1,54 @@
+# cargo-deny configuration (E12-03): advisories, licenses, duplicate crates and sources.
+# Run locally: cargo install cargo-deny --locked && cd backend && cargo deny check
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+# Every ignored advisory is reached only through Typst (typst-library, typst-layout, syntect, hayagriva,
+# citationberg, krilla/usvg); no safe upgrade exists and none of them parses request data directly.
+# Re-check the list whenever Typst is updated and remove entries that are no longer reported.
+ignore = [
+    { id = "RUSTSEC-2024-0436", reason = "paste (unmaintained): hayagriva/biblatex, macro only" },
+    { id = "RUSTSEC-2024-0320", reason = "yaml-rust (unmaintained): syntect of Typst" },
+    { id = "RUSTSEC-2024-0449", reason = "unsafe-libyaml (unmaintained): serde_yaml of hayagriva (Typst)" },
+    { id = "RUSTSEC-2025-0141", reason = "bincode 1 (unmaintained): syntect of Typst" },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser (unmaintained): Typst font handling and usvg" },
+    { id = "RUSTSEC-2026-0206", reason = "rustybuzz (unmaintained): Typst text shaping and usvg" },
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.38 via citationberg (Typst bibliography styles, not request data)" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.38 via citationberg (Typst bibliography styles, not request data)" },
+]
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+    "MPL-2.0",
+    "CC0-1.0",
+    "BSL-1.0",
+    "0BSD",
+    "OpenSSL",
+    "CDLA-Permissive-2.0",
+    "NCSA",
+]
+
+[bans]
+# Duplicates mostly come from Typst and its dependencies; they are reported, not blocking.
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

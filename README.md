@@ -97,6 +97,7 @@ Full reference: [API Reference](docs/09-api-reference.md). The machine-readable 
 | [Observability](docs/13-observability.md) | JSON logs for Loki, Prometheus metrics, Grafana dashboards |
 | [Internetmarke](docs/14-internetmarke-integration.md) | Buying Deutsche Post stamps and printing them onto PDFs |
 | [Design Guide](docs/16-design-guide.md) | UI and PDF design rules, editor concept, usability review |
+| [Code Review](docs/17-code-review.md) | Review report (E12-01): measured baseline, findings with severity, budgets |
 | [Roadmap and Epics](docs/roadmap.md) | Planned code changes derived from the business plan (epics, phases) and what is deliberately not planned |
 
 ## Tech Stack

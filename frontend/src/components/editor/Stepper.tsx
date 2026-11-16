@@ -17,7 +17,7 @@ interface Props {
 /** Numbered step circles with a short label, joined by lines; the full title of the active step is shown by the panel below. */
 export function Stepper({ zones, active, states, onSelect }: Props) {
   return (
-    <nav className="stepper" role="tablist" aria-orientation="horizontal" aria-label={tr('Schritte', 'Steps')}>
+    <div className="stepper" role="tablist" aria-orientation="horizontal" aria-label={tr('Schritte', 'Steps')}>
       {zones.map((zone, index) => {
         const state = states[zone.id]
         const selected = zone.id === active
@@ -72,6 +72,6 @@ export function Stepper({ zones, active, states, onSelect }: Props) {
           </div>
         )
       })}
-    </nav>
+    </div>
   )
 }
