@@ -53,7 +53,7 @@ services:
     image: ghcr.io/techarohq/anubis:latest
     environment:
       BIND: ":8923"
-      TARGET: http://frontend:80
+      TARGET: http://frontend:8080
       DIFFICULTY: "4"
       POLICY_FNAME: /etc/anubis/botPolicy.yaml
       # Local defaults, see ANUBIS_PUBLIC_KEY_HEX above

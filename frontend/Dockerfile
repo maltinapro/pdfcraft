@@ -12,8 +12,9 @@ ARG APP_VERSION=
 ENV APP_VERSION=$APP_VERSION
 RUN npm run build
 
-FROM nginx:alpine
+# Unprivileged nginx: runs as UID 101 and listens on 8080 (the Service and Compose map it)
+FROM nginxinc/nginx-unprivileged:1-alpine
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY frontend/security-headers.conf /etc/nginx/security-headers.conf
 COPY --from=build /build/dist /usr/share/nginx/html
-EXPOSE 80
+EXPOSE 8080

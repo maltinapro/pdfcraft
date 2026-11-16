@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 // Legacy build includes polyfills required by older Chrome and Android WebView versions.
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs'
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
+import { pdfErrorKind, reportClientError } from '../lib/clientErrors'
 import { tr } from '../lib/i18n'
 import { canvasScale } from '../lib/pdfSupport'
 import type { ZoneId, ZoneRect } from '../lib/documents'
@@ -42,6 +43,7 @@ export function PdfCanvasPreview({ blob, zones, activeZone, zoom, page, onZoneSe
     setFailedUrl(null)
     setPages([])
     let task: ReturnType<typeof pdfjs.getDocument> | null = null
+    const rendered: PageView[] = []
     void (async () => {
       task = pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()), worker: previewWorker() })
       const doc = await task.promise
@@ -49,7 +51,6 @@ export function PdfCanvasPreview({ blob, zones, activeZone, zoom, page, onZoneSe
       if (cancelled || !host) return
       const width = Math.max(host.clientWidth - 32, 240)
       const availableHeight = Math.max(host.clientHeight - 32, 240)
-      const rendered: PageView[] = []
       for (let number = 1; number <= doc.numPages; number++) {
         const pdfPage = await doc.getPage(number)
         const base = pdfPage.getViewport({ scale: 1 })
@@ -80,11 +81,17 @@ export function PdfCanvasPreview({ blob, zones, activeZone, zoom, page, onZoneSe
       .catch((e: unknown) => {
         if (cancelled) return
         console.error('PDF preview failed', e)
+        reportClientError(pdfErrorKind(e))
         setFailedUrl(URL.createObjectURL(blob))
       })
       .finally(() => void task?.destroy())
     return () => {
       cancelled = true
+      // iOS Safari keeps the memory of dropped canvases until they are resized to zero
+      for (const { canvas } of rendered) {
+        canvas.width = 0
+        canvas.height = 0
+      }
     }
   }, [blob, onReady, zoom])
 

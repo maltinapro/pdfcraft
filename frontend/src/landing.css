@@ -554,13 +554,6 @@
   padding-left: var(--space-5);
 }
 
-.todo {
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-s);
-  background: var(--color-error-container);
-  color: var(--color-on-error-container);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .zone-fill,
   .zone-legend li {

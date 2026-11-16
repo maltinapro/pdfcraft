@@ -15,8 +15,7 @@
 .page-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .page-section-head h2 { margin: 0; font-size: var(--type-title-m); line-height: var(--line-title-m); }
 .page-section-head a { display: inline-flex; min-height: 48px; align-items: center; color: var(--color-primary); font-weight: 600; }
-.page .ui-card .ui-button,
-.page .ui-card .ui-button-link { justify-self: start; }
+.page .ui-card .ui-button { justify-self: start; }
 .card-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .card-stack { display: grid; gap: var(--space-3); }
 
@@ -131,8 +130,6 @@ button.doc-row-main { padding: 0; border: 0; background: transparent; font: inhe
 .master-row-main { display: grid; flex: 1; min-width: 0; }
 .master-row-main strong { overflow-wrap: anywhere; }
 .master-row-main span { color: var(--color-on-surface-variant); font-size: var(--type-body-m); }
-.master-row-actions { display: flex; flex: none; }
-
 @media (max-width: 599px) {
   .start-tile { min-height: 0; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-3); }
 }

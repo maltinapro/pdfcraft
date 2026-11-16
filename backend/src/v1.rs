@@ -8,7 +8,7 @@ use crate::invoice::{check_invoice, check_settings, file_stem, Errors, Invoice, 
 use crate::store::{self, Client};
 use crate::{decode_assets, render_pdf, render_pdf_with_zones, ApiError, ZoneRect};
 use axum::{
-    extract::{rejection::JsonRejection, Extension, Json, Query, Request},
+    extract::{rejection::JsonRejection, DefaultBodyLimit, Extension, Json, Query, Request},
     http::{header, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -88,6 +88,10 @@ pub fn router() -> Router {
     // Purchases (Mollie): only answer while `Config::mollie_enabled`
     Router::new()
         .route("/free-token", post(crate::free::issue))
+        .route(
+            "/client-errors",
+            post(crate::client_errors::report).layer(DefaultBodyLimit::max(1024)),
+        )
         .route("/checkout", post(crate::mollie::checkout))
         .route("/checkout/offers", get(crate::mollie::offers))
         .route("/mollie/webhook", post(crate::mollie::webhook))

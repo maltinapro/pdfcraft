@@ -1,6 +1,6 @@
 # Build context is the repository root (the backend embeds frontend/src/template/invoice.typ):
 #   docker build -f backend/Dockerfile -t pdfcraft-backend .
-FROM rust:1-slim AS build
+FROM rust:1-slim-trixie AS build
 WORKDIR /app
 COPY backend/Cargo.toml backend/Cargo.lock backend/
 COPY backend/src backend/src
@@ -10,7 +10,7 @@ ARG APP_COMMIT=
 ENV APP_VERSION=$APP_VERSION APP_COMMIT=$APP_COMMIT
 RUN cd backend && cargo build --release
 
-FROM debian:stable-slim
+FROM debian:trixie-slim
 # Typst only embeds Libertinus Serif, New Computer Modern and DejaVu Sans Mono; the other
 # fonts offered in the configurator (see FONTS in backend/src/invoice.rs) come from these
 # packages. Without them Typst silently falls back to Libertinus Serif.
@@ -22,5 +22,8 @@ WORKDIR /app
 COPY --from=build /app/backend/target/release/pdfcraft-backend /app/pdfcraft-backend
 COPY backend/vendor/typst-packages /app/typst-packages
 ENV TYPST_PACKAGE_PATH=/app/typst-packages
+# Unprivileged user (UID/GID 10001, also what the Helm chart expects); the app writes nothing to disk
+RUN useradd --system --uid 10001 --user-group --no-create-home --shell /usr/sbin/nologin pdfcraft
+USER 10001:10001
 EXPOSE 3000
 CMD ["/app/pdfcraft-backend"]

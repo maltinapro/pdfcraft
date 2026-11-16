@@ -94,6 +94,18 @@ fn challenge_required() -> ApiError {
     )
 }
 
+/// The Anubis pass (JWT and its expiry) of a request, if the cookie is present and its signature is valid.
+pub fn verified_pass(req: &Request) -> Option<(&str, u64)> {
+    let cfg = config::get();
+    let key = cfg
+        .anubis_public_key_hex
+        .as_deref()
+        .and_then(decode_hex32)
+        .and_then(|b| VerifyingKey::from_bytes(&b).ok())?;
+    let jwt = cookie_value(req, &cfg.anubis_cookie_name)?;
+    verify_jwt(jwt, &key, store::now()).map(|exp| (jwt, exp))
+}
+
 pub async fn issue(req: Request) -> Result<Response, ApiError> {
     let result = issue_token(req).await;
     crate::metrics::free_token_request(match &result {

@@ -63,6 +63,12 @@ pub struct ReasonLabels {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+pub struct ClientErrorLabels {
+    pub kind: String,
+    pub browser: String,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
 pub struct CodeLabels {
     pub code: String,
 }
@@ -99,6 +105,7 @@ pub struct Metrics {
     pub tokens_created: Family<TokenLabels, Counter>,
     pub free_token_requests: Family<ResultLabels, Counter>,
     pub postage_stamps: Family<ResultLabels, Counter>,
+    pub client_errors: Family<ClientErrorLabels, Counter>,
     pub tokens_active: Family<TokenLabels, Gauge>,
     pub invoices: Family<InvoiceLabels, Counter>,
     pub paid_token_invoices: Family<PaidTokenLabels, Counter>,
@@ -158,6 +165,7 @@ fn build() -> State {
         tokens_created: Family::default(),
         free_token_requests: Family::default(),
         postage_stamps: Family::default(),
+        client_errors: Family::default(),
         tokens_active: Family::default(),
         invoices: Family::default(),
         paid_token_invoices: Family::default(),
@@ -210,6 +218,11 @@ fn build() -> State {
         "postage_stamps",
         "Internetmarke stamp purchases by result",
         m.postage_stamps.clone(),
+    );
+    r.register(
+        "client_errors",
+        "Front-end errors reported by browsers, by kind and coarse browser bucket",
+        m.client_errors.clone(),
     );
     r.register(
         "tokens_active",
@@ -405,6 +418,16 @@ pub fn postage_stamp(result: &str) {
         .postage_stamps
         .get_or_create(&ResultLabels {
             result: result.into(),
+        })
+        .inc();
+}
+
+pub fn client_error(kind: &str, browser: &str) {
+    get()
+        .client_errors
+        .get_or_create(&ClientErrorLabels {
+            kind: kind.into(),
+            browser: browser.into(),
         })
         .inc();
 }

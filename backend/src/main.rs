@@ -1,3 +1,4 @@
+mod client_errors;
 mod config;
 mod documents;
 mod einvoice;
@@ -515,6 +516,29 @@ async fn render_pdf_inner(
     }
 }
 
+/// The API only returns JSON, PDFs and ZIPs that are fetched by the app, never rendered as pages: forbid
+/// sniffing and any embedding or active content if a response is opened directly (S-01).
+async fn security_headers(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Response {
+    let mut response = next.run(request).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        header::X_CONTENT_TYPE_OPTIONS,
+        header::HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        header::CONTENT_SECURITY_POLICY,
+        header::HeaderValue::from_static("default-src 'none'; frame-ancestors 'none'"),
+    );
+    headers.insert(
+        header::REFERRER_POLICY,
+        header::HeaderValue::from_static("no-referrer"),
+    );
+    response
+}
+
 async fn health() -> Json<HealthResponse> {
     Json(HealthResponse { status: "ok" })
 }
@@ -532,6 +556,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .nest("/v1", v1::router())
+        .layer(axum::middleware::from_fn(security_headers))
         .layer(axum::middleware::from_fn(telemetry::access_log))
         .layer(DefaultBodyLimit::max(MAX_REQUEST_BODY_BYTES))
         .layer(config::cors_layer());
@@ -572,6 +597,24 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn responses_carry_security_headers() {
+        let app = Router::new()
+            .route("/health", get(health))
+            .layer(axum::middleware::from_fn(security_headers));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let response = reqwest::get(format!("http://{addr}/health")).await.unwrap();
+        let headers = response.headers();
+        assert_eq!(headers["x-content-type-options"], "nosniff");
+        assert_eq!(headers["referrer-policy"], "no-referrer");
+        assert!(headers["content-security-policy"]
+            .to_str()
+            .unwrap()
+            .contains("frame-ancestors 'none'"));
+    }
+
     use super::*;
 
     #[tokio::test]

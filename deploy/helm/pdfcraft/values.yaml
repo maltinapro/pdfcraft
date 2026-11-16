@@ -8,6 +8,16 @@ image:
 # (backend, frontend, anubis, valkey) can override it with its own `nodeSelector`.
 nodeSelector: {}
 
+# Hardening for the backend and frontend pods (the images run as UID 10001 / 101). The Valkey image
+# starts as root and drops privileges itself, so it is left alone.
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile: { type: RuntimeDefault }
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: { drop: [ALL] }
+
 backend:
   replicaCount: 1
   nodeSelector: {}
@@ -122,3 +132,7 @@ ingress:
   # Name of a cert-manager ClusterIssuer that exists on the cluster
   clusterIssuer: letsencrypt-prod
   annotations: {}
+  # Traefik only: creates a Middleware that adds nosniff, Referrer-Policy and Permissions-Policy to every
+  # response (needs the Traefik CRDs) and attaches it to the Ingress. The frontend and backend already set
+  # their own headers (incl. CSP); this covers the Anubis challenge pages too.
+  securityHeaders: false

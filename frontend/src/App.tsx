@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BuyPage } from './components/BuyPage'
 import { Dashboard } from './components/Dashboard'
 import { DataPage } from './components/DataPage'
@@ -119,9 +119,15 @@ export default function App() {
     [settings],
   )
 
+  // Cancels a running bulk download (rate-limit waits included) when the app unmounts
+  const bulkAbort = useRef<AbortController | null>(null)
+  useEffect(() => () => bulkAbort.current?.abort(), [])
+
   const bulk = useCallback(
     async (kind: DocKind, entries: ArchiveEntry[]) => {
       // One ZIP per distinct sender/design snapshot, so every document keeps its issue-time data
+      bulkAbort.current?.abort()
+      const { signal } = (bulkAbort.current = new AbortController())
       const groups = groupBySettings(entries, settings)
       // The plan limits the size of one request: split into several ZIP files if needed
       const max = await fetchBulkMax()
@@ -137,11 +143,14 @@ export default function App() {
         // Every document costs one rate-limit unit: wait for the bucket to refill between the parts
         for (let attempt = 0; ; attempt++) {
           try {
-            blob = await requestBulk(kind, part.settings, documents)
+            blob = await requestBulk(kind, part.settings, documents, signal)
             break
           } catch (e) {
             if (!(e instanceof RateLimitedError) || attempt >= 3) throw e
-            await new Promise((resolve) => setTimeout(resolve, Math.min(e.retryAfter, 60) * 1000))
+            await new Promise<void>((resolve, reject) => {
+              const wait = setTimeout(resolve, Math.min(e.retryAfter, 60) * 1000)
+              signal.addEventListener('abort', () => { clearTimeout(wait); reject(e) }, { once: true })
+            })
           }
         }
         downloadBlob(blob, parts.length > 1 ? `${kind}-bulk-${index + 1}.zip` : `${kind}-bulk.zip`)
