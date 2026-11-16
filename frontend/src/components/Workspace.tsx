@@ -20,7 +20,7 @@ import { EditorSplitter, SPLIT_MAX, SPLIT_MIN } from './workspace/EditorSplitter
 import { IssueSummary, PreviewError, PreviewPaused } from './workspace/IssueSummary'
 import { usePreview } from './workspace/usePreview'
 import { XmlDialog } from './workspace/XmlDialog'
-import { fixedZones } from './workspace/zones'
+import { fixedZonesFor } from './workspace/zones'
 import './workspace.css'
 
 const PdfCanvasPreview = lazy(() => import('./PdfCanvasPreview').then((m) => ({ default: m.PdfCanvasPreview })))
@@ -306,8 +306,8 @@ export function Workspace({
 
   const displayZones = useMemo(() => {
     const backendZones = pdfZones.filter((zone) => zone.zone === 3 || zone.zone === 4)
-    return [...fixedZones, ...backendZones]
-  }, [pdfZones])
+    return [...fixedZonesFor(settings.design), ...backendZones]
+  }, [pdfZones, settings.design])
 
   const onPreviewZone = (zone: ZoneId) => selectZone(zone)
 
@@ -431,7 +431,7 @@ export function Workspace({
                 <div className={`preview-buffer${pdfBlob ? ' pending' : ''}`}>
                   <PdfCanvasPreview
                     blob={pendingPdf.blob}
-                    zones={[...fixedZones, ...pendingPdf.zones.filter((zone) => zone.zone === 3 || zone.zone === 4)]}
+                    zones={[...fixedZonesFor(settings.design), ...pendingPdf.zones.filter((zone) => zone.zone === 3 || zone.zone === 4)]}
                     activeZone={activeZone}
                     itemsLabel={itemsLabel}
                     zoom={zoom}
