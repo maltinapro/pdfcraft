@@ -10,8 +10,17 @@ const appVersion = process.env.APP_VERSION || 'dev'
 // (api/index.html). The Docker build copies it to /docs/openapi.yaml, the same place relative to the build root.
 const openapiFile = resolve(__dirname, '../docs/openapi.yaml')
 
-// Footer shared by the landing page and the SEO pages (placeholder `<!-- site-footer -->`)
-const footerFile = resolve(__dirname, 'partials/site-footer.html')
+// Header and footer shared by all static pages (placeholders `<!-- site-header -->` and `<!-- site-footer -->`).
+// `<html lang="en">` pages get the `*.en.html` variants. The header marks the link to the current page with
+// `aria-current="page"` at build time, so it needs no JavaScript.
+const partial = (name: string, html: string) => {
+  const lang = /<html[^>]*\slang="en"/.test(html) ? '.en' : ''
+  return readFileSync(resolve(__dirname, `partials/${name}${lang}.html`), 'utf8')
+}
+const currentPage = (header: string, pagePath: string) => {
+  const path = pagePath.split(/[?#]/)[0].replace(/index\.html$/, '')
+  return path === '/' ? header : header.replaceAll(`<a href="${path}"`, `<a href="${path}" aria-current="page"`)
+}
 const themeBootstrap = `<script>
   (function () {
     var theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
@@ -45,10 +54,24 @@ export default defineConfig({
       name: 'app-version-html',
       transformIndexHtml: {
         order: 'pre',
-        handler: (html) => html
-          .replace(/(<link rel="stylesheet" href="\/src\/landing\.css"\s*\/?>)/, `${themeBootstrap}$1`)
-          .replace('<!-- site-footer -->', () => readFileSync(footerFile, 'utf8'))
+        handler: (html, ctx) => html
+          .replace(/(<link rel="stylesheet" href="\/src\/(?:landing|site)\.css"\s*\/?>)/, `${themeBootstrap}$1`)
+          .replace('<!-- site-header -->', () => currentPage(partial('site-header', html), ctx.path))
+          .replace('<!-- site-footer -->', () => partial('site-footer', html))
           .replaceAll('__APP_VERSION__', appVersion),
+      },
+    },
+    {
+      // Static pages preload the Latin Inter subset so the web font swap does not shift the layout
+      name: 'static-page-font-preload',
+      transformIndexHtml: {
+        order: 'post',
+        handler: (html, ctx) => {
+          if (!ctx.bundle || ctx.path.startsWith('/app/')) return html
+          const font = Object.keys(ctx.bundle).find((name) => /inter-latin-wght-normal-.*\.woff2$/.test(name))
+          if (!font) return html
+          return html.replace('</head>', `  <link rel="preload" href="/${font}" as="font" type="font/woff2" crossorigin />\n  </head>`)
+        },
       },
     },
   ],

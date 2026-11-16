@@ -45,6 +45,54 @@
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
       }
     </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Brauche ich ein Konto?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Nein. Deine Eingaben bleiben in deinem Browser. Der Server verarbeitet sie nur, um das PDF zu erzeugen, und speichert sie nicht. Lade regelmäßig eine Sicherungsdatei unter „Daten & Sicherung“ herunter."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Ist die Nutzung kostenlos?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Du kannst die Demo kostenlos ausprobieren; die PDFs tragen dann das Wasserzeichen „Entwurf“. Für Dokumente ohne Wasserzeichen brauchst du ein gekauftes Token, das freigeschaltet wird, sobald der Service in den produktiven Betrieb geht."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Was steckt in einer ZUGFeRD- oder XRechnung-PDF?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Ein PDF/A-3 mit eingebettetem XML nach EN 16931 (ZUGFeRD/Factur-X) oder XRechnung. Das PDF liest ein Mensch, das XML liest eine Software. Das eingebettete XML wird beim Entwickeln mit dem Mustang-Validator geprüft."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Ist das Layout nach DIN 5008?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Die Dokumente sind nach DIN 5008 Form B aufgebaut (Anschriftfeld für den Fensterumschlag, Falt- und Lochmarke, Bezugszeichenzeile). Das Layout ist nicht zertifiziert, und die Seite ersetzt keine Steuer- oder Rechtsberatung."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Kann ich mehrere Dokumente auf einmal erzeugen?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Ja. Mehrere Belege lassen sich als ZIP-Datei herunterladen, und über die REST-API können Entwickler sie automatisiert erzeugen."
+            }
+          }
+        ]
+      }
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="shortcut icon" href="/favicon.ico" />
@@ -56,30 +104,108 @@
     <link rel="stylesheet" href="/src/landing.css" />
   </head>
   <body>
+    <!-- site-header -->
     <div class="banner">Demo-System – bitte keine echten Kundendaten eingeben.</div>
 
-    <header class="hero">
-      <div class="hero-text">
-        <ul class="badges">
-          <li>ZUGFeRD</li>
-          <li>XRechnung</li>
-          <li>DIN 5008</li>
-          <li>Open Source</li>
-        </ul>
-        <h1>Digitalrechnung, <span>jetzt!</span></h1>
-        <p class="lead">E-Rechnungen (ZUGFeRD &amp; XRechnung) und weitere Geschäftsdokumente online erstellen – schnell und einfach.</p>
-        <a class="button" href="/app/">Demo ausprobieren</a>
-        <a class="button secondary" href="https://github.com/maltinapro/pdfcraft">Quellcode auf GitHub</a>
-      </div>
-      <img class="hero-logo" fetchpriority="high" decoding="async" src="/logo-wide.png" width="360" height="232" alt="PDFCraft – digitalrechnung.jetzt" />
-    </header>
+    <main id="main">
+      <section class="hero">
+        <div class="hero-inner">
+          <div>
+            <ul class="badges">
+              <li>ZUGFeRD</li>
+              <li>XRechnung</li>
+              <li>DIN 5008</li>
+              <li>Open Source</li>
+            </ul>
+            <h1>Digitalrechnung, jetzt!</h1>
+            <p class="lead">E-Rechnungen (ZUGFeRD &amp; XRechnung) und weitere Geschäftsdokumente direkt auf dem Papier bearbeiten – schnell und ohne Konto.</p>
+            <div class="hero-actions">
+              <a class="button" href="/app/">Demo ausprobieren</a>
+              <a class="button secondary" href="https://github.com/maltinapro/pdfcraft">Quellcode auf GitHub</a>
+            </div>
+          </div>
+          <div class="hero-sheet">
+            <svg class="sheet" viewBox="0 0 210 297" aria-hidden="true" focusable="false">
+              <rect class="sheet-paper" width="210" height="297" />
+              <path class="sheet-mark" d="M0 105h5M0 210h5M0 148.5h9" />
+              <g class="sheet-zone-sender" style="--i: 0">
+                <rect class="zone-fill" x="15" y="10" width="105" height="28" rx="2" />
+                <rect class="sheet-logo" x="19" y="14" width="14" height="14" rx="3" />
+                <rect class="sheet-line-strong" x="38" y="16" width="60" height="2" rx="1" /><rect class="sheet-line-strong" x="38" y="21" width="60" height="2" rx="1" /><rect class="sheet-line-strong" x="38" y="26" width="36" height="2" rx="1" />
+                <circle class="sheet-badge" cx="15" cy="10" r="5" /><text class="sheet-badge-text" x="15" y="12.4">1</text>
+              </g>
+              <g class="sheet-zone-recipient" style="--i: 1">
+                <rect class="zone-fill" x="15" y="45" width="90" height="40" rx="2" />
+                <rect class="sheet-line" x="19" y="49" width="56" height="1.5" rx="0.75" />
+                <rect class="sheet-line-strong" x="19" y="60" width="60" height="2.5" rx="1" /><rect class="sheet-line-strong" x="19" y="66" width="60" height="2.5" rx="1" /><rect class="sheet-line-strong" x="19" y="72" width="60" height="2.5" rx="1" /><rect class="sheet-line-strong" x="19" y="78" width="36" height="2.5" rx="1" />
+                <circle class="sheet-badge" cx="15" cy="45" r="5" /><text class="sheet-badge-text" x="15" y="47.4">2</text>
+              </g>
+              <g class="sheet-zone-details" style="--i: 2">
+                <rect class="zone-fill" x="125" y="45" width="70" height="40" rx="2" />
+                <rect class="sheet-line" x="129" y="52" width="50" height="2" rx="1" /><rect class="sheet-line" x="129" y="59" width="50" height="2" rx="1" /><rect class="sheet-line" x="129" y="66" width="50" height="2" rx="1" /><rect class="sheet-line" x="129" y="73" width="30" height="2" rx="1" />
+                <circle class="sheet-badge" cx="125" cy="45" r="5" /><text class="sheet-badge-text" x="125" y="47.4">3</text>
+              </g>
+              <g class="sheet-zone-items" style="--i: 3">
+                <rect class="zone-fill" x="15" y="100" width="180" height="100" rx="2" />
+                <rect class="sheet-head" x="15" y="104" width="180" height="9" />
+                <rect class="sheet-line" x="19" y="122" width="80" height="2" rx="1" /><rect class="sheet-line" x="150" y="122" width="26" height="2" rx="1" /><rect class="sheet-line" x="181" y="122" width="10" height="2" rx="1" /><rect class="sheet-line" x="19" y="136" width="64" height="2" rx="1" /><rect class="sheet-line" x="150" y="136" width="26" height="2" rx="1" /><rect class="sheet-line" x="181" y="136" width="10" height="2" rx="1" /><rect class="sheet-line" x="19" y="150" width="92" height="2" rx="1" /><rect class="sheet-line" x="150" y="150" width="26" height="2" rx="1" /><rect class="sheet-line" x="181" y="150" width="10" height="2" rx="1" /><rect class="sheet-line" x="19" y="164" width="58" height="2" rx="1" /><rect class="sheet-line" x="150" y="164" width="26" height="2" rx="1" /><rect class="sheet-line" x="181" y="164" width="10" height="2" rx="1" />
+                <rect class="sheet-line-strong" x="140" y="184" width="51" height="3" rx="1.5" />
+                <circle class="sheet-badge" cx="15" cy="100" r="5" /><text class="sheet-badge-text" x="15" y="102.4">4</text>
+              </g>
+              <rect class="sheet-line" x="15" y="216" width="150" height="2" rx="1" /><rect class="sheet-line" x="15" y="221" width="170" height="2" rx="1" /><rect class="sheet-line" x="15" y="226" width="110" height="2" rx="1" /><rect class="sheet-line" x="15" y="272" width="180" height="1" /><rect class="sheet-line" x="15" y="278" width="70" height="2" rx="1" /><rect class="sheet-line" x="95" y="278" width="50" height="2" rx="1" /><rect class="sheet-line" x="155" y="278" width="40" height="2" rx="1" />
+            </svg>
+            <ul class="zone-legend">
+              <li class="sheet-zone-sender" style="--i: 0"><b>1</b>Absender</li>
+              <li class="sheet-zone-recipient" style="--i: 1"><b>2</b>Empfänger</li>
+              <li class="sheet-zone-details" style="--i: 2"><b>3</b>Details</li>
+              <li class="sheet-zone-items" style="--i: 3"><b>4</b>Positionen</li>
+            </ul>
+          </div>
+        </div>
+      </section>
 
-    <main>
-      <ol class="steps">
-        <li><strong>Dokument wählen &amp; ausfüllen</strong><span>Rechnung, Angebot, Lieferschein &amp; Co. mit Logo, Anschrift und Positionen.</span></li>
-        <li><strong>Live-Vorschau</strong><span>Das PDF aktualisiert sich bei jeder Eingabe.</span></li>
-        <li><strong>PDF mit E-Rechnung</strong><span>ZUGFeRD oder XRechnung eingebettet, Layout nach DIN 5008 (Form B, Fensterumschlag), ohne Konto.</span></li>
-      </ol>
+      <div class="landing-main">
+      <section>
+        <h2>In vier Schritten zum Dokument</h2>
+        <p class="section-lead">Jedes Dokument ist in vier Bereiche gegliedert, wie auf dem Papier. Du tippst in der Vorschau auf einen Bereich und füllst genau diesen aus.</p>
+        <ol class="steps">
+          <li class="sheet-zone-sender"><span class="step-number">1</span><strong>Absender</strong><span class="step-text">Firma, Anschrift, Logo und Bankdaten.</span></li>
+          <li class="sheet-zone-recipient"><span class="step-number">2</span><strong>Empfänger</strong><span class="step-text">Anschrift im Fensterbereich, aus gespeicherten Kunden wählbar.</span></li>
+          <li class="sheet-zone-details"><span class="step-number">3</span><strong>Details</strong><span class="step-text">Nummer, Datum, Leistungszeitraum und Fälligkeit.</span></li>
+          <li class="sheet-zone-items"><span class="step-number">4</span><strong>Positionen</strong><span class="step-text">Leistungen mit Menge, Preis und Steuersatz; die Summen rechnet die App.</span></li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Funktionen</h2>
+        <div class="cards">
+          <article>
+            <div class="icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg></div>
+            <h3>Papier zuerst</h3>
+            <p>Rechnung, Stornorechnung, Angebot, Auftragsbestätigung, Lieferschein und Brief mit Live-Vorschau und DIN-5008-Layout (Form B, Fensterumschlag).</p>
+          </article>
+          <article>
+            <div class="icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="m9 15 2 2 4-4" /></svg></div>
+            <h3>ZUGFeRD &amp; XRechnung</h3>
+            <p>PDF/A-3 mit eingebettetem XML (EN 16931 bzw. XRechnung), geprüft mit dem Mustang-Validator. Fehlende Pflichtangaben werden direkt angezeigt.</p>
+          </article>
+          <article>
+            <div class="icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg></div>
+            <h3>Deine Daten bleiben bei dir</h3>
+            <p>Eingaben, Kunden und Belege liegen nur in deinem Browser. Der Server verarbeitet sie ausschließlich für das PDF und speichert sie nicht.</p>
+          </article>
+          <article>
+            <div class="icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z" /><path d="m3 8 9 5 9-5M12 13v8" /></svg></div>
+            <h3>Viele Dokumente auf einmal</h3>
+            <p>Mehrere Dokumente lassen sich gemeinsam als ZIP-Datei herunterladen. Entwickler erzeugen sie über die <a href="/api/">REST-API</a>.</p>
+          </article>
+          <article>
+            <div class="icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6" /></svg></div>
+            <h3>Open Source</h3>
+            <p>Das Projekt ist quelloffen (MIT-Lizenz). Du kannst es selbst betreiben, prüfen und erweitern.</p>
+          </article>
+        </div>
+      </section>
 
       <section>
         <h2>Was ist das hier?</h2>
@@ -93,19 +219,36 @@
         </p>
       </section>
 
-      <section>
+      <section id="preise">
         <h2>Kostenlos testen, später kaufen</h2>
-        <p>
-          In der Demo bekommst du automatisch einen <strong>kostenlosen Zugangsschlüssel (Token)</strong>.
-          Er wird nach einer kurzen Prüfung, ob du ein Mensch bist (Anubis), erzeugt, im Browser
-          gespeichert und gilt einige Stunden. Damit kannst du begrenzt viele PDFs pro Minute
-          erzeugen; sie tragen das Wasserzeichen <strong>„Entwurf“</strong>. Ist er abgelaufen,
-          wird die Prüfung einfach erneut durchgeführt.
-        </p>
-        <p>
-          Für den <strong>echten Einsatz</strong> brauchst du einen <strong>gekauften Token</strong>
-          (ohne Wasserzeichen, mit höheren Limits, als Tages-, Monats- oder Abo-Token). Es wird freigeschaltet, sobald der Service in den produktiven Betrieb geht.
-        </p>
+        <div class="pricing">
+          <article>
+            <h3>Kostenloser Token</h3>
+            <p>
+              In der Demo bekommst du automatisch einen <strong>kostenlosen Zugangsschlüssel (Token)</strong>.
+              Er wird nach einer kurzen Prüfung, ob du ein Mensch bist (Anubis), erzeugt, im Browser
+              gespeichert und gilt einige Stunden.
+            </p>
+            <ul>
+              <li>Begrenzt viele PDFs pro Minute</li>
+              <li>Wasserzeichen <strong>„Entwurf“</strong></li>
+              <li>Läuft er ab, wird die Prüfung einfach wiederholt</li>
+            </ul>
+          </article>
+          <article class="primary">
+            <h3>Gekaufter Token</h3>
+            <p>
+              Für den <strong>echten Einsatz</strong>: ohne Wasserzeichen und mit höheren Limits, als
+              Monats-, Jahres- oder Abo-Token. Er wird freigeschaltet, sobald der Service in den
+              produktiven Betrieb geht.
+            </p>
+            <ul>
+              <li>Keine Wasserzeichen</li>
+              <li>Höhere Limits, auch für die REST-API</li>
+              <li>Abos kündigst du jederzeit selbst</li>
+            </ul>
+          </article>
+        </div>
         <p>
           <strong>Wir speichern keine Kundendaten und wollen das auch nicht.</strong>
           Rechnungsdaten werden nur für die Erzeugung des PDFs verarbeitet und danach verworfen;
@@ -115,34 +258,28 @@
         </p>
       </section>
 
-      <section>
-        <h2>Funktionen</h2>
-        <div class="cards">
-          <article>
-            <div class="icon" aria-hidden="true">🧾</div>
-            <h3>ZUGFeRD &amp; XRechnung</h3>
-            <p>
-              PDF/A-3 mit eingebettetem XML (EN 16931 bzw. XRechnung), geprüft mit dem
-              Mustang-Validator. Fehlende Pflichtangaben werden direkt angezeigt.
-            </p>
-          </article>
-          <article>
-            <div class="icon" aria-hidden="true">📦</div>
-            <h3>Viele Dokumente auf einmal</h3>
-            <p>
-              Mehrere Dokumente lassen sich gemeinsam als ZIP-Datei herunterladen. Entwickler können sie
-              außerdem über die <a href="/api/">REST-API</a> automatisiert erzeugen.
-            </p>
-          </article>
-          <article>
-            <div class="icon" aria-hidden="true">🔓</div>
-            <h3>Open Source</h3>
-            <p>
-              Das Projekt ist quelloffen (MIT-Lizenz). Du kannst es selbst betreiben, prüfen und
-              erweitern.
-            </p>
-          </article>
-        </div>
+      <section class="faq">
+        <h2>Häufige Fragen</h2>
+          <details>
+            <summary>Brauche ich ein Konto?</summary>
+            <p>Nein. Deine Eingaben bleiben in deinem Browser. Der Server verarbeitet sie nur, um das PDF zu erzeugen, und speichert sie nicht. Lade regelmäßig eine Sicherungsdatei unter „Daten &amp; Sicherung“ herunter.</p>
+          </details>
+          <details>
+            <summary>Ist die Nutzung kostenlos?</summary>
+            <p>Du kannst die Demo kostenlos ausprobieren; die PDFs tragen dann das Wasserzeichen „Entwurf“. Für Dokumente ohne Wasserzeichen brauchst du ein gekauftes Token, das freigeschaltet wird, sobald der Service in den produktiven Betrieb geht.</p>
+          </details>
+          <details>
+            <summary>Was steckt in einer ZUGFeRD- oder XRechnung-PDF?</summary>
+            <p>Ein PDF/A-3 mit eingebettetem XML nach EN 16931 (ZUGFeRD/Factur-X) oder XRechnung. Das PDF liest ein Mensch, das XML liest eine Software. Das eingebettete XML wird beim Entwickeln mit dem Mustang-Validator geprüft.</p>
+          </details>
+          <details>
+            <summary>Ist das Layout nach DIN 5008?</summary>
+            <p>Die Dokumente sind nach DIN 5008 Form B aufgebaut (Anschriftfeld für den Fensterumschlag, Falt- und Lochmarke, Bezugszeichenzeile). Das Layout ist nicht zertifiziert, und die Seite ersetzt keine Steuer- oder Rechtsberatung.</p>
+          </details>
+          <details>
+            <summary>Kann ich mehrere Dokumente auf einmal erzeugen?</summary>
+            <p>Ja. Mehrere Belege lassen sich als ZIP-Datei herunterladen, und über die REST-API können Entwickler sie automatisiert erzeugen.</p>
+          </details>
       </section>
 
       <section>
@@ -159,7 +296,12 @@
       <section>
         <h2>Neuigkeiten</h2>
         <p>Aktuelle Version: <strong>__APP_VERSION__</strong></p>
-        <ul>
+        <ul class="news">
+          <li>
+            <strong>Einheitliches Design auf allen Seiten</strong>: Startseite, Anleitungen, Rechtstexte und
+            die API-Referenz nutzen jetzt dieselbe Kopfzeile, Fußzeile, Schrift und Farben wie die App
+            (auch im dunklen Modus) und bleiben schnell und ohne externe Anfragen.
+          </li>
           <li>
             <strong>Übersichtlichere Seiten</strong>: Auf dem Startbildschirm ist „Rechnung“ jetzt ein großer Knopf,
             die anderen Dokumentarten stehen kompakt darunter. Belege lassen sich suchen und filtern, Kunden und
@@ -252,7 +394,7 @@
         </ul>
         <details>
           <summary>Ältere Neuigkeiten anzeigen</summary>
-        <ul>
+        <ul class="news">
           <li>
             Alle PDFs sind jetzt nach <strong>DIN 5008 (Form B)</strong> aufgebaut: Falt- und Lochmarke,
             Anschriftfeld für den Fensterumschlag, Bezugszeichenzeile und Seitenränder.
@@ -326,6 +468,7 @@
         </p>
         <a class="button" href="/app/">Zur Demo</a>
       </section>
+      </div>
     </main>
 
     <!-- site-footer -->

@@ -42,7 +42,7 @@ pdfcraft/
 ├── docker-compose.yml
 ├── frontend/                         # React + Vite
 │   ├── public/                       # Logo (logo.svg), favicons, icons, og-image, robots.txt, sitemap.xml
-│   ├── partials/site-footer.html     # Footer shared by the landing page and the SEO pages (`<!-- site-footer -->`)
+│   ├── partials/site-{header,footer}.html  # Header and footer shared by all static pages (`<!-- site-header -->`, `<!-- site-footer -->`; `.en.html` variants)
 │   ├── <slug>/index.html             # Static SEO pages (zugferd-rechnung-erstellen, xrechnung-generator, stornorechnung-gutschrift-e-rechnung, e-rechnungspflicht, zugferd-xrechnung-pruefen)
 │   └── src/
 │       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/contacts` / `#/articles`, `#/data`, `#/sender` = invoice with the sender zone open, ...), shared settings, drafts

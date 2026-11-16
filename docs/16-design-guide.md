@@ -203,7 +203,7 @@ All components live in `frontend/src/components/ui/` and only use tokens. Existi
 
 - **Start (dashboard):** "What would you like to create?" with *Invoice* as a large primary card and the five other types as a compact grid (2 columns on compact, short labels, one-line description on expanded only). "Getting started" is a checklist (company details · first document · first backup) that disappears when done. Recent documents below (3 entries, link to *Belege*). The e-invoice viewer moves to *Mehr* and keeps a small link card on Start.
 - **Belege, Kunden, Data & backup, Buy, Viewer:** same shell, lists as M3 list items with an overflow menu for row actions, filter chips, search field in the top bar on compact.
-- **Landing and static pages** (`index.html`, SEO pages, legal pages, `/api/`): same tokens and type scale; landing header collapses to logo + "Open app" + menu on compact. The hero may show the zone concept (animated A4 sheet, CSS/SVG only, no JS framework, respects reduced motion). Pages stay static, fast (Lighthouse performance and accessibility ≥ 95) and without external requests.
+- **Landing and static pages** (`index.html`, SEO pages, legal pages, `/api/`): same tokens and type scale; all static pages share one header (partial `site-header.html`, styles in `src/site.css`) that collapses to logo + "Open app" + menu below 1100 px and never wraps; Swagger UI on `/api/` is themed with tokens and loaded lazily. The hero may show the zone concept (animated A4 sheet, CSS/SVG only, no JS framework, respects reduced motion). Pages stay static, fast (Lighthouse performance and accessibility ≥ 95) and without external requests.
 
 ## 7. Content and language
 

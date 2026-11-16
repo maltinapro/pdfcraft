@@ -21,6 +21,7 @@ const publicPages = [
   ['/datenschutz.html', 'datenschutz'],
   ['/agb.html', 'agb'],
   ['/widerruf.html', 'widerruf'],
+  ['/api/', 'api'],
 ]
 
 const archive = [
@@ -184,9 +185,10 @@ try {
           theme: document.documentElement.dataset.theme,
           overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
           background: getComputedStyle(document.body).backgroundColor,
+          headerHeight: document.querySelector('.site-header-inner')?.getBoundingClientRect().height ?? 0,
         }))
         const expectedBackground = theme === 'dark' ? 'rgb(20, 18, 26)' : 'rgb(253, 248, 255)'
-        if (layout.theme !== theme || layout.overflow || layout.background !== expectedBackground) {
+        if (layout.theme !== theme || layout.overflow || layout.headerHeight < 1 || layout.headerHeight > 64 || layout.background !== expectedBackground) {
           throw new Error(`Public page layout/theme failed at ${name}/${theme}/${width}px: ${JSON.stringify(layout)}`)
         }
         await page.screenshot({ path: resolve(output, `${name}-${theme}-${width}.png`), fullPage: true })
