@@ -75,7 +75,7 @@ npx playwright install chromium
 npm run screenshots -- --out /tmp/pdfcraft-screenshots
 ```
 
-It captures all app routes in German and English, light and dark, at 320, 390, 768 and 1440 px, and fails if the app header or navigation overflows. It also checks every public page that uses `landing.css` against light/dark system preferences, saved theme overrides, and horizontal overflow at those widths. The browser download is a one-time setup; no backend is required.
+It captures all app routes in German and English, light and dark, at 320, 390, 768 and 1440 px, and fails if the app header or navigation overflows. It also checks every public page (landing, SEO, legal and `/api/`) against light/dark system preferences, saved theme overrides, and horizontal overflow and a wrapping or missing site header at those widths. The browser download is a one-time setup; no backend is required.
 
 The separate five-task usability baseline (tap/click counts and elapsed time at 390 and 1440 px) still needs to be recorded by a tester before E08 begins.
 

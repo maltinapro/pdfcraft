@@ -19,7 +19,7 @@ GitHub issues are created **phase by phase** (epic issue + one sub-issue per tas
 | [E07](epics/E07-design-system-app-shell.md) | Design system and app shell | 4 | – | open (usability baseline pending) |
 | [E08](epics/E08-paper-first-editor.md) | Paper-first editor | 4 | E07 | in progress |
 | [E09](epics/E09-dashboard-app-pages.md) | Dashboard and app pages | 4 | E07 | done |
-| [E10](epics/E10-landing-static-pages.md) | Landing and static pages | 4 | E07-01 | open |
+| [E10](epics/E10-landing-static-pages.md) | Landing and static pages | 4 | E07-01 | done |
 | [E11](epics/E11-distinct-pdf-designs.md) | Distinct PDF designs | 4 | – | open |
 | [E12](epics/E12-code-review.md) | Code review and maintenance | 4 | – (E12-06 after E08, E09) | open |
 

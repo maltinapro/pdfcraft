@@ -16,32 +16,34 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#241259" />
+    <link rel="stylesheet" href="/src/site.css" />
   </head>
   <body>
-    <header class="api-header">
-      <a class="brand" href="/">digitalrechnung.jetzt</a>
-      <nav>
-        <a href="/app/">Demo</a>
-        <a href="./openapi.yaml" download>openapi.yaml</a>
-        <a href="https://github.com/maltinapro/pdfcraft/blob/main/docs/09-api-reference.md">Guide</a>
-      </nav>
-    </header>
-    <main class="api-main">
+    <!-- site-header -->
+    <main class="api-main" id="main">
       <section class="quickstart">
         <h1>REST API</h1>
         <p>
           Send JSON, get a PDF. Every request needs a purchased token; see the
           <a href="./openapi.yaml">OpenAPI specification</a> for all fields, limits and error codes.
         </p>
-        <pre><code id="curl-example"></code></pre>
+        <pre tabindex="0"><code id="curl-example"></code></pre>
         <p class="hint">
           Replace <code>YOUR_TOKEN</code> with your token. Free tokens exist for the browser demo only and
           add a draft watermark. &ldquo;Try it out&rdquo; below sends requests to this site, whichever server is selected.
         </p>
       </section>
+      <div class="reference-gate" id="reference-gate">
+        <p>
+          The interactive reference lists every endpoint with its fields, examples and error codes, and lets you try requests.
+          It is a large script (about 1.5 MB), so it loads only when you ask for it.
+        </p>
+        <button class="button" type="button" id="load-reference">Load interactive reference</button>
+      </div>
       <div id="swagger-ui"></div>
       <noscript><p>The interactive reference needs JavaScript. The raw specification is <a href="./openapi.yaml">openapi.yaml</a>.</p></noscript>
     </main>
+    <!-- site-footer -->
     <script type="module" src="/src/apiReference.ts"></script>
   </body>
 </html>
