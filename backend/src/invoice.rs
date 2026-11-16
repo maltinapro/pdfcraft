@@ -406,14 +406,13 @@ pub fn check_invoice(inv: &Invoice, path: &str, e: &mut Errors) -> JsonValue {
     };
     let optional_date = |field: &str, raw: Option<&String>, e: &mut Errors| {
         raw.filter(|value| !value.trim().is_empty())
-            .map(|value| match valid_date(value) {
+            .and_then(|value| match valid_date(value) {
                 Some(date) => Some(date),
                 None => {
                     e.add(&format!("{path}.{field}"), "must be a valid date as YYYY-MM-DD");
                     None
                 }
             })
-            .flatten()
     };
     let service_date = optional_date("serviceDate", inv.service_date.as_ref(), e);
     let service_date_from = optional_date("serviceDateFrom", inv.service_date_from.as_ref(), e);

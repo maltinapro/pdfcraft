@@ -75,7 +75,7 @@ export function makeEntry(kind: DocKind, source: Invoice | Doc, settings: Settin
   void _signature
   const items = 'items' in source ? source.items : []
   const priced = docSpec(kind)?.items === 'priced'
-  const { postage, ...rest } = JSON.parse(JSON.stringify(source)) as Invoice | Doc
+  const { postage, ...rest } = structuredClone(source) as Invoice | Doc
   const snapshot = rest as Invoice | Doc
   return {
     id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
@@ -85,7 +85,7 @@ export function makeEntry(kind: DocKind, source: Invoice | Doc, settings: Settin
     recipient: source.recipient.name,
     total: priced ? Math.round(grossTotal(items) * 100) / 100 : null,
     issuedAt: new Date().toISOString(),
-    settings: JSON.parse(JSON.stringify(snapshotSettings)) as Omit<Settings, 'logo' | 'signature'>,
+    settings: structuredClone(snapshotSettings) as Omit<Settings, 'logo' | 'signature'>,
     ...(postage ? { stamp: { voucherId: postage.voucherId, productName: postage.productName, priceCents: postage.priceCents } } : {}),
     ...(kind === 'invoice' ? { invoice: snapshot as Invoice } : { doc: snapshot as Doc }),
   }

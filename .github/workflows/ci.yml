@@ -48,10 +48,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: backend
       - run: cargo check --locked --all-targets
+      - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked
 
   # Renders a fixed corpus of e-invoices (see `renders_einvoice_conformance_corpus` in backend/src/v1.rs)

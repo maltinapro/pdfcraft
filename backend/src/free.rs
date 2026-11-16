@@ -93,7 +93,7 @@ fn challenge_required() -> ApiError {
 pub async fn issue(req: Request) -> Result<Response, ApiError> {
     let result = issue_token(req).await;
     crate::metrics::free_token_request(match &result {
-        Ok((_, outcome)) => *outcome,
+        Ok((_, outcome)) => outcome,
         Err(e) => e.code,
     });
     result.map(|(response, _)| response)

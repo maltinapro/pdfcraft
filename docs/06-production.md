@@ -37,6 +37,7 @@ BIND_ADDR=0.0.0.0:3000
 - Optionally an extra per-IP limit as defense in depth.
 - If the proxy buffers responses, allow ZIP responses of several MB.
 - Expose only `/v1/*` (and `/health` internally).
+- **Security headers**: the frontend image sends `Content-Security-Policy`, `X-Content-Type-Options`, `Referrer-Policy` and `Permissions-Policy` for everything it serves (`frontend/security-headers.conf`, included by `frontend/nginx.conf`, also in `/assets/`). The CSP allows only same-origin scripts (no inline scripts; the theme bootstraps are `public/static-theme.js` and `public/theme-init.js`) and `connect-src 'self'`, so build the frontend with an empty `VITE_API_BASE_URL` (same-origin `/v1`, as Compose and the release images do). A different API origin has to be added to `connect-src` in that file. Responses from the backend (`/v1/*`), the Compose `edge` proxy and the Helm Ingress do not get these headers yet; add them there if you serve the API on its own host.
 
 ### Infrastructure
 

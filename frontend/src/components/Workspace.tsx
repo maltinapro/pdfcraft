@@ -11,6 +11,7 @@ import { Dialog, SegmentedButton } from './ui'
 import { ValidationError, type RenderedPdf } from '../lib/api'
 import { fieldTitle, friendlyError } from '../lib/apiErrors'
 import { type ArchiveEntry } from '../lib/archive'
+import { downloadBlob } from '../lib/download'
 import { FOLLOW_UPS, ZONES, zoneForField, type DocKind, type ZoneId } from '../lib/documents'
 import { tr, useLang } from '../lib/i18n'
 import { routeHref } from '../lib/router'
@@ -425,12 +426,7 @@ export function Workspace({
       setError(tr('Die Vorschau wird noch erstellt. Bitte gleich erneut versuchen.', 'The preview is still being created. Please try again in a moment.'))
       return
     }
-    const url = URL.createObjectURL(pdfBlob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${fileName}.pdf`
-    link.click()
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    downloadBlob(pdfBlob, `${fileName}.pdf`)
     const entry = onDownloaded?.()
     setIssuedEntry(entry ?? null)
     setDownloaded(true)

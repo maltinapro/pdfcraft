@@ -211,11 +211,13 @@ fn parse_token(presented: &str) -> Option<(Kind, &str, &str)> {
     (hex_only(id) && hex_only(secret)).then_some((kind, id, secret))
 }
 
+type TokenFields = (Option<String>, Option<String>, Option<u32>, Option<u64>, Option<String>, Option<u64>);
+
 /// `Ok(None)` for unknown, expired or malformed tokens.
 pub async fn lookup(presented: &str) -> Result<Option<Client>, Unavailable> {
     let Some((kind, id, secret)) = parse_token(presented) else { return Ok(None) };
     let mut c = conn()?;
-    let (hash, stored_kind, limit, until, plan, created): (Option<String>, Option<String>, Option<u32>, Option<u64>, Option<String>, Option<u64>) =
+    let (hash, stored_kind, limit, until, plan, created): TokenFields =
         redis::cmd("HMGET")
             .arg(format!("{TOKEN_PREFIX}{id}"))
             .arg(&["h", "kind", "limit", "until", "plan", "created"])

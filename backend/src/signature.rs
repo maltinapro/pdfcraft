@@ -47,7 +47,7 @@ fn crop_to_content(svg: &str) -> Option<String> {
     resvg::render(&tree, tiny_skia::Transform::from_scale(PROBE_SCALE, PROBE_SCALE), &mut pixmap.as_mut());
 
     let (mut x0, mut y0, mut x1, mut y1) = (w, h, 0, 0);
-    for (i, px) in pixmap.data().chunks_exact(4).enumerate() {
+    for (i, px) in pixmap.data().as_chunks::<4>().0.iter().enumerate() {
         if px[3] > 8 {
             let (x, y) = (i as u32 % w, i as u32 / w);
             (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x + 1), y1.max(y + 1));

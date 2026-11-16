@@ -962,8 +962,7 @@ mod tests {
 
         let err = render_all(&client, PAGE, "docs", jobs(&[0, 1, 2]))
             .await
-            .err()
-            .expect("entry 1 fails");
+            .expect_err("entry 1 fails");
         assert!(err.details.starts_with("docs[1]: "), "{}", err.details);
 
         let response = zip_response(&pdfs, vec!["a.pdf".into(); 3], "docs")

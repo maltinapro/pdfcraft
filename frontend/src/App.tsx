@@ -8,6 +8,7 @@ import { MasterDataPage } from './components/MasterDataPage'
 import { MorePage } from './components/MorePage'
 import { InvoiceForm } from './components/InvoiceForm'
 import { Workspace } from './components/Workspace'
+import { downloadBlob } from './lib/download'
 import { RateLimitedError, fetchBulkMax, requestBulk, requestDocument, requestPdf } from './lib/api'
 import {
   duplicateNumberIssue,
@@ -110,12 +111,7 @@ export default function App() {
         const { blob } = entry.kind === 'invoice'
           ? await requestPdf(snapshot, entry.invoice!)
           : await requestDocument(entry.kind, snapshot, entry.doc!)
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `${entry.kind}-${entry.number.replace(/[^\w.-]+/g, '_') || tr('neu', 'new')}.pdf`
-        link.click()
-        URL.revokeObjectURL(url)
+        downloadBlob(blob, `${entry.kind}-${entry.number.replace(/[^\w.-]+/g, '_') || tr('neu', 'new')}.pdf`)
       } catch (e) {
         setNotice(friendlyError(e))
       }
@@ -148,12 +144,7 @@ export default function App() {
             await new Promise((resolve) => setTimeout(resolve, Math.min(e.retryAfter, 60) * 1000))
           }
         }
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = parts.length > 1 ? `${kind}-bulk-${index + 1}.zip` : `${kind}-bulk.zip`
-        link.click()
-        URL.revokeObjectURL(url)
+        downloadBlob(blob, parts.length > 1 ? `${kind}-bulk-${index + 1}.zip` : `${kind}-bulk.zip`)
       }
     },
     [settings],
@@ -172,12 +163,7 @@ export default function App() {
   }, [settings, invoice, drafts])
 
   const backup = useCallback(() => {
-    const url = URL.createObjectURL(exportBackup(settings, invoice, drafts, archive, masterData))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `pdfcraft-backup-${new Date().toISOString().slice(0, 10)}.json`
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(exportBackup(settings, invoice, drafts, archive, masterData), `pdfcraft-backup-${new Date().toISOString().slice(0, 10)}.json`)
     const now = new Date().toISOString()
     saveLastBackup(now)
     setLastBackup(now)
@@ -218,12 +204,7 @@ export default function App() {
   )
 
   const exportJson = useCallback(() => {
-    const url = URL.createObjectURL(exportConfig(settings, invoice))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'pdfcraft-config.json'
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(exportConfig(settings, invoice), 'pdfcraft-config.json')
   }, [settings, invoice])
 
   const onImport = useCallback(async (file: File | undefined) => {
