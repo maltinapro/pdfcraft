@@ -11,13 +11,15 @@ interface Props {
   route?: string
   unsaved?: number
   children?: ReactNode
+  /** Editor mode: slim bar without the main navigation. */
+  editor?: boolean
 }
 
 const EDITOR_ROUTES = ['invoice', 'credit-note', 'offer', 'order', 'delivery-note', 'letter', 'sender']
 
-export function AppHeader({ title, route = '', unsaved = 0, children }: Props) {
+export function AppHeader({ title, route = '', unsaved = 0, children, editor = false }: Props) {
   return (
-    <header className="app-header">
+    <header className={`app-header${editor ? ' app-header-editor' : ''}`}>
       {EDITOR_ROUTES.includes(route) && (
         <a className="back-link" href={routeHref('')} aria-label={tr('Zurück zu Start', 'Back to Home')} title={tr('Zurück zu Start', 'Back to Home')}>
           <AppIcon name="back" />
@@ -28,7 +30,7 @@ export function AppHeader({ title, route = '', unsaved = 0, children }: Props) {
         <span className="app-brand-name">PDFCraft</span>
       </a>
       {title && <span className="app-page-title" title={title}>{title}</span>}
-      <HeaderNav route={route} unsaved={unsaved} />
+      {!editor && <HeaderNav route={route} unsaved={unsaved} />}
       <div className="header-actions">
         {children}
         <details className="header-overflow">

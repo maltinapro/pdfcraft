@@ -1,4 +1,4 @@
-import { StatusIcon } from '../icons'
+import { AppIcon, StatusIcon } from '../icons'
 import type { ZoneId, ZoneSpec } from '../../lib/documents'
 import type { SaveState } from '../Workspace'
 import { routeHref } from '../../lib/router'
@@ -16,7 +16,6 @@ interface Props {
 export function EditorFooter({ active, zones, saveState, onBack, onNext, onCreate }: Props) {
   const index = zones.findIndex((zone) => zone.id === active)
   const last = index === zones.length - 1
-  const next = zones[index + 1]
 
   return (
     <footer className="editor-footer">
@@ -25,7 +24,7 @@ export function EditorFooter({ active, zones, saveState, onBack, onNext, onCreat
           tr('Speichere …', 'Saving …')
         ) : saveState === 'saved' ? (
           <>
-            <StatusIcon status="ok" /> {tr('In diesem Browser gespeichert · ', 'Saved in this browser · ')}
+            <StatusIcon status="ok" /> {tr('Lokal gespeichert · ', 'Saved locally · ')}
             <a href={routeHref('data')}>{tr('Sichern', 'Back up')}</a>
           </>
         ) : (
@@ -41,11 +40,12 @@ export function EditorFooter({ active, zones, saveState, onBack, onNext, onCreat
         </button>
         {last ? (
           <button type="button" className="btn btn-primary" onClick={onCreate}>
+            <AppIcon name="download" size={20} />
             {tr('PDF erstellen', 'Create PDF')}
           </button>
         ) : (
           <button type="button" className="btn btn-primary" onClick={onNext}>
-            {tr(`Weiter: ${next.label}`, `Next: ${next.label}`)}
+            {tr('Weiter', 'Next')}
           </button>
         )}
       </div>

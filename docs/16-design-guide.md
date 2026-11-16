@@ -39,10 +39,10 @@ Zone 1 holds settings that apply to **all** documents. Its panel says so ("Appli
 
 ### 2.2 Flow
 
-- **First run** (sender still has the example data): the editor starts at zone 1 and guides linearly: *Back* / *Next: Recipient* in a sticky footer.
-- **Returning user** (zone 1 complete): zone 1 shows as a summary chip ("Muster GmbH · DE89 … 3000 · Classic ✓") and the editor opens at the **first incomplete zone**, normally *Recipient* with the saved-recipient picker focused.
+- **First run** (sender still has the example data): the editor starts at zone 1 and guides linearly: *Back* / *Next* in a sticky footer.
+- **Returning user** (zone 1 complete): zone 1 shows a check in the stepper (no separate summary chip, so "Sender & look" is never shown twice) and the editor opens at the **first incomplete zone**, normally *Recipient* with the saved-recipient picker focused.
 - Zones can be visited in any order: zone bar, preview tap, issue list. "Next" is a suggestion, not a gate.
-- Each zone in the zone bar shows its state: number (untouched), check (complete), count badge (errors), "!" (warnings only). The state comes from the existing issue model (`requiredIssues`, `validateInvoice`, backend `ValidationError`, see `Workspace.tsx`).
+- Each zone in the **stepper** (four circles joined by lines, no labels; the panel heading names the step) shows its state: number (untouched or selected), check (complete), "!" (errors), warning icon (warnings only). Each step has its zone color (violet, coral, amber, emerald); the circle, the "Step n of 4" kicker, the focus indicator and the primary button use it. The state comes from the existing issue model (`requiredIssues`, `validateInvoice`, backend `ValidationError`, see `Workspace.tsx`).
 - The last zone's footer button is the primary action: **Create PDF**. After the download a success panel offers the next steps (back up, new document, follow-up document) instead of a dismissible notice.
 
 ### 2.3 Preview with zone overlay
@@ -56,11 +56,12 @@ Zone 1 holds settings that apply to **all** documents. Its panel says so ("Appli
 
 The editor switches to its compact layout below **840 px**.
 
-- **Expanded (≥ 840 px):** form and PDF preview sit side by side, separated by a 24 px keyboard-accessible splitter. Both panes have a 360 px minimum; dragging the splitter adjusts the form share from 32 % to 58 %. The form has its zone navigation and sticky Back/Next/Create PDF actions.
-- **Compact (< 840 px):** the header's **Fields | Sheet** switch controls the workspace. *Fields* shows the active zone's form; *Sheet* shows the PDF so fields can be hidden while viewing the paper. A persistent editor bar keeps zone navigation and Back/Next/Create PDF available in either mode.
-- Tapping a zone in the editor bar while in *Sheet* opens a bottom sheet with that zone's fields. The sheet has its own sticky zone navigation and a **Show preview** action that closes the sheet without changing the selected zone. Preview-zone taps and issue-summary jumps open the appropriate fields and focus the target.
-- Swipe between zones is allowed only on the zone bar and the sheet handle, never across the form body (conflicts with text selection, horizontal input scrolling and the iOS back gesture).
-- Form controls follow the natural top-to-bottom field order within each zone; Tab/Shift+Tab use the browser's normal focus order. The zone bar and PDF are direct alternatives for moving between sections, not additional tab strips.
+- **Expanded (≥ 840 px):** form and PDF preview sit side by side, separated by a 16 px keyboard-accessible splitter (a thin grip, no glyph). Both panes have a 360 px minimum; dragging the splitter adjusts the form share from 32 % to 58 %. The form column is a tonal surface with the sticky stepper on top and a sticky footer (save status, Back, Next / Create PDF).
+- **Compact (< 840 px):** below the 56 px app bar sits one tab row, **Form | Preview** (a badge on *Form* counts open problems). *Form* shows the stepper, the active step and the footer; *Preview* shows the PDF with the zone overlay. Tapping a zone on the PDF switches to *Form* at that step. There is **no bottom navigation and no bottom sheet** in the editor (the browser already has its own bar); the global navigation is reached with the back arrow. The download button in the app bar is icon-only.
+- Swiping horizontally on the form (not when the touch starts in an input, select, textarea or draggable) moves to the previous/next step; the stepper and the footer buttons are the primary controls.
+- Form controls follow the natural top-to-bottom field order within each step; Tab/Shift+Tab use the browser's normal focus order. Sections inside a step are separated by a divider, not by cards; item cards (`surface-container`) are the only framed elements.
+- Visual language of the editor (M3 wizard concept): tonal surfaces instead of borders and nested rounded frames, **filled text fields** with the label inside and a 2 px indicator in the zone color on focus, tonal buttons for secondary actions, a flat issue banner (error/warning container) instead of a boxed panel, and a `ZUGFeRD XML` chip plus zoom pills in the preview toolbar. The editor shell has no extra bottom padding for a navigation bar.
+- The filled-field styling is scoped to the editor; the other pages (customers/articles, buy, archive) keep the earlier field styling until E09.
 
 ## 3. App shell and navigation
 
@@ -189,13 +190,13 @@ All components live in `frontend/src/components/ui/` and only use tokens. Existi
 - **Filled select:** same frame plus a chevron; native `<select>` for accessibility and mobile pickers.
 - **Textarea:** same frame, grows with content up to 8 lines.
 - **Buttons:** *filled* (one primary per view, zone color inside the editor, `primary` elsewhere), *tonal* (secondary: Back, Add item, Choose saved recipient), *text* (tertiary), *icon* (40 px visual, 48 px hit area), *danger tonal* (remove). Height 40 px, `radius-full`, `label-l`.
-- **Segmented button:** language, Fields/Sheet, design variants; check icon in the selected segment.
+- **Segmented button:** language, sender sub-sections (company & bank / look & text), design variants; check icon in the selected segment.
 - **Chips:** *assist* (zone summary "Muster GmbH ✓ Change"), *filter* (archive), *status* (open issues count in the top bar; tap = jump to the first issue).
 - **Zone bar:** horizontal, 28 px number circles, 2 px connectors; label visible for the active zone (compact) or all zones (expanded); roving tabindex, arrow keys only while the bar has focus.
 - **Zone header:** tonal card in the zone container color: "02 · Recipient", title, one-sentence purpose, zone icon.
 - **Item card** (zone 4): card on `surface-container` with position number, live net line total, reorder (drag handle + up/down), remove; fields description, quantity + unit, unit price + VAT rate. Below the list: *Add item* (tonal, full width), *From articles* (tonal), and a totals card (net, VAT per rate, gross in `headline`).
 - **Banner** (inline, top of a panel): issues and example-data hints; each entry is a link that jumps to the field. No "fill with demo data" action.
-- **Bottom sheet, dialog, menu, snackbar:** M3 standard; snackbar for transient confirmations ("Recipient saved"), never for errors that need action.
+- **Dialog, menu, snackbar:** M3 standard (the editor has no bottom sheet); snackbar for transient confirmations ("Recipient saved"), never for errors that need action.
 - **Empty and error states:** an icon, one sentence what happened, one action. Network errors are translated ("No connection to the PDF service – we will retry automatically") instead of raw messages such as "Failed to fetch".
 
 ## 6. Pages
@@ -235,7 +236,7 @@ All components live in `frontend/src/components/ui/` and only use tokens. Existi
 | Adopt | Tonal surfaces without borders, filled fields with floating label, color-coded steps (the demo's AA tones, green harmonized to `#006C50` and neutrals derived from the logo, see 4.1), step header cards, sticky Back/Next footer with save status, item cards with live line total, totals card, segmented buttons, snackbar, click on the preview to jump | as specified above |
 | Adapt | Linear wizard → zones that can be visited in any order and are skipped when complete | returning users must not walk through four steps |
 | Adapt | HTML mock of the invoice as preview → the real Typst PDF with an overlay | an HTML copy would diverge from the PDF |
-| Adapt | Swipe on the whole form and global arrow keys → swipe on zone bar/sheet only, arrows only in the zone bar | text selection, iOS back gesture, keyboard users |
+| Adapt | Swipe on the whole form and global arrow keys → swipe on the form except when a touch starts in an input; arrows only in the stepper | text selection, iOS back gesture, keyboard users |
 | Adapt | Demo XML in a modal → real embedded XML extracted from the rendered PDF (E05 code) | must show what is actually sent |
 | Adapt | Roboto, Tailwind, lucide-react → Inter (self-hosted), CSS custom properties, inline SVG icons | existing stack, no new runtime dependencies |
 | Reject | "Fill example data" button that replaces the sender with another fictitious company and IBAN | creates invoices with wrong seller data |
@@ -343,6 +344,7 @@ Second pass (all app pages at 390 and 1440 px, light and dark, 15 Nov 2026):
 | 28 | M | After the first E08 pass, the mobile zone controls could be obscured while editing, and the paper was not easy to reveal without leaving the editor. | E08 follow-up: persistent editor bar, sticky zone navigation and Show preview |
 | 29 | L | Item-total labels and amounts needed clearer separation; the form also had excess inset spacing and default-looking scrollbars. | E08 follow-up: aligned label/value totals, denser section padding and themed scrollbars |
 | 30 | M | The desktop form/preview balance was fixed, and zone outlines could visually crowd adjacent PDF content. | E08 follow-up: adjustable splitter and inset zone outlines |
+| 31 | H | After the first E08 pass the mobile editor showed "Sender & look" twice (summary chip and zone bar), the heading ran behind the fixed navigation, the bottom navigation duplicated Chrome's own bar, and nested rounded frames and paddings used much of the screen. | M3 wizard editor: stepper without labels, no chip, no bottom navigation, Form/Preview tabs, flat panels |
 
 Kept because they work: auto-save status, issue summary that jumps to the field, live preview, archive follow-ups.
 
