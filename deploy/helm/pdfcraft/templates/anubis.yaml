@@ -72,8 +72,9 @@ spec:
               value: ":{{ .Values.metrics.anubisPort }}"
             - name: BIND
               value: ":8923"
+            # The frontend Service port (80), not the container port (8080)
             - name: TARGET
-              value: http://{{ .Release.Name }}-frontend:8080
+              value: http://{{ .Release.Name }}-frontend:80
             - name: DIFFICULTY
               value: {{ .Values.anubis.difficulty | quote }}
             - name: POLICY_FNAME
