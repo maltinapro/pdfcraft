@@ -3,7 +3,9 @@
 //! The SVG is cropped to its visible content so a signature on a full A4 page is not shrunk.
 
 use hayro_svg::{
-    hayro_interpret::InterpreterSettings, hayro_syntax::Pdf, RenderCache, SvgRenderSettings,
+    hayro_interpret::{InterpreterSettings, RenderContent},
+    hayro_syntax::Pdf,
+    RenderCache, SvgRenderSettings,
 };
 use std::sync::Arc;
 
@@ -27,7 +29,7 @@ fn convert(bytes: &[u8]) -> Option<String> {
         let pdf = Pdf::new(Arc::new(data)).ok()?;
         let page = pdf.pages().first()?;
         let settings = InterpreterSettings {
-            render_annotations: false,
+            render_content: RenderContent::PAGE,
             ..InterpreterSettings::default()
         };
         let svg = hayro_svg::convert(
