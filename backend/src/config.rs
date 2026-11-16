@@ -35,8 +35,8 @@
 //! | `METRICS_ADDR` | `0.0.0.0:9090` | Listen address of `GET /metrics` (OpenMetrics); `off` disables it |
 //! | `CORS_ALLOWED_ORIGINS` | any | Comma-separated origins, or `*` |
 
-use std::sync::OnceLock;
 use axum::http::header::HeaderName;
+use std::sync::OnceLock;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 pub struct Config {
@@ -131,7 +131,11 @@ fn parse_prices(raw: &str) -> Vec<Price> {
                 Some((whole, cents)) if (1..=6).contains(&whole.len()) && cents.len() == 2
                     && whole.bytes().chain(cents.bytes()).all(|b| b.is_ascii_digit()));
             let plan = plan.trim().to_ascii_lowercase();
-            (valid && !plan.is_empty() && amount != "0.00").then(|| Price { plan, days, amount: amount.into() })
+            (valid && !plan.is_empty() && amount != "0.00").then(|| Price {
+                plan,
+                days,
+                amount: amount.into(),
+            })
         })
         .collect()
 }
@@ -151,17 +155,28 @@ impl Config {
             .unwrap_or_else(|| "starter=30,business=100,pro=300".into());
         Self {
             bind_addr: std::env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into()),
-            metrics_addr: Some(std::env::var("METRICS_ADDR").unwrap_or_else(|_| "0.0.0.0:9090".into()))
-                .map(|v| v.trim().to_string())
-                .filter(|v| !v.is_empty() && !v.eq_ignore_ascii_case("off")),
-            valkey_url: std::env::var("VALKEY_URL").ok().filter(|v| !v.trim().is_empty()),
-            valkey_mode: match std::env::var("VALKEY_MODE").unwrap_or_default().trim().to_ascii_lowercase().as_str() {
+            metrics_addr: Some(
+                std::env::var("METRICS_ADDR").unwrap_or_else(|_| "0.0.0.0:9090".into()),
+            )
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty() && !v.eq_ignore_ascii_case("off")),
+            valkey_url: std::env::var("VALKEY_URL")
+                .ok()
+                .filter(|v| !v.trim().is_empty()),
+            valkey_mode: match std::env::var("VALKEY_MODE")
+                .unwrap_or_default()
+                .trim()
+                .to_ascii_lowercase()
+                .as_str()
+            {
                 m @ ("standalone" | "cluster") => m.to_string(),
                 _ => "auto".to_string(),
             },
             free_rate_limit_per_minute: env_parse("FREE_RATE_LIMIT_PER_MINUTE", 20u32).max(1),
             free_token_ttl_secs: env_parse("FREE_TOKEN_TTL_SECONDS", 43_200u64).max(60),
-            anubis_public_key_hex: std::env::var("ANUBIS_PUBLIC_KEY_HEX").ok().filter(|v| !v.trim().is_empty()),
+            anubis_public_key_hex: std::env::var("ANUBIS_PUBLIC_KEY_HEX")
+                .ok()
+                .filter(|v| !v.trim().is_empty()),
             anubis_cookie_name: std::env::var("ANUBIS_COOKIE_NAME")
                 .ok()
                 .filter(|v| !v.trim().is_empty())
@@ -176,11 +191,16 @@ impl Config {
             public_url: env_opt("PUBLIC_URL").map(|v| v.trim().trim_end_matches('/').to_string()),
             mollie_redirect_url: env_opt("MOLLIE_REDIRECT_URL"),
             paid_prices: parse_prices(&std::env::var("PAID_PRICES").unwrap_or_default()),
-            paid_currency: env_opt("PAID_CURRENCY").map_or_else(|| "EUR".into(), |c| c.trim().to_ascii_uppercase()),
+            paid_currency: env_opt("PAID_CURRENCY")
+                .map_or_else(|| "EUR".into(), |c| c.trim().to_ascii_uppercase()),
             paid_grace_days: env_parse("PAID_GRACE_DAYS", 3u64),
             internetmarke_enabled: env_parse("INTERNETMARKE_ENABLED", false),
-            internetmarke_client_id: std::env::var("INTERNETMARKE_CLIENT_ID").ok().filter(|v| !v.trim().is_empty()),
-            internetmarke_client_secret: std::env::var("INTERNETMARKE_CLIENT_SECRET").ok().filter(|v| !v.trim().is_empty()),
+            internetmarke_client_id: std::env::var("INTERNETMARKE_CLIENT_ID")
+                .ok()
+                .filter(|v| !v.trim().is_empty()),
+            internetmarke_client_secret: std::env::var("INTERNETMARKE_CLIENT_SECRET")
+                .ok()
+                .filter(|v| !v.trim().is_empty()),
             internetmarke_shipping_url: std::env::var("INTERNETMARKE_SHIPPING_URL")
                 .ok()
                 .filter(|v| !v.trim().is_empty())
@@ -219,17 +239,26 @@ impl Config {
     }
 
     pub fn price(&self, plan: &str, days: u64) -> Option<&Price> {
-        self.paid_prices.iter().find(|p| p.plan == plan && p.days == days)
+        self.paid_prices
+            .iter()
+            .find(|p| p.plan == plan && p.days == days)
     }
 
     /// Documents allowed in one bulk request for a token of `plan`.
     pub fn bulk_max(&self, plan: &str) -> usize {
-        let by_plan = self.bulk_max_by_plan.iter().find(|(n, _)| n == plan).map(|(_, m)| *m as usize);
+        let by_plan = self
+            .bulk_max_by_plan
+            .iter()
+            .find(|(n, _)| n == plan)
+            .map(|(_, m)| *m as usize);
         by_plan.map_or(self.bulk_max_invoices, |m| m.min(self.bulk_max_invoices))
     }
 
     pub fn plan_limit(&self, plan: &str) -> Option<u32> {
-        self.paid_plans.iter().find(|(n, _)| n == plan).map(|(_, l)| *l)
+        self.paid_plans
+            .iter()
+            .find(|(n, _)| n == plan)
+            .map(|(_, l)| *l)
     }
 }
 
@@ -269,12 +298,22 @@ mod tests {
 
     #[test]
     fn prices_accept_only_well_formed_offers() {
-        let prices = parse_prices("Starter:31=19.00, pro:1=2.50, bad:0=1.00, bad:5=1, bad=3.00, free:7=0.00, x:7=1.5");
+        let prices = parse_prices(
+            "Starter:31=19.00, pro:1=2.50, bad:0=1.00, bad:5=1, bad=3.00, free:7=0.00, x:7=1.5",
+        );
         assert_eq!(
             prices,
             vec![
-                Price { plan: "starter".into(), days: 31, amount: "19.00".into() },
-                Price { plan: "pro".into(), days: 1, amount: "2.50".into() },
+                Price {
+                    plan: "starter".into(),
+                    days: 31,
+                    amount: "19.00".into()
+                },
+                Price {
+                    plan: "pro".into(),
+                    days: 1,
+                    amount: "2.50".into()
+                },
             ]
         );
     }

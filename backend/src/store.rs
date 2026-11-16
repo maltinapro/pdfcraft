@@ -89,7 +89,12 @@ impl redis::aio::ConnectionLike for Conn {
         }
     }
 
-    fn req_packed_commands<'a>(&'a mut self, cmd: &'a redis::Pipeline, offset: usize, count: usize) -> RedisFuture<'a, Vec<Value>> {
+    fn req_packed_commands<'a>(
+        &'a mut self,
+        cmd: &'a redis::Pipeline,
+        offset: usize,
+        count: usize,
+    ) -> RedisFuture<'a, Vec<Value>> {
         match self {
             Conn::Single(c) => c.req_packed_commands(cmd, offset, count),
             Conn::Cluster(c) => c.req_packed_commands(cmd, offset, count),
@@ -107,7 +112,9 @@ impl redis::aio::ConnectionLike for Conn {
 static VALKEY: OnceLock<Conn> = OnceLock::new();
 
 pub fn now() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs())
 }
 
 pub fn hash_secret(secret: &str) -> String {
@@ -140,7 +147,10 @@ async fn connect(url: &str) -> redis::RedisResult<Conn> {
         "cluster" => true,
         "standalone" => false,
         _ => {
-            let info: String = redis::cmd("INFO").arg("cluster").query_async(&mut single).await?;
+            let info: String = redis::cmd("INFO")
+                .arg("cluster")
+                .query_async(&mut single)
+                .await?;
             info.lines().any(|l| l.trim() == "cluster_enabled:1")
         }
     };
@@ -155,7 +165,9 @@ async fn connect(url: &str) -> redis::RedisResult<Conn> {
 /// reachable yet (pods starting in parallel, DNS), the connection is retried in the background
 /// instead of leaving this pod unavailable until it is restarted.
 pub async fn init() {
-    let Some(url) = config::get().valkey_url.clone() else { return };
+    let Some(url) = config::get().valkey_url.clone() else {
+        return;
+    };
     match connect(&url).await {
         Ok(m) => {
             let mut c = m.clone();
@@ -207,24 +219,34 @@ fn parse_token(presented: &str) -> Option<(Kind, &str, &str)> {
     };
     let id = parts.next()?;
     let secret = parts.next()?;
-    let hex_only = |s: &str| !s.is_empty() && s.len() <= 64 && s.bytes().all(|b| b.is_ascii_hexdigit());
+    let hex_only =
+        |s: &str| !s.is_empty() && s.len() <= 64 && s.bytes().all(|b| b.is_ascii_hexdigit());
     (hex_only(id) && hex_only(secret)).then_some((kind, id, secret))
 }
 
-type TokenFields = (Option<String>, Option<String>, Option<u32>, Option<u64>, Option<String>, Option<u64>);
+type TokenFields = (
+    Option<String>,
+    Option<String>,
+    Option<u32>,
+    Option<u64>,
+    Option<String>,
+    Option<u64>,
+);
 
 /// `Ok(None)` for unknown, expired or malformed tokens.
 pub async fn lookup(presented: &str) -> Result<Option<Client>, Unavailable> {
-    let Some((kind, id, secret)) = parse_token(presented) else { return Ok(None) };
+    let Some((kind, id, secret)) = parse_token(presented) else {
+        return Ok(None);
+    };
     let mut c = conn()?;
-    let (hash, stored_kind, limit, until, plan, created): TokenFields =
-        redis::cmd("HMGET")
-            .arg(format!("{TOKEN_PREFIX}{id}"))
-            .arg(&["h", "kind", "limit", "until", "plan", "created"])
-            .query_async(&mut c)
-            .await
-            .map_err(unavailable)?;
-    let (Some(hash), Some(stored_kind), Some(limit), Some(until)) = (hash, stored_kind, limit, until)
+    let (hash, stored_kind, limit, until, plan, created): TokenFields = redis::cmd("HMGET")
+        .arg(format!("{TOKEN_PREFIX}{id}"))
+        .arg(&["h", "kind", "limit", "until", "plan", "created"])
+        .query_async(&mut c)
+        .await
+        .map_err(unavailable)?;
+    let (Some(hash), Some(stored_kind), Some(limit), Some(until)) =
+        (hash, stored_kind, limit, until)
     else {
         return Ok(None);
     };
@@ -237,31 +259,63 @@ pub async fn lookup(presented: &str) -> Result<Option<Client>, Unavailable> {
         Kind::Paid => limit.max(1),
     };
     let plan = plan.unwrap_or_else(|| kind.as_str().to_string());
-    Ok(valid.then(|| Client { id: id.to_string(), kind, plan, limit, created }))
+    Ok(valid.then(|| Client {
+        id: id.to_string(),
+        kind,
+        plan,
+        limit,
+        created,
+    }))
 }
 
 /// Creates a token valid for `ttl_secs`. The plain token is only returned here.
-pub async fn create_token(kind: Kind, plan: &str, limit: u32, ttl_secs: u64) -> Result<Created, Unavailable> {
+pub async fn create_token(
+    kind: Kind,
+    plan: &str,
+    limit: u32,
+    ttl_secs: u64,
+) -> Result<Created, Unavailable> {
     create_token_with(kind, plan, limit, ttl_secs, random_hex(6), random_hex(16)).await
 }
 
 /// Like [`create_token`], with a given id and secret (hex), e.g. derived from an Anubis pass.
-pub async fn create_token_with(kind: Kind, plan: &str, limit: u32, ttl_secs: u64, id: String, secret: String) -> Result<Created, Unavailable> {
+pub async fn create_token_with(
+    kind: Kind,
+    plan: &str,
+    limit: u32,
+    ttl_secs: u64,
+    id: String,
+    secret: String,
+) -> Result<Created, Unavailable> {
     let until = now() + ttl_secs;
     let key = format!("{TOKEN_PREFIX}{id}");
     let mut pipe = redis::pipe();
     pipe.atomic()
         .hset_multiple(
             &key,
-            &[("h", hash_secret(&secret)), ("kind", kind.as_str().into()), ("plan", plan.into()), ("limit", limit.to_string()), ("until", until.to_string()), ("created", now().to_string())],
+            &[
+                ("h", hash_secret(&secret)),
+                ("kind", kind.as_str().into()),
+                ("plan", plan.into()),
+                ("limit", limit.to_string()),
+                ("until", until.to_string()),
+                ("created", now().to_string()),
+            ],
         )
         .ignore();
-    pipe.cmd("EXPIREAT").arg(&key).arg(expire_at(kind, until)).ignore();
+    pipe.cmd("EXPIREAT")
+        .arg(&key)
+        .arg(expire_at(kind, until))
+        .ignore();
     let mut c = conn()?;
     pipe.query_async::<()>(&mut c).await.map_err(unavailable)?;
     index_add(&mut c, &id).await;
     crate::metrics::token_created(kind, plan);
-    Ok(Created { token: format!("{}_{id}_{secret}", kind.prefix()), id, valid_until: until })
+    Ok(Created {
+        token: format!("{}_{id}_{secret}", kind.prefix()),
+        id,
+        valid_until: until,
+    })
 }
 
 fn expire_at(kind: Kind, until: u64) -> u64 {
@@ -290,8 +344,13 @@ pub async fn extend_paid_token(id: &str, add_secs: u64) -> Result<Option<u64>, U
     }
     let new_until = until.unwrap_or(0).max(now()) + add_secs;
     let mut pipe = redis::pipe();
-    pipe.atomic().hset(&key, "until", new_until.to_string()).ignore();
-    pipe.cmd("EXPIREAT").arg(&key).arg(expire_at(Kind::Paid, new_until)).ignore();
+    pipe.atomic()
+        .hset(&key, "until", new_until.to_string())
+        .ignore();
+    pipe.cmd("EXPIREAT")
+        .arg(&key)
+        .arg(expire_at(Kind::Paid, new_until))
+        .ignore();
     pipe.query_async::<()>(&mut c).await.map_err(unavailable)?;
     Ok(Some(new_until))
 }
@@ -307,7 +366,12 @@ pub async fn valid_until_of(presented: &str) -> Result<Option<u64>, Unavailable>
 
 /// End of a token (unix seconds), also for an expired one still in retention.
 pub async fn token_until(id: &str) -> Result<Option<u64>, Unavailable> {
-    redis::cmd("HGET").arg(format!("{TOKEN_PREFIX}{id}")).arg("until").query_async(&mut conn()?).await.map_err(unavailable)
+    redis::cmd("HGET")
+        .arg(format!("{TOKEN_PREFIX}{id}"))
+        .arg("until")
+        .query_async(&mut conn()?)
+        .await
+        .map_err(unavailable)
 }
 
 /// True if `id` names an existing paid token (also an expired one still in retention).
@@ -342,8 +406,13 @@ pub async fn extend_paid_token_to(id: &str, until: u64) -> Result<Option<u64>, U
     }
     let new_until = current.unwrap_or(0).max(until);
     let mut pipe = redis::pipe();
-    pipe.atomic().hset(&key, "until", new_until.to_string()).ignore();
-    pipe.cmd("EXPIREAT").arg(&key).arg(expire_at(Kind::Paid, new_until)).ignore();
+    pipe.atomic()
+        .hset(&key, "until", new_until.to_string())
+        .ignore();
+    pipe.cmd("EXPIREAT")
+        .arg(&key)
+        .arg(expire_at(Kind::Paid, new_until))
+        .ignore();
     pipe.query_async::<()>(&mut c).await.map_err(unavailable)?;
     Ok(Some(new_until))
 }
@@ -362,15 +431,27 @@ pub async fn put(key: &str, value: &str, ttl_secs: u64) -> Result<(), Unavailabl
 
 /// Reads and deletes a value in one step.
 pub async fn take_value(key: &str) -> Result<Option<String>, Unavailable> {
-    redis::cmd("GETDEL").arg(key).query_async(&mut conn()?).await.map_err(unavailable)
+    redis::cmd("GETDEL")
+        .arg(key)
+        .query_async(&mut conn()?)
+        .await
+        .map_err(unavailable)
 }
 
 pub async fn get_value(key: &str) -> Result<Option<String>, Unavailable> {
-    redis::cmd("GET").arg(key).query_async(&mut conn()?).await.map_err(unavailable)
+    redis::cmd("GET")
+        .arg(key)
+        .query_async(&mut conn()?)
+        .await
+        .map_err(unavailable)
 }
 
 pub async fn delete_key(key: &str) -> Result<(), Unavailable> {
-    redis::cmd("DEL").arg(key).query_async::<()>(&mut conn()?).await.map_err(unavailable)
+    redis::cmd("DEL")
+        .arg(key)
+        .query_async::<()>(&mut conn()?)
+        .await
+        .map_err(unavailable)
 }
 
 /// `SET key NX EX ttl`: true if the marker was newly set, false if it already existed.
@@ -394,19 +475,30 @@ pub async fn delete_token(id: &str) -> Result<bool, Unavailable> {
         .query_async(&mut c)
         .await
         .map_err(unavailable)?;
-    let _ = redis::cmd("SREM").arg(TOKEN_INDEX).arg(id).query_async::<()>(&mut c).await;
+    let _ = redis::cmd("SREM")
+        .arg(TOKEN_INDEX)
+        .arg(id)
+        .query_async::<()>(&mut c)
+        .await;
     Ok(n > 0)
 }
 
 async fn index_add(c: &mut Conn, id: &str) {
-    if let Err(e) = redis::cmd("SADD").arg(TOKEN_INDEX).arg(id).query_async::<()>(c).await {
+    if let Err(e) = redis::cmd("SADD")
+        .arg(TOKEN_INDEX)
+        .arg(id)
+        .query_async::<()>(c)
+        .await
+    {
         tracing::warn!(event = "valkey_index_failed", error = %e);
     }
 }
 
 /// Calls `f(id, row)` for every indexed token, where `row` is `(kind, plan, limit, until)`.
 /// Ids whose token no longer exists are dropped from the index.
-pub async fn for_each_token(mut f: impl FnMut(String, (String, String, String, String))) -> Result<(), Unavailable> {
+pub async fn for_each_token(
+    mut f: impl FnMut(String, (String, String, String, String)),
+) -> Result<(), Unavailable> {
     let mut c = conn()?;
     let mut cursor: u64 = 0;
     loop {
@@ -427,7 +519,11 @@ pub async fn for_each_token(mut f: impl FnMut(String, (String, String, String, S
                 .map_err(unavailable)?;
             let f_ = |i: usize| row.get(i).cloned().flatten().unwrap_or_default();
             if row.iter().all(Option::is_none) {
-                let _ = redis::cmd("SREM").arg(TOKEN_INDEX).arg(&id).query_async::<()>(&mut c).await;
+                let _ = redis::cmd("SREM")
+                    .arg(TOKEN_INDEX)
+                    .arg(&id)
+                    .query_async::<()>(&mut c)
+                    .await;
             } else {
                 f(id, (f_(0), f_(1), f_(2), f_(3)));
             }
@@ -440,7 +536,8 @@ pub async fn for_each_token(mut f: impl FnMut(String, (String, String, String, S
 }
 
 /// Number of currently valid tokens per (kind, plan); used for the `tokens_active` gauge.
-pub async fn count_active_tokens() -> Result<std::collections::HashMap<(String, String), u64>, Unavailable> {
+pub async fn count_active_tokens(
+) -> Result<std::collections::HashMap<(String, String), u64>, Unavailable> {
     let mut counts = std::collections::HashMap::new();
     let now = now();
     for_each_token(|_, (kind, plan, _, until)| {
@@ -461,8 +558,14 @@ async fn backfill_index(c: &mut Conn) {
     }
     let mut cursor: u64 = 0;
     loop {
-        let Ok((next, keys)): Result<(u64, Vec<String>), _> =
-            redis::cmd("SCAN").arg(cursor).arg("MATCH").arg(format!("{TOKEN_PREFIX}*")).arg("COUNT").arg(500).query_async(c).await
+        let Ok((next, keys)): Result<(u64, Vec<String>), _> = redis::cmd("SCAN")
+            .arg(cursor)
+            .arg("MATCH")
+            .arg(format!("{TOKEN_PREFIX}*"))
+            .arg("COUNT")
+            .arg(500)
+            .query_async(c)
+            .await
         else {
             return;
         };
@@ -511,11 +614,18 @@ pub async fn take(client: &Client, cost: u32) -> Result<Result<(), u64>, Unavail
         .invoke_async(&mut conn()?)
         .await
         .map_err(unavailable)?;
-    Ok(if wait == 0 { Ok(()) } else { Err(wait.max(1) as u64) })
+    Ok(if wait == 0 {
+        Ok(())
+    } else {
+        Err(wait.max(1) as u64)
+    })
 }
 
 fn arg_value(args: &[String], name: &str) -> Option<String> {
-    args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned()
+    args.iter()
+        .position(|a| a == name)
+        .and_then(|i| args.get(i + 1))
+        .cloned()
 }
 
 fn die(msg: impl std::fmt::Display, code: i32) -> ! {
@@ -531,22 +641,38 @@ pub async fn run_cli(args: &[String]) -> bool {
         return false;
     }
     let cfg = config::get();
-    let Some(url) = &cfg.valkey_url else { die("VALKEY_URL must be set", 2) };
-    let manager = connect(url).await.unwrap_or_else(|e| die(format!("cannot connect to Valkey: {e}"), 1));
+    let Some(url) = &cfg.valkey_url else {
+        die("VALKEY_URL must be set", 2)
+    };
+    let manager = connect(url)
+        .await
+        .unwrap_or_else(|e| die(format!("cannot connect to Valkey: {e}"), 1));
     let _ = VALKEY.set(manager);
-    let days = |default: u64| arg_value(args, "--days").and_then(|v| v.parse::<u64>().ok()).unwrap_or(default);
+    let days = |default: u64| {
+        arg_value(args, "--days")
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(default)
+    };
     match args.get(1).map(String::as_str) {
         Some("create") => {
-            let Some(plan) = arg_value(args, "--plan").map(|p| p.to_ascii_lowercase()) else { die(USAGE, 2) };
+            let Some(plan) = arg_value(args, "--plan").map(|p| p.to_ascii_lowercase()) else {
+                die(USAGE, 2)
+            };
             let Some(limit) = cfg.plan_limit(&plan) else {
                 let names: Vec<_> = cfg.paid_plans.iter().map(|(n, _)| n.as_str()).collect();
-                die(format!("unknown plan `{plan}` (PAID_PLANS: {})", names.join(", ")), 2)
+                die(
+                    format!("unknown plan `{plan}` (PAID_PLANS: {})", names.join(", ")),
+                    2,
+                )
             };
             let created = create_token(Kind::Paid, &plan, limit, days(30) * 86_400)
                 .await
                 .unwrap_or_else(|_| die("could not write to Valkey", 1));
             println!("Created paid token `{}` (plan {plan}, {limit} invoices/minute), valid until unix time {}.", created.id, created.valid_until);
-            println!("Token (shown only once, store it safely):\n{}", created.token);
+            println!(
+                "Token (shown only once, store it safely):\n{}",
+                created.token
+            );
             if !cfg.paid_tokens_enabled {
                 println!("Note: PAID_TOKENS_ENABLED is not true, the server rejects paid tokens until you enable it.");
             }
@@ -556,15 +682,23 @@ pub async fn run_cli(args: &[String]) -> bool {
             let created = create_token(Kind::Free, "free", limit, cfg.free_token_ttl_secs)
                 .await
                 .unwrap_or_else(|_| die("could not write to Valkey", 1));
-            println!("Created free token `{}` ({limit} invoices/minute), valid until unix time {}.\n{}", created.id, created.valid_until, created.token);
+            println!(
+                "Created free token `{}` ({limit} invoices/minute), valid until unix time {}.\n{}",
+                created.id, created.valid_until, created.token
+            );
         }
         Some("list") => {
-            println!("{:<14} {:<6} {:<12} {:<7} valid until (unix)", "id", "kind", "plan", "limit");
+            println!(
+                "{:<14} {:<6} {:<12} {:<7} valid until (unix)",
+                "id", "kind", "plan", "limit"
+            );
             let mut backfill = conn().unwrap_or_else(|_| die("no Valkey", 1));
             backfill_index(&mut backfill).await;
-            for_each_token(|id, (kind, plan, limit, until)| println!("{id:<14} {kind:<6} {plan:<12} {limit:<7} {until}"))
-                .await
-                .unwrap_or_else(|_| die("could not read from Valkey", 1));
+            for_each_token(|id, (kind, plan, limit, until)| {
+                println!("{id:<14} {kind:<6} {plan:<12} {limit:<7} {until}")
+            })
+            .await
+            .unwrap_or_else(|_| die("could not read from Valkey", 1));
         }
         Some("extend") => {
             let Some(id) = args.get(2) else { die(USAGE, 2) };

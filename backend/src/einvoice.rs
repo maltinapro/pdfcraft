@@ -19,27 +19,104 @@ struct Unit {
 }
 
 const UNITS: &[Unit] = &[
-    Unit { key: "pcs", code: "H87", de: ("Stück", "Stück"), en: ("piece", "pieces") },
-    Unit { key: "h", code: "HUR", de: ("Stunde", "Stunden"), en: ("hour", "hours") },
-    Unit { key: "d", code: "DAY", de: ("Tag", "Tage"), en: ("day", "days") },
-    Unit { key: "mo", code: "MON", de: ("Monat", "Monate"), en: ("month", "months") },
-    Unit { key: "y", code: "ANN", de: ("Jahr", "Jahre"), en: ("year", "years") },
-    Unit { key: "flat", code: "LS", de: ("Pauschale", "Pauschalen"), en: ("lump sum", "lump sums") },
-    Unit { key: "kg", code: "KGM", de: ("Kilogramm", "Kilogramm"), en: ("kilogram", "kilograms") },
-    Unit { key: "m", code: "MTR", de: ("Meter", "Meter"), en: ("metre", "metres") },
-    Unit { key: "km", code: "KMT", de: ("Kilometer", "Kilometer"), en: ("kilometre", "kilometres") },
-    Unit { key: "m2", code: "MTK", de: ("Quadratmeter", "Quadratmeter"), en: ("square metre", "square metres") },
-    Unit { key: "l", code: "LTR", de: ("Liter", "Liter"), en: ("litre", "litres") },
+    Unit {
+        key: "pcs",
+        code: "H87",
+        de: ("Stück", "Stück"),
+        en: ("piece", "pieces"),
+    },
+    Unit {
+        key: "h",
+        code: "HUR",
+        de: ("Stunde", "Stunden"),
+        en: ("hour", "hours"),
+    },
+    Unit {
+        key: "d",
+        code: "DAY",
+        de: ("Tag", "Tage"),
+        en: ("day", "days"),
+    },
+    Unit {
+        key: "mo",
+        code: "MON",
+        de: ("Monat", "Monate"),
+        en: ("month", "months"),
+    },
+    Unit {
+        key: "y",
+        code: "ANN",
+        de: ("Jahr", "Jahre"),
+        en: ("year", "years"),
+    },
+    Unit {
+        key: "flat",
+        code: "LS",
+        de: ("Pauschale", "Pauschalen"),
+        en: ("lump sum", "lump sums"),
+    },
+    Unit {
+        key: "kg",
+        code: "KGM",
+        de: ("Kilogramm", "Kilogramm"),
+        en: ("kilogram", "kilograms"),
+    },
+    Unit {
+        key: "m",
+        code: "MTR",
+        de: ("Meter", "Meter"),
+        en: ("metre", "metres"),
+    },
+    Unit {
+        key: "km",
+        code: "KMT",
+        de: ("Kilometer", "Kilometer"),
+        en: ("kilometre", "kilometres"),
+    },
+    Unit {
+        key: "m2",
+        code: "MTK",
+        de: ("Quadratmeter", "Quadratmeter"),
+        en: ("square metre", "square metres"),
+    },
+    Unit {
+        key: "l",
+        code: "LTR",
+        de: ("Liter", "Liter"),
+        en: ("litre", "litres"),
+    },
 ];
 
 // Electronic address scheme (EAS) of a VAT id, by its country prefix.
 const VAT_EAS: &[(&str, &str)] = &[
-    ("AT", "9914"), ("BE", "9925"), ("BG", "9926"), ("CH", "9927"), ("CY", "9928"),
-    ("CZ", "9929"), ("DE", "9930"), ("EE", "9931"), ("EL", "9933"), ("ES", "9920"),
-    ("FI", "0213"), ("FR", "9957"), ("GB", "9932"), ("GR", "9933"), ("HR", "9934"),
-    ("HU", "9910"), ("IE", "9935"), ("IT", "0211"), ("LT", "9937"), ("LU", "9938"),
-    ("LV", "9939"), ("MT", "9943"), ("NL", "9944"), ("PL", "9945"), ("PT", "9946"),
-    ("RO", "9947"), ("SI", "9949"), ("SK", "9950"),
+    ("AT", "9914"),
+    ("BE", "9925"),
+    ("BG", "9926"),
+    ("CH", "9927"),
+    ("CY", "9928"),
+    ("CZ", "9929"),
+    ("DE", "9930"),
+    ("EE", "9931"),
+    ("EL", "9933"),
+    ("ES", "9920"),
+    ("FI", "0213"),
+    ("FR", "9957"),
+    ("GB", "9932"),
+    ("GR", "9933"),
+    ("HR", "9934"),
+    ("HU", "9910"),
+    ("IE", "9935"),
+    ("IT", "0211"),
+    ("LT", "9937"),
+    ("LU", "9938"),
+    ("LV", "9939"),
+    ("MT", "9943"),
+    ("NL", "9944"),
+    ("PL", "9945"),
+    ("PT", "9946"),
+    ("RO", "9947"),
+    ("SI", "9949"),
+    ("SK", "9950"),
 ];
 
 /// A decimal number with 4 decimals, stored as an integer (value * 10_000).
@@ -151,7 +228,11 @@ fn iban_valid(iban: &str) -> bool {
     }
     let mut rem: u32 = 0;
     for &c in b[4..].iter().chain(b[..4].iter()) {
-        let v = if c.is_ascii_digit() { (c - b'0') as u32 } else { (c - b'A') as u32 + 10 };
+        let v = if c.is_ascii_digit() {
+            (c - b'0') as u32
+        } else {
+            (c - b'A') as u32 + 10
+        };
         rem = (rem * if v >= 10 { 100 } else { 10 } + v) % 97;
     }
     rem == 1
@@ -159,7 +240,9 @@ fn iban_valid(iban: &str) -> bool {
 
 fn bic_valid(bic: &str) -> bool {
     matches!(bic.len(), 8 | 11)
-        && bic.bytes().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+        && bic
+            .bytes()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
         && bic.bytes().take(6).all(|c| c.is_ascii_uppercase())
 }
 
@@ -174,7 +257,9 @@ fn group_iban(iban: &str) -> String {
 /// Splits `12345 Berlin` into the postcode and the city.
 fn split_city(city: &str) -> (Option<&str>, &str) {
     match city.split_once(' ') {
-        Some((code, rest)) if (4..=6).contains(&code.len()) && code.bytes().all(|c| c.is_ascii_digit()) => {
+        Some((code, rest))
+            if (4..=6).contains(&code.len()) && code.bytes().all(|c| c.is_ascii_digit()) =>
+        {
             (Some(code), rest.trim())
         }
         _ => (None, city),
@@ -213,7 +298,11 @@ fn element(out: &mut String, name: &str, text: &str) {
 }
 
 fn element_attr(out: &mut String, name: &str, attr: &str, value: &str, text: &str) {
-    out.push_str(&format!("<{name} {attr}=\"{}\">{}</{name}>", xml_escape(value), xml_escape(text)));
+    out.push_str(&format!(
+        "<{name} {attr}=\"{}\">{}</{name}>",
+        xml_escape(value),
+        xml_escape(text)
+    ));
 }
 
 fn open(out: &mut String, name: &str) {
@@ -287,7 +376,11 @@ pub fn describe_items(english: bool, items: &[Item], negate: bool, doc: &mut Val
     for line in &lines {
         match groups.iter_mut().find(|g| g.rate == line.rate) {
             Some(g) => g.basis += line.net,
-            None => groups.push(TaxGroup { rate: line.rate, basis: line.net, tax: 0 }),
+            None => groups.push(TaxGroup {
+                rate: line.rate,
+                basis: line.net,
+                tax: 0,
+            }),
         }
     }
     for g in &mut groups {
@@ -298,7 +391,11 @@ pub fn describe_items(english: bool, items: &[Item], negate: bool, doc: &mut Val
     if let Some(list) = doc["items"].as_array_mut() {
         for (i, (item, line)) in list.iter_mut().zip(&lines).enumerate() {
             let unit = if line.qty.abs() == 10_000 {
-                if english { line.unit.en.0 } else { line.unit.de.0 }
+                if english {
+                    line.unit.en.0
+                } else {
+                    line.unit.de.0
+                }
             } else if english {
                 line.unit.en.1
             } else {
@@ -341,8 +438,16 @@ pub fn prepare(
     let service_from = inv.service_date_from.as_deref().and_then(valid_date);
     let service_to = inv.service_date_to.as_deref().and_then(valid_date);
     let effective_service_date = service_date.or(service_from).unwrap_or(date);
-    let due = inv.due_date.as_deref().and_then(valid_date).unwrap_or_else(|| add_days(date, days));
-    let reason = raw.exemption_reason.as_deref().unwrap_or("Steuerfrei nach § 4 UStG").trim();
+    let due = inv
+        .due_date
+        .as_deref()
+        .and_then(valid_date)
+        .unwrap_or_else(|| add_days(date, days));
+    let reason = raw
+        .exemption_reason
+        .as_deref()
+        .unwrap_or("Steuerfrei nach § 4 UStG")
+        .trim();
 
     let lines: Vec<Line> = inv
         .items
@@ -366,7 +471,11 @@ pub fn prepare(
     for line in &lines {
         match groups.iter_mut().find(|g| g.rate == line.rate) {
             Some(g) => g.basis += line.net,
-            None => groups.push(TaxGroup { rate: line.rate, basis: line.net, tax: 0 }),
+            None => groups.push(TaxGroup {
+                rate: line.rate,
+                basis: line.net,
+                tax: 0,
+            }),
         }
     }
     for g in &mut groups {
@@ -383,7 +492,11 @@ pub fn prepare(
     if let Some(items) = invoice_json["items"].as_array_mut() {
         for (i, (item, line)) in items.iter_mut().zip(&lines).enumerate() {
             let unit = if line.qty == 10_000 {
-                if english { line.unit.en.0 } else { line.unit.de.0 }
+                if english {
+                    line.unit.en.0
+                } else {
+                    line.unit.de.0
+                }
             } else if english {
                 line.unit.en.1
             } else {
@@ -405,8 +518,12 @@ pub fn prepare(
         (Some(from), Some(to)) => format!("{} – {}", german_date(from), german_date(to)),
         _ => german_date(effective_service_date),
     });
-    invoice_json["serviceDateFromText"] = service_from.map(german_date).map_or(Value::Null, |v| json!(v));
-    invoice_json["serviceDateToText"] = service_to.map(german_date).map_or(Value::Null, |v| json!(v));
+    invoice_json["serviceDateFromText"] = service_from
+        .map(german_date)
+        .map_or(Value::Null, |v| json!(v));
+    invoice_json["serviceDateToText"] = service_to
+        .map(german_date)
+        .map_or(Value::Null, |v| json!(v));
     invoice_json["dueDateText"] = json!(german_date(due));
     invoice_json["totals"] = json!({
         "net": format!("{}{NBSP}€", money(net)),
@@ -430,7 +547,9 @@ pub fn prepare(
         && holder.len() <= 70
         && number.len() <= 140
         && (bic.is_empty() || bic_valid(&bic));
-    let qr_amount = (1..=99_999_999_999).contains(&gross).then(|| gross as f64 / 100.0);
+    let qr_amount = (1..=99_999_999_999)
+        .contains(&gross)
+        .then(|| gross as f64 / 100.0);
     let mut extra = json!({
         "pay": {
             "sum": format!("{}{NBSP}€", money(gross)),
@@ -512,9 +631,19 @@ pub fn prepare(
     let mut x = String::from("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
     x.push_str("<rsm:CrossIndustryInvoice xmlns:rsm=\"urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100\" xmlns:qdt=\"urn:un:unece:uncefact:data:standard:QualifiedDataType:100\" xmlns:ram=\"urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100\" xmlns:udt=\"urn:un:unece:uncefact:data:standard:UnqualifiedDataType:100\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">");
     open(&mut x, "rsm:ExchangedDocumentContext");
-    open(&mut x, "ram:BusinessProcessSpecifiedDocumentContextParameter");
-    element(&mut x, "ram:ID", "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0");
-    close(&mut x, "ram:BusinessProcessSpecifiedDocumentContextParameter");
+    open(
+        &mut x,
+        "ram:BusinessProcessSpecifiedDocumentContextParameter",
+    );
+    element(
+        &mut x,
+        "ram:ID",
+        "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+    );
+    close(
+        &mut x,
+        "ram:BusinessProcessSpecifiedDocumentContextParameter",
+    );
     open(&mut x, "ram:GuidelineSpecifiedDocumentContextParameter");
     element(
         &mut x,
@@ -530,7 +659,11 @@ pub fn prepare(
 
     open(&mut x, "rsm:ExchangedDocument");
     element(&mut x, "ram:ID", number);
-    element(&mut x, "ram:TypeCode", if credit_for.is_some() { "381" } else { "380" });
+    element(
+        &mut x,
+        "ram:TypeCode",
+        if credit_for.is_some() { "381" } else { "380" },
+    );
     date_element(&mut x, "ram:IssueDateTime", date);
     close(&mut x, "rsm:ExchangedDocument");
 
@@ -541,7 +674,11 @@ pub fn prepare(
         element(&mut x, "ram:LineID", &(i + 1).to_string());
         close(&mut x, "ram:AssociatedDocumentLineDocument");
         open(&mut x, "ram:SpecifiedTradeProduct");
-        element(&mut x, "ram:Name", &line.item.description.trim().replace(['\r', '\n'], " "));
+        element(
+            &mut x,
+            "ram:Name",
+            &line.item.description.trim().replace(['\r', '\n'], " "),
+        );
         close(&mut x, "ram:SpecifiedTradeProduct");
         open(&mut x, "ram:SpecifiedLineTradeAgreement");
         open(&mut x, "ram:NetPriceProductTradePrice");
@@ -549,13 +686,23 @@ pub fn prepare(
         close(&mut x, "ram:NetPriceProductTradePrice");
         close(&mut x, "ram:SpecifiedLineTradeAgreement");
         open(&mut x, "ram:SpecifiedLineTradeDelivery");
-        element_attr(&mut x, "ram:BilledQuantity", "unitCode", line.unit.code, &decimal(line.qty, 2, false));
+        element_attr(
+            &mut x,
+            "ram:BilledQuantity",
+            "unitCode",
+            line.unit.code,
+            &decimal(line.qty, 2, false),
+        );
         close(&mut x, "ram:SpecifiedLineTradeDelivery");
         open(&mut x, "ram:SpecifiedLineTradeSettlement");
         open(&mut x, "ram:ApplicableTradeTax");
         element(&mut x, "ram:TypeCode", "VAT");
         element(&mut x, "ram:CategoryCode", category(line.rate));
-        element(&mut x, "ram:RateApplicablePercent", &format!("{}.00", line.rate));
+        element(
+            &mut x,
+            "ram:RateApplicablePercent",
+            &format!("{}.00", line.rate),
+        );
         close(&mut x, "ram:ApplicableTradeTax");
         open(&mut x, "ram:SpecifiedTradeSettlementLineMonetarySummation");
         element(&mut x, "ram:LineTotalAmount", &xml_amount(line.net));
@@ -619,7 +766,11 @@ pub fn prepare(
     element(&mut x, "ram:PaymentReference", number);
     element(&mut x, "ram:InvoiceCurrencyCode", "EUR");
     open(&mut x, "ram:SpecifiedTradeSettlementPaymentMeans");
-    element(&mut x, "ram:TypeCode", if iban.is_empty() { "1" } else { "58" });
+    element(
+        &mut x,
+        "ram:TypeCode",
+        if iban.is_empty() { "1" } else { "58" },
+    );
     if !iban.is_empty() {
         open(&mut x, "ram:PayeePartyCreditorFinancialAccount");
         element(&mut x, "ram:IBANID", &iban);
@@ -640,7 +791,11 @@ pub fn prepare(
         }
         element(&mut x, "ram:BasisAmount", &xml_amount(g.basis));
         element(&mut x, "ram:CategoryCode", category(g.rate));
-        element(&mut x, "ram:RateApplicablePercent", &format!("{}.00", g.rate));
+        element(
+            &mut x,
+            "ram:RateApplicablePercent",
+            &format!("{}.00", g.rate),
+        );
         close(&mut x, "ram:ApplicableTradeTax");
     }
     if let (Some(from), Some(to)) = (service_from, service_to) {
@@ -652,13 +807,25 @@ pub fn prepare(
     open(&mut x, "ram:SpecifiedTradePaymentTerms");
     date_element(&mut x, "ram:DueDateDateTime", due);
     close(&mut x, "ram:SpecifiedTradePaymentTerms");
-    open(&mut x, "ram:SpecifiedTradeSettlementHeaderMonetarySummation");
+    open(
+        &mut x,
+        "ram:SpecifiedTradeSettlementHeaderMonetarySummation",
+    );
     element(&mut x, "ram:LineTotalAmount", &xml_amount(net));
     element(&mut x, "ram:TaxBasisTotalAmount", &xml_amount(net));
-    element_attr(&mut x, "ram:TaxTotalAmount", "currencyID", "EUR", &xml_amount(tax));
+    element_attr(
+        &mut x,
+        "ram:TaxTotalAmount",
+        "currencyID",
+        "EUR",
+        &xml_amount(tax),
+    );
     element(&mut x, "ram:GrandTotalAmount", &xml_amount(gross));
     element(&mut x, "ram:DuePayableAmount", &xml_amount(gross));
-    close(&mut x, "ram:SpecifiedTradeSettlementHeaderMonetarySummation");
+    close(
+        &mut x,
+        "ram:SpecifiedTradeSettlementHeaderMonetarySummation",
+    );
     if let Some((original, original_date)) = credit_for {
         open(&mut x, "ram:InvoiceReferencedDocument");
         element(&mut x, "ram:IssuerAssignedID", original.trim());
@@ -681,14 +848,27 @@ pub fn prepare(
             "Draft of the ZUGFeRD / Factur-X invoice data with errors, not a valid e-invoice",
         )
     } else if xrechnung {
-        ("xrechnung.xml", "alternative", "XRechnung 3.0 invoice data (EN 16931)")
+        (
+            "xrechnung.xml",
+            "alternative",
+            "XRechnung 3.0 invoice data (EN 16931)",
+        )
     } else {
-        ("factur-x.xml", "alternative", "ZUGFeRD / Factur-X invoice data (EN 16931)")
+        (
+            "factur-x.xml",
+            "alternative",
+            "ZUGFeRD / Factur-X invoice data (EN 16931)",
+        )
     };
-    extra["einvoice"] = json!({ "file": file, "relationship": relationship, "description": description });
+    extra["einvoice"] =
+        json!({ "file": file, "relationship": relationship, "description": description });
     Prepared {
         extra,
-        xml: Some(Xml { bytes: x.into_bytes(), draft, problems }),
+        xml: Some(Xml {
+            bytes: x.into_bytes(),
+            draft,
+            problems,
+        }),
     }
 }
 
@@ -698,7 +878,10 @@ mod tests {
 
     #[test]
     fn rounds_half_away_from_zero() {
-        assert_eq!(money(div_round(fixed(1.5) * fixed(9.99), 10_000 * 100)), "14,99");
+        assert_eq!(
+            money(div_round(fixed(1.5) * fixed(9.99), 10_000 * 100)),
+            "14,99"
+        );
     }
 
     #[test]

@@ -64,10 +64,14 @@ pub fn verify_jwt(jwt: &str, key: &VerifyingKey, now: u64) -> Option<u64> {
         return None;
     }
     let sig = Signature::from_slice(&URL_SAFE_NO_PAD.decode(sig_b64).ok()?).ok()?;
-    key.verify_strict(format!("{header_b64}.{payload_b64}").as_bytes(), &sig).ok()?;
+    key.verify_strict(format!("{header_b64}.{payload_b64}").as_bytes(), &sig)
+        .ok()?;
     let claims: Value = serde_json::from_slice(&URL_SAFE_NO_PAD.decode(payload_b64).ok()?).ok()?;
     let exp = claims.get("exp")?.as_u64()?;
-    let nbf_ok = claims.get("nbf").and_then(Value::as_u64).is_none_or(|nbf| nbf <= now + 5);
+    let nbf_ok = claims
+        .get("nbf")
+        .and_then(Value::as_u64)
+        .is_none_or(|nbf| nbf <= now + 5);
     (exp > now && nbf_ok).then_some(exp)
 }
 
@@ -102,7 +106,12 @@ pub async fn issue(req: Request) -> Result<Response, ApiError> {
 /// The response and the metric label (`issued` or `recovered`).
 async fn issue_token(req: Request) -> Result<(Response, &'static str), ApiError> {
     let cfg = config::get();
-    let Some(key) = cfg.anubis_public_key_hex.as_deref().and_then(decode_hex32).and_then(|b| VerifyingKey::from_bytes(&b).ok()) else {
+    let Some(key) = cfg
+        .anubis_public_key_hex
+        .as_deref()
+        .and_then(decode_hex32)
+        .and_then(|b| VerifyingKey::from_bytes(&b).ok())
+    else {
         return Err(ApiError::new(
             StatusCode::SERVICE_UNAVAILABLE,
             "free_token_disabled",
@@ -120,14 +129,30 @@ async fn issue_token(req: Request) -> Result<(Response, &'static str), ApiError>
         return Err(challenge_required());
     };
 
-    let unavailable = |_| ApiError::new(StatusCode::SERVICE_UNAVAILABLE, "store_unavailable", "the token store (Valkey) is not configured or not reachable");
+    let unavailable = |_| {
+        ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "store_unavailable",
+            "the token store (Valkey) is not configured or not reachable",
+        )
+    };
     // One free token per Anubis pass; the marker lives as long as the pass is valid.
     let marker = format!("pdfcraft:anubis:{}", store::hash_secret(jwt));
     let (id, secret) = pass_credentials(jwt);
-    let (token, expires_at, recovered) = if store::mark_once(&marker, exp - now).await.map_err(unavailable)? {
-        let created = store::create_token_with(Kind::Free, "free", cfg.free_rate_limit_per_minute, cfg.free_token_ttl_secs, id, secret)
-            .await
-            .map_err(unavailable)?;
+    let (token, expires_at, recovered) = if store::mark_once(&marker, exp - now)
+        .await
+        .map_err(unavailable)?
+    {
+        let created = store::create_token_with(
+            Kind::Free,
+            "free",
+            cfg.free_rate_limit_per_minute,
+            cfg.free_token_ttl_secs,
+            id,
+            secret,
+        )
+        .await
+        .map_err(unavailable)?;
         tracing::info!(event = "token_created", token_id = %created.id, token_kind = "free", token_plan = "free");
         (created.token, created.valid_until, false)
     } else {
@@ -171,8 +196,14 @@ pub fn run_cli(args: &[String]) -> bool {
     rand::fill(&mut seed);
     let signing = ed25519_dalek::SigningKey::from_bytes(&seed);
     let hex = |b: &[u8]| b.iter().map(|x| format!("{x:02x}")).collect::<String>();
-    println!("ED25519_PRIVATE_KEY_HEX (Anubis, keep secret): {}", hex(&seed));
-    println!("ANUBIS_PUBLIC_KEY_HEX   (backend):             {}", hex(signing.verifying_key().as_bytes()));
+    println!(
+        "ED25519_PRIVATE_KEY_HEX (Anubis, keep secret): {}",
+        hex(&seed)
+    );
+    println!(
+        "ANUBIS_PUBLIC_KEY_HEX   (backend):             {}",
+        hex(signing.verifying_key().as_bytes())
+    );
     true
 }
 
@@ -194,7 +225,10 @@ mod tests {
         assert_eq!(pass_credentials("a.b.c"), (id.clone(), secret.clone()));
         assert_ne!(pass_credentials("a.b.d").0, id);
         assert_eq!((id.len(), secret.len()), (12, 32));
-        assert!(id.bytes().chain(secret.bytes()).all(|b| b.is_ascii_hexdigit()));
+        assert!(id
+            .bytes()
+            .chain(secret.bytes())
+            .all(|b| b.is_ascii_hexdigit()));
         assert_ne!(id, secret[..12], "id and secret must not share a prefix");
     }
 
@@ -204,9 +238,21 @@ mod tests {
         let other = SigningKey::from_bytes(&[8u8; 32]);
         let vk = sk.verifying_key();
         assert_eq!(verify_jwt(&jwt(&sk, "EdDSA", 2000), &vk, 1000), Some(2000));
-        assert_eq!(verify_jwt(&jwt(&sk, "EdDSA", 900), &vk, 1000), None, "expired");
-        assert_eq!(verify_jwt(&jwt(&other, "EdDSA", 2000), &vk, 1000), None, "wrong key");
-        assert_eq!(verify_jwt(&jwt(&sk, "none", 2000), &vk, 1000), None, "wrong alg");
+        assert_eq!(
+            verify_jwt(&jwt(&sk, "EdDSA", 900), &vk, 1000),
+            None,
+            "expired"
+        );
+        assert_eq!(
+            verify_jwt(&jwt(&other, "EdDSA", 2000), &vk, 1000),
+            None,
+            "wrong key"
+        );
+        assert_eq!(
+            verify_jwt(&jwt(&sk, "none", 2000), &vk, 1000),
+            None,
+            "wrong alg"
+        );
         assert_eq!(verify_jwt("a.b", &vk, 1000), None);
     }
 }

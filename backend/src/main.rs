@@ -14,7 +14,6 @@ mod store;
 mod telemetry;
 mod v1;
 
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use axum::{
     extract::{DefaultBodyLimit, Json},
     http::{header, StatusCode},
@@ -22,6 +21,7 @@ use axum::{
     routing::get,
     Router,
 };
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use minijinja::{value::Serde, Environment, Value};
 use serde::Serialize;
 use serde_json::Value as JsonValue;
@@ -40,9 +40,9 @@ use typst::{
     syntax::{FileId, Source},
 };
 use typst_as_lib::{
+    cached_file_resolver::IntoCachedFileResolver,
     conversions::IntoFileId,
     file_resolver::{FileResolver, FileSystemResolver},
-    cached_file_resolver::IntoCachedFileResolver,
     TypstEngine, TypstTemplateCollection,
 };
 
@@ -77,7 +77,8 @@ impl FileResolver for RequestSources {
 /// Loads the embedded and system fonts once. typst-as-lib's own font search keeps only
 /// file paths and re-reads and re-parses the font file on every lookup (~10 ms per request).
 fn load_fonts() -> Vec<typst::text::Font> {
-    let mut fonts: Vec<typst::text::Font> = typst_kit::fonts::embedded().map(|(font, _)| font).collect();
+    let mut fonts: Vec<typst::text::Font> =
+        typst_kit::fonts::embedded().map(|(font, _)| font).collect();
     let mut file: Option<(std::path::PathBuf, Bytes)> = None;
     for (slot, _) in typst_kit::fonts::system() {
         let bytes = match &file {
@@ -123,7 +124,11 @@ fn compiler() -> &'static Compiler {
                 sources: sources.clone(),
                 assets: assets.clone(),
             })
-            .add_file_resolver(FileSystemResolver::new(package_root.clone()).local_package_root(package_root).into_cached())
+            .add_file_resolver(
+                FileSystemResolver::new(package_root.clone())
+                    .local_package_root(package_root)
+                    .into_cached(),
+            )
             .comemo_evict_max_age(Some(10))
             .build();
         Compiler {
@@ -155,11 +160,18 @@ struct VirtualFiles {
 }
 
 fn locked<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    mutex
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 impl VirtualFiles {
-    fn register(c: &Compiler, request_id: u64, rendered: String, assets: Vec<(String, Vec<u8>)>) -> Self {
+    fn register(
+        c: &Compiler,
+        request_id: u64,
+        rendered: String,
+        assets: Vec<(String, Vec<u8>)>,
+    ) -> Self {
         let source = format!("/req-{request_id}.typ").as_str().into_file_id();
         locked(&c.sources).insert(source, Source::new(source, rendered));
         let assets = assets
@@ -220,8 +232,16 @@ fn zone_rects(introspector: &dyn Introspector) -> Vec<ZoneRect> {
             continue;
         }
         for page in start_page..=end_page {
-            let y = if page == start_page { start.point.y.to_mm() } else { 15.0 };
-            let bottom = if page == end_page { end.point.y.to_mm() } else { 277.0 };
+            let y = if page == start_page {
+                start.point.y.to_mm()
+            } else {
+                15.0
+            };
+            let bottom = if page == end_page {
+                end.point.y.to_mm()
+            } else {
+                277.0
+            };
             let y = y.clamp(0.0, 293.0);
             let bottom = bottom.clamp(y + 4.0, 297.0);
             rects.push(ZoneRect {
@@ -268,7 +288,10 @@ fn compile_pdf(
         Ok((pdf, zones))
     });
     drop(files);
-    tracing::debug!(event = "typst_compile", duration_ms = started.elapsed().as_secs_f64() * 1000.0);
+    tracing::debug!(
+        event = "typst_compile",
+        duration_ms = started.elapsed().as_secs_f64() * 1000.0
+    );
     result.unwrap_or_else(|e| Err(format!("Typst world setup error: {e}")))
 }
 
@@ -317,7 +340,9 @@ impl IntoResponse for ApiError {
         )
             .into_response();
         if let Some(secs) = self.retry_after {
-            response.headers_mut().insert(header::RETRY_AFTER, secs.into());
+            response
+                .headers_mut()
+                .insert(header::RETRY_AFTER, secs.into());
         }
         response
     }
@@ -338,7 +363,11 @@ pub(crate) fn decode_assets(
         }
         match BASE64.decode(encoded) {
             Ok(bytes) if bytes.len() <= MAX_ASSET_BYTES => decoded.push((key.clone(), bytes)),
-            Ok(_) => return Err(bad(format!("asset `{key}` exceeds {MAX_ASSET_BYTES} bytes"))),
+            Ok(_) => {
+                return Err(bad(format!(
+                    "asset `{key}` exceeds {MAX_ASSET_BYTES} bytes"
+                )))
+            }
             Err(e) => return Err(bad(format!("asset `{key}` is not valid base64: {e}"))),
         }
     }
@@ -356,9 +385,17 @@ fn compile_slots() -> &'static tokio::sync::Semaphore {
 }
 
 /// Waits for a compile slot; sheds load instead of letting the queue (and every client's latency) grow without bound.
-async fn acquire_slot(wait: std::time::Duration) -> Result<tokio::sync::SemaphorePermit<'static>, ApiError> {
+async fn acquire_slot(
+    wait: std::time::Duration,
+) -> Result<tokio::sync::SemaphorePermit<'static>, ApiError> {
     match tokio::time::timeout(wait, compile_slots().acquire()).await {
-        Ok(slot) => slot.map_err(|e| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "task_join_error", e.to_string())),
+        Ok(slot) => slot.map_err(|e| {
+            ApiError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "task_join_error",
+                e.to_string(),
+            )
+        }),
         Err(_) => {
             let mut busy = ApiError::new(
                 StatusCode::SERVICE_UNAVAILABLE,
@@ -394,12 +431,20 @@ fn fill_template(
     }
 
     let env = Environment::new();
-    let template = env
-        .template_from_str(template)
-        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, "template_parse_error", e.to_string()))?;
-    template
-        .render(Value::from(Serde(&data)))
-        .map_err(|e| ApiError::new(StatusCode::BAD_REQUEST, "template_render_error", e.to_string()))
+    let template = env.template_from_str(template).map_err(|e| {
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "template_parse_error",
+            e.to_string(),
+        )
+    })?;
+    template.render(Value::from(Serde(&data))).map_err(|e| {
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "template_render_error",
+            e.to_string(),
+        )
+    })
 }
 
 /// Renders the minijinja template and compiles it to a PDF. At most
@@ -431,17 +476,31 @@ async fn render_pdf_inner(
     let request_id = REQUEST_COUNTER.fetch_add(1, Ordering::Relaxed);
     let rendered = fill_template(template, data, request_id, &assets)?;
 
-    let internal = |e: String| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "task_join_error", e);
+    let internal =
+        |e: String| ApiError::new(StatusCode::INTERNAL_SERVER_ERROR, "task_join_error", e);
     let queued = std::time::Instant::now();
-    let _slot = acquire_slot(std::time::Duration::from_secs(config::get().compile_queue_timeout_secs)).await?;
-    metrics::get().queue_wait.observe(queued.elapsed().as_secs_f64());
+    let _slot = acquire_slot(std::time::Duration::from_secs(
+        config::get().compile_queue_timeout_secs,
+    ))
+    .await?;
+    metrics::get()
+        .queue_wait
+        .observe(queued.elapsed().as_secs_f64());
     let compiling = std::time::Instant::now();
-    let compiled =
-        tokio::task::spawn_blocking(move || compile_pdf(rendered, request_id, assets, include_zones)).await;
-    metrics::get().typst_compile.observe(compiling.elapsed().as_secs_f64());
+    let compiled = tokio::task::spawn_blocking(move || {
+        compile_pdf(rendered, request_id, assets, include_zones)
+    })
+    .await;
+    metrics::get()
+        .typst_compile
+        .observe(compiling.elapsed().as_secs_f64());
     match compiled {
         Ok(Ok(result)) => Ok(result),
-        Ok(Err(e)) => Err(ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "typst_compile_error", e)),
+        Ok(Err(e)) => Err(ApiError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "typst_compile_error",
+            e,
+        )),
         Err(e) => Err(internal(e.to_string())),
     }
 }
@@ -492,7 +551,10 @@ async fn main() {
         "PDFCraft backend listening"
     );
     if !store::is_configured() {
-        tracing::warn!(event = "store_not_configured", "POST /v1/invoices answers 503 (set VALKEY_URL)");
+        tracing::warn!(
+            event = "store_not_configured",
+            "POST /v1/invoices answers 503 (set VALKEY_URL)"
+        );
     }
 
     axum::serve(listener, app).await.expect("Server error");
@@ -533,7 +595,9 @@ mod tests {
     async fn answers_server_busy_when_no_compile_slot_frees_up() {
         let all = u32::try_from(config::get().max_concurrent_compiles).unwrap();
         let _held = compile_slots().acquire_many(all).await.unwrap();
-        let err = acquire_slot(std::time::Duration::from_millis(50)).await.unwrap_err();
+        let err = acquire_slot(std::time::Duration::from_millis(50))
+            .await
+            .unwrap_err();
         assert_eq!(err.status, StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(err.code, "server_busy");
         assert_eq!(err.retry_after, Some(5));

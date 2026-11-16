@@ -3,7 +3,9 @@
 //! The SVG is cropped to its visible content so a signature on a full A4 page is not shrunk.
 
 use hayro_svg::{
-    hayro_interpret::{InterpreterSettings, RenderContent}, hayro_syntax::Pdf, RenderCache, SvgRenderSettings,
+    hayro_interpret::{InterpreterSettings, RenderContent},
+    hayro_syntax::Pdf,
+    RenderCache, SvgRenderSettings,
 };
 use std::sync::Arc;
 
@@ -22,7 +24,9 @@ pub fn pdf_to_svg(bytes: &[u8]) -> Option<String> {
             page,
             &RenderCache::new(),
             &settings,
-            &SvgRenderSettings { bg_color: [0, 0, 0, 0] },
+            &SvgRenderSettings {
+                bg_color: [0, 0, 0, 0],
+            },
         );
         Some(crop_to_content(&svg).unwrap_or(svg))
     })
@@ -39,12 +43,19 @@ const MARGIN: f32 = 2.0;
 fn crop_to_content(svg: &str) -> Option<String> {
     let tree = usvg::Tree::from_str(svg, &usvg::Options::default()).ok()?;
     let size = tree.size();
-    let (w, h) = ((size.width() * PROBE_SCALE).ceil() as u32, (size.height() * PROBE_SCALE).ceil() as u32);
+    let (w, h) = (
+        (size.width() * PROBE_SCALE).ceil() as u32,
+        (size.height() * PROBE_SCALE).ceil() as u32,
+    );
     if w == 0 || h == 0 || u64::from(w) * u64::from(h) > 16_000_000 {
         return None;
     }
     let mut pixmap = tiny_skia::Pixmap::new(w, h)?;
-    resvg::render(&tree, tiny_skia::Transform::from_scale(PROBE_SCALE, PROBE_SCALE), &mut pixmap.as_mut());
+    resvg::render(
+        &tree,
+        tiny_skia::Transform::from_scale(PROBE_SCALE, PROBE_SCALE),
+        &mut pixmap.as_mut(),
+    );
 
     let (mut x0, mut y0, mut x1, mut y1) = (w, h, 0, 0);
     for (i, px) in pixmap.data().as_chunks::<4>().0.iter().enumerate() {
@@ -75,14 +86,26 @@ mod tests {
     #[tokio::test]
     async fn crops_a_signature_on_a_full_page() {
         let source = "#set document(date: datetime(year: 2026, month: 1, day: 1))\n#set page(paper: \"a4\")\n#place(top + left, dx: 30mm, dy: 200mm, line(length: 50mm, stroke: 2pt))";
-        let pdf = crate::render_pdf(source, serde_json::json!({}), vec![]).await.map_err(|e| e.details).unwrap();
+        let pdf = crate::render_pdf(source, serde_json::json!({}), vec![])
+            .await
+            .map_err(|e| e.details)
+            .unwrap();
         let svg = super::pdf_to_svg(&pdf).unwrap();
-        let view_box = svg.split("viewBox=\"").nth(1).unwrap().split('"').next().unwrap();
+        let view_box = svg
+            .split("viewBox=\"")
+            .nth(1)
+            .unwrap()
+            .split('"')
+            .next()
+            .unwrap();
         let v: Vec<f32> = view_box.split(' ').map(|n| n.parse().unwrap()).collect();
         // a 50 mm line plus margins, not the 595 x 842 pt page
         assert!((v[2] - (141.7 + 4.0)).abs() < 3.0, "{view_box}");
         assert!(v[3] < 12.0, "{view_box}");
-        assert!(svg.starts_with("<svg viewBox=\"") && svg.contains(" xmlns=\"http://www.w3.org/2000/svg\""));
+        assert!(
+            svg.starts_with("<svg viewBox=\"")
+                && svg.contains(" xmlns=\"http://www.w3.org/2000/svg\"")
+        );
         assert!(!svg.split('>').next().unwrap().contains(" 595"));
     }
 
@@ -90,8 +113,14 @@ mod tests {
     async fn ignores_pdf_annotations() {
         use lopdf::{dictionary, Object, Stream};
 
-        let pdf = crate::render_pdf("#set document(date: datetime(year: 2026, month: 1, day: 1))\nA signature", serde_json::json!({}), vec![])
-            .await.map_err(|e| e.details).unwrap();
+        let pdf = crate::render_pdf(
+            "#set document(date: datetime(year: 2026, month: 1, day: 1))\nA signature",
+            serde_json::json!({}),
+            vec![],
+        )
+        .await
+        .map_err(|e| e.details)
+        .unwrap();
         let expected = super::pdf_to_svg(&pdf).unwrap();
         let mut document = lopdf::Document::load_mem(&pdf).unwrap();
         let page_id = *document.get_pages().values().next().unwrap();
@@ -109,7 +138,11 @@ mod tests {
             "Rect" => vec![0.into(), 0.into(), 100.into(), 100.into()],
             "AP" => dictionary! { "N" => Object::Reference(appearance) },
         });
-        document.get_object_mut(page_id).unwrap().as_dict_mut().unwrap()
+        document
+            .get_object_mut(page_id)
+            .unwrap()
+            .as_dict_mut()
+            .unwrap()
             .set("Annots", vec![Object::Reference(annotation)]);
         let mut annotated_pdf = Vec::new();
         document.save_to(&mut annotated_pdf).unwrap();
@@ -119,9 +152,14 @@ mod tests {
             parsed.pages().first().unwrap(),
             &super::RenderCache::new(),
             &super::InterpreterSettings::default(),
-            &super::SvgRenderSettings { bg_color: [0, 0, 0, 0] },
+            &super::SvgRenderSettings {
+                bg_color: [0, 0, 0, 0],
+            },
         );
-        assert_ne!(super::crop_to_content(&rendered_with_annotations).unwrap(), expected);
+        assert_ne!(
+            super::crop_to_content(&rendered_with_annotations).unwrap(),
+            expected
+        );
         assert_eq!(super::pdf_to_svg(&annotated_pdf).unwrap(), expected);
     }
 

@@ -305,7 +305,10 @@ pub(crate) async fn single(
     let (pdf, zones) = if preview.includes_zones() {
         render_pdf_with_zones(INVOICE_TEMPLATE, data, assets).await?
     } else {
-        (render_pdf(INVOICE_TEMPLATE, data, assets).await?, Vec::new())
+        (
+            render_pdf(INVOICE_TEMPLATE, data, assets).await?,
+            Vec::new(),
+        )
     };
     crate::metrics::observe_pdf(&client, started.elapsed().as_secs_f64(), pdf.len());
     log_generated(&client, "single", 1, started, pdf.len());
@@ -1077,7 +1080,6 @@ mod tests {
                         .unwrap();
                     }
                 }
-
             }
         }
     }

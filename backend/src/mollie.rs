@@ -45,15 +45,26 @@ const PRODUCT: &str = "pdfcraft-token";
 const DAY: u64 = 86_400;
 
 fn disabled() -> ApiError {
-    ApiError::new(StatusCode::NOT_FOUND, "not_found", "purchases are not enabled")
+    ApiError::new(
+        StatusCode::NOT_FOUND,
+        "not_found",
+        "purchases are not enabled",
+    )
 }
 
 fn ensure_enabled() -> Result<(), ApiError> {
-    config::get().mollie_enabled().then_some(()).ok_or_else(disabled)
+    config::get()
+        .mollie_enabled()
+        .then_some(())
+        .ok_or_else(disabled)
 }
 
 fn store_unavailable() -> ApiError {
-    ApiError::new(StatusCode::SERVICE_UNAVAILABLE, "store_unavailable", "token store is not reachable")
+    ApiError::new(
+        StatusCode::SERVICE_UNAVAILABLE,
+        "store_unavailable",
+        "token store is not reachable",
+    )
 }
 
 fn bad(details: &str) -> ApiError {
@@ -65,7 +76,11 @@ fn upstream(details: &str) -> ApiError {
 }
 
 fn not_configured(what: &str) -> ApiError {
-    ApiError::new(StatusCode::SERVICE_UNAVAILABLE, "mollie_not_configured", format!("{what} is not set"))
+    ApiError::new(
+        StatusCode::SERVICE_UNAVAILABLE,
+        "mollie_not_configured",
+        format!("{what} is not set"),
+    )
 }
 
 fn str_at<'a>(v: &'a Value, path: &[&str]) -> Option<&'a str> {
@@ -75,7 +90,10 @@ fn str_at<'a>(v: &'a Value, path: &[&str]) -> Option<&'a str> {
 /// Mollie returns metadata as sent; numbers may come back as numbers or strings.
 fn days_at(v: &Value, path: &[&str]) -> Option<u64> {
     let value = path.iter().try_fold(v, |acc, k| acc.get(*k))?;
-    value.as_u64().or_else(|| value.as_str()?.parse().ok()).filter(|d| (1..=366).contains(d))
+    value
+        .as_u64()
+        .or_else(|| value.as_str()?.parse().ok())
+        .filter(|d| (1..=366).contains(d))
 }
 
 /// `YYYY-MM-DD` (UTC) of a Unix timestamp.
@@ -98,7 +116,9 @@ fn valid_ref(id: &str) -> bool {
 }
 
 fn valid_payment_id(id: &str) -> bool {
-    id.strip_prefix("tr_").is_some_and(|rest| (1..=60).contains(&rest.len()) && rest.bytes().all(|b| b.is_ascii_alphanumeric()))
+    id.strip_prefix("tr_").is_some_and(|rest| {
+        (1..=60).contains(&rest.len()) && rest.bytes().all(|b| b.is_ascii_alphanumeric())
+    })
 }
 
 /// The webhook body is `id=tr_…` (form encoded).
@@ -111,11 +131,25 @@ fn payment_id(body: &[u8]) -> Option<String> {
 static HTTP: OnceLock<reqwest::Client> = OnceLock::new();
 
 /// Calls the Mollie API; returns the status and the JSON body (`Null` if it has none).
-async fn call(method: Method, path: &str, body: Option<Value>, idempotency: Option<&str>) -> Result<(StatusCode, Value), ApiError> {
+async fn call(
+    method: Method,
+    path: &str,
+    body: Option<Value>,
+    idempotency: Option<&str>,
+) -> Result<(StatusCode, Value), ApiError> {
     let cfg = config::get();
-    let key = cfg.mollie_api_key.as_deref().ok_or_else(|| not_configured("MOLLIE_API_KEY"))?;
-    if !cfg.mollie_api_url.starts_with("https://") && !crate::internetmarke::is_loopback(&cfg.mollie_api_url) {
-        return Err(ApiError::new(StatusCode::SERVICE_UNAVAILABLE, "mollie_not_configured", "MOLLIE_API_URL must use https"));
+    let key = cfg
+        .mollie_api_key
+        .as_deref()
+        .ok_or_else(|| not_configured("MOLLIE_API_KEY"))?;
+    if !cfg.mollie_api_url.starts_with("https://")
+        && !crate::internetmarke::is_loopback(&cfg.mollie_api_url)
+    {
+        return Err(ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "mollie_not_configured",
+            "MOLLIE_API_URL must use https",
+        ));
     }
     let http = HTTP.get_or_init(|| {
         reqwest::Client::builder()
@@ -126,7 +160,9 @@ async fn call(method: Method, path: &str, body: Option<Value>, idempotency: Opti
             .build()
             .expect("HTTP client")
     });
-    let mut request = http.request(method, format!("{}{path}", cfg.mollie_api_url)).bearer_auth(key);
+    let mut request = http
+        .request(method, format!("{}{path}", cfg.mollie_api_url))
+        .bearer_auth(key);
     if let Some(key) = idempotency {
         request = request.header("Idempotency-Key", key);
     }
@@ -134,7 +170,14 @@ async fn call(method: Method, path: &str, body: Option<Value>, idempotency: Opti
         request = request.json(&body);
     }
     let response = request.send().await.map_err(|e| {
-        tracing::warn!(event = "mollie_upstream", reason = if e.is_timeout() { "timeout" } else { "request failed" });
+        tracing::warn!(
+            event = "mollie_upstream",
+            reason = if e.is_timeout() {
+                "timeout"
+            } else {
+                "request failed"
+            }
+        );
         upstream("Mollie is not reachable")
     })?;
     let status = response.status();
@@ -143,12 +186,21 @@ async fn call(method: Method, path: &str, body: Option<Value>, idempotency: Opti
 }
 
 /// Like `call`, but every answer except 2xx is an error.
-async fn call_ok(method: Method, path: &str, body: Option<Value>, idempotency: Option<&str>) -> Result<Value, ApiError> {
+async fn call_ok(
+    method: Method,
+    path: &str,
+    body: Option<Value>,
+    idempotency: Option<&str>,
+) -> Result<Value, ApiError> {
     let (status, json) = call(method, path, body, idempotency).await?;
     if status.is_success() {
         return Ok(json);
     }
-    tracing::warn!(event = "mollie_error", status = status.as_u16(), detail = str_at(&json, &["detail"]).unwrap_or(""));
+    tracing::warn!(
+        event = "mollie_error",
+        status = status.as_u16(),
+        detail = str_at(&json, &["detail"]).unwrap_or("")
+    );
     Err(upstream("Mollie rejected the request"))
 }
 
@@ -168,37 +220,65 @@ pub struct CheckoutRequest {
 }
 
 fn redirect_url(base: &str, order: &str) -> Result<String, ApiError> {
-    let mut url = reqwest::Url::parse(base).map_err(|_| not_configured("a valid MOLLIE_REDIRECT_URL"))?;
+    let mut url =
+        reqwest::Url::parse(base).map_err(|_| not_configured("a valid MOLLIE_REDIRECT_URL"))?;
     url.query_pairs_mut().append_pair("order", order);
     Ok(url.into())
 }
 
 /// `POST /v1/checkout`: `{plan, days, subscription?, tokenId?, locale?}` -> `{checkoutUrl, order}`
-pub async fn checkout(payload: Result<Json<CheckoutRequest>, JsonRejection>) -> Result<Response, ApiError> {
+pub async fn checkout(
+    payload: Result<Json<CheckoutRequest>, JsonRejection>,
+) -> Result<Response, ApiError> {
     ensure_enabled()?;
     let cfg = config::get();
-    let Json(req) = payload.map_err(|e| ApiError::new(e.status(), "invalid_request", e.body_text()))?;
+    let Json(req) =
+        payload.map_err(|e| ApiError::new(e.status(), "invalid_request", e.body_text()))?;
     let plan = req.plan.trim().to_ascii_lowercase();
-    let price = cfg
-        .price(&plan, req.days)
-        .ok_or_else(|| ApiError::new(StatusCode::BAD_REQUEST, "unknown_offer", "no offer for this plan and number of days"))?;
-    let public = cfg.public_url.as_deref().ok_or_else(|| not_configured("PUBLIC_URL"))?;
-    let success = cfg.mollie_redirect_url.as_deref().ok_or_else(|| not_configured("MOLLIE_REDIRECT_URL"))?;
+    let price = cfg.price(&plan, req.days).ok_or_else(|| {
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "unknown_offer",
+            "no offer for this plan and number of days",
+        )
+    })?;
+    let public = cfg
+        .public_url
+        .as_deref()
+        .ok_or_else(|| not_configured("PUBLIC_URL"))?;
+    let success = cfg
+        .mollie_redirect_url
+        .as_deref()
+        .ok_or_else(|| not_configured("MOLLIE_REDIRECT_URL"))?;
 
     if let Some(id) = &req.token_id {
-        if !store::paid_token_exists(id).await.map_err(|_| store_unavailable())? {
-            return Err(ApiError::new(StatusCode::BAD_REQUEST, "unknown_token", "tokenId is unknown or past its retention period"));
+        if !store::paid_token_exists(id)
+            .await
+            .map_err(|_| store_unavailable())?
+        {
+            return Err(ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "unknown_token",
+                "tokenId is unknown or past its retention period",
+            ));
         }
     }
     let locale = match req.locale.as_deref() {
         None => None,
         Some("de") => Some("de_DE"),
         Some("en") => Some("en_GB"),
-        Some(_) => return Err(ApiError::new(StatusCode::BAD_REQUEST, "invalid_request", "locale must be `de` or `en`")),
+        Some(_) => {
+            return Err(ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "invalid_request",
+                "locale must be `de` or `en`",
+            ))
+        }
     };
 
     let order = store::random_hex(16);
-    let mut metadata = json!({ "product": PRODUCT, "plan": plan, "days": req.days, "order": order });
+    let mut metadata =
+        json!({ "product": PRODUCT, "plan": plan, "days": req.days, "order": order });
     if let Some(id) = &req.token_id {
         metadata["token_id"] = json!(id);
     }
@@ -217,13 +297,21 @@ pub async fn checkout(payload: Result<Json<CheckoutRequest>, JsonRejection>) -> 
     if req.subscription {
         // A first payment creates the mandate for the later charges; the customer stays empty
         let customer = call_ok(Method::POST, "/customers", Some(json!({})), None).await?;
-        let customer_id = str_at(&customer, &["id"]).ok_or_else(|| upstream("Mollie returned no customer"))?;
+        let customer_id =
+            str_at(&customer, &["id"]).ok_or_else(|| upstream("Mollie returned no customer"))?;
         payment["sequenceType"] = json!("first");
         payment["customerId"] = json!(customer_id);
     }
 
-    let created = call_ok(Method::POST, "/payments", Some(payment), Some(&format!("pdfcraft-order-{order}"))).await?;
-    let url = str_at(&created, &["_links", "checkout", "href"]).ok_or_else(|| upstream("Mollie returned no checkout link"))?;
+    let created = call_ok(
+        Method::POST,
+        "/payments",
+        Some(payment),
+        Some(&format!("pdfcraft-order-{order}")),
+    )
+    .await?;
+    let url = str_at(&created, &["_links", "checkout", "href"])
+        .ok_or_else(|| upstream("Mollie returned no checkout link"))?;
     tracing::info!(event = "checkout_created", token_plan = %plan, days = req.days, subscription = req.subscription, renewal = req.token_id.is_some());
     Ok((
         StatusCode::OK,
@@ -255,12 +343,18 @@ pub async fn offers() -> Response {
 // ------------------------------------------------------------------ webhook
 
 async fn purchase_paid(payment: &Value, payment_id: &str) -> Result<(), ApiError> {
-    let days = days_at(payment, &["metadata", "days"]).ok_or_else(|| bad("metadata.days must be 1..=366"))?;
-    let plan = str_at(payment, &["metadata", "plan"]).ok_or_else(|| bad("metadata.plan missing"))?.to_string();
+    let days = days_at(payment, &["metadata", "days"])
+        .ok_or_else(|| bad("metadata.days must be 1..=366"))?;
+    let plan = str_at(payment, &["metadata", "plan"])
+        .ok_or_else(|| bad("metadata.plan missing"))?
+        .to_string();
 
     // Handle every payment once, even if Mollie calls the webhook repeatedly
     let marker = format!("{PAYMENT_PREFIX}{payment_id}");
-    if store::mark_once(&marker, 30 * DAY).await.map_err(|_| store_unavailable())? {
+    if store::mark_once(&marker, 30 * DAY)
+        .await
+        .map_err(|_| store_unavailable())?
+    {
         if let Err(e) = apply_purchase(payment, payment_id, &plan, days).await {
             // Let Mollie's retry run again
             let _ = store::delete_key(&marker).await;
@@ -268,34 +362,56 @@ async fn purchase_paid(payment: &Value, payment_id: &str) -> Result<(), ApiError
         }
     }
 
-    if payment.pointer("/metadata/subscription").and_then(Value::as_bool) == Some(true) {
+    if payment
+        .pointer("/metadata/subscription")
+        .and_then(Value::as_bool)
+        == Some(true)
+    {
         start_subscription(payment, payment_id, &plan, days).await?;
     }
     Ok(())
 }
 
-async fn apply_purchase(payment: &Value, payment_id: &str, plan: &str, days: u64) -> Result<(), ApiError> {
+async fn apply_purchase(
+    payment: &Value,
+    payment_id: &str,
+    plan: &str,
+    days: u64,
+) -> Result<(), ApiError> {
     let token_id = if let Some(token_id) = str_at(payment, &["metadata", "token_id"]) {
         // Renewal of an existing token by its id; the payment is confirmed by Mollie
         match store::extend_paid_token(token_id, days * DAY).await {
             Ok(Some(until)) => {
-                tracing::info!(event = "token_extended", token_id, token_kind = "paid", reason = "checkout", until);
+                tracing::info!(
+                    event = "token_extended",
+                    token_id,
+                    token_kind = "paid",
+                    reason = "checkout",
+                    until
+                );
                 token_id.to_string()
             }
             Ok(None) => return Err(bad("token_id is unknown or past its retention period")),
             Err(_) => return Err(store_unavailable()),
         }
     } else {
-        let order = str_at(payment, &["metadata", "order"]).ok_or_else(|| bad("metadata.order missing"))?;
-        let limit = config::get().plan_limit(plan).ok_or_else(|| bad("unknown plan"))?;
+        let order =
+            str_at(payment, &["metadata", "order"]).ok_or_else(|| bad("metadata.order missing"))?;
+        let limit = config::get()
+            .plan_limit(plan)
+            .ok_or_else(|| bad("unknown plan"))?;
         let created = store::create_token(Kind::Paid, plan, limit, days * DAY)
             .await
             .map_err(|_| store_unavailable())?;
         tracing::info!(event = "token_created", token_id = %created.id, token_kind = "paid", token_plan = plan);
         let claim = json!({ "token": created.token, "expiresAt": created.valid_until, "plan": plan, "limitPerMinute": limit });
-        store::put(&format!("{CLAIM_PREFIX}{order}"), &claim.to_string(), CLAIM_WAIT_SECS)
-            .await
-            .map_err(|_| store_unavailable())?;
+        store::put(
+            &format!("{CLAIM_PREFIX}{order}"),
+            &claim.to_string(),
+            CLAIM_WAIT_SECS,
+        )
+        .await
+        .map_err(|_| store_unavailable())?;
         created.id
     };
     // The subscription step may need the id on a later webhook call
@@ -305,18 +421,32 @@ async fn apply_purchase(payment: &Value, payment_id: &str, plan: &str, days: u64
 }
 
 /// After the first payment: charge again every `days` days.
-async fn start_subscription(payment: &Value, payment_id: &str, plan: &str, days: u64) -> Result<(), ApiError> {
+async fn start_subscription(
+    payment: &Value,
+    payment_id: &str,
+    plan: &str,
+    days: u64,
+) -> Result<(), ApiError> {
     let cfg = config::get();
-    let customer_id = str_at(payment, &["customerId"]).ok_or_else(|| bad("customerId missing for a subscription"))?;
-    let price = cfg.price(plan, days).ok_or_else(|| bad("the offer no longer exists"))?;
-    let public = cfg.public_url.as_deref().ok_or_else(|| not_configured("PUBLIC_URL"))?;
+    let customer_id = str_at(payment, &["customerId"])
+        .ok_or_else(|| bad("customerId missing for a subscription"))?;
+    let price = cfg
+        .price(plan, days)
+        .ok_or_else(|| bad("the offer no longer exists"))?;
+    let public = cfg
+        .public_url
+        .as_deref()
+        .ok_or_else(|| not_configured("PUBLIC_URL"))?;
     let token_id = store::get_value(&format!("{TOKEN_PREFIX}{payment_id}"))
         .await
         .map_err(|_| store_unavailable())?
         .ok_or_else(|| bad("token of the payment is unknown"))?;
 
     let marker = format!("{SUBSCRIBED_PREFIX}{payment_id}");
-    if !store::mark_once(&marker, 30 * DAY).await.map_err(|_| store_unavailable())? {
+    if !store::mark_once(&marker, 30 * DAY)
+        .await
+        .map_err(|_| store_unavailable())?
+    {
         return Ok(());
     }
     let body = json!({
@@ -328,15 +458,26 @@ async fn start_subscription(payment: &Value, payment_id: &str, plan: &str, days:
         "metadata": { "product": PRODUCT, "token_id": token_id, "days": days },
     });
     let path = format!("/customers/{customer_id}/subscriptions");
-    match call_ok(Method::POST, &path, Some(body), Some(&format!("pdfcraft-subscription-{payment_id}"))).await {
+    match call_ok(
+        Method::POST,
+        &path,
+        Some(body),
+        Some(&format!("pdfcraft-subscription-{payment_id}")),
+    )
+    .await
+    {
         Ok(created) => {
             tracing::info!(event = "subscription_created", token_id = %token_id, token_plan = plan);
             // Lets the token holder cancel it later; only Mollie ids, no customer data
             if let Some(subscription_id) = str_at(&created, &["id"]).filter(|id| valid_ref(id)) {
                 let ttl = cfg.paid_retention_days.max(1) * 2 * DAY;
-                store::put(&format!("{SUBSCRIPTION_OF_PREFIX}{token_id}"), &format!("{customer_id}/{subscription_id}"), ttl)
-                    .await
-                    .map_err(|_| store_unavailable())?;
+                store::put(
+                    &format!("{SUBSCRIPTION_OF_PREFIX}{token_id}"),
+                    &format!("{customer_id}/{subscription_id}"),
+                    ttl,
+                )
+                .await
+                .map_err(|_| store_unavailable())?;
             }
             Ok(())
         }
@@ -350,13 +491,17 @@ async fn start_subscription(payment: &Value, payment_id: &str, plan: &str, days:
 /// A paid charge of a subscription: moves the token's end to now + interval + grace.
 async fn renewal_paid(payment: &Value, payment_id: &str) -> Result<(), ApiError> {
     let customer_id = str_at(payment, &["customerId"]).ok_or_else(|| bad("customerId missing"))?;
-    let subscription_id = str_at(payment, &["subscriptionId"]).ok_or_else(|| bad("subscriptionId missing"))?;
+    let subscription_id =
+        str_at(payment, &["subscriptionId"]).ok_or_else(|| bad("subscriptionId missing"))?;
     if !valid_ref(subscription_id) || !valid_ref(customer_id) {
         return Err(bad("invalid customer or subscription id"));
     }
 
     let marker = format!("{PAYMENT_PREFIX}{payment_id}");
-    if !store::mark_once(&marker, 30 * DAY).await.map_err(|_| store_unavailable())? {
+    if !store::mark_once(&marker, 30 * DAY)
+        .await
+        .map_err(|_| store_unavailable())?
+    {
         return Ok(());
     }
     let result = extend_for_subscription(customer_id, subscription_id).await;
@@ -367,16 +512,30 @@ async fn renewal_paid(payment: &Value, payment_id: &str) -> Result<(), ApiError>
 }
 
 async fn extend_for_subscription(customer_id: &str, subscription_id: &str) -> Result<(), ApiError> {
-    let subscription = call_ok(Method::GET, &format!("/customers/{customer_id}/subscriptions/{subscription_id}"), None, None).await?;
+    let subscription = call_ok(
+        Method::GET,
+        &format!("/customers/{customer_id}/subscriptions/{subscription_id}"),
+        None,
+        None,
+    )
+    .await?;
     if str_at(&subscription, &["metadata", "product"]) != Some(PRODUCT) {
         return Err(bad("not a PDFCraft subscription"));
     }
-    let token_id = str_at(&subscription, &["metadata", "token_id"]).ok_or_else(|| bad("subscription metadata.token_id missing"))?;
-    let days = days_at(&subscription, &["metadata", "days"]).ok_or_else(|| bad("subscription metadata.days missing"))?;
+    let token_id = str_at(&subscription, &["metadata", "token_id"])
+        .ok_or_else(|| bad("subscription metadata.token_id missing"))?;
+    let days = days_at(&subscription, &["metadata", "days"])
+        .ok_or_else(|| bad("subscription metadata.days missing"))?;
     let until = store::now() + (days + config::get().paid_grace_days) * DAY;
     match store::extend_paid_token_to(token_id, until).await {
         Ok(Some(until)) => {
-            tracing::info!(event = "token_extended", token_id, token_kind = "paid", reason = "subscription_renewal", until);
+            tracing::info!(
+                event = "token_extended",
+                token_id,
+                token_kind = "paid",
+                reason = "subscription_renewal",
+                until
+            );
             Ok(())
         }
         Ok(None) => Err(bad("token of the subscription no longer exists")),
@@ -387,10 +546,20 @@ async fn extend_for_subscription(customer_id: &str, subscription_id: &str) -> Re
 /// `POST /v1/mollie/webhook` (form body `id=tr_…`, no signature: the payment is fetched from Mollie)
 pub async fn webhook(body: Bytes) -> Result<Response, ApiError> {
     ensure_enabled()?;
-    let id = payment_id(&body).ok_or_else(|| ApiError::new(StatusCode::BAD_REQUEST, "invalid_request", "form field `id` (tr_…) missing"))?;
+    let id = payment_id(&body).ok_or_else(|| {
+        ApiError::new(
+            StatusCode::BAD_REQUEST,
+            "invalid_request",
+            "form field `id` (tr_…) missing",
+        )
+    })?;
     let (status, payment) = call(Method::GET, &format!("/payments/{id}"), None, None).await?;
     if status == StatusCode::NOT_FOUND {
-        return Err(ApiError::new(StatusCode::NOT_FOUND, "unknown_payment", "Mollie does not know this payment"));
+        return Err(ApiError::new(
+            StatusCode::NOT_FOUND,
+            "unknown_payment",
+            "Mollie does not know this payment",
+        ));
     }
     if !status.is_success() {
         tracing::warn!(event = "mollie_error", status = status.as_u16());
@@ -399,7 +568,9 @@ pub async fn webhook(body: Bytes) -> Result<Response, ApiError> {
 
     let (kind, result) = if str_at(&payment, &["status"]) != Some("paid") {
         ("other", Ok(()))
-    } else if str_at(&payment, &["sequenceType"]) == Some("recurring") && payment.get("subscriptionId").is_some() {
+    } else if str_at(&payment, &["sequenceType"]) == Some("recurring")
+        && payment.get("subscriptionId").is_some()
+    {
         ("renewal", renewal_paid(&payment, &id).await)
     } else if str_at(&payment, &["metadata", "product"]) == Some(PRODUCT) {
         ("purchase", purchase_paid(&payment, &id).await)
@@ -446,9 +617,14 @@ pub(crate) struct TokenInfo {
     responses((status = 200, description = "The token's properties.", body = TokenInfo, headers(("Cache-Control" = String, description = "Always `no-store`."))))
 )]
 pub async fn token_info(Extension(client): Extension<Client>) -> Result<Response, ApiError> {
-    let until = store::token_until(&client.id).await.map_err(|_| store_unavailable())?;
+    let until = store::token_until(&client.id)
+        .await
+        .map_err(|_| store_unavailable())?;
     let subscription = client.kind == Kind::Paid
-        && store::get_value(&format!("{SUBSCRIPTION_OF_PREFIX}{}", client.id)).await.map_err(|_| store_unavailable())?.is_some();
+        && store::get_value(&format!("{SUBSCRIPTION_OF_PREFIX}{}", client.id))
+            .await
+            .map_err(|_| store_unavailable())?
+            .is_some();
     Ok((
         [("cache-control", "no-store")],
         Json(TokenInfo {
@@ -466,23 +642,49 @@ pub async fn token_info(Extension(client): Extension<Client>) -> Result<Response
 
 /// `POST /v1/subscription/cancel` (with the token): stops the Mollie subscription of this token.
 /// The token stays valid until its current end; there will be no further charge.
-pub async fn cancel_subscription(Extension(client): Extension<Client>) -> Result<Response, ApiError> {
+pub async fn cancel_subscription(
+    Extension(client): Extension<Client>,
+) -> Result<Response, ApiError> {
     ensure_enabled()?;
-    let no_subscription = || ApiError::new(StatusCode::NOT_FOUND, "no_subscription", "this token has no running subscription");
+    let no_subscription = || {
+        ApiError::new(
+            StatusCode::NOT_FOUND,
+            "no_subscription",
+            "this token has no running subscription",
+        )
+    };
     if client.kind != Kind::Paid {
         return Err(no_subscription());
     }
     let key = format!("{SUBSCRIPTION_OF_PREFIX}{}", client.id);
-    let stored = store::get_value(&key).await.map_err(|_| store_unavailable())?.ok_or_else(no_subscription)?;
-    let (customer_id, subscription_id) = stored.split_once('/').filter(|(c, s)| valid_ref(c) && valid_ref(s)).ok_or_else(no_subscription)?;
-    let (status, json) = call(Method::DELETE, &format!("/customers/{customer_id}/subscriptions/{subscription_id}"), None, None).await?;
+    let stored = store::get_value(&key)
+        .await
+        .map_err(|_| store_unavailable())?
+        .ok_or_else(no_subscription)?;
+    let (customer_id, subscription_id) = stored
+        .split_once('/')
+        .filter(|(c, s)| valid_ref(c) && valid_ref(s))
+        .ok_or_else(no_subscription)?;
+    let (status, json) = call(
+        Method::DELETE,
+        &format!("/customers/{customer_id}/subscriptions/{subscription_id}"),
+        None,
+        None,
+    )
+    .await?;
     // 404: Mollie no longer knows it (already cancelled); either way nothing is charged any more
     if !status.is_success() && status != StatusCode::NOT_FOUND {
         crate::metrics::mollie_event("cancel", "error");
-        tracing::warn!(event = "mollie_error", status = status.as_u16(), detail = str_at(&json, &["detail"]).unwrap_or(""));
+        tracing::warn!(
+            event = "mollie_error",
+            status = status.as_u16(),
+            detail = str_at(&json, &["detail"]).unwrap_or("")
+        );
         return Err(upstream("Mollie could not cancel the subscription"));
     }
-    store::delete_key(&key).await.map_err(|_| store_unavailable())?;
+    store::delete_key(&key)
+        .await
+        .map_err(|_| store_unavailable())?;
     crate::metrics::mollie_event("cancel", "ok");
     tracing::info!(event = "subscription_cancelled", token_id = %client.id, token_plan = %client.plan);
     Ok(Json(json!({ "cancelled": true })).into_response())
@@ -500,13 +702,23 @@ pub async fn claim(Query(q): Query<ClaimQuery>) -> Result<Response, ApiError> {
     ensure_enabled()?;
     let valid_id = q.order.len() <= 64 && q.order.bytes().all(|b| b.is_ascii_alphanumeric());
     let found = if valid_id {
-        match store::take_value(&format!("{CLAIM_PREFIX}{}", q.order)).await.map_err(|_| store_unavailable())? {
+        match store::take_value(&format!("{CLAIM_PREFIX}{}", q.order))
+            .await
+            .map_err(|_| store_unavailable())?
+        {
             Some(json) => {
                 // Best effort: keep a copy for a short grace period
-                let _ = store::put(&format!("{CLAIMED_PREFIX}{}", q.order), &json, CLAIM_GRACE_SECS).await;
+                let _ = store::put(
+                    &format!("{CLAIMED_PREFIX}{}", q.order),
+                    &json,
+                    CLAIM_GRACE_SECS,
+                )
+                .await;
                 Some(json)
             }
-            None => store::get_value(&format!("{CLAIMED_PREFIX}{}", q.order)).await.map_err(|_| store_unavailable())?,
+            None => store::get_value(&format!("{CLAIMED_PREFIX}{}", q.order))
+                .await
+                .map_err(|_| store_unavailable())?,
         }
     } else {
         None
@@ -514,7 +726,10 @@ pub async fn claim(Query(q): Query<ClaimQuery>) -> Result<Response, ApiError> {
     match found {
         Some(json) => Ok((
             StatusCode::OK,
-            [("content-type", "application/json"), ("cache-control", "no-store")],
+            [
+                ("content-type", "application/json"),
+                ("cache-control", "no-store"),
+            ],
             json,
         )
             .into_response()),
@@ -540,7 +755,10 @@ mod tests {
 
     #[test]
     fn webhook_body_needs_a_payment_id() {
-        assert_eq!(payment_id(b"id=tr_WDqYK6vllg"), Some("tr_WDqYK6vllg".into()));
+        assert_eq!(
+            payment_id(b"id=tr_WDqYK6vllg"),
+            Some("tr_WDqYK6vllg".into())
+        );
         assert_eq!(payment_id(b"foo=1&id=tr_abc"), Some("tr_abc".into()));
         assert_eq!(payment_id(b"id=sub_abc"), None);
         assert_eq!(payment_id(b"id=tr_../x"), None);
@@ -559,7 +777,17 @@ mod tests {
 
     #[test]
     fn redirect_keeps_existing_query() {
-        assert_eq!(redirect_url("https://x.example/app/", "ab12").ok().as_deref(), Some("https://x.example/app/?order=ab12"));
-        assert_eq!(redirect_url("https://x.example/app/?lang=de", "ab12").ok().as_deref(), Some("https://x.example/app/?lang=de&order=ab12"));
+        assert_eq!(
+            redirect_url("https://x.example/app/", "ab12")
+                .ok()
+                .as_deref(),
+            Some("https://x.example/app/?order=ab12")
+        );
+        assert_eq!(
+            redirect_url("https://x.example/app/?lang=de", "ab12")
+                .ok()
+                .as_deref(),
+            Some("https://x.example/app/?lang=de&order=ab12")
+        );
     }
 }

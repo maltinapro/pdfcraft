@@ -409,7 +409,10 @@ pub fn check_invoice(inv: &Invoice, path: &str, e: &mut Errors) -> JsonValue {
             .and_then(|value| match valid_date(value) {
                 Some(date) => Some(date),
                 None => {
-                    e.add(&format!("{path}.{field}"), "must be a valid date as YYYY-MM-DD");
+                    e.add(
+                        &format!("{path}.{field}"),
+                        "must be a valid date as YYYY-MM-DD",
+                    );
                     None
                 }
             })
@@ -424,7 +427,10 @@ pub fn check_invoice(inv: &Invoice, path: &str, e: &mut Errors) -> JsonValue {
             "serviceDateFrom and serviceDateTo must be provided together",
         );
     }
-    if service_date_from.zip(service_date_to).is_some_and(|(from, to)| from > to) {
+    if service_date_from
+        .zip(service_date_to)
+        .is_some_and(|(from, to)| from > to)
+    {
         e.add(
             &format!("{path}.serviceDateFrom"),
             "serviceDateFrom must not be after serviceDateTo",
@@ -437,7 +443,10 @@ pub fn check_invoice(inv: &Invoice, path: &str, e: &mut Errors) -> JsonValue {
         );
     }
     if due_date.is_some_and(|due| due < date) {
-        e.add(&format!("{path}.dueDate"), "dueDate must not be before the invoice date");
+        e.add(
+            &format!("{path}.dueDate"),
+            "dueDate must not be before the invoice date",
+        );
     }
     if inv.items.is_empty() || inv.items.len() > MAX_ITEMS {
         e.add(
