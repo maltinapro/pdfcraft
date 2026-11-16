@@ -143,7 +143,11 @@
 /* Hints */
 .app-editor .issue-summary { max-height: none; margin: 0 0 var(--space-2); padding: 0 var(--space-4); overflow: visible; border: 0; border-radius: var(--radius-m); background: var(--color-error-container); color: var(--color-on-error-container); font-size: var(--type-body-m); }
 .app-editor .issue-summary.notes-only { background: var(--color-warning-container); color: var(--color-on-warning-container); }
-.app-editor .issue-summary-title { display: flex; min-height: 44px; align-items: center; margin: 0; font-weight: var(--weight-title); cursor: pointer; }
+.app-editor .issue-summary-title { display: flex; min-height: 48px; align-items: center; justify-content: space-between; gap: var(--space-3); margin: 0; font-weight: var(--weight-title); cursor: pointer; list-style: none; }
+.app-editor .issue-summary-title::-webkit-details-marker { display: none; }
+.app-editor .issue-summary-title::after { content: ''; flex: none; width: 10px; height: 10px; margin-inline-end: 4px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform 150ms; }
+.app-editor .issue-summary[open] > .issue-summary-title::after { transform: translateY(2px) rotate(-135deg); }
+.app-editor .issue-summary-title:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; border-radius: var(--radius-m); }
 .app-editor .issue-summary ul { display: flex; flex-direction: column; gap: var(--space-1); padding-bottom: var(--space-3); }
 .issue-link { color: inherit; }
 .issue-link:focus-visible { outline-color: var(--color-primary); }
