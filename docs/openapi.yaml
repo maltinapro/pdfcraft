@@ -1023,7 +1023,7 @@ components:
           minimum: 0
           type: integer
         expiresAt:
-          description: End of the token (unix seconds); `null` if unknown.
+          description: End of the token (unix seconds); `null` if unknown or for a service token, which does not expire.
           format: int64
           minimum: 0
           type:
@@ -1033,10 +1033,11 @@ components:
           description: Public token id (not the secret).
           type: string
         kind:
-          description: '`free` or `paid`.'
+          description: '`free`, `paid` or `service`.'
           enum:
           - free
           - paid
+          - service
           type: string
         limitPerMinute:
           description: PDFs per minute.

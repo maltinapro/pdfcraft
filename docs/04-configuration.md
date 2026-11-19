@@ -7,6 +7,8 @@
 | `BIND_ADDR` | `0.0.0.0:3000` | Listen address |
 | `VALKEY_URL` | – | Valkey connection (`redis://host:6379`). Holds tokens and rate limits. Unset or unreachable: `/v1` answers `503`. With authentication: `redis://:PASSWORD@host:6379` (user: `redis://user:PASSWORD@host:6379`), TLS: `rediss://` |
 | `VALKEY_MODE` | `auto` | `auto` asks the server (`INFO cluster`) and switches to the cluster client for sharded Valkey (e.g. the official Valkey operator); `standalone` / `cluster` force a mode. Standalone, primary/replica behind one address and cluster all work |
+| `SERVICE_TOKENS` | empty | Static service tokens without expiry, as hashed entries `<id>:<sha256 hex of the token>:<plan or invoices per minute>` separated by commas or newlines. They work without Valkey ([guide](05-tokens-and-rate-limiting.md#static-service-tokens)) |
+| `SERVICE_TOKENS_FILE` | empty | Path of a file with the same entries (one per line, `#` comments), e.g. a mounted secret. Used in addition to `SERVICE_TOKENS`; read at start-up |
 | `FREE_RATE_LIMIT_PER_MINUTE` | `20` | Invoices per minute for every free token (static) |
 | `FREE_TOKEN_TTL_SECONDS` | `43200` | Lifetime of a free token (12 h) |
 | `ANUBIS_PUBLIC_KEY_HEX` | empty | Public key of the Anubis instance; free tokens are disabled without it ([guide](11-free-token-and-anubis.md)) |
@@ -37,7 +39,7 @@
 | `LOG_FORMAT` | `json` | `text` switches to human-readable logs for local development |
 | `TYPST_PACKAGE_PATH` | `<backend>/vendor/typst-packages` | Directory with the vendored Typst packages |
 
-Without `VALKEY_URL`, `/v1` is unavailable (`503 store_unavailable`); there is no in-memory fallback. See [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md).
+Without `VALKEY_URL` and without static service tokens (`SERVICE_TOKENS` / `SERVICE_TOKENS_FILE`), `/v1` is unavailable (`503 store_unavailable`). With only service tokens `/v1` works without Valkey (free and purchased tokens, the Internetmarke endpoints and the free-token endpoint need Valkey); the rate limit is then kept per instance in memory. See [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md).
 
 ## Fixed limits (compile-time constants)
 
@@ -65,7 +67,7 @@ The configurator offers the fonts listed in `FONTS` (`backend/src/invoice.rs` an
 
 | Variable | Used for |
 | --- | --- |
-| `CORS_ALLOWED_ORIGINS`, `PAID_TOKENS_ENABLED`, `MOLLIE_API_KEY`, `PUBLIC_URL`, `MOLLIE_REDIRECT_URL`, `MOLLIE_API_URL`, `PAID_PRICES`, `PAID_PLANS`, `INTERNETMARKE_ENABLED`, `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET`, `INTERNETMARKE_SANDBOX_*`, `ANUBIS_PUBLIC_KEY_HEX` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
+| `CORS_ALLOWED_ORIGINS`, `PAID_TOKENS_ENABLED`, `MOLLIE_API_KEY`, `PUBLIC_URL`, `MOLLIE_REDIRECT_URL`, `MOLLIE_API_URL`, `PAID_PRICES`, `PAID_PLANS`, `SERVICE_TOKENS`, `SERVICE_TOKENS_FILE`, `INTERNETMARKE_ENABLED`, `INTERNETMARKE_CLIENT_ID`, `INTERNETMARKE_CLIENT_SECRET`, `INTERNETMARKE_SANDBOX_*`, `ANUBIS_PUBLIC_KEY_HEX` | passed through to the backend container (`VALKEY_URL` is preset to the `valkey` service) |
 
 ## Valkey data
 

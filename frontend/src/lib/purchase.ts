@@ -26,7 +26,7 @@ export interface Offers {
 }
 
 export interface TokenInfo {
-  kind: 'free' | 'paid'
+  kind: 'free' | 'paid' | 'service'
   id: string
   plan: string
   limitPerMinute: number

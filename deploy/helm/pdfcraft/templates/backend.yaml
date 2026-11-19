@@ -80,10 +80,20 @@ spec:
                   key: INTERNETMARKE_SANDBOX_PASSWORD
                   optional: true
             {{- end }}
+            {{- if .Values.backend.serviceTokensSecret }}
+            - name: SERVICE_TOKENS_FILE
+              value: /etc/pdfcraft/service-tokens/service-tokens
+            {{- end }}
             {{- range $k, $v := .Values.backend.env }}
             - name: {{ $k }}
               value: {{ $v | quote }}
             {{- end }}
+          {{- if .Values.backend.serviceTokensSecret }}
+          volumeMounts:
+            - name: service-tokens
+              mountPath: /etc/pdfcraft/service-tokens
+              readOnly: true
+          {{- end }}
           readinessProbe:
             httpGet: { path: /health, port: 3000 }
             initialDelaySeconds: 5
@@ -91,6 +101,15 @@ spec:
             httpGet: { path: /health, port: 3000 }
             initialDelaySeconds: 15
           resources: {{- toYaml .Values.backend.resources | nindent 12 }}
+      {{- if .Values.backend.serviceTokensSecret }}
+      volumes:
+        - name: service-tokens
+          secret:
+            secretName: {{ .Values.backend.serviceTokensSecret }}
+            items:
+              - key: service-tokens
+                path: service-tokens
+      {{- end }}
 ---
 apiVersion: v1
 kind: Service

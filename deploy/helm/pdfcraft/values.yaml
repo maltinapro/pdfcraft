@@ -34,6 +34,11 @@ backend:
   # Name of a Secret with the key VALKEY_URL (e.g. redis://:PASSWORD@host:6379, rediss:// for TLS).
   # Use with valkey.enabled=false when an operator-managed Valkey requires authentication.
   valkeySecret: ""
+  # Name of a Secret with the key `service-tokens`: static service tokens without expiry, one
+  # `<id>:<sha256 hex of the token>:<plan or invoices per minute>` per line, mounted as
+  # SERVICE_TOKENS_FILE (see docs/05-tokens-and-rate-limiting.md). They need no Valkey: for a
+  # service-only install set valkey.enabled=false and anubis.enabled=false.
+  serviceTokensSecret: ""
   env:
     MAX_CONCURRENT_COMPILES: "2"
   resources:

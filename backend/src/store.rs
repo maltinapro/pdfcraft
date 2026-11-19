@@ -10,7 +10,9 @@
 //! token is invalid after `until` but kept for `PAID_TOKEN_RETENTION_DAYS` so it can be
 //! renewed by its id, then Valkey deletes it (`EXPIREAT`).
 //!
-//! Rate limit: one atomic token bucket per token id (`pdfcraft:rl:<id>`, Lua script).
+//! Rate limit: one atomic token bucket per token id (`pdfcraft:rl:<id>`, Lua script; static
+//! service tokens use `pdfcraft:rl:svc:<id>`). Service tokens themselves are not stored here, see
+//! `service_tokens.rs`.
 
 use crate::config;
 use redis::{aio::ConnectionManager, cluster_async::ClusterConnection, RedisFuture, Value};
@@ -29,6 +31,8 @@ const TOKEN_INDEX: &str = "pdfcraft:tokens";
 pub enum Kind {
     Free,
     Paid,
+    /// Static token from the configuration (`SERVICE_TOKENS`); never stored in Valkey.
+    Service,
 }
 
 impl Kind {
@@ -41,6 +45,7 @@ impl Kind {
         match self {
             Kind::Free => "free",
             Kind::Paid => "paid",
+            Kind::Service => "service",
         }
     }
 
@@ -48,6 +53,7 @@ impl Kind {
         match self {
             Kind::Free => "pf",
             Kind::Paid => "pk",
+            Kind::Service => "ps",
         }
     }
 }
@@ -131,7 +137,7 @@ pub fn random_hex(len: usize) -> String {
     hex(&bytes)
 }
 
-fn ct_eq(a: &[u8], b: &[u8]) -> bool {
+pub(crate) fn ct_eq(a: &[u8], b: &[u8]) -> bool {
     let mut diff = (a.len() != b.len()) as u8;
     for i in 0..a.len().max(b.len()) {
         diff |= a.get(i).copied().unwrap_or(0) ^ b.get(i).copied().unwrap_or(0);
@@ -256,7 +262,7 @@ pub async fn lookup(presented: &str) -> Result<Option<Client>, Unavailable> {
     // The free limit is static configuration, so changing it applies to existing tokens.
     let limit = match kind {
         Kind::Free => config::get().free_rate_limit_per_minute,
-        Kind::Paid => limit.max(1),
+        Kind::Paid | Kind::Service => limit.max(1),
     };
     let plan = plan.unwrap_or_else(|| kind.as_str().to_string());
     Ok(valid.then(|| Client {
@@ -320,7 +326,7 @@ pub async fn create_token_with(
 
 fn expire_at(kind: Kind, until: u64) -> u64 {
     match kind {
-        Kind::Free => until,
+        Kind::Free | Kind::Service => until,
         Kind::Paid => until + config::get().paid_retention_days * 86_400,
     }
 }
@@ -607,7 +613,10 @@ return wait
 pub async fn take(client: &Client, cost: u32) -> Result<Result<(), u64>, Unavailable> {
     let per_sec = client.limit as f64 / 60.0;
     let wait: i64 = redis::Script::new(BUCKET_SCRIPT)
-        .key(format!("pdfcraft:rl:{}", client.id))
+        .key(match client.kind {
+            Kind::Service => format!("pdfcraft:rl:svc:{}", client.id),
+            _ => format!("pdfcraft:rl:{}", client.id),
+        })
         .arg(client.limit)
         .arg(per_sec)
         .arg(cost)
@@ -633,7 +642,35 @@ fn die(msg: impl std::fmt::Display, code: i32) -> ! {
     std::process::exit(code)
 }
 
-const USAGE: &str = "usage: pdfcraft-backend tokens <create --plan <name> [--days <n>] | create-free | list | extend <id> --days <n> | revoke <id>>";
+const USAGE: &str = "usage: pdfcraft-backend tokens <create --plan <name> [--days <n>] | create-free | create-service <id> <--plan <name> | --limit <n>> | list | extend <id> --days <n> | revoke <id>>";
+
+/// `tokens create-service <id> --plan <name> | --limit <n>`: generates a static service token and
+/// prints it once together with the `SERVICE_TOKENS` entry (hash only). Needs no Valkey.
+fn create_service(args: &[String]) {
+    let Some(id) = args.get(2).filter(|a| !a.starts_with("--")) else {
+        die(USAGE, 2)
+    };
+    let Some(limit) = arg_value(args, "--plan").or_else(|| arg_value(args, "--limit")) else {
+        die(USAGE, 2)
+    };
+    let token = format!("ps_{}", random_hex(24));
+    let entry = format!("{id}:{}:{limit}", hash_secret(&token));
+    let (tokens, problems) = crate::service_tokens::parse(&entry, &config::get().paid_plans);
+    if let Some(problem) = problems.first() {
+        die(problem, 2)
+    }
+    let Some(created) = tokens.first() else {
+        die(USAGE, 2)
+    };
+    println!(
+        "Created service token `{}` (plan {}, {} invoices/minute, no expiry).",
+        created.id, created.plan, created.limit
+    );
+    println!(
+        "Token (shown only once, give it to the caller, the server never stores it):\n{token}"
+    );
+    println!("Add this line to SERVICE_TOKENS or the file SERVICE_TOKENS_FILE and restart the backend:\n{entry}");
+}
 
 /// `tokens ...` subcommands for operators. Returns `true` if a command was handled.
 pub async fn run_cli(args: &[String]) -> bool {
@@ -641,6 +678,10 @@ pub async fn run_cli(args: &[String]) -> bool {
         return false;
     }
     let cfg = config::get();
+    if args.get(1).map(String::as_str) == Some("create-service") {
+        create_service(args);
+        return true;
+    }
     let Some(url) = &cfg.valkey_url else {
         die("VALKEY_URL must be set", 2)
     };
