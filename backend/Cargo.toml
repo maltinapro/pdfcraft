@@ -13,7 +13,7 @@ minijinja = { version = "3", features = ["serde"] }
 typst = "0.15.1"
 typst-layout = "0.15.1"
 typst-pdf = "0.15.1"
-typst-as-lib = "0.17.0"
+typst-as-lib = "0.18.0"
 typst-kit = { version = "0.15.1", default-features = false, features = ["scan-fonts", "embedded-fonts"] }
 tower-http = { version = "0.7", features = ["cors"] }
 base64 = "0.23.1"
