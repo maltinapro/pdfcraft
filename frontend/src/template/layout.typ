@@ -88,6 +88,7 @@
   ],
 )
 {% if einvoice %}#pdf.attach("/{{ einvoice.file }}", read("{{ assets.xml }}", encoding: none), relationship: "{{ einvoice.relationship }}", mime-type: "text/xml", description: "{{ einvoice.description }}")
+{% endif %}{% if audit %}#pdf.attach("/{{ audit.file }}", read("{{ assets.audit }}", encoding: none), relationship: "supplement", mime-type: "application/json", description: "{{ audit.description }}")
 {% endif %}
 // Header (DIN 5008, window envelope: the address starts at 45 mm)
 #let has-logo = {% if assets and assets.logo %}true{% else %}false{% endif %}

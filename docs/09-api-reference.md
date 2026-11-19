@@ -162,11 +162,38 @@ References one or more open invoices and asks for payment until a new deadline. 
 | `dunningLevel` | `1` payment reminder (Zahlungserinnerung), `2` dunning letter (Mahnung), `3` final dunning letter (Letzte Mahnung); selects the title and the default text |
 | `invoices` | 1 to 100 open invoices: `number`, `date`, `dueDate` (not before `date`) and the still open gross amount `openAmount` (> 0) |
 | `fees` | optional, up to 20 lines `{ description, amount }` (e.g. dunning fee), amount ≥ 0 |
-| `interest` | optional default interest (§ 288 BGB): `rate` (percent per year, > 0 to 100), period `from`/`to`, and the `amount` for it |
+| `interest` | optional default interest (§ 288 BGB), either calculated by PDFCraft from the base rate (`debtor`) or passed by you (`rate`, `from`, `to`, `amount`); see below |
 | `paymentDeadline` | new payment deadline, not before `date`; shown in the info block and in the payment text |
 | `intro`, `closing` | optional; without `intro` a default text for the level is printed |
 
-PDFCraft does not calculate fees or interest: the caller passes the amounts. The total claim (sum of the open amounts, fees and interest, computed in cents) is printed and is the amount of the payment block and the QR code. Validation errors are reported with the path, e.g. `document.invoices[0].openAmount`.
+PDFCraft does not invent fees: the caller passes them. The total claim (sum of the open amounts, fees and interest, computed in cents) is printed and is the amount of the payment block and the QR code. Validation errors are reported with the path, e.g. `document.invoices[0].openAmount`.
+
+#### Default interest from the base rate
+
+With `interest.debtor` (`consumer`: base rate + 5 percentage points, § 288 Abs. 1 BGB; `business`: + 9 percentage points, § 288 Abs. 2 BGB) PDFCraft calculates the interest per invoice:
+
+- The interest starts the day after the due date (or at `interest.from`) and ends on the document date (or at `interest.to`); both days count. Days are counted actual/365. Amounts are computed in whole cents and rounded half up per invoice.
+- The period is **split by day at every change of the base rate** (1 January and 1 July). The PDF lists each part with its days, base rate and rate (`base + premium`), the principal and the amount, and prints the base rate (§ 247 BGB), the premium and a note that default interest is damages and not subject to VAT.
+- The base rates are data, not code: `backend/src/data/base-rates.json` has `valid_from`, `valid_to`, `base_rate` (fraction, `0.0152` = 1.52 %) and `source_ref` for every half-year since 2016-07-01. The environment variable `BASE_RATES` adds or replaces half-years without a new build (see [Configuration](04-configuration.md)), and `interest.baseRate` (percent, e.g. `1.77`) replaces the table for one document. A period that is not covered by the table is a validation error, never a silently reused rate. Check the table against the Bundesbank publication (Bundesanzeiger) before relying on it and add every new half-year.
+- With `debtor` you must not send `rate` or `amount`.
+
+Without `debtor` nothing is calculated: `rate` (percent per year), `from`, `to` and `amount` are required and printed as given.
+
+#### Record for the books (GoBD)
+
+PDFCraft is stateless and stores nothing, so the caller freezes the result:
+
+- For calculated interest the PDF carries the attachment **`dunning-interest.json`** (schema `pdfcraft.dunning-interest/1`): document number and date, legal basis, debtor type, premium, day count, and per invoice the principal, the periods (`from`, `to`, `days`, base rate, rate, source of the rate) and the interest, plus the total. Keep the PDF (and the JSON) as the unchangeable document. The same input and the same base rate table give the same PDF byte for byte, but a later change of the table must never recalculate a document that was sent; to reprint it, send the stored values in the manual form (`rate`, `from`, `to`, `amount`).
+- Default interest is damages and not subject to VAT. In your books it belongs on an interest income account without tax automatic (e.g. SKR03 2650 / SKR04 7100, check with your tax advisor), not into the invoice. If you show it in an e-invoice it is a line outside VAT, tax category `O` (outside the scope) or `E` (exempt), not a taxable line.
+- Interest and fees are ancillary claims: keep them as their own open items, not as part of the original invoice. Partial payments are applied to costs first, then to interest, then to the principal (§ 367 BGB); the PDF says so, your accounting has to do it.
+
+```json
+{"type":"dunning","settings":{"sender":{"name":"Muster GmbH","address":"Musterstr. 1","city":"12345 Musterstadt"},"bank":{"iban":"DE89370400440532013000"}},
+ "document":{"number":"M-2026-002","date":"2026-08-10","dunningLevel":2,"paymentDeadline":"2026-08-24",
+  "recipient":{"name":"Kunde AG","address":"Kundenweg 5","city":"54321 Kundenstadt"},
+  "invoices":[{"number":"R-2026-001","date":"2026-06-02","dueDate":"2026-06-16","openAmount":1000}],
+  "fees":[{"description":"Mahngebühr","amount":5}],"interest":{"debtor":"business"}}}
+```
 
 ```bash
 curl -X POST http://localhost:3000/v1/documents \

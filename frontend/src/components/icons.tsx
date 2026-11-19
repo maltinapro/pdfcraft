@@ -6,6 +6,7 @@ const PATHS: Record<DocKind, string[]> = {
   offer: ['M3 12V4h8l10 10-8 8L3 12z', 'M7.5 8.5h.01'],
   order: ['M9 4h6v3H9z', 'M7 5H5v16h14V5h-2', 'M9 14l2 2 4-4'],
   'delivery-note': ['M3 7l9-4 9 4-9 4-9-4z', 'M3 7v10l9 4 9-4V7', 'M12 11v10'],
+  dunning: ['M6 3h12v18H6z', 'M12 7v6', 'M12 16.5h.01'],
   letter: ['M3 6h18v12H3z', 'M3 7l9 7 9-7'],
 }
 

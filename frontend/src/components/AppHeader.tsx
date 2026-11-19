@@ -15,7 +15,7 @@ interface Props {
   editor?: boolean
 }
 
-const EDITOR_ROUTES = ['invoice', 'credit-note', 'offer', 'order', 'delivery-note', 'letter', 'sender']
+const EDITOR_ROUTES = ['invoice', 'credit-note', 'offer', 'order', 'delivery-note', 'letter', 'dunning', 'sender']
 
 export function AppHeader({ title, route = '', unsaved = 0, children, editor = false }: Props) {
   return (

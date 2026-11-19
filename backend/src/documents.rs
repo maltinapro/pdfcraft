@@ -295,6 +295,17 @@ pub fn build(
         let deadline = valid_date(doc.payment_deadline.trim()).unwrap_or((1970, 1, 1));
         let total = data["doc"]["dunning"]["totalCents"].as_i64().unwrap_or(0);
         data["pay"] = einvoice::payment_data(raw, doc.number.trim(), total.into(), deadline);
+        let mut audit = data["doc"]["dunning"]["audit"].take();
+        if !audit.is_null() {
+            audit["documentNumber"] = json!(doc.number.trim());
+            audit["documentDate"] = json!(doc.date.trim());
+            let bytes = serde_json::to_vec_pretty(&audit).unwrap_or_default();
+            assets.push(("audit".to_string(), bytes));
+            data["audit"] = json!({
+                "file": dunning::AUDIT_FILE,
+                "description": "Default interest calculation (machine-readable record)",
+            });
+        }
     }
     (data, assets)
 }

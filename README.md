@@ -8,13 +8,13 @@
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org/)
 
-A full-stack **PDF Template Builder** that combines simple form-based configurators for business documents (invoice, credit note, offer, order confirmation, delivery note, letter) in the browser with a blazing-fast Rust backend. Fill in your data and compile it on fixed templates to publication-quality PDFs via Typst — with no local Typst installation required.
+A full-stack **PDF Template Builder** that combines simple form-based configurators for business documents (invoice, credit note, offer, order confirmation, delivery note, dunning letter, letter) in the browser with a blazing-fast Rust backend. Fill in your data and compile it on fixed templates to publication-quality PDFs via Typst — with no local Typst installation required.
 
 **Live demo:** [digitalrechnung.jetzt](https://digitalrechnung.jetzt) — try the [document configurator](https://digitalrechnung.jetzt/app/) without a local installation. Please use sample data only.
 
 ## Features
 
-- 🗂️ **Dashboard with document types** — invoice, credit note (Stornorechnung), offer, order confirmation, delivery note and letter (DIN 5008 Form B); choose one of three PDF designs (Classic, Modern Minimal, Contrast); issued documents and their design settings are archived in the browser, with backup/restore, customer and article master data, follow-up documents and bulk ZIP download
+- 🗂️ **Dashboard with document types** — invoice, credit note (Stornorechnung), offer, order confirmation, delivery note, dunning letter (with default interest calculated from the base rate, § 288 BGB) and letter (DIN 5008 Form B); choose one of three PDF designs (Classic, Modern Minimal, Contrast); issued documents and their design settings are archived in the browser, with backup/restore, customer and article master data, follow-up documents and bulk ZIP download
 - 🔍 **E-invoice viewer and checker** — drop a received ZUGFeRD/Factur-X PDF or an XRechnung/CII/UBL XML (page `#/viewer`) and read it as a normal invoice, with a limited plausibility check (sums, mandatory fields); everything stays in the browser, nothing is uploaded
 - 🧾 **Paper-first document configurator** — edit all six document types in four guided zones; click the PDF preview to open the matching fields. On desktop, adjust the form/preview split; on mobile, switch between fields and paper while zone navigation stays available. Invoice details include a service date/period and editable due date
 - 🖼️ **Logo upload** (PNG/JPG/SVG, ≤ 300 KB) sent to the backend as a base64 asset

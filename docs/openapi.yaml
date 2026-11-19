@@ -170,6 +170,36 @@ paths:
                       city: 12345 Musterstadt
                       name: Muster GmbH
                   type: dunning
+              dunningCalculatedInterest:
+                summary: Dunning letter with default interest calculated from the base rate
+                value:
+                  document:
+                    date: '2026-08-10'
+                    dunningLevel: 2
+                    fees:
+                    - amount: 5
+                      description: Mahngebühr
+                    interest:
+                      debtor: business
+                    invoices:
+                    - date: '2026-06-02'
+                      dueDate: '2026-06-16'
+                      number: R-2026-001
+                      openAmount: 1000
+                    number: M-2026-002
+                    paymentDeadline: '2026-08-24'
+                    recipient:
+                      address: Kundenweg 5
+                      city: 54321 Kundenstadt
+                      name: Kunde AG
+                  settings:
+                    bank:
+                      iban: DE89370400440532013000
+                    sender:
+                      address: Musterstr. 1
+                      city: 12345 Musterstadt
+                      name: Muster GmbH
+                  type: dunning
               letter:
                 summary: Letter
                 value:
@@ -839,33 +869,54 @@ components:
       - amount
       type: object
     DunningInterest:
-      description: Default interest (Verzugszinsen, § 288 BGB) for a period. The amount is not calculated by PDFCraft.
+      description: |-
+        Default interest (Verzugszinsen, § 288 BGB) for a period. Either give `rate` and `amount` (nothing is
+        calculated) or give `debtor`, then PDFCraft calculates the interest per invoice from the base rate.
       properties:
         amount:
-          description: Interest amount in euro for the period (0 to 1e9), calculated by the caller.
+          description: |-
+            Own calculation: interest amount in euro for the period (0 to 1e9). Required with `rate`; not
+            allowed together with `debtor`.
           format: double
           maximum: 1000000000
           minimum: 0
           type: number
+        baseRate:
+          description: |-
+            Calculation: base rate in percent (-10 to 20) for the whole period instead of the built-in table,
+            for example for a period the table does not cover yet.
+          format: double
+          maximum: 20
+          minimum: -10
+          type: number
+        debtor:
+          description: |-
+            Calculate the interest: `consumer` (base rate + 5 percentage points, § 288 para. 1 BGB) or
+            `business` (base rate + 9 percentage points, § 288 para. 2 BGB, transactions without a consumer).
+            The interest of each invoice is its open amount x rate x days / 365, split at the half-yearly
+            changes of the base rate (§ 247 BGB).
+          pattern: ^(consumer|business)$
+          type: string
         from:
-          description: Start of the interest period as `YYYY-MM-DD`.
+          description: |-
+            Start of the interest period as `YYYY-MM-DD`. Required with `rate`. With `debtor` it is optional;
+            without it the interest of each invoice starts the day after its due date.
           format: date
           type: string
         rate:
-          description: Annual interest rate in percent (greater than 0, at most 100), for example `12.27`.
+          description: |-
+            Own calculation: annual interest rate in percent (greater than 0, at most 100), for example
+            `12.27`. Needs `from`, `to` and `amount`; not allowed together with `debtor`.
           format: double
           maximum: 100
           minimum: 0
           type: number
         to:
-          description: End of the interest period as `YYYY-MM-DD` (not before `from`).
+          description: |-
+            End of the interest period as `YYYY-MM-DD` (not before `from`), inclusive. Required with `rate`.
+            With `debtor` it is optional and defaults to the document date.
           format: date
           type: string
-      required:
-      - rate
-      - from
-      - to
-      - amount
       type: object
     DunningInvoice:
       description: An open invoice listed in a dunning letter.

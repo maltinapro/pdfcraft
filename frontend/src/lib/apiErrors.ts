@@ -16,6 +16,7 @@ const texts = () => tr('Absender & Aussehen › Texte', 'Sender & look › Texts
 const details = () => tr('Details', 'Details')
 const items = () => tr('Positionen', 'Items')
 const recipient = () => tr('Empfänger', 'Recipient')
+const openItems = () => tr('Offene Posten', 'Open items')
 const itemArea = (n: number) => tr(`Positionen › Position ${n}`, `Items › Item ${n}`)
 
 /** Labels and places exactly as the forms show them (see InvoiceForm, DocumentForm, SettingsForm). */
@@ -67,6 +68,16 @@ function documentField(rest: string, kind: string): Field | null {
     intro: () => ({ label: tr('Einleitung', 'Introduction'), area: tr('Texte', 'Texts') }),
     closing: () => ({ label: spec?.letter ? tr('Grußformel', 'Closing phrase') : tr('Schlusstext', 'Closing text'), area: tr('Texte', 'Texts') }),
     items: () => ({ label: tr('Positionen', 'Items'), area: tr('Positionen', 'Items') }),
+    dunningLevel: () => ({ label: tr('Mahnstufe', 'Dunning level'), area: details() }),
+    paymentDeadline: () => ({ label: tr('Neue Zahlungsfrist', 'New payment deadline'), area: details() }),
+    invoices: () => ({ label: tr('Offene Rechnungen', 'Open invoices'), area: openItems() }),
+    fees: () => ({ label: tr('Mahngebühren', 'Dunning fees'), area: openItems() }),
+    'interest.debtor': () => ({ label: tr('Verzugszinsen', 'Default interest'), area: openItems() }),
+    'interest.rate': () => ({ label: tr('Zinssatz', 'Rate'), area: openItems() }),
+    'interest.from': () => ({ label: tr('Zinsen ab', 'Interest from'), area: openItems() }),
+    'interest.to': () => ({ label: tr('Zinsen bis', 'Interest to'), area: openItems() }),
+    'interest.amount': () => ({ label: tr('Zinsbetrag', 'Interest amount'), area: openItems() }),
+    'interest.baseRate': () => ({ label: tr('Basiszinssatz', 'Base rate'), area: openItems() }),
     postage: () => ({ label: tr('Briefmarke', 'Postage stamp'), area: tr('Porto', 'Postage') }),
     'recipient.name': () => ({ label: tr('Name', 'Name'), area: recipient() }),
     'recipient.address': () => ({ label: tr('Straße / Hausnummer', 'Street / house number'), area: recipient() }),
@@ -76,6 +87,20 @@ function documentField(rest: string, kind: string): Field | null {
     'recipient.buyerReference': () => ({ label: tr('Leitweg-ID / Käuferreferenz', 'Leitweg ID / buyer reference'), area: recipient() }),
   }
   return map[rest]?.() ?? null
+}
+
+function rowField(list: 'invoices' | 'fees', name: string, n: number): Field | null {
+  const labels: Record<string, () => string> = {
+    number: () => tr('Rechnungsnummer', 'Invoice number'),
+    date: () => tr('Rechnungsdatum', 'Invoice date'),
+    dueDate: () => tr('Fällig am', 'Due on'),
+    openAmount: () => tr('Offener Betrag', 'Open amount'),
+    description: () => tr('Beschreibung', 'Description'),
+    amount: () => tr('Betrag', 'Amount'),
+  }
+  const label = labels[name]?.()
+  const area = list === 'invoices' ? tr(`Offene Posten › Rechnung ${n}`, `Open items › Invoice ${n}`) : tr(`Offene Posten › Gebühr ${n}`, `Open items › Fee ${n}`)
+  return label ? { label, area } : null
 }
 
 function itemField(name: string, n: number): Field | null {
@@ -94,7 +119,9 @@ function itemField(name: string, n: number): Field | null {
 export function describeField(key: string, kind: string): Field | null {
   if (key.startsWith('settings.')) return settingsField(key)
   const item = /^items\[(\d+)\]\.(.+)$/.exec(key)
-  return item ? itemField(item[2], Number(item[1]) + 1) : documentField(key, kind)
+  if (item) return itemField(item[2], Number(item[1]) + 1)
+  const row = /^(invoices|fees)\[(\d+)\]\.(.+)$/.exec(key)
+  return row ? rowField(row[1] as 'invoices' | 'fees', row[3], Number(row[2]) + 1) : documentField(key, kind)
 }
 
 /** "Empfänger › Name" for a field key, `null` when the key is unknown. */
@@ -117,6 +144,15 @@ function rule(message: string): string | null {
   if (message === 'must be a whole number between 0 and 365') return tr('Ganze Zahl zwischen 0 und 365', 'Whole number between 0 and 365')
   if (message === 'must be one of: 19, 7, 0') return tr('Nur 19 %, 7 % oder 0 % möglich', 'Only 19 %, 7 % or 0 % allowed')
   if (/^must be one of: /.test(message)) return tr('Nicht erlaubter Wert', 'Value not allowed')
+  if (message === 'must be a number greater than 0 and at most 1e9') return tr('Betrag größer als 0 angeben (max. 1 Milliarde)', 'Enter an amount greater than 0 (at most 1 billion)')
+  if (message === 'must be a number from 0 to 1e9') return tr('Betrag von 0 bis 1 Milliarde angeben', 'Enter an amount from 0 to 1 billion')
+  if (message === 'must be consumer or business') return tr('Bitte Unternehmen oder Verbraucher wählen', 'Please choose business or consumer')
+  if (message === 'to must not be before from') return tr('Das Ende liegt vor dem Beginn', 'The end is before the start')
+  if (message === 'must be a number from -10 to 20') return tr('Bitte einen Satz zwischen -10 und 20 % angeben', 'Enter a rate between -10 and 20 %')
+  if (/^must be a number greater than 0 and at most 100/.test(message)) return tr('Bitte einen Zinssatz größer als 0 angeben', 'Enter a rate greater than 0')
+  if (/^the base rate is not known for /.test(message)) return tr('Für diesen Zeitraum ist kein Basiszinssatz hinterlegt – bitte unten einen Basiszinssatz eintragen', 'No base rate is stored for this period – enter a base rate below')
+  m = /^needs 1 to (\d+) invoices$/.exec(message)
+  if (m) return tr(`1 bis ${m[1]} Rechnungen nötig`, `1 to ${m[1]} invoices needed`)
   m = /^needs 1 to (\d+) items$/.exec(message)
   if (m) return tr(`1 bis ${m[1]} Positionen nötig`, `1 to ${m[1]} items needed`)
   return null

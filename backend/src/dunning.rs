@@ -6,6 +6,7 @@
 //! printed total and the amount of the EPC QR code always agree. Nothing is stored.
 
 use crate::einvoice::{cents, decimal, german_date, money};
+use crate::interest;
 use crate::invoice::{text, valid_date, Errors, MAX_SHORT};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value as JsonValue};
@@ -17,6 +18,10 @@ pub const MAX_FEES: usize = 20;
 pub const MAX_LEVEL: i64 = 3;
 
 const MAX_AMOUNT: f64 = 1e9;
+/// Name of the machine-readable calculation record in the PDF.
+pub const AUDIT_FILE: &str = "dunning-interest.json";
+const AUDIT_SCHEMA: &str = "pdfcraft.dunning-interest/1";
+const VAT_NOTE: &str = "not subject to VAT (damages, § 288 BGB)";
 const EURO: &str = "\u{a0}€";
 
 /// An open invoice listed in a dunning letter.
@@ -49,22 +54,37 @@ pub struct DunningFee {
     pub amount: f64,
 }
 
-/// Default interest (Verzugszinsen, § 288 BGB) for a period. The amount is not calculated by PDFCraft.
+/// Default interest (Verzugszinsen, § 288 BGB) for a period. Either give `rate` and `amount` (nothing is
+/// calculated) or give `debtor`, then PDFCraft calculates the interest per invoice from the base rate.
 #[derive(Serialize, Deserialize, Default, Clone, ToSchema)]
 #[serde(rename_all = "camelCase", default)]
 pub struct DunningInterest {
-    /// Annual interest rate in percent (greater than 0, at most 100), for example `12.27`.
-    #[schema(required = true, minimum = 0, maximum = 100)]
-    pub rate: f64,
-    /// Start of the interest period as `YYYY-MM-DD`.
-    #[schema(required = true, format = Date)]
+    /// Own calculation: annual interest rate in percent (greater than 0, at most 100), for example
+    /// `12.27`. Needs `from`, `to` and `amount`; not allowed together with `debtor`.
+    #[schema(minimum = 0, maximum = 100)]
+    pub rate: Option<f64>,
+    /// Start of the interest period as `YYYY-MM-DD`. Required with `rate`. With `debtor` it is optional;
+    /// without it the interest of each invoice starts the day after its due date.
+    #[schema(format = Date)]
     pub from: String,
-    /// End of the interest period as `YYYY-MM-DD` (not before `from`).
-    #[schema(required = true, format = Date)]
+    /// End of the interest period as `YYYY-MM-DD` (not before `from`), inclusive. Required with `rate`.
+    /// With `debtor` it is optional and defaults to the document date.
+    #[schema(format = Date)]
     pub to: String,
-    /// Interest amount in euro for the period (0 to 1e9), calculated by the caller.
-    #[schema(required = true, minimum = 0, maximum = 1e9)]
-    pub amount: f64,
+    /// Own calculation: interest amount in euro for the period (0 to 1e9). Required with `rate`; not
+    /// allowed together with `debtor`.
+    #[schema(minimum = 0, maximum = 1e9)]
+    pub amount: Option<f64>,
+    /// Calculate the interest: `consumer` (base rate + 5 percentage points, § 288 para. 1 BGB) or
+    /// `business` (base rate + 9 percentage points, § 288 para. 2 BGB, transactions without a consumer).
+    /// The interest of each invoice is its open amount x rate x days / 365, split at the half-yearly
+    /// changes of the base rate (§ 247 BGB).
+    #[schema(pattern = "^(consumer|business)$")]
+    pub debtor: Option<String>,
+    /// Calculation: base rate in percent (-10 to 20) for the whole period instead of the built-in table,
+    /// for example for a period the table does not cover yet.
+    #[schema(minimum = -10, maximum = 20)]
+    pub base_rate: Option<f64>,
 }
 
 /// The dunning fields of a document.
@@ -109,6 +129,223 @@ fn euro(c: i128) -> String {
     format!("{}{EURO}", money(c))
 }
 
+fn percent(bp: i64) -> String {
+    format!("{}\u{a0}%", decimal(i128::from(bp) * 100, 2, true))
+}
+
+/// Plain decimal for the machine-readable record (`1000.00`, `10.52`).
+fn plain(hundredths: i128) -> String {
+    decimal(hundredths * 100, 2, false)
+}
+
+fn day_text(day: i64) -> String {
+    valid_date(&interest::iso_date(day)).map_or_else(String::new, german_date)
+}
+
+/// An open invoice as `(escaped number, raw number, open cents, due date)`.
+type Open = (String, String, i128, Option<(i32, u32, u32)>);
+
+/// Result of the interest part: cents, template data (`doc.dunning.interest`) and the record that is
+/// attached to the PDF.
+type Computed = (i128, JsonValue, JsonValue);
+
+fn none() -> Computed {
+    (0, JsonValue::Null, JsonValue::Null)
+}
+
+/// Validates `interest` and returns the amount in cents and the template data (`doc.dunning.interest`).
+fn interest(
+    e: &mut Errors,
+    item: &DunningInterest,
+    invoices: &[Open],
+    document_date: (i32, u32, u32),
+) -> Computed {
+    let calculate = item.debtor.is_some();
+    let explicit = |iso: &str| !iso.trim().is_empty();
+    let from = if calculate && !explicit(&item.from) {
+        None
+    } else {
+        date(e, "document.interest.from", &item.from)
+    };
+    let to = if calculate && !explicit(&item.to) {
+        Some(document_date)
+    } else {
+        date(e, "document.interest.to", &item.to)
+    };
+    if let (Some(from), Some(to)) = (from, to) {
+        if to < from {
+            e.add("document.interest.to", "to must not be before from");
+        }
+    }
+
+    if !calculate {
+        if item.base_rate.is_some() {
+            e.add(
+                "document.interest.baseRate",
+                "is only used together with debtor",
+            );
+        }
+        match item.rate {
+            Some(rate) if rate.is_finite() && rate > 0.0 && rate <= 100.0 => {}
+            _ => e.add(
+                "document.interest.rate",
+                "must be a number greater than 0 and at most 100 (or send debtor to calculate)",
+            ),
+        }
+        let value = item.amount.unwrap_or(f64::NAN);
+        let total = amount(e, "document.interest.amount", value, false);
+        let rate = item.rate.unwrap_or(0.0).clamp(0.0, 100.0);
+        let audit = json!({
+            "schema": AUDIT_SCHEMA,
+            "legalBasis": "§ 288 BGB",
+            "mode": "manual",
+            "ratePercent": plain((rate * 100.0).round() as i128),
+            "from": from.map(|(y, m, d)| format!("{y:04}-{m:02}-{d:02}")),
+            "to": to.map(|(y, m, d)| format!("{y:04}-{m:02}-{d:02}")),
+            "total": plain(total),
+            "vat": VAT_NOTE,
+        });
+        return (
+            total,
+            json!({
+                "calculated": false,
+                "rate": percent((rate * 100.0).round() as i64),
+                "fromText": from.map(german_date),
+                "toText": to.map(german_date),
+                "amount": euro(total),
+            }),
+            audit,
+        );
+    }
+
+    for (path, present) in [
+        ("document.interest.rate", item.rate.is_some()),
+        ("document.interest.amount", item.amount.is_some()),
+    ] {
+        if present {
+            e.add(
+                path,
+                "is calculated and must not be sent together with debtor",
+            );
+        }
+    }
+    let premium = item.debtor.as_deref().and_then(interest::premium);
+    if premium.is_none() {
+        e.add("document.interest.debtor", "must be consumer or business");
+    }
+    let base_override = match item.base_rate {
+        Some(rate) if rate.is_finite() && (-10.0..=20.0).contains(&rate) => {
+            Some((rate * 100.0).round() as i64)
+        }
+        Some(_) => {
+            e.add(
+                "document.interest.baseRate",
+                "must be a number from -10 to 20",
+            );
+            None
+        }
+        None => None,
+    };
+    let (Some(premium), Some(to)) = (premium, to) else {
+        return none();
+    };
+
+    let to_day = interest::days(to);
+    let mut total = 0;
+    let mut lines = Vec::new();
+    let mut records = Vec::new();
+    let (mut low, mut high) = (i64::MAX, i64::MIN);
+    let mut earliest: Option<i64> = None;
+    for (i, (number, raw_number, open, due)) in invoices.iter().enumerate() {
+        let start = match (from, due) {
+            (Some(from), _) => interest::days(from),
+            (None, Some(due)) => interest::days(*due) + 1,
+            (None, None) => continue,
+        };
+        if start > to_day {
+            continue;
+        }
+        let segments = match interest::segments(start, to_day, base_override) {
+            Ok(segments) => segments,
+            Err(message) => {
+                e.add(&format!("document.invoices[{i}].dueDate"), &message);
+                break;
+            }
+        };
+        let weighted: i128 = segments.iter().map(|s| s.weighted(*open, premium)).sum();
+        let cents = interest::cents(weighted);
+        total += cents;
+        earliest = Some(earliest.map_or(start, |e| e.min(start)));
+        for s in &segments {
+            low = low.min(s.base);
+            high = high.max(s.base);
+        }
+        lines.push(json!({
+            "number": number,
+            "principal": euro(*open),
+            "amount": euro(cents),
+            "periods": segments.iter().map(|s| json!({
+                "from": day_text(s.from),
+                "to": day_text(s.to),
+                "days": s.days,
+                "base": percent(s.base),
+                "rate": percent(s.base + premium),
+            })).collect::<Vec<_>>(),
+        }));
+        records.push(json!({
+            "number": raw_number,
+            "principal": plain(*open),
+            "interest": plain(cents),
+            "periods": segments.iter().map(|s| json!({
+                "from": interest::iso_date(s.from),
+                "to": interest::iso_date(s.to),
+                "days": s.days,
+                "baseRatePercent": plain(i128::from(s.base)),
+                "ratePercent": plain(i128::from(s.base + premium)),
+                "source": s.source,
+            })).collect::<Vec<_>>(),
+        }));
+    }
+    let range = |lo: i64, hi: i64| {
+        if lo == hi {
+            percent(lo)
+        } else {
+            format!("{} – {}", percent(lo), percent(hi))
+        }
+    };
+    let (base_text, rate_text) = if lines.is_empty() {
+        (percent(0), percent(premium))
+    } else {
+        (range(low, high), range(low + premium, high + premium))
+    };
+    let audit = json!({
+        "schema": AUDIT_SCHEMA,
+        "legalBasis": "§ 288 BGB",
+        "mode": "calculated",
+        "debtor": item.debtor,
+        "premiumPercent": plain(i128::from(premium)),
+        "dayCount": "actual days / 365, first and last day included",
+        "to": interest::iso_date(to_day),
+        "invoices": records,
+        "total": plain(total),
+        "vat": VAT_NOTE,
+    });
+    (
+        total,
+        json!({
+            "calculated": true,
+            "rate": rate_text,
+            "base": base_text,
+            "premium": decimal(i128::from(premium) * 100, 0, true),
+            "fromText": from.map(german_date),
+            "toText": german_date(to),
+            "amount": euro(total),
+            "lines": lines,
+        }),
+        audit,
+    )
+}
+
 /// Validated template data of a dunning letter (`doc.dunning`) including the display texts and the
 /// total in cents (`totalCents`, used for the payment block).
 pub fn check(f: &Fields, e: &mut Errors) -> JsonValue {
@@ -135,6 +372,7 @@ pub fn check(f: &Fields, e: &mut Errors) -> JsonValue {
     }
     let mut open_total = 0;
     let mut invoices = Vec::new();
+    let mut open_items = Vec::new();
     for (i, inv) in f.invoices.iter().take(MAX_INVOICES).enumerate() {
         let p = format!("document.invoices[{i}]");
         let number = text(e, &format!("{p}.number"), &inv.number, MAX_SHORT, true);
@@ -148,6 +386,7 @@ pub fn check(f: &Fields, e: &mut Errors) -> JsonValue {
         }
         let open = amount(e, &format!("{p}.openAmount"), inv.open_amount, true);
         open_total += open;
+        open_items.push((number.clone(), inv.number.trim().to_string(), open, due));
         invoices.push(json!({
             "number": number,
             "dateText": issued.map(german_date),
@@ -178,28 +417,10 @@ pub fn check(f: &Fields, e: &mut Errors) -> JsonValue {
         fees.push(json!({ "description": description, "amount": euro(value) }));
     }
 
-    let mut interest_total = 0;
-    let mut interest = JsonValue::Null;
-    if let Some(item) = f.interest {
-        let from = date(e, "document.interest.from", &item.from);
-        let to = date(e, "document.interest.to", &item.to);
-        if from.zip(to).is_some_and(|(from, to)| to < from) {
-            e.add("document.interest.to", "to must not be before from");
-        }
-        if !item.rate.is_finite() || item.rate <= 0.0 || item.rate > 100.0 {
-            e.add(
-                "document.interest.rate",
-                "must be a number greater than 0 and at most 100",
-            );
-        }
-        interest_total = amount(e, "document.interest.amount", item.amount, false);
-        interest = json!({
-            "rate": format!("{}\u{a0}%", decimal((item.rate.clamp(0.0, 100.0) * 10_000.0).round() as i128, 2, true)),
-            "fromText": from.map(german_date),
-            "toText": to.map(german_date),
-            "amount": euro(interest_total),
-        });
-    }
+    let (interest_total, interest, audit) = match f.interest {
+        Some(item) => interest(e, item, &open_items, f.date),
+        None => none(),
+    };
 
     let deadline = date(e, "document.paymentDeadline", f.payment_deadline);
     if deadline.is_some_and(|d| d < f.date) {
@@ -215,6 +436,7 @@ pub fn check(f: &Fields, e: &mut Errors) -> JsonValue {
         "invoices": invoices,
         "fees": fees,
         "interest": interest,
+        "audit": audit,
         "openTotal": euro(open_total),
         "total": euro(total),
         "totalCents": total as i64,
@@ -250,10 +472,12 @@ mod tests {
             amount: 5.0,
         }];
         let interest = DunningInterest {
-            rate: 12.27,
+            rate: Some(12.27),
             from: "2026-01-20".into(),
             to: "2026-02-20".into(),
-            amount: 1.07,
+            amount: Some(1.07),
+            debtor: None,
+            base_rate: None,
         };
         let (out, errors) = run(&Fields {
             level: Some(2.0),
@@ -287,10 +511,12 @@ mod tests {
             amount: -1.0,
         }];
         let interest = DunningInterest {
-            rate: 0.0,
+            rate: Some(0.0),
             from: "2026-03-01".into(),
             to: "2026-02-01".into(),
-            amount: f64::NAN,
+            amount: Some(f64::NAN),
+            debtor: None,
+            base_rate: None,
         };
         let (_, errors) = run(&Fields {
             level: Some(4.0),

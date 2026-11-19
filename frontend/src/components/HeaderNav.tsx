@@ -18,7 +18,7 @@ const destinations = [
 export function HeaderNav({ route, unsaved }: Props) {
   useLang()
   useHideNavOnScroll()
-  const active = route === '' || ['invoice', 'credit-note', 'offer', 'order', 'delivery-note', 'letter', 'sender'].includes(route)
+  const active = route === '' || ['invoice', 'credit-note', 'offer', 'order', 'delivery-note', 'letter', 'dunning', 'sender'].includes(route)
     ? ''
     : route === 'contacts' || route === 'articles'
       ? 'contacts'

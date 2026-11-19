@@ -44,11 +44,18 @@
   due-label: t("Zu zahlen", "Amount due"),
 )
 {% if doc.dunning.interest %}#v(1mm)
-#align(right, small(t("Verzugszinsen: ", "Default interest: ") + "{{ doc.dunning.interest.rate }}" + t(" p. a. vom ", " p.a. from ") + "{{ doc.dunning.interest.fromText }}" + t(" bis ", " to ") + "{{ doc.dunning.interest.toText }}"))
-{% endif %}#v(0.5em)
+{% if doc.dunning.interest.calculated %}#block(width: 100%, small[
+  #strong(t("Berechnung der Verzugszinsen (§ 288 BGB)", "Calculation of default interest (§ 288 BGB)")) \
+  #t[Basiszinssatz (§ 247 BGB) {{ doc.dunning.interest.base }} + {{ doc.dunning.interest.premium }} Prozentpunkte = {{ doc.dunning.interest.rate }} p. a.; tagesgenau (Tage/365), Zinstag ab {% if doc.dunning.interest.fromText %}{{ doc.dunning.interest.fromText }}{% else %}dem Tag nach Fälligkeit{% endif %} bis {{ doc.dunning.interest.toText }}. Verzugszinsen sind Schadensersatz und nicht umsatzsteuerpflichtig.][Statutory base rate (§ 247 BGB) {{ doc.dunning.interest.base }} + {{ doc.dunning.interest.premium }} percentage points = {{ doc.dunning.interest.rate }} p.a.; calculated per day (days/365), interest from {% if doc.dunning.interest.fromText %}{{ doc.dunning.interest.fromText }}{% else %}the day after the due date{% endif %} to {{ doc.dunning.interest.toText }}. Default interest is damages and not subject to VAT.]
+{% for line in doc.dunning.interest.lines %}  \ #strong("{{ line.number }}"): {% for p in line.periods %}{{ p.from }} – {{ p.to }} ({{ p.days }} #t("Tage", "days"), {{ p.rate }}){% if not loop.last %}; {% endif %}{% endfor %} #t("auf", "on") {{ line.principal }} = {{ line.amount }}
+{% endfor %}])
+{% else %}#align(right, small(t("Verzugszinsen: ", "Default interest: ") + "{{ doc.dunning.interest.rate }}" + t(" p. a. vom ", " p.a. from ") + "{{ doc.dunning.interest.fromText }}" + t(" bis ", " to ") + "{{ doc.dunning.interest.toText }}"))
+{% endif %}{% endif %}#v(0.5em)
 {% if settings.bank.iban %}#t[Bitte überweisen Sie den Gesamtbetrag in Höhe von #sum bis spätestens #due_date auf das unten angegebene Konto.][Please transfer the total amount of #sum by #due_date at the latest to the account listed below.]
 
 #bank-details
 {% else %}#t[Bitte überweisen Sie den Gesamtbetrag in Höhe von #sum bis spätestens #due_date.][Please transfer the total amount of #sum by #due_date at the latest.]
+{% endif %}{% if doc.dunning.fees or doc.dunning.interest %}#v(0.5em)
+#small(t("Teilzahlungen werden nach § 367 BGB zunächst auf Kosten, dann auf Zinsen und zuletzt auf die Hauptforderung angerechnet.", "Partial payments are applied first to costs, then to interest and last to the principal (§ 367 BGB)."))
 {% endif %}#closing-text
 #metadata("zone 4 end") <pdfcraft-zone-4-end>

@@ -1,7 +1,7 @@
 import { isObj } from './storage'
 import { tr } from './i18n'
 import type { Issue } from './validate'
-import { docSpec, type Doc, type DocDataKind, type DocKind } from './documents'
+import { defaultDunning, docSpec, newDunningInvoice, type Doc, type DocDataKind, type DocKind } from './documents'
 import { DESIGNS, newItem, type Invoice, type InvoiceItem, type Settings, type StampInfo } from './types'
 
 /** A document that was downloaded. Issued documents are final: they are never edited, only cancelled or copied. */
@@ -116,6 +116,32 @@ export function cancelledNumbers(entries: ArchiveEntry[]): Set<string> {
   return new Set(entries.filter((e) => e.kind === 'credit-note' && e.doc?.reference).map((e) => e.doc!.reference.trim()))
 }
 
+const addDays = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Dunning row for an issued invoice: number, date, due date and the gross total as the open amount (the user adjusts it after partial payments). */
+export function openInvoiceRow(entry: ArchiveEntry, fallbackPaymentDays = 14) {
+  if (entry.kind !== 'invoice' || !entry.invoice) return null
+  const days = entry.settings?.paymentDays ?? fallbackPaymentDays
+  return newDunningInvoice({
+    number: entry.number,
+    date: entry.date,
+    dueDate: entry.invoice.dueDate || (entry.date ? addDays(entry.date, days) : ''),
+    openAmount: Math.round(grossTotal(entry.invoice.items) * 100) / 100,
+  })
+}
+
+/** Issued invoices that no credit note cancelled, newest first: candidates for a dunning letter. */
+export function dunnableInvoices(entries: ArchiveEntry[]): ArchiveEntry[] {
+  const cancelled = cancelledNumbers(entries)
+  return entries
+    .filter((e) => e.kind === 'invoice' && !!e.invoice && !cancelled.has(e.number.trim()))
+    .sort((a, b) => b.date.localeCompare(a.date))
+}
+
 const freshItems = (items: InvoiceItem[]) =>
   items.map((item) => {
     const { id: _id, ...rest } = item
@@ -136,6 +162,11 @@ export function followUpDraft(
     return { ...(base as Invoice), ...common }
   }
   const doc = base as Doc
+  if (target === 'dunning') {
+    const row = openInvoiceRow(entry)
+    const dunning = doc.dunning ?? defaultDunning()
+    return { ...doc, recipient: common.recipient, dunning: { ...dunning, invoices: row ? [row] : dunning.invoices } }
+  }
   const next: Doc = { ...doc, ...common, reference: entry.number }
   if (target === 'credit-note') next.referenceDate = entry.date
   if (target === 'order' && entry.kind === 'offer') next.reference = entry.number

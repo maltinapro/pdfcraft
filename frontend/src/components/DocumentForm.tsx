@@ -1,8 +1,10 @@
 import { TextAreaField, TextField } from './Field'
 import { ItemsEditor } from './ItemsEditor'
 import { RecipientPicker } from './MasterDataPickers'
+import { DunningForm } from './DunningForm'
 import { PostageSection } from './PostageSection'
 import { tr, useLang } from '../lib/i18n'
+import type { ArchiveEntry } from '../lib/archive'
 import type { Doc, DocSpec } from '../lib/documents'
 import type { ZoneId } from '../lib/documents'
 
@@ -11,10 +13,13 @@ interface Props {
   doc: Doc
   onChange: (doc: Doc) => void
   zone: ZoneId
+  /** Issued documents, offered as source of open invoices in the dunning letter. */
+  archive?: ArchiveEntry[]
+  paymentDays?: number
 }
 
 /** Generic form for all non-invoice documents, built from the type's `DocSpec`. */
-export function DocumentForm({ spec, doc, onChange, zone }: Props) {
+export function DocumentForm({ spec, doc, onChange, zone, archive = [], paymentDays = 14 }: Props) {
   useLang()
   const set = <K extends keyof Doc>(key: K, value: Doc[K]) => onChange({ ...doc, [key]: value })
   const setRecipient = (key: keyof Doc['recipient'], value: string) =>
@@ -50,6 +55,10 @@ export function DocumentForm({ spec, doc, onChange, zone }: Props) {
           <TextAreaField field="intro" label={tr('Einleitung', 'Introduction')} value={doc.intro} onChange={(v) => set('intro', v)} />
         )}
       </section>}
+
+      {spec.dunning && doc.dunning && (zone === 'details' || zone === 'items') && (
+        <DunningForm zone={zone} data={doc.dunning} onChange={(dunning) => set('dunning', dunning)} archive={archive} paymentDays={paymentDays} />
+      )}
 
       {zone === 'recipient' && <section className="form-section" data-zone="recipient">
         <h3>{tr('Empfänger', 'Recipient')}</h3>

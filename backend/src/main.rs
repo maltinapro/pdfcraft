@@ -5,6 +5,7 @@ mod dunning;
 mod einvoice;
 mod facturx;
 mod free;
+mod interest;
 mod internetmarke;
 mod invoice;
 mod metrics;

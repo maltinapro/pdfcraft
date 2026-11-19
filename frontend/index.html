@@ -298,10 +298,14 @@
         <p>Aktuelle Version: <strong>__APP_VERSION__</strong></p>
         <ul class="news">
           <li>
-            <strong>Mahnung per API</strong>: <code>POST /v1/documents</code> kennt jetzt den Typ
-            <code>dunning</code> (Zahlungserinnerung, Mahnung, letzte Mahnung) mit offenen Rechnungen,
-            Mahngebühren, Verzugszinsen, neuer Zahlungsfrist und Zahlungsblock samt QR-Code, in allen
-            drei Designs auf Deutsch und Englisch. Im Konfigurator gibt es dafür noch kein Formular.
+            <strong>Mahnung</strong>: Zahlungserinnerung, Mahnung und letzte Mahnung mit offenen Rechnungen,
+            Mahngebühren, neuer Zahlungsfrist und Zahlungsblock samt QR-Code, in allen drei Designs auf
+            Deutsch und Englisch – im Konfigurator (Rechnungen lassen sich aus dem Archiv übernehmen) und per
+            API (<code>POST /v1/documents</code>, Typ <code>dunning</code>). Die <strong>Verzugszinsen</strong>
+            nach § 288 BGB berechnet PDFCraft auf Wunsch tagesgenau aus dem Basiszinssatz (pro Rechnung und
+            Zinsperiode, ausgewiesen auf dem Dokument; ohne Umsatzsteuer). Als Nachweis hängt eine
+            JSON-Datei mit der Berechnung am PDF. Die Basiszinssätze vor 2026 sind noch nicht gegen die
+            Bundesbank geprüft.
           </li>
           <li>
             <strong>Versionsangabe in der API</strong>: <code>GET /v1/version</code> liefert Version, Commit,
@@ -450,8 +454,8 @@
         <ul>
           <li>
             Aktuell gibt es <strong>Rechnung, Stornorechnung, Angebot, Auftragsbestätigung,
-            Lieferschein und Brief</strong>. Über die API gibt es außerdem die <strong>Mahnung</strong>;
-            ein Formular dafür und <strong>weitere PDF-Dokumente</strong> (etwa Berichte) können folgen.
+            Lieferschein und Brief</strong>. Dazu kommt die <strong>Mahnung</strong>;
+            <strong>weitere PDF-Dokumente</strong> (etwa Berichte) können folgen.
           </li>
           <li>
             Bei Bedarf können <strong>individuelle PDF-Vorlagen</strong> für dich erstellt werden.

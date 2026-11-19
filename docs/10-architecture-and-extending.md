@@ -69,7 +69,8 @@ pdfcraft/
     ├── src/v1/warm_up.rs             # start-up compile of sample documents (fonts, templates)
     ├── src/invoice.rs                # Validation/escaping of the /v1 input
     ├── src/documents.rs              # POST /v1/documents[/bulk]: types, validation, template assembly, credit-note XML
-    ├── src/dunning.rs                # dunning letter (`dunning` type): invoices, fees, interest, totals in cents
+    ├── src/dunning.rs                # dunning letter (`dunning` type): invoices, fees, interest, totals in cents, audit record
+    ├── src/interest.rs               # § 288 BGB default interest: day-exact split over base-rate periods (table `src/data/base-rates.json`, env `BASE_RATES`)
     ├── src/internetmarke.rs          # Deutsche Post stamps (optional): /v1/postage/* (products, stamps, bulk, recover), test API for free tokens, nothing stored
     ├── src/postage.rs                # stamp PNG validation and 1:1 sizing for the templates
     ├── src/store.rs                  # tokens + rate limit (Valkey), `tokens` CLI

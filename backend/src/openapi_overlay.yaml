@@ -429,6 +429,36 @@ examples:
             from: '2026-02-17'
             to: '2026-04-01'
             amount: 18.1
+    dunningCalculatedInterest:
+      summary: Dunning letter with default interest calculated from the base rate
+      value:
+        type: dunning
+        settings:
+          sender:
+            name: Muster GmbH
+            address: Musterstr. 1
+            city: 12345 Musterstadt
+          bank:
+            iban: DE89370400440532013000
+        document:
+          number: M-2026-002
+          date: '2026-08-10'
+          dunningLevel: 2
+          paymentDeadline: '2026-08-24'
+          recipient:
+            name: Kunde AG
+            address: Kundenweg 5
+            city: 54321 Kundenstadt
+          invoices:
+          - number: R-2026-001
+            date: '2026-06-02'
+            dueDate: '2026-06-16'
+            openAmount: 1000
+          fees:
+          - description: Mahngebühr
+            amount: 5
+          interest:
+            debtor: business
   createDocumentsBulk:
     offers:
       summary: Two offers

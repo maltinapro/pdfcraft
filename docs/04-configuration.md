@@ -9,6 +9,7 @@
 | `VALKEY_MODE` | `auto` | `auto` asks the server (`INFO cluster`) and switches to the cluster client for sharded Valkey (e.g. the official Valkey operator); `standalone` / `cluster` force a mode. Standalone, primary/replica behind one address and cluster all work |
 | `SERVICE_TOKENS` | empty | Static service tokens without expiry, as hashed entries `<id>:<sha256 hex of the token>:<plan or invoices per minute>` separated by commas or newlines. They work without Valkey ([guide](05-tokens-and-rate-limiting.md#static-service-tokens)) |
 | `SERVICE_TOKENS_FILE` | empty | Path of a file with the same entries (one per line, `#` comments), e.g. a mounted secret. Used in addition to `SERVICE_TOKENS`; read at start-up |
+| `BASE_RATES` | empty | Statutory base rates (§ 247 BGB) for dunning letters with calculated interest, added to or replacing the built-in table `backend/src/data/base-rates.json`: `2027-01-01=1.77,2027-07-01=1.90` (percent, only 1 January / 1 July; see [API reference](09-api-reference.md#dunning-letter-dunning)). The built-in table ends on 2026-12-31 |
 | `FREE_RATE_LIMIT_PER_MINUTE` | `20` | Invoices per minute for every free token (static) |
 | `FREE_TOKEN_TTL_SECONDS` | `43200` | Lifetime of a free token (12 h) |
 | `ANUBIS_PUBLIC_KEY_HEX` | empty | Public key of the Anubis instance; free tokens are disabled without it ([guide](11-free-token-and-anubis.md)) |

@@ -34,6 +34,7 @@ interface Props {
   settings: Settings
   onSettingsChange: (settings: Settings) => void
   forInvoice: boolean
+  bank?: boolean
   data: unknown
   render: (signal: AbortSignal) => Promise<RenderedPdf>
   form: (zone: ZoneId) => ReactNode
@@ -56,6 +57,7 @@ export function Workspace({
   settings,
   onSettingsChange,
   forInvoice,
+  bank,
   data,
   render,
   form,
@@ -237,7 +239,7 @@ export function Workspace({
           ]}
           onChange={setSenderSection}
         />
-        <SettingsForm settings={settings} onChange={onSettingsChange} forInvoice={forInvoice} zone={zone} senderSection={senderSection} />
+        <SettingsForm settings={settings} onChange={onSettingsChange} forInvoice={forInvoice} bank={bank} zone={zone} senderSection={senderSection} />
       </>
     ) : (
       form(zone)
@@ -405,7 +407,7 @@ export function Workspace({
                 </div>
               )}
               <span className="preview-toolbar-spacer" />
-              {settings.zugferd && <button type="button" className="preview-chip" onClick={() => void showXml()} disabled={!pdfBlob}>ZUGFeRD XML</button>}
+              {settings.zugferd && (kind === 'invoice' || kind === 'credit-note') && <button type="button" className="preview-chip" onClick={() => void showXml()} disabled={!pdfBlob}>ZUGFeRD XML</button>}
               {previewUrl && <button type="button" className="preview-chip" onClick={openPdf}>{tr('PDF öffnen', 'Open PDF')}</button>}
             </div>
             {paused && <PreviewPaused count={problems.length} onShow={revealProblems} />}

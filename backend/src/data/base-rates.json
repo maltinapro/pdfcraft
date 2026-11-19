@@ -1,0 +1,11 @@
+[
+  {"valid_from": "2016-07-01", "valid_to": "2022-12-31", "base_rate": -0.0088, "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"},
+  {"valid_from": "2023-01-01", "valid_to": "2023-06-30", "base_rate": 0.0162, "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"},
+  {"valid_from": "2023-07-01", "valid_to": "2023-12-31", "base_rate": 0.0312, "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"},
+  {"valid_from": "2024-01-01", "valid_to": "2024-06-30", "base_rate": 0.0362, "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"},
+  {"valid_from": "2024-07-01", "valid_to": "2024-12-31", "base_rate": 0.0337, "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"},
+  {"valid_from": "2025-01-01", "valid_to": "2025-06-30", "base_rate": 0.0227, "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"},
+  {"valid_from": "2025-07-01", "valid_to": "2025-12-31", "base_rate": 0.0127, "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"},
+  {"valid_from": "2026-01-01", "valid_to": "2026-06-30", "base_rate": 0.0127, "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"},
+  {"valid_from": "2026-07-01", "valid_to": "2026-12-31", "base_rate": 0.0152, "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB, Stand 01.07.2026 (Bundesanzeiger / IHK)"}
+]
