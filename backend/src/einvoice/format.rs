@@ -26,7 +26,7 @@ pub(super) fn group_thousands(int: &str) -> String {
 }
 
 /// Formats a 4-decimal fixed-point value with at least `min` decimals.
-pub(super) fn decimal(v: i128, min: usize, comma: bool) -> String {
+pub(crate) fn decimal(v: i128, min: usize, comma: bool) -> String {
     let sign = if v < 0 { "-" } else { "" };
     let abs = v.abs();
     let mut frac = format!("{:04}", abs % 10_000);
@@ -43,8 +43,13 @@ pub(super) fn decimal(v: i128, min: usize, comma: bool) -> String {
     }
 }
 
+/// An amount in euro as whole cents, rounded half away from zero.
+pub(crate) fn cents(v: f64) -> i128 {
+    div_round(fixed(v), 100)
+}
+
 /// Cents (value * 100) as a German amount: `1.234,56`.
-pub(super) fn money(cents: i128) -> String {
+pub(crate) fn money(cents: i128) -> String {
     decimal(cents * 100, 2, true)
 }
 

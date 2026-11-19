@@ -138,7 +138,7 @@ The browser preview adds `?zones=1` to single-document requests. This optional f
 
 ## `POST /v1/documents`
 
-Credit note (Stornorechnung), offer, order confirmation, delivery note and letter. Same authentication, rate limit (one token per PDF), watermark rules and error format as `/v1/invoices`.
+Credit note (Stornorechnung), offer, order confirmation, delivery note, letter and dunning letter (Mahnung). Same authentication, rate limit (one token per PDF), watermark rules and error format as `/v1/invoices`.
 
 **Body:** `{ "type": "...", "settings": { ... }, "document": { ... } }`
 
@@ -149,8 +149,24 @@ Credit note (Stornorechnung), offer, order confirmation, delivery note and lette
 | `order` | `number`, `date`, `recipient`, `items` | Optional `deliveryDate`, `reference`, `intro`, `closing` |
 | `delivery-note` | `number`, `date`, `recipient`, `items` | No prices; optional `deliveryDate`, `reference`, `intro`, `closing` |
 | `letter` | `date`, `recipient`, `subject`, `body` | Optional `reference`, `closing` (e.g. "Mit freundlichen Grüßen") |
+| `dunning` | `number`, `date`, `recipient`, `dunningLevel`, `invoices`, `paymentDeadline` | Dunning letter, see below |
 
-`recipient` is `{ name, address, city }`, items are `{ description, quantity, unit, price, taxRate }` like in invoices, dates are `YYYY-MM-DD`. Only `settings.sender`, the logo, accent color, font, locale and footer are used. Unknown `type` → `400 invalid_request`.
+`recipient` is `{ name, address, city }`, items are `{ description, quantity, unit, price, taxRate }` like in invoices, dates are `YYYY-MM-DD`. Only `settings.sender`, the logo, accent color, font, locale and footer are used (and `settings.bank` for the `dunning` payment block). Unknown `type` → `400 invalid_request`.
+
+### Dunning letter (`dunning`)
+
+References one or more open invoices and asks for payment until a new deadline. It is laid out in all three designs and in German or English (`settings.locale`) and has the payment block of the invoice (account, `Verwendungszweck` = the dunning `number`, EPC QR code with the total when `settings.bank.iban` is valid). The PDF carries no e-invoice XML.
+
+| Field | Meaning |
+| --- | --- |
+| `dunningLevel` | `1` payment reminder (Zahlungserinnerung), `2` dunning letter (Mahnung), `3` final dunning letter (Letzte Mahnung); selects the title and the default text |
+| `invoices` | 1 to 100 open invoices: `number`, `date`, `dueDate` (not before `date`) and the still open gross amount `openAmount` (> 0) |
+| `fees` | optional, up to 20 lines `{ description, amount }` (e.g. dunning fee), amount ≥ 0 |
+| `interest` | optional default interest (§ 288 BGB): `rate` (percent per year, > 0 to 100), period `from`/`to`, and the `amount` for it |
+| `paymentDeadline` | new payment deadline, not before `date`; shown in the info block and in the payment text |
+| `intro`, `closing` | optional; without `intro` a default text for the level is printed |
+
+PDFCraft does not calculate fees or interest: the caller passes the amounts. The total claim (sum of the open amounts, fees and interest, computed in cents) is printed and is the amount of the payment block and the QR code. Validation errors are reported with the path, e.g. `document.invoices[0].openAmount`.
 
 ```bash
 curl -X POST http://localhost:3000/v1/documents \

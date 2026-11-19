@@ -298,6 +298,12 @@
         <p>Aktuelle Version: <strong>__APP_VERSION__</strong></p>
         <ul class="news">
           <li>
+            <strong>Mahnung per API</strong>: <code>POST /v1/documents</code> kennt jetzt den Typ
+            <code>dunning</code> (Zahlungserinnerung, Mahnung, letzte Mahnung) mit offenen Rechnungen,
+            Mahngebühren, Verzugszinsen, neuer Zahlungsfrist und Zahlungsblock samt QR-Code, in allen
+            drei Designs auf Deutsch und Englisch. Im Konfigurator gibt es dafür noch kein Formular.
+          </li>
+          <li>
             <strong>Versionsangabe in der API</strong>: <code>GET /v1/version</code> liefert Version, Commit,
             Typst-Version und Template-Hashes; jede Antwort enthält den Header <code>X-Pdfcraft-Version</code>.
           </li>
@@ -444,8 +450,8 @@
         <ul>
           <li>
             Aktuell gibt es <strong>Rechnung, Stornorechnung, Angebot, Auftragsbestätigung,
-            Lieferschein und Brief</strong>. <strong>Weitere PDF-Dokumente</strong> (etwa Mahnungen
-            oder Berichte) können folgen.
+            Lieferschein und Brief</strong>. Über die API gibt es außerdem die <strong>Mahnung</strong>;
+            ein Formular dafür und <strong>weitere PDF-Dokumente</strong> (etwa Berichte) können folgen.
           </li>
           <li>
             Bei Bedarf können <strong>individuelle PDF-Vorlagen</strong> für dich erstellt werden.
