@@ -7,7 +7,7 @@ The `/v1` API needs a **token**. There are three kinds: free and purchased token
 | For | the demo configurator (see [Free Token](11-free-token-and-anubis.md)) | productive use |
 | Limit | static: `FREE_RATE_LIMIT_PER_MINUTE` (default 20 invoices/minute) | depends on the plan, see `PAID_PLANS` |
 | Lifetime | `FREE_TOKEN_TTL_SECONDS` (default 12 h), then deleted by Valkey | until its end date; renewable by token id |
-| PDF output | marked with the watermark "Entwurf" | no watermark |
+| PDF output | marked with the watermark "Entwurf" | no watermark (unless the request sets `options.watermark: "draft"`) |
 | Feature flag | always on | `PAID_TOKENS_ENABLED=true` (default **off**) |
 
 Send the token as `Authorization: Bearer <token>` or `X-API-Key: <token>`.

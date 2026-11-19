@@ -214,9 +214,29 @@ pub(crate) async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiE
     }
 }
 
-/// PDFs created with a free token get a diagonal "Entwurf" / "Draft" watermark (by document language).
-fn with_watermark(client: &Client, mut settings: serde_json::Value) -> serde_json::Value {
-    if client.kind == store::Kind::Free {
+/// Optional per-request render options.
+#[derive(Deserialize, Default, ToSchema)]
+pub(crate) struct Options {
+    /// `draft` prints the diagonal "Entwurf" / "Draft" watermark (by document language) on every PDF of the
+    /// request, for any token. Free tokens always get the watermark, with or without this option.
+    watermark: Option<WatermarkOption>,
+}
+
+/// Value of `options.watermark`.
+#[derive(Deserialize, Clone, Copy, PartialEq, Eq, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum WatermarkOption {
+    Draft,
+}
+
+/// PDFs created with a free token, or with `options.watermark = "draft"`, get a diagonal
+/// "Entwurf" / "Draft" watermark (by document language).
+fn with_watermark(
+    client: &Client,
+    options: &Options,
+    mut settings: serde_json::Value,
+) -> serde_json::Value {
+    if client.kind == store::Kind::Free || options.watermark == Some(WatermarkOption::Draft) {
         if let Some(obj) = settings.as_object_mut() {
             let english = obj.get("locale").and_then(|v| v.as_str()) == Some("en-de");
             obj.insert(
@@ -263,6 +283,8 @@ fn bad_json(e: JsonRejection) -> ApiError {
 pub(crate) struct InvoiceRequest {
     settings: Settings,
     invoice: Invoice,
+    #[serde(default)]
+    options: Options,
 }
 
 /// Many invoices with shared settings.
@@ -272,6 +294,8 @@ pub(crate) struct InvoiceBulkRequest {
     /// Between 1 and `bulkMax` of the token (see `GET /v1/token`).
     #[schema(min_items = 1)]
     invoices: Vec<Invoice>,
+    #[serde(default)]
+    options: Options,
 }
 
 /// The logo and the signature of the settings as virtual files (`assets.logo`, `assets.signature`).
@@ -316,7 +340,7 @@ pub(crate) async fn single(
     let assets = settings_assets(&settings)?;
     let (data, assets) = invoice_data(
         &req.settings,
-        with_watermark(&client, settings.data),
+        with_watermark(&client, &req.options, settings.data),
         &req.invoice,
         invoice,
         assets,
@@ -347,6 +371,8 @@ pub(crate) struct DocumentRequest {
     kind: String,
     settings: Settings,
     document: Document,
+    #[serde(default)]
+    options: Options,
 }
 
 /// Validates one document and builds its template data. Problems are added to `errors`
@@ -563,7 +589,7 @@ pub(crate) async fn document_single(
     let Some((data, assets)) = prepare_document(
         kind,
         &req.settings,
-        with_watermark(&client, settings.data),
+        with_watermark(&client, &req.options, settings.data),
         assets,
         &req.document,
         "document",
@@ -596,6 +622,8 @@ pub(crate) struct DocumentBulkRequest {
     /// Between 1 and `bulkMax` of the token (see `GET /v1/token`).
     #[schema(min_items = 1)]
     documents: Vec<Document>,
+    #[serde(default)]
+    options: Options,
 }
 
 /// Create many documents of one type (ZIP of PDFs)
@@ -633,7 +661,7 @@ pub(crate) async fn document_bulk(
         .enumerate()
         .filter_map(|(i, doc)| {
             let path = format!("documents[{i}]");
-            let settings_data = with_watermark(&client, settings.data.clone());
+            let settings_data = with_watermark(&client, &req.options, settings.data.clone());
             prepare_document(
                 kind,
                 &req.settings,
@@ -708,7 +736,7 @@ pub(crate) async fn bulk(
         .map(|(checked, invoice)| {
             invoice_data(
                 &req.settings,
-                with_watermark(&client, settings.data.clone()),
+                with_watermark(&client, &req.options, settings.data.clone()),
                 invoice,
                 checked,
                 assets.clone(),
