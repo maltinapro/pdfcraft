@@ -92,7 +92,7 @@ pub const VERSION: &str = match option_env!("APP_VERSION") {
     _ => env!("CARGO_PKG_VERSION"),
 };
 
-const COMMIT: &str = match option_env!("APP_COMMIT") {
+pub const COMMIT: &str = match option_env!("APP_COMMIT") {
     Some(v) if !v.is_empty() => v,
     _ => "unknown",
 };

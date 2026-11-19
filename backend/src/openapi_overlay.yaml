@@ -28,6 +28,10 @@ info:
     The response then includes `X-Pdfcraft-Zones`, JSON geometry for zones 3 and 4 in millimeters.
     Without the flag this header is omitted; bulk responses are unchanged.
 
+    **Version.** Every response carries `X-Pdfcraft-Version` (the release version of the backend, also on errors).
+    `GET /v1/version` needs no token and adds the git commit, the Typst version and a SHA-256 hash of every
+    template. Store these with the input of each issued document to reproduce its rendering later.
+
     The request examples are tested against the backend, so they stay valid.
   license:
     name: MIT
@@ -51,6 +55,8 @@ tags:
   description: Credit notes, offers, order confirmations, delivery notes and letters as PDF.
 - name: Token
   description: Information about the calling token.
+- name: Version
+  description: Version of the backend that renders the documents.
 components:
   securitySchemes:
     bearerAuth:
@@ -63,6 +69,10 @@ components:
       name: X-API-Key
       description: Alternative to the bearer header; the same token.
   headers:
+    PdfcraftVersion:
+      description: Release version of the backend that produced the response (same as `version` of `GET /v1/version`).
+      schema:
+        type: string
     RetryAfter:
       description: Seconds to wait before the request is repeated.
       schema:
@@ -76,6 +86,8 @@ components:
     Pdf:
       description: The PDF (PDF/A-3b).
       headers:
+        X-Pdfcraft-Version:
+          $ref: '#/components/headers/PdfcraftVersion'
         Content-Disposition:
           $ref: '#/components/headers/ContentDisposition'
       content:
@@ -87,6 +99,8 @@ components:
     Zip:
       description: A ZIP archive with one PDF per entry, in the order of the request.
       headers:
+        X-Pdfcraft-Version:
+          $ref: '#/components/headers/PdfcraftVersion'
         Content-Disposition:
           $ref: '#/components/headers/ContentDisposition'
       content:
@@ -416,6 +430,21 @@ examples:
             unit: mo
             price: 99
 responseExamples:
+  getVersion:
+    release:
+      summary: Release build
+      value:
+        version: 1.4.0
+        commit: 5f3a9c1d2b7e4a60918c3d5e7f1a2b4c6d8e0f12
+        typst: 0.15.1
+        templateHash: 9b1e4c7a0d3f6a2851c4e7b0d3a6f9c2185b4e7a0d3c6f9b2e5a8d1c4f7b0e3a
+        templates:
+          credit-note: 2c5f8b1e4a7d0c3f6b9e2a5d8c1f4b7e0a3d6c9f2b5e8a1d4c7f0b3e6a9d2c5f
+          delivery-note: 3d6a9c2f5b8e1a4d7c0f3b6e9a2d5c8f1b4e7a0d3c6f9b2e5a8d1c4f7b0e3a6d
+          invoice: 4e7b0d3a6c9f2b5e8a1d4c7f0b3e6a9d2c5f8b1e4a7d0c3f6b9e2a5d8c1f4b7e
+          letter: 5f8c1e4b7a0d3c6f9b2e5a8d1c4f7b0e3a6d9c2f5b8e1a4d7c0f3b6e9a2d5c8f
+          offer: 6a9d2c5f8b1e4a7d0c3f6b9e2a5d8c1f4b7e0a3d6c9f2b5e8a1d4c7f0b3e6a9d
+          order: 7b0e3a6d9c2f5b8e1a4d7c0f3b6e9a2d5c8f1b4e7a0d3c6f9b2e5a8d1c4f7b0e
   getToken:
     paid:
       summary: Purchased token

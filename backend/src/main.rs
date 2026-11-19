@@ -15,6 +15,7 @@ mod signature;
 mod store;
 mod telemetry;
 mod v1;
+mod version;
 
 use axum::{
     extract::{DefaultBodyLimit, Json},
@@ -556,7 +557,9 @@ async fn main() {
 
     let app = Router::new()
         .route("/health", get(health))
+        .route("/version", get(version::info))
         .nest("/v1", v1::router())
+        .layer(axum::middleware::from_fn(version::version_header))
         .layer(axum::middleware::from_fn(security_headers))
         .layer(axum::middleware::from_fn(telemetry::access_log))
         .layer(DefaultBodyLimit::max(MAX_REQUEST_BODY_BYTES))

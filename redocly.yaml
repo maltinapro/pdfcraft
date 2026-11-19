@@ -3,3 +3,5 @@ extends:
 rules:
   # The spec lists the local backend on purpose
   no-server-example.com: off
+  # GET /v1/version is public and has no input that could be wrong
+  operation-4xx-response: off

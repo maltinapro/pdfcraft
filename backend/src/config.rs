@@ -276,7 +276,10 @@ pub fn cors_layer() -> CorsLayer {
     let layer = CorsLayer::new()
         .allow_methods(Any)
         .allow_headers(Any)
-        .expose_headers([HeaderName::from_static("x-pdfcraft-zones")]);
+        .expose_headers([
+            HeaderName::from_static("x-pdfcraft-zones"),
+            HeaderName::from_static("x-pdfcraft-version"),
+        ]);
     match &get().cors_origins {
         None => layer.allow_origin(Any),
         Some(origins) => layer.allow_origin(AllowOrigin::list(

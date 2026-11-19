@@ -4,7 +4,7 @@ See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key man
 
 ## OpenAPI specification
 
-[`openapi.yaml`](openapi.yaml) (OpenAPI 3.1) describes `POST /v1/invoices`, `/v1/invoices/bulk`, `/v1/documents`, `/v1/documents/bulk`, `GET /v1/token`, the two ways to send the token (`Authorization: Bearer <token>` or `X-API-Key`), `Retry-After` on `429`/`503` and the error envelope with its codes. The purchase, Mollie webhook, free-token and postage endpoints are not part of it yet. Use it to generate a client (for example with [OpenAPI Generator](https://openapi-generator.tech/)) or to try requests.
+[`openapi.yaml`](openapi.yaml) (OpenAPI 3.1) describes `POST /v1/invoices`, `/v1/invoices/bulk`, `/v1/documents`, `/v1/documents/bulk`, `GET /v1/token`, `GET /v1/version`, the `X-Pdfcraft-Version` header, the two ways to send the token (`Authorization: Bearer <token>` or `X-API-Key`), `Retry-After` on `429`/`503` and the error envelope with its codes. The purchase, Mollie webhook, free-token and postage endpoints are not part of it yet. Use it to generate a client (for example with [OpenAPI Generator](https://openapi-generator.tech/)) or to try requests.
 
 - **Interactive reference:** the frontend build publishes the spec as `/api/openapi.yaml` and renders it with a self-hosted Swagger UI at `/api/` (no external requests; with `docker compose up --build` at http://localhost:8080/api/, with `npm run dev` at http://localhost:5173/api/). "Try it out" sends the requests to the host that serves the page.
 - **Quickstart:** `curl -X POST https://digitalrechnung.jetzt/v1/invoices -H 'Authorization: Bearer YOUR_TOKEN' -H 'content-type: application/json' --data @pdfcraft-config.json -o invoice.pdf` (examples below).
@@ -21,6 +21,7 @@ See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key man
 | `POST /v1/mollie/webhook` | none (payment is fetched from Mollie) | Creates/extends purchased tokens (only with `PAID_TOKENS_ENABLED`) |
 | `GET /v1/tokens/claim` | order id | Hands out a purchased token once after payment |
 | `GET /v1/checkout/offers` | none | Offers for the purchase page; `{"enabled": false}` when purchases are not configured |
+| `GET /v1/version` | none | Version, git commit, Typst version and template hashes of the running backend, see [Version information](#version-information) |
 | `GET /v1/token` | any token | Kind (`free`, `paid`, `service`), plan, limit, end date (`null` for service tokens) and `subscription` flag of the calling token |
 | `POST /v1/subscription/cancel` | purchased token | Cancels the Mollie subscription of the token (stays valid until its end) |
 | `POST /v1/invoices` | token | One invoice → PDF |
@@ -29,6 +30,22 @@ See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key man
 | `GET /v1/postage/products` | token | Deutsche Post products and prices (optional feature, see [guide 14](14-internetmarke-integration.md)) |
 | `POST /v1/postage/stamps`, `/stamps/bulk` | token | Buy one or up to 25 stamps with the user's own Portokasse login (free tokens may use test stamps) |
 | `POST /v1/postage/stamps/recover` | token | Fetch a paid but undelivered stamp again, no new charge |
+
+## Version information
+
+Every response of the backend (PDFs, ZIPs and errors) carries `X-Pdfcraft-Version: <release version>`. `GET /v1/version` needs no token, costs no rate-limit unit and answers
+
+```json
+{
+  "version": "1.4.0",
+  "commit": "5f3a9c1d2b7e4a60918c3d5e7f1a2b4c6d8e0f12",
+  "typst": "0.15.1",
+  "templateHash": "9b1e4c7a…",
+  "templates": { "invoice": "4e7b0d3a…", "credit-note": "2c5f8b1e…", "offer": "6a9d2c5f…" }
+}
+```
+
+`version` is the release tag of the image (build arg `APP_VERSION`, the crate version for local builds), `commit` the git SHA (`APP_COMMIT`, `unknown` for local builds). `templates` holds the SHA-256 of the complete Typst source (shared layout plus body) per document type, `templateHash` one hash over all of them, so a changed template is visible even if the version number is not bumped. A client that stores issued documents can keep this answer (or `X-Pdfcraft-Version` plus `templates.<type>`) with the input of each document as render snapshot. The same handler is also served at `GET /version` on the backend itself; the Helm ingress forwards only `/v1`. Browsers can read the header cross-origin (`Access-Control-Expose-Headers`).
 
 ## `GET /health`
 
