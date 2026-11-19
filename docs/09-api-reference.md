@@ -21,7 +21,7 @@ See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key man
 | `POST /v1/mollie/webhook` | none (payment is fetched from Mollie) | Creates/extends purchased tokens (only with `PAID_TOKENS_ENABLED`) |
 | `GET /v1/tokens/claim` | order id | Hands out a purchased token once after payment |
 | `GET /v1/checkout/offers` | none | Offers for the purchase page; `{"enabled": false}` when purchases are not configured |
-| `GET /v1/token` | any token | Plan, limit, end date and `subscription` flag of the calling token |
+| `GET /v1/token` | any token | Kind (`free`, `paid`, `service`), plan, limit, end date (`null` for service tokens) and `subscription` flag of the calling token |
 | `POST /v1/subscription/cancel` | purchased token | Cancels the Mollie subscription of the token (stays valid until its end) |
 | `POST /v1/invoices` | token | One invoice → PDF |
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP of PDFs |

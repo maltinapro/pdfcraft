@@ -163,7 +163,7 @@ fn inject_allowed_values(schemas: &mut Value, error_codes: &Value) {
     );
     set_enum(
         &mut schemas["TokenInfo"]["properties"]["kind"],
-        json!(["free", "paid"]),
+        json!(["free", "paid", "service"]),
     );
     set_enum(
         &mut schemas["Error"]["properties"]["error"],

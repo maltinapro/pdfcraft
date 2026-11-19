@@ -125,7 +125,7 @@ Then open `https://pdfcraft.vorneweg.org/` (landing page) and `/app/` and check 
 
 ## Values
 
-See `values.yaml`: image registry/tag (empty tag = the chart's `appVersion`), replicas and resources, `backend.env` (default `MAX_CONCURRENT_COMPILES=2`), ingress host, class, TLS secret and ClusterIssuer, and `nodeSelector` (global, e.g. `kubernetes.io/arch: arm64`; `backend.nodeSelector`, `frontend.nodeSelector`, `anubis.nodeSelector` and `valkey.nodeSelector` override it per component).
+See `values.yaml`: image registry/tag (empty tag = the chart's `appVersion`), replicas and resources, `backend.env` (default `MAX_CONCURRENT_COMPILES=2`), ingress host, class, TLS secret and ClusterIssuer, `backend.serviceTokensSecret` (a Secret with the key `service-tokens` holding hashed static service tokens, see [Tokens and Rate Limiting](../../../docs/05-tokens-and-rate-limiting.md#static-service-tokens)), and `nodeSelector` (global, e.g. `kubernetes.io/arch: arm64`; `backend.nodeSelector`, `frontend.nodeSelector`, `anubis.nodeSelector` and `valkey.nodeSelector` override it per component).
 
 ## Monitoring (optional)
 

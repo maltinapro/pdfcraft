@@ -10,6 +10,7 @@ mod metrics;
 mod mollie;
 mod openapi;
 mod postage;
+mod service_tokens;
 mod signature;
 mod store;
 mod telemetry;
@@ -580,16 +581,24 @@ async fn main() {
         listen = %cfg.bind_addr,
         version = metrics::VERSION,
         store = store::is_configured(),
+        service_tokens = cfg.service_tokens.len(),
         paid_tokens_enabled = cfg.paid_tokens_enabled,
         free_rate_limit_per_minute = cfg.free_rate_limit_per_minute,
         max_concurrent_compiles = cfg.max_concurrent_compiles,
         "PDFCraft backend listening"
     );
-    if !store::is_configured() {
-        tracing::warn!(
-            event = "store_not_configured",
-            "POST /v1/invoices answers 503 (set VALKEY_URL)"
-        );
+    if cfg.valkey_url.is_none() {
+        if cfg.service_tokens.is_empty() {
+            tracing::warn!(
+                event = "store_not_configured",
+                "POST /v1/invoices answers 503 (set VALKEY_URL or SERVICE_TOKENS)"
+            );
+        } else {
+            tracing::info!(
+                event = "store_not_configured",
+                "VALKEY_URL is not set: only static service tokens are accepted, rate limits are per instance"
+            );
+        }
     }
 
     axum::serve(listener, app).await.expect("Server error");

@@ -33,8 +33,8 @@ Rule of thumb: **everything goes through `/v1`: the frontend with a free token, 
 
 How the backend decides:
 
-- `/v1` answers `503 store_unavailable` while `VALKEY_URL` is unset or Valkey is unreachable.
-- Tokens and rate limits always live in Valkey; see [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md).
+- `/v1` answers `503 store_unavailable` while `VALKEY_URL` is unset (and no static service token is configured) or Valkey is unreachable.
+- Free and purchased tokens and their rate limits live in Valkey; static service tokens (`SERVICE_TOKENS`) need no Valkey. See [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md).
 - The old template-based `/generate-pdf` endpoint no longer exists.
 
 Start-up prints which endpoints are active, for example:

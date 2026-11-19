@@ -588,7 +588,7 @@ pub async fn webhook(body: Bytes) -> Result<Response, ApiError> {
 #[derive(Serialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TokenInfo {
-    /// `free` or `paid`.
+    /// `free`, `paid` or `service`.
     kind: &'static str,
     /// Public token id (not the secret).
     id: String,
@@ -598,7 +598,7 @@ pub(crate) struct TokenInfo {
     limit_per_minute: u32,
     /// Maximum entries per bulk request.
     bulk_max: usize,
-    /// End of the token (unix seconds); `null` if unknown.
+    /// End of the token (unix seconds); `null` if unknown or for a service token, which does not expire.
     #[schema(required = true)]
     expires_at: Option<u64>,
     /// Whether a subscription renews the token.
@@ -617,9 +617,13 @@ pub(crate) struct TokenInfo {
     responses((status = 200, description = "The token's properties.", body = TokenInfo, headers(("Cache-Control" = String, description = "Always `no-store`."))))
 )]
 pub async fn token_info(Extension(client): Extension<Client>) -> Result<Response, ApiError> {
-    let until = store::token_until(&client.id)
-        .await
-        .map_err(|_| store_unavailable())?;
+    let until = if client.kind == Kind::Service {
+        None
+    } else {
+        store::token_until(&client.id)
+            .await
+            .map_err(|_| store_unavailable())?
+    };
     let subscription = client.kind == Kind::Paid
         && store::get_value(&format!("{SUBSCRIPTION_OF_PREFIX}{}", client.id))
             .await

@@ -11,6 +11,7 @@
 //! | `ANUBIS_COOKIE_NAME` | `techaro.lol-anubis-auth` | Name of the Anubis pass cookie |
 //! | `PAID_TOKENS_ENABLED` | `false` | Feature flag: accept purchased tokens |
 //! | `PAID_PLANS` | `starter=30,business=100,pro=300` | Paid plans as `name=invoices_per_minute` |
+//! | `SERVICE_TOKENS` / `SERVICE_TOKENS_FILE` | – | Static service tokens without expiry as `<id>:<sha256 hex of the token>:<plan or invoices per minute>` (comma or newline separated; the file is e.g. a mounted secret); they work without Valkey |
 //! | `MOLLIE_API_KEY` | empty | Mollie API key (`test_…` / `live_…`); needed for checkout and the webhook |
 //! | `MOLLIE_API_URL` | `https://api.mollie.com/v2` | Mollie API base URL (override for tests; plain http only for loopback) |
 //! | `PUBLIC_URL` | empty | Public base URL of this backend; Mollie calls `<PUBLIC_URL>/v1/mollie/webhook` |
@@ -50,6 +51,7 @@ pub struct Config {
     pub anubis_cookie_name: String,
     pub paid_tokens_enabled: bool,
     pub paid_plans: Vec<(String, u32)>,
+    pub service_tokens: Vec<crate::service_tokens::ServiceToken>,
     pub paid_retention_days: u64,
     pub mollie_api_key: Option<String>,
     pub mollie_api_url: String,
@@ -153,6 +155,7 @@ impl Config {
             .ok()
             .filter(|v| !v.trim().is_empty())
             .unwrap_or_else(|| "starter=30,business=100,pro=300".into());
+        let paid_plans = parse_plans(&plans_raw);
         Self {
             bind_addr: std::env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into()),
             metrics_addr: Some(
@@ -182,7 +185,8 @@ impl Config {
                 .filter(|v| !v.trim().is_empty())
                 .unwrap_or_else(|| "techaro.lol-anubis-auth".into()),
             paid_tokens_enabled: env_parse("PAID_TOKENS_ENABLED", false),
-            paid_plans: parse_plans(&plans_raw),
+            service_tokens: crate::service_tokens::load(&paid_plans),
+            paid_plans,
             paid_retention_days: env_parse("PAID_TOKEN_RETENTION_DAYS", 365u64),
             mollie_api_key: env_opt("MOLLIE_API_KEY"),
             mollie_api_url: env_opt("MOLLIE_API_URL")

@@ -132,11 +132,21 @@ fn unauthorized(details: &'static str) -> Response {
 }
 
 async fn auth(mut req: Request, next: Next) -> Response {
-    if !store::is_configured() {
+    let presented = presented_key(&req).unwrap_or_default();
+    let service = crate::service_tokens::lookup(&presented);
+    // Without Valkey only static service tokens can be checked; that is a valid setup when
+    // `VALKEY_URL` is not set at all (a Valkey that is still connecting answers 503).
+    let service_only =
+        config::get().valkey_url.is_none() && !config::get().service_tokens.is_empty();
+    if service.is_none() && !store::is_configured() && !service_only {
         return store_unavailable().into_response();
     }
-    let presented = presented_key(&req).unwrap_or_default();
-    match store::lookup(&presented).await {
+    let found = match service {
+        Some(client) => Ok(Some(client)),
+        None if !store::is_configured() => Ok(None),
+        None => store::lookup(&presented).await,
+    };
+    match found {
         Err(_) => {
             crate::metrics::auth_failure("store_unavailable");
             store_unavailable().into_response()
@@ -145,8 +155,8 @@ async fn auth(mut req: Request, next: Next) -> Response {
             crate::metrics::auth_failure("invalid_token");
             tracing::warn!(event = "auth_failed", reason = "invalid_token");
             unauthorized(
-            "missing, invalid or expired token (use `Authorization: Bearer <token>` or `X-API-Key`)",
-        )
+                "missing, invalid or expired token (use `Authorization: ****** or `X-API-Key`)",
+            )
         }
         Ok(Some(client))
             if client.kind == store::Kind::Paid && !config::get().paid_tokens_enabled =>
@@ -187,7 +197,13 @@ pub(crate) async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiE
             ),
         ));
     }
-    match store::take(client, cost as u32).await {
+    // Service tokens keep an in-process bucket when there is no Valkey at all
+    let taken = if client.kind == store::Kind::Service && config::get().valkey_url.is_none() {
+        Ok(crate::service_tokens::take(client, cost as u32))
+    } else {
+        store::take(client, cost as u32).await
+    };
+    match taken {
         Ok(Ok(())) => Ok(()),
         Ok(Err(wait)) => {
             crate::metrics::rate_limited(client);
