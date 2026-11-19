@@ -21,7 +21,8 @@ const OVERLAY: &str = include_str!("openapi_overlay.yaml");
         crate::v1::bulk,
         crate::v1::document_single,
         crate::v1::document_bulk,
-        crate::mollie::token_info
+        crate::mollie::token_info,
+        crate::version::info
     ),
     components(schemas(crate::ErrorResponse))
 )]
@@ -180,6 +181,13 @@ fn complete_operations(spec: &mut Value, overlay: &mut Value) {
                 .expect("operationId")
                 .to_string();
             let is_get = operation["requestBody"].is_null();
+            if id == "getVersion" {
+                // Public and without error responses besides the generic ones; no token needed.
+                operation["security"] = json!([]);
+                operation["responses"]["200"]["content"]["application/json"]["examples"] =
+                    overlay["responseExamples"][&id].take();
+                continue;
+            }
             if !is_get {
                 operation["requestBody"]["content"]["application/json"]["examples"] =
                     overlay["examples"][&id].take();

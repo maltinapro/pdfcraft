@@ -27,7 +27,7 @@ mod warm_up;
 pub use warm_up::warm_up;
 
 /// The same template the frontend ships (shared layout plus the invoice body); compiled into the binary.
-const INVOICE_TEMPLATE: &str = concat!(
+pub(crate) const INVOICE_TEMPLATE: &str = concat!(
     include_str!("../../frontend/src/template/layout.typ"),
     "\n",
     include_str!("../../frontend/src/template/invoice.typ")
@@ -87,6 +87,7 @@ pub fn router() -> Router {
     // Free tokens are issued against an Anubis pass instead of a token
     // Purchases (Mollie): only answer while `Config::mollie_enabled`
     Router::new()
+        .route("/version", get(crate::version::info))
         .route("/free-token", post(crate::free::issue))
         .route(
             "/client-errors",
