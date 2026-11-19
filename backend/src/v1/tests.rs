@@ -941,6 +941,185 @@ async fn renders_invoice_with_and_without_watermark() {
     }
 }
 
+// ------------------------------------------------------------ Deterministic PDF output
+
+/// SHA-256 of one PDF for every document type, design, watermark setting and e-invoice profile, labelled.
+/// The input is fixed; the output must not depend on the current time, the request counter or the process.
+async fn determinism_hashes() -> Vec<(String, String)> {
+    use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
+    use sha2::{Digest, Sha256};
+
+    let hash = |pdf: &[u8]| {
+        // Document info and XMP dates come from the document date (2026-01-31), never from the clock.
+        let contains = |needle: &[u8]| pdf.windows(needle.len()).any(|w| w == needle);
+        assert!(contains(b"/CreationDate(D:20260131000000Z)"));
+        assert!(contains(b"<xmp:CreateDate>2026-01-31T00:00:00Z"));
+        Sha256::digest(pdf)
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>()
+    };
+    let sender = json!({
+        "name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt",
+        "email": "a@b.de", "vatId": "DE123456789",
+    });
+    let logo = B64.encode(include_bytes!("../../../frontend/public/logo.svg"));
+    let recipient =
+        json!({"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"});
+    let items = json!([
+        {"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19},
+        {"description": "Befreit", "quantity": 1, "unit": "pcs", "price": 10, "taxRate": 0},
+    ]);
+    let mut hashes = Vec::new();
+
+    let raw_invoice: Invoice = serde_json::from_value(json!({
+        "number": "2026-001", "date": "2026-01-31", "deliveryDate": "2026-01-30", "dueDate": "2026-02-14",
+        "recipient": recipient, "items": items,
+    }))
+    .unwrap();
+    let raw_document: Document = serde_json::from_value(json!({
+        "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
+        "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff", "body": "Zeile 1\nZeile 2",
+        "reason": "Falsche Menge", "intro": "Hallo", "closing": "Gruß",
+        "recipient": recipient, "items": items,
+    }))
+    .unwrap();
+
+    for design in crate::invoice::DESIGNS {
+        for watermark in [false, true] {
+            let label = format!("{design}{}", if watermark { "-wm" } else { "" });
+            let settings = |profile: &str| -> Settings {
+                serde_json::from_value(json!({
+                    "design": design, "einvoiceProfile": profile, "logo": {"base64": logo}, "sender": sender,
+                    "bank": {"iban": "DE89370400440532013000"}, "footer": "Muster GmbH · Musterstr. 1",
+                    "exemptionReason": "Steuerfrei nach § 4 Nr. 1b UStG",
+                }))
+                .unwrap()
+            };
+            let with_watermark = |data: serde_json::Value| {
+                let mut data = data;
+                if watermark {
+                    data.as_object_mut()
+                        .unwrap()
+                        .insert("watermark".into(), "Entwurf".into());
+                }
+                data
+            };
+
+            for profile in ["en16931", "xrechnung"] {
+                let settings = settings(profile);
+                let mut errors = Errors::default();
+                let s = check_settings(&settings, &mut errors);
+                let invoice = check_invoice(&raw_invoice, "invoice", &mut errors);
+                assert!(errors.0.is_empty(), "{:?}", errors.0);
+                let assets = settings_assets(&s).unwrap_or_else(|e| panic!("{}", e.details));
+                let (data, assets) = invoice_data(
+                    &settings,
+                    with_watermark(s.data.clone()),
+                    &raw_invoice,
+                    invoice,
+                    assets,
+                );
+                let pdf = render_pdf(INVOICE_TEMPLATE, data, assets)
+                    .await
+                    .unwrap_or_else(|e| panic!("invoice {profile} ({label}): {}", e.details));
+                assert!(pdf.starts_with(b"%PDF"));
+                hashes.push((format!("invoice-{profile}-{label}"), hash(&pdf)));
+            }
+
+            let settings = settings("en16931");
+            for kind in Kind::ALL {
+                let mut errors = Errors::default();
+                let s = check_settings(&settings, &mut errors);
+                let doc = documents::check_document(kind, &raw_document, false, &mut errors);
+                assert!(errors.0.is_empty(), "{:?}", errors.0);
+                let assets = settings_assets(&s).unwrap_or_else(|e| panic!("{}", e.details));
+                let (data, assets) = documents::build(
+                    kind,
+                    &settings,
+                    with_watermark(s.data.clone()),
+                    &raw_document,
+                    doc,
+                    assets,
+                );
+                let pdf = render_pdf(kind.template(), data, assets)
+                    .await
+                    .unwrap_or_else(|e| panic!("{} ({label}): {}", kind.slug(), e.details));
+                assert!(pdf.starts_with(b"%PDF"));
+                hashes.push((format!("{}-{label}", kind.slug()), hash(&pdf)));
+            }
+        }
+    }
+    hashes
+}
+
+/// Prints the hashes for `pdf_output_is_identical_across_processes`; not a test on its own.
+#[tokio::test]
+#[ignore]
+async fn determinism_probe() {
+    for (label, hash) in determinism_hashes().await {
+        println!("DETERMINISM {label} {hash}");
+    }
+}
+
+#[tokio::test]
+async fn pdf_output_is_identical_for_identical_input() {
+    let first = determinism_hashes().await;
+    assert!(
+        first.len() >= crate::invoice::DESIGNS.len() * 2 * 7,
+        "the matrix shrank: {}",
+        first.len()
+    );
+    let unique: std::collections::HashSet<_> = first.iter().map(|(_, hash)| hash).collect();
+    assert_eq!(
+        unique.len(),
+        first.len(),
+        "every variant is a different PDF"
+    );
+    // A second pass reuses the warm compiler (cache, request counter), a third one follows other renders.
+    for pass in 2..=3 {
+        let again = determinism_hashes().await;
+        for (a, b) in first.iter().zip(&again) {
+            assert_eq!(a, b, "{} differs in render pass {pass}", a.0);
+        }
+    }
+}
+
+/// Starts the test binary twice as fresh processes and compares their PDF hashes with this process.
+#[tokio::test]
+async fn pdf_output_is_identical_across_processes() {
+    let exe = std::env::current_exe().unwrap();
+    let probe = format!(
+        "{}::determinism_probe",
+        module_path!().split_once("::").unwrap().1
+    );
+    let expected: Vec<String> = determinism_hashes()
+        .await
+        .into_iter()
+        .map(|(label, hash)| format!("DETERMINISM {label} {hash}"))
+        .collect();
+    for run in 1..=2 {
+        let output = std::process::Command::new(&exe)
+            .args([probe.as_str(), "--exact", "--ignored", "--nocapture"])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "probe process {run} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let lines: Vec<&str> = stdout
+            .lines()
+            .filter(|l| l.starts_with("DETERMINISM "))
+            .collect();
+        assert_eq!(lines.len(), expected.len(), "probe process {run}: {stdout}");
+        for (line, want) in lines.iter().zip(&expected) {
+            assert_eq!(line, want, "differs in fresh process {run}");
+        }
+    }
+}
+
 // ------------------------------------------------------------ OpenAPI spec (docs/openapi.yaml)
 
 fn spec() -> serde_json::Value {
