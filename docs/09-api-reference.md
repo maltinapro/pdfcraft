@@ -94,6 +94,8 @@ curl -X POST http://localhost:3000/v1/invoices \
   --data @pdfcraft-config.json -o invoice.pdf
 ```
 
+Every `POST` endpoint (`/v1/invoices`, `/v1/invoices/bulk`, `/v1/documents`, `/v1/documents/bulk`) accepts an optional body field `"options": { "watermark": "draft" }`. It prints the diagonal "Entwurf" / "Draft" watermark (by document language) on every PDF of the request, for any token, so previews of unreleased documents cannot be mistaken for issued ones. Free tokens always keep the watermark, with or without the option. Other values give `400 invalid_request`; nothing is stored.
+
 The browser preview adds `?zones=1` to single-document requests. This optional flag adds an `X-Pdfcraft-Zones` response header containing zone 3/4 rectangles as JSON (`zone`, one-based `page`, `x`, `y`, `w`, `h` in mm). The header is omitted without the flag; the browser positions zones 1/2 from the fixed DIN layout. Bulk endpoints are unchanged.
 
 ## `POST /v1/documents`

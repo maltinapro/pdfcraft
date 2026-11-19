@@ -12,6 +12,8 @@ info:
     **Authentication.** Every endpoint below needs a token, sent as `Authorization: Bearer <token>` or as
     `X-API-Key: <token>`. Purchased tokens (`pk_…`) create clean documents. Free tokens (`pf_…`) are issued
     to browsers only (they need a solved Anubis challenge) and put an "Entwurf" / "Draft" watermark on every PDF.
+    Any token can request the same watermark for previews by sending `"options": { "watermark": "draft" }` in
+    the request body (all four POST endpoints); free tokens always keep it, with or without the option.
 
     **Rate limit.** Every PDF costs one unit of the token's per-minute limit (`limitPerMinute` of `GET /v1/token`).
     A bulk request costs one unit per entry and is accepted or rejected as a whole. When the limit is reached the

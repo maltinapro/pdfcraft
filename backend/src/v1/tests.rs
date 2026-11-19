@@ -223,6 +223,51 @@ async fn preview_zone_geometry_renders_all_document_types() {
     }
 }
 
+#[test]
+fn draft_option_adds_the_watermark_for_any_token() {
+    let client = |kind| Client {
+        id: "t".into(),
+        kind,
+        plan: "p".into(),
+        limit: 10,
+        created: None,
+    };
+    let draft: Options = serde_json::from_value(json!({"watermark": "draft"})).unwrap();
+    let none = Options::default();
+    let watermark = |kind, options: &Options, locale: &str| {
+        with_watermark(&client(kind), options, json!({"locale": locale}))
+            .get("watermark")
+            .and_then(|v| v.as_str().map(str::to_string))
+    };
+
+    assert_eq!(watermark(store::Kind::Paid, &none, "de"), None);
+    assert_eq!(watermark(store::Kind::Service, &none, "de"), None);
+    assert_eq!(
+        watermark(store::Kind::Paid, &draft, "de").as_deref(),
+        Some("Entwurf")
+    );
+    assert_eq!(
+        watermark(store::Kind::Service, &draft, "en-de").as_deref(),
+        Some("Draft")
+    );
+    // free tokens keep the watermark with and without the option
+    assert_eq!(
+        watermark(store::Kind::Free, &none, "en-de").as_deref(),
+        Some("Draft")
+    );
+    assert_eq!(
+        watermark(store::Kind::Free, &draft, "de").as_deref(),
+        Some("Entwurf")
+    );
+
+    assert!(serde_json::from_value::<Options>(json!({"watermark": "final"})).is_err());
+    let request: InvoiceRequest = serde_json::from_value(json!({
+        "settings": {}, "invoice": {}, "options": {"watermark": "draft"}
+    }))
+    .unwrap();
+    assert!(request.options.watermark == Some(WatermarkOption::Draft));
+}
+
 #[tokio::test]
 async fn render_all_keeps_order_and_names_the_failing_entry() {
     let client = Client {
