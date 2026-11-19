@@ -47,6 +47,27 @@ Every response of the backend (PDFs, ZIPs and errors) carries `X-Pdfcraft-Versio
 
 `version` is the release tag of the image (build arg `APP_VERSION`, the crate version for local builds), `commit` the git SHA (`APP_COMMIT`, `unknown` for local builds). `templates` holds the SHA-256 of the complete Typst source (shared layout plus body) per document type, `templateHash` one hash over all of them, so a changed template is visible even if the version number is not bumped. A client that stores issued documents can keep this answer (or `X-Pdfcraft-Version` plus `templates.<type>`) with the input of each document as render snapshot. The same handler is also served at `GET /version` on the backend itself; the Helm ingress forwards only `/v1`. Browsers can read the header cross-origin (`Access-Control-Expose-Headers`).
 
+## Deterministic PDF output
+
+The same input rendered by the same PDFCraft build gives a **byte-identical PDF** (same SHA-256), also after a restart of the backend, at any time and in any order of requests. This lets a client that stores the hash of an issued PDF re-render it from its stored input during an audit and compare.
+
+How it is achieved:
+
+- The PDF creation and modification date (document info and XMP) come from the **document date** of the request (`invoice.date` or `document.date`), never from the clock; the time is always `00:00:00Z`.
+- Typst derives the PDF document and instance ID (`/ID`, `xmpMM:DocumentID`/`InstanceID`) from the document content, so they are stable too.
+- The Factur-X XMP post-processing and the e-invoice XML (`einvoice.rs`) contain no time stamps, random values or request counters; the XML file inside the PDF is only built from the input.
+- Nothing is cached between requests (no rendered PDF, no template result), so a render never depends on earlier requests.
+
+Test coverage: `pdf_output_is_identical_for_identical_input` and `pdf_output_is_identical_across_processes` (`backend/src/v1/tests.rs`, run by `cargo test` in CI) render an invoice (EN 16931 and XRechnung profile) and every other document type in every design, each with and without watermark and with a logo, three times in one process and in two freshly started processes, and compare the SHA-256 of every PDF. They also check that the dates equal the document date.
+
+Limits of the guarantee (the result may change when any of these changes, so keep them with the render snapshot):
+
+- **PDFCraft version and templates.** A new release can change the layout or the PDF structure. Store `X-Pdfcraft-Version` and `templates.<type>` from [`GET /v1/version`](#version-information) with each document and re-render with the same build (container image tag).
+- **Typst, `typst-pdf` and other dependencies.** Upgrades change the PDF bytes even for unchanged templates; the version answer contains the Typst version.
+- **Fonts.** The backend embeds its fonts and also loads the fonts installed on the system (the Docker image installs some). A different font set, for example another base image or a custom `settings.font` that resolves to a different installed font, changes the layout. Use the same image for re-rendering.
+- **Input.** Every input value counts, including the logo, signature and stamp bytes, `settings.design`, the locale and the watermark (free tokens and `options.watermark = "draft"` add "Entwurf"/"Draft"). The date is required for every document type, so the output does not depend on "today".
+- **Platform.** The test runs on one platform (CI, linux/amd64); identical output on other CPU architectures (e.g. arm64 images) is expected but not verified.
+
 ## `GET /health`
 
 ```json
