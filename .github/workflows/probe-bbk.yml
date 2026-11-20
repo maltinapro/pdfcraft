@@ -1,0 +1,30 @@
+name: Probe Bundesbank
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for u in \
+            "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115" \
+            "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115?format=csv" \
+            "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115?startPeriod=2024-01" \
+            "https://api.statistiken.bundesbank.de/rest/data/BBK01" \
+            "https://api.statistiken.bundesbank.de/rest/dataflow" \
+            "https://api.statistiken.bundesbank.de/rest/dataflow/BBK/BBK01" \
+            "https://api.statistiken.bundesbank.de/rest/metadata/dataflow/BBK/BBK01" \
+            "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115.csv" \
+            "https://api.statistiken.bundesbank.de/rest/download/BBK01/SU0115" \
+            "https://api.statistiken.bundesbank.de/rest/download/BBK01/SU0115?format=csv" \
+            "https://api.statistiken.bundesbank.de/rest/download/BBK01/SU0115?format=sdmx" \
+            "https://api.statistiken.bundesbank.de/rest/download/BBK/BBK01/SU0115?format=csv" \
+            "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBK01.SU0115&its_csvFormat=de&its_fileFormat=csv&mode=its" \
+            "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBK01.SU0115&its_csvFormat=en&its_fileFormat=csv&mode=its&its_from=2002" \
+            "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBK01.SU0115&its_csvFormat=en&its_fileFormat=csv&mode=its&its_from=2002&its_to=2026" \
+            "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBK01.SU0115&its_csvFormat=en&its_fileFormat=csv&mode=its&its_from=2002&its_to=2026&its_currency=default&its_dateFormat=default&its_decimalSeparator=default&its_scaleFactor=default" \
+            "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBEX3.D.USD.EUR.BB.AC.000&its_csvFormat=en&its_fileFormat=csv&mode=its" \
+            ; do
+            echo "=== $u"
+            curl -sS -L -m 30 -w '\n[HTTP %{http_code}]\n' "$u" | head -c 600
+            echo
+          done
