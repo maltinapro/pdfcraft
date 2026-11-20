@@ -70,7 +70,7 @@ export function validateInvoice(settings: Settings, invoice: Invoice): Issue[] {
 export function requiredIssues(
   spec: Pick<DocSpec, 'kind' | 'letter' | 'items'>,
   settings: Settings,
-  doc: { number: string; date: string; serviceDate?: string; serviceDateFrom?: string; serviceDateTo?: string; dueDate?: string; reference?: string; subject?: string; body?: string; recipient: { name: string; address: string; city: string }; items: InvoiceItem[] },
+  doc: { number: string; date: string; serviceDate?: string; serviceDateFrom?: string; serviceDateTo?: string; dueDate?: string; reference?: string; subject?: string; body?: string; recipient: { name: string; address: string; city: string }; items: InvoiceItem[]},
 ): Issue[] {
   const issues: Issue[] = []
   const missing = (field: string, message = tr('Pflichtfeld', 'Required')) =>

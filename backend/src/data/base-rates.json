@@ -1,0 +1,194 @@
+[
+  {
+    "valid_from": "2002-01-01",
+    "valid_to": "2002-06-30",
+    "base_rate": 0.0257,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2002-07-01",
+    "valid_to": "2002-12-31",
+    "base_rate": 0.0247,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2003-01-01",
+    "valid_to": "2003-06-30",
+    "base_rate": 0.0197,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2003-07-01",
+    "valid_to": "2003-12-31",
+    "base_rate": 0.0122,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2004-01-01",
+    "valid_to": "2004-06-30",
+    "base_rate": 0.0114,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2004-07-01",
+    "valid_to": "2004-12-31",
+    "base_rate": 0.0113,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2005-01-01",
+    "valid_to": "2005-06-30",
+    "base_rate": 0.0121,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2005-07-01",
+    "valid_to": "2005-12-31",
+    "base_rate": 0.0117,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2006-01-01",
+    "valid_to": "2006-06-30",
+    "base_rate": 0.0137,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2006-07-01",
+    "valid_to": "2006-12-31",
+    "base_rate": 0.0195,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2007-01-01",
+    "valid_to": "2007-06-30",
+    "base_rate": 0.027,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2007-07-01",
+    "valid_to": "2007-12-31",
+    "base_rate": 0.0319,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2008-01-01",
+    "valid_to": "2008-06-30",
+    "base_rate": 0.0332,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2008-07-01",
+    "valid_to": "2008-12-31",
+    "base_rate": 0.0319,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2009-01-01",
+    "valid_to": "2009-06-30",
+    "base_rate": 0.0162,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2009-07-01",
+    "valid_to": "2011-06-30",
+    "base_rate": 0.0012,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2011-07-01",
+    "valid_to": "2011-12-31",
+    "base_rate": 0.0037,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2012-01-01",
+    "valid_to": "2012-12-31",
+    "base_rate": 0.0012,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2013-01-01",
+    "valid_to": "2013-06-30",
+    "base_rate": -0.0013,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2013-07-01",
+    "valid_to": "2013-12-31",
+    "base_rate": -0.0038,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2014-01-01",
+    "valid_to": "2014-06-30",
+    "base_rate": -0.0063,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2014-07-01",
+    "valid_to": "2014-12-31",
+    "base_rate": -0.0073,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2015-01-01",
+    "valid_to": "2016-06-30",
+    "base_rate": -0.0083,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2016-07-01",
+    "valid_to": "2022-12-31",
+    "base_rate": -0.0088,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2023-01-01",
+    "valid_to": "2023-06-30",
+    "base_rate": 0.0162,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2023-07-01",
+    "valid_to": "2023-12-31",
+    "base_rate": 0.0312,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2024-01-01",
+    "valid_to": "2024-06-30",
+    "base_rate": 0.0362,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2024-07-01",
+    "valid_to": "2024-12-31",
+    "base_rate": 0.0337,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2025-01-01",
+    "valid_to": "2025-06-30",
+    "base_rate": 0.0227,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2025-07-01",
+    "valid_to": "2025-12-31",
+    "base_rate": 0.0127,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2026-01-01",
+    "valid_to": "2026-06-30",
+    "base_rate": 0.0127,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB (Bundesanzeiger)"
+  },
+  {
+    "valid_from": "2026-07-01",
+    "valid_to": "2026-12-31",
+    "base_rate": 0.0152,
+    "source_ref": "Deutsche Bundesbank, Basiszinssatz nach § 247 BGB, Stand 01.07.2026 (Bundesanzeiger / IHK)"
+  }
+]

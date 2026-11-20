@@ -548,11 +548,12 @@ async fn render_all(
 
 /// Create one document (PDF)
 ///
-/// Credit note (Stornorechnung), offer, order confirmation, delivery note or letter; `type` selects the
-/// template. Same authentication, rate limit (one unit per PDF), watermark rules and error format as
+/// Credit note (Stornorechnung), offer, order confirmation, delivery note, letter or dunning letter
+/// (Mahnung); `type` selects the template. Same authentication, rate limit (one unit per PDF), watermark rules and error format as
 /// `POST /v1/invoices`. Only `settings.sender`, the logo, signature, accent color, font, locale and footer
 /// are used. A credit note carries an EN 16931 / XRechnung credit-note XML (TypeCode 381) when
-/// `settings.zugferd` is on.
+/// `settings.zugferd` is on. A dunning letter also uses `settings.bank` (account and EPC QR code of the
+/// payment block) and carries no XML.
 ///
 /// Required `document` fields by `type`:
 ///
@@ -563,6 +564,7 @@ async fn render_all(
 /// | `order` | `number`, `date`, `recipient`, `items` | `deliveryDate`, `reference`, `intro`, `closing` |
 /// | `delivery-note` | `number`, `date`, `recipient`, `items` (shown without prices) | `deliveryDate`, `reference`, `intro`, `closing` |
 /// | `letter` | `date`, `recipient`, `subject`, `body` | `reference`, `closing` |
+/// | `dunning` | `number`, `date`, `recipient`, `dunningLevel` (1 payment reminder, 2 dunning letter, 3 final dunning letter), `invoices` (1 to 100: `number`, `date`, `dueDate`, `openAmount`), `paymentDeadline` | `fees` (`description`, `amount`), `interest` (`rate`, `from`, `to`, `amount`, given by the caller), `intro`, `closing` |
 #[utoipa::path(
     post,
     path = "/v1/documents",

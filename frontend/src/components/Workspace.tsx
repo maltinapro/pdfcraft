@@ -405,7 +405,7 @@ export function Workspace({
                 </div>
               )}
               <span className="preview-toolbar-spacer" />
-              {settings.zugferd && <button type="button" className="preview-chip" onClick={() => void showXml()} disabled={!pdfBlob}>ZUGFeRD XML</button>}
+              {settings.zugferd && (kind === 'invoice' || kind === 'credit-note') && <button type="button" className="preview-chip" onClick={() => void showXml()} disabled={!pdfBlob}>ZUGFeRD XML</button>}
               {previewUrl && <button type="button" className="preview-chip" onClick={openPdf}>{tr('PDF öffnen', 'Open PDF')}</button>}
             </div>
             {paused && <PreviewPaused count={problems.length} onShow={revealProblems} />}

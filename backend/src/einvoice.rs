@@ -287,6 +287,33 @@ pub fn describe_items(english: bool, items: &[Item], negate: bool, doc: &mut Val
     });
 }
 
+/// Template data of the payment block (`pay`): total, due date and the bank account, with whether
+/// an EPC QR code can be printed (valid IBAN/BIC, field lengths). `gross` is the amount due in cents.
+pub fn payment_data(raw: &Settings, reference: &str, gross: i128, due: (i32, u32, u32)) -> Value {
+    let sender = &raw.sender;
+    let bank = &raw.bank;
+    let iban = compact(&bank.iban).to_uppercase();
+    let bic = compact(&bank.bic).to_uppercase();
+    let holder = sender.name.trim();
+    let qr = iban_valid(&iban)
+        && holder.len() <= 70
+        && reference.trim().len() <= 140
+        && (bic.is_empty() || bic_valid(&bic));
+    let qr_amount = (1..=99_999_999_999)
+        .contains(&gross)
+        .then(|| gross as f64 / 100.0);
+    json!({
+        "sum": format!("{}{NBSP}€", money(gross)),
+        "dueDate": german_date(due),
+        "iban": escape(&group_iban(&iban)),
+        "ibanRaw": escape(&iban),
+        "bic": escape(&bic),
+        "qr": qr,
+        "amount": qr_amount,
+        "place": escape(split_city(sender.city.trim()).1),
+    })
+}
+
 /// Computes everything the template and the e-invoice need. With `credit_for` (number and ISO date
 /// of the cancelled invoice) the XML is a credit note (TypeCode 381, amounts stay positive as EN 16931
 /// requires, `InvoiceReferencedDocument` points to the original). `settings` is the
@@ -409,28 +436,9 @@ pub fn prepare(
     let bank = &raw.bank;
     let iban = compact(&bank.iban).to_uppercase();
     let bic = compact(&bank.bic).to_uppercase();
-    let holder = sender.name.trim();
     let number = inv.number.trim();
-    let qr = iban_valid(&iban)
-        && holder.len() <= 70
-        && number.len() <= 140
-        && (bic.is_empty() || bic_valid(&bic));
-    let qr_amount = (1..=99_999_999_999)
-        .contains(&gross)
-        .then(|| gross as f64 / 100.0);
-    let mut extra = json!({
-        "pay": {
-            "sum": format!("{}{NBSP}€", money(gross)),
-            "days": days,
-            "dueDate": german_date(due),
-            "iban": escape(&group_iban(&iban)),
-            "ibanRaw": escape(&iban),
-            "bic": escape(&bic),
-            "qr": qr,
-            "amount": qr_amount,
-            "place": escape(split_city(sender.city.trim()).1),
-        },
-    });
+    let mut extra = json!({ "pay": payment_data(raw, number, gross, due) });
+    extra["pay"]["days"] = json!(days);
 
     if !settings["zugferd"].as_bool().unwrap_or(true) {
         return Prepared { extra, xml: None };

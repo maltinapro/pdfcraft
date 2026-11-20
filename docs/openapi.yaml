@@ -49,7 +49,7 @@ security:
 tags:
 - description: E-invoices (ZUGFeRD / Factur-X, XRechnung) as PDF.
   name: Invoices
-- description: Credit notes, offers, order confirmations, delivery notes and letters as PDF.
+- description: Credit notes, offers, order confirmations, delivery notes, letters and dunning letters as PDF.
   name: Documents
 - description: Information about the calling token.
   name: Token
@@ -59,11 +59,12 @@ paths:
   /v1/documents:
     post:
       description: |-
-        Credit note (Stornorechnung), offer, order confirmation, delivery note or letter; `type` selects the
-        template. Same authentication, rate limit (one unit per PDF), watermark rules and error format as
+        Credit note (Stornorechnung), offer, order confirmation, delivery note, letter or dunning letter
+        (Mahnung); `type` selects the template. Same authentication, rate limit (one unit per PDF), watermark rules and error format as
         `POST /v1/invoices`. Only `settings.sender`, the logo, signature, accent color, font, locale and footer
         are used. A credit note carries an EN 16931 / XRechnung credit-note XML (TypeCode 381) when
-        `settings.zugferd` is on.
+        `settings.zugferd` is on. A dunning letter also uses `settings.bank` (account and EPC QR code of the
+        payment block) and carries no XML.
 
         Required `document` fields by `type`:
 
@@ -74,6 +75,7 @@ paths:
         | `order` | `number`, `date`, `recipient`, `items` | `deliveryDate`, `reference`, `intro`, `closing` |
         | `delivery-note` | `number`, `date`, `recipient`, `items` (shown without prices) | `deliveryDate`, `reference`, `intro`, `closing` |
         | `letter` | `date`, `recipient`, `subject`, `body` | `reference`, `closing` |
+        | `dunning` | `number`, `date`, `recipient`, `dunningLevel` (1 payment reminder, 2 dunning letter, 3 final dunning letter), `invoices` (1 to 100: `number`, `date`, `dueDate`, `openAmount`), `paymentDeadline` | `fees` (`description`, `amount`), `interest` (`rate`, `from`, `to`, `amount`, given by the caller), `intro`, `closing` |
       operationId: createDocument
       parameters:
       - description: Include PDF zone geometry in `X-Pdfcraft-Zones`; only `1` enables it.
@@ -135,6 +137,69 @@ paths:
                       city: 12345 Musterstadt
                       name: Muster GmbH
                   type: delivery-note
+              dunning:
+                summary: Dunning letter (Mahnung)
+                value:
+                  document:
+                    date: '2026-04-01'
+                    dunningLevel: 2
+                    fees:
+                    - amount: 5
+                      description: Mahngebühr
+                    interest:
+                      amount: 18.1
+                      from: '2026-02-17'
+                      rate: 12.27
+                      to: '2026-04-01'
+                    invoices:
+                    - date: '2026-02-02'
+                      dueDate: '2026-02-16'
+                      number: R-2026-007
+                      openAmount: 1190
+                    number: M-2026-001
+                    paymentDeadline: '2026-04-15'
+                    recipient:
+                      address: Kundenweg 5
+                      city: 54321 Kundenstadt
+                      name: Kunde AG
+                  settings:
+                    bank:
+                      iban: DE89370400440532013000
+                    sender:
+                      address: Musterstr. 1
+                      city: 12345 Musterstadt
+                      name: Muster GmbH
+                  type: dunning
+              dunningCalculatedInterest:
+                summary: Dunning letter with default interest calculated from the base rate
+                value:
+                  document:
+                    date: '2026-08-10'
+                    dunningLevel: 2
+                    fees:
+                    - amount: 5
+                      description: Mahngebühr
+                    interest:
+                      debtor: business
+                    invoices:
+                    - date: '2026-06-02'
+                      dueDate: '2026-06-16'
+                      number: R-2026-001
+                      openAmount: 1000
+                    number: M-2026-002
+                    paymentDeadline: '2026-08-24'
+                    recipient:
+                      address: Kundenweg 5
+                      city: 54321 Kundenstadt
+                      name: Kunde AG
+                  settings:
+                    bank:
+                      iban: DE89370400440532013000
+                    sender:
+                      address: Musterstr. 1
+                      city: 12345 Musterstadt
+                      name: Muster GmbH
+                  type: dunning
               letter:
                 summary: Letter
                 value:
@@ -501,6 +566,7 @@ paths:
                     templates:
                       credit-note: 2c5f8b1e4a7d0c3f6b9e2a5d8c1f4b7e0a3d6c9f2b5e8a1d4c7f0b3e6a9d2c5f
                       delivery-note: 3d6a9c2f5b8e1a4d7c0f3b6e9a2d5c8f1b4e7a0d3c6f9b2e5a8d1c4f7b0e3a6d
+                      dunning: 8c1f4b7e0a3d6c9f2b5e8a1d4c7f0b3e6a9d2c5f8b1e4a7d0c3f6b9e2a5d8c1f
                       invoice: 4e7b0d3a6c9f2b5e8a1d4c7f0b3e6a9d2c5f8b1e4a7d0c3f6b9e2a5d8c1f4b7e
                       letter: 5f8c1e4b7a0d3c6f9b2e5a8d1c4f7b0e3a6d9c2f5b8e1a4d7c0f3b6e9a2d5c8f
                       offer: 6a9d2c5f8b1e4a7d0c3f6b9e2a5d8c1f4b7e0a3d6c9f2b5e8a1d4c7f0b3e6a9d
@@ -675,9 +741,30 @@ components:
           description: 'Order confirmation and delivery note: delivery date (`YYYY-MM-DD`).'
           format: date
           type: string
+        dunningLevel:
+          description: 'Dunning letter: level 1 (payment reminder), 2 (dunning letter) or 3 (final dunning letter).'
+          format: double
+          maximum: 3
+          minimum: 1
+          type: number
+        fees:
+          description: 'Dunning letter: fees and expenses (up to 20).'
+          items:
+            $ref: '#/components/schemas/DunningFee'
+          maxItems: 20
+          type: array
+        interest:
+          $ref: '#/components/schemas/DunningInterest'
+          description: 'Dunning letter: default interest (§ 288 BGB) for a period, amount given by the caller.'
         intro:
           maxLength: 2000
           type: string
+        invoices:
+          description: 'Dunning letter: the open invoices (1 to 100).'
+          items:
+            $ref: '#/components/schemas/DunningInvoice'
+          maxItems: 100
+          type: array
         items:
           description: 1 to 500 items (not used for letters; delivery notes show no prices).
           items:
@@ -687,6 +774,10 @@ components:
         number:
           description: Document number (not used for letters).
           maxLength: 200
+          type: string
+        paymentDeadline:
+          description: 'Dunning letter: new payment deadline (`YYYY-MM-DD`, not before the document date).'
+          format: date
           type: string
         postage:
           $ref: '#/components/schemas/Postage'
@@ -758,7 +849,102 @@ components:
       - order
       - delivery-note
       - letter
+      - dunning
       type: string
+    DunningFee:
+      description: A dunning fee or expense, for example the dunning fee.
+      properties:
+        amount:
+          description: Amount in euro (0 to 1e9).
+          format: double
+          maximum: 1000000000
+          minimum: 0
+          type: number
+        description:
+          description: Text of the line, for example `Mahngebühr`.
+          maxLength: 200
+          type: string
+      required:
+      - description
+      - amount
+      type: object
+    DunningInterest:
+      description: |-
+        Default interest (Verzugszinsen, § 288 BGB) for a period. Either give `rate` and `amount` (nothing is
+        calculated) or give `debtor`, then PDFCraft calculates the interest per invoice from the base rate.
+      properties:
+        amount:
+          description: |-
+            Own calculation: interest amount in euro for the period (0 to 1e9). Required with `rate`; not
+            allowed together with `debtor`.
+          format: double
+          maximum: 1000000000
+          minimum: 0
+          type: number
+        baseRate:
+          description: |-
+            Calculation: base rate in percent (-10 to 20) for the whole period instead of the built-in table,
+            for example for a period the table does not cover yet.
+          format: double
+          maximum: 20
+          minimum: -10
+          type: number
+        debtor:
+          description: |-
+            Calculate the interest: `consumer` (base rate + 5 percentage points, § 288 para. 1 BGB) or
+            `business` (base rate + 9 percentage points, § 288 para. 2 BGB, transactions without a consumer).
+            The interest of each invoice is its open amount x rate x days / 365, split at the half-yearly
+            changes of the base rate (§ 247 BGB).
+          pattern: ^(consumer|business)$
+          type: string
+        from:
+          description: |-
+            Start of the interest period as `YYYY-MM-DD`. Required with `rate`. With `debtor` it is optional;
+            without it the interest of each invoice starts the day after its due date.
+          format: date
+          type: string
+        rate:
+          description: |-
+            Own calculation: annual interest rate in percent (greater than 0, at most 100), for example
+            `12.27`. Needs `from`, `to` and `amount`; not allowed together with `debtor`.
+          format: double
+          maximum: 100
+          minimum: 0
+          type: number
+        to:
+          description: |-
+            End of the interest period as `YYYY-MM-DD` (not before `from`), inclusive. Required with `rate`.
+            With `debtor` it is optional and defaults to the document date.
+          format: date
+          type: string
+      type: object
+    DunningInvoice:
+      description: An open invoice listed in a dunning letter.
+      properties:
+        date:
+          description: Invoice date as `YYYY-MM-DD`.
+          format: date
+          type: string
+        dueDate:
+          description: Due date of the invoice as `YYYY-MM-DD` (not before the invoice date).
+          format: date
+          type: string
+        number:
+          description: Number of the open invoice.
+          maxLength: 200
+          type: string
+        openAmount:
+          description: Still open gross amount in euro (greater than 0, at most 1e9).
+          format: double
+          maximum: 1000000000
+          minimum: 0
+          type: number
+      required:
+      - number
+      - date
+      - dueDate
+      - openAmount
+      type: object
     Error:
       description: The error envelope of every error response.
       properties:

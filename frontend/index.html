@@ -298,6 +298,15 @@
         <p>Aktuelle Version: <strong>__APP_VERSION__</strong></p>
         <ul class="news">
           <li>
+            <strong>Mahnung</strong>: Zahlungserinnerung, Mahnung und letzte Mahnung mit offenen Rechnungen,
+            Mahngebühren, neuer Zahlungsfrist und Zahlungsblock samt QR-Code, in allen drei Designs auf
+            Deutsch und Englisch – nur per API (<code>POST /v1/documents</code>, Typ <code>dunning</code>), nicht
+            im Konfigurator. Die <strong>Verzugszinsen</strong>
+            nach § 288 BGB berechnet PDFCraft auf Wunsch tagesgenau aus dem Basiszinssatz (pro Rechnung und
+            Zinsperiode, ausgewiesen auf dem Dokument; ohne Umsatzsteuer). Als Nachweis hängt eine
+            JSON-Datei mit der Berechnung am PDF.
+          </li>
+          <li>
             <strong>Versionsangabe in der API</strong>: <code>GET /v1/version</code> liefert Version, Commit,
             Typst-Version und Template-Hashes; jede Antwort enthält den Header <code>X-Pdfcraft-Version</code>.
           </li>
@@ -444,8 +453,8 @@
         <ul>
           <li>
             Aktuell gibt es <strong>Rechnung, Stornorechnung, Angebot, Auftragsbestätigung,
-            Lieferschein und Brief</strong>. <strong>Weitere PDF-Dokumente</strong> (etwa Mahnungen
-            oder Berichte) können folgen.
+            Lieferschein und Brief</strong>. Per API gibt es außerdem die <strong>Mahnung</strong>;
+            <strong>weitere PDF-Dokumente</strong> (etwa Berichte) können folgen.
           </li>
           <li>
             Bei Bedarf können <strong>individuelle PDF-Vorlagen</strong> für dich erstellt werden.

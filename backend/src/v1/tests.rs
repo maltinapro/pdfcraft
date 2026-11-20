@@ -149,6 +149,7 @@ async fn preview_zone_geometry_renders_all_document_types() {
             "deliveryDate": "2026-02-03",
             "subject": "Betreff",
             "body": "Brieftext",
+            "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
             "reason": "Falsche Menge",
             "intro": "Einleitung",
             "closing": "Gruß",
@@ -354,6 +355,7 @@ async fn renders_every_document_type() {
         let raw: Document = serde_json::from_value(json!({
                 "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
                 "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff \"x\"",
+                "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
                 "body": "Zeile 1\nZeile 2", "reason": "Falsche Menge", "intro": "Hallo", "closing": "Gruß",
                 "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
                 "items": [
@@ -407,6 +409,286 @@ async fn renders_every_document_type() {
                 }
             }
         }
+    }
+}
+
+/// Dunning letters: every level, design and language, with several pages of invoices, without fees
+/// and interest, and without a bank account. The payment block carries the total and no XML is attached.
+#[tokio::test]
+async fn renders_dunning_letters_in_all_designs_and_languages() {
+    let invoices: Vec<_> = (1..=40)
+        .map(|n| json!({"number": format!("R-2026-{n:03}"), "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 100.1}))
+        .collect();
+    let variants = [
+        (
+            "full",
+            json!({"invoices": invoices[..2], "fees": [{"description": "Mahngebühr", "amount": 5}],
+            "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 0.62}}),
+        ),
+        (
+            "calc",
+            json!({"date": "2026-08-10", "paymentDeadline": "2026-08-24",
+            "invoices": [
+                {"number": "R-2026-001", "date": "2026-06-02", "dueDate": "2026-06-16", "openAmount": 1000},
+                {"number": "R-2026-002", "date": "2026-07-02", "dueDate": "2026-07-16", "openAmount": 250.5},
+            ],
+            "fees": [{"description": "Mahngebühr", "amount": 5}],
+            "interest": {"debtor": "business"}}),
+        ),
+        ("many", json!({"invoices": invoices})),
+        ("bare", json!({"invoices": invoices[..1]})),
+    ];
+    for design in crate::invoice::DESIGNS {
+        for (english, iban) in [(false, "DE89370400440532013000"), (true, "")] {
+            let settings: Settings = serde_json::from_value(json!({
+                "design": design, "locale": if english { "en-de" } else { "de-de" },
+                "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"},
+                "bank": {"iban": iban},
+            }))
+            .unwrap();
+            let mut errors = Errors::default();
+            let s = check_settings(&settings, &mut errors);
+            for level in 1..=3 {
+                for (variant, extra) in &variants {
+                    let mut raw = json!({
+                        "number": "M-2026-001", "date": "2026-01-31", "dunningLevel": level,
+                        "paymentDeadline": "2026-02-14",
+                        "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+                    });
+                    raw.as_object_mut()
+                        .unwrap()
+                        .extend(extra.as_object().unwrap().clone());
+                    let raw: Document = serde_json::from_value(raw).unwrap();
+                    let doc = documents::check_document(Kind::Dunning, &raw, english, &mut errors);
+                    assert!(errors.0.is_empty(), "{:?}", errors.0);
+                    let (data, assets) = documents::build(
+                        Kind::Dunning,
+                        &settings,
+                        s.data.clone(),
+                        &raw,
+                        doc,
+                        Vec::new(),
+                    );
+                    let label = format!("{design} {english} level {level} {variant}");
+                    assert!(assets.iter().all(|(name, _)| name != "xml"), "{label}");
+                    assert_eq!(data["pay"]["qr"], !iban.is_empty(), "{label}");
+                    let pdf = render_pdf(Kind::Dunning.template(), data, assets)
+                        .await
+                        .unwrap_or_else(|e| panic!("{label}: {}", e.details));
+                    assert!(pdf.starts_with(b"%PDF"), "{label}");
+                    assert!(!pdf.windows(12).any(|w| w == b"factur-x.xml"), "{label}");
+                    if let Ok(dir) = std::env::var("PDF_OUT") {
+                        let lang = if english { "en" } else { "de" };
+                        std::fs::write(
+                            format!("{dir}/dunning-{design}-{lang}-{level}-{variant}.pdf"),
+                            pdf,
+                        )
+                        .unwrap();
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Calculated default interest: split at the change of the base rate (1 July 2026: 1.52 %), the result
+/// feeds the total and the payment block, and the PDF carries the machine-readable record.
+#[tokio::test]
+async fn dunning_interest_is_calculated_and_recorded() {
+    let settings: Settings = serde_json::from_value(json!({
+        "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"},
+        "bank": {"iban": "DE89370400440532013000"},
+    }))
+    .unwrap();
+    let raw: Document = serde_json::from_value(json!({
+        "number": "M-1", "date": "2026-08-10", "dunningLevel": 2, "paymentDeadline": "2026-08-24",
+        "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+        "invoices": [{"number": "R-1", "date": "2026-06-02", "dueDate": "2026-06-16", "openAmount": 1000}],
+        "interest": {"debtor": "business"},
+    }))
+    .unwrap();
+    let mut errors = Errors::default();
+    let s = check_settings(&settings, &mut errors);
+    let doc = documents::check_document(Kind::Dunning, &raw, false, &mut errors);
+    assert!(errors.0.is_empty(), "{:?}", errors.0);
+    // 2026-06-17 .. 2026-06-30: 14 days at 1.27 + 9; 2026-07-01 .. 2026-08-10: 41 days at 1.52 + 9
+    let expected = (1000.0 * (0.1027 * 14.0 + 0.1052 * 41.0) / 365.0 * 100.0_f64).round() as i64;
+    let interest = &data_interest(&doc);
+    assert_eq!(interest["calculated"], true);
+    assert_eq!(interest["rate"], "10,27\u{a0}% – 10,52\u{a0}%");
+    assert_eq!(interest["base"], "1,27\u{a0}% – 1,52\u{a0}%");
+    assert_eq!(doc["dunning"]["totalCents"], 100_000 + expected);
+    let (data, assets) = documents::build(Kind::Dunning, &settings, s.data, &raw, doc, Vec::new());
+    assert_eq!(data["pay"]["amount"], (100_000 + expected) as f64 / 100.0);
+    let (_, record) = assets.iter().find(|(name, _)| name == "audit").unwrap();
+    let record: serde_json::Value = serde_json::from_slice(record).unwrap();
+    assert_eq!(record["mode"], "calculated");
+    assert_eq!(record["documentNumber"], "M-1");
+    assert_eq!(
+        record["total"],
+        format!("{}.{:02}", expected / 100, expected % 100)
+    );
+    let periods = &record["invoices"][0]["periods"];
+    assert_eq!(periods[0]["from"], "2026-06-17");
+    assert_eq!(periods[0]["to"], "2026-06-30");
+    assert_eq!(periods[0]["days"], 14);
+    assert_eq!(periods[0]["baseRatePercent"], "1.27");
+    assert_eq!(periods[1]["ratePercent"], "10.52");
+    assert!(periods[1]["source"]
+        .as_str()
+        .unwrap()
+        .contains("Bundesbank"));
+    let pdf = render_pdf(Kind::Dunning.template(), data, assets)
+        .await
+        .unwrap_or_else(|e| panic!("{}", e.details));
+    assert!(pdf.windows(20).any(|w| w == b"dunning-interest.jso"));
+}
+
+fn data_interest(doc: &serde_json::Value) -> serde_json::Value {
+    doc["dunning"]["interest"].clone()
+}
+
+#[test]
+fn dunning_interest_calculation_reports_invalid_input() {
+    let check = |interest: serde_json::Value, date: &str| {
+        let raw: Document = serde_json::from_value(json!({
+            "number": "M-1", "date": date, "dunningLevel": 2, "paymentDeadline": "2027-12-31",
+            "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+            "invoices": [{"number": "R-1", "date": "2026-06-02", "dueDate": "2026-06-16", "openAmount": 1000}],
+            "interest": interest,
+        }))
+        .unwrap();
+        let mut errors = Errors::default();
+        documents::check_document(Kind::Dunning, &raw, false, &mut errors);
+        errors.0
+    };
+    let errors = check(json!({"debtor": "someone"}), "2026-08-10");
+    assert!(
+        errors
+            .iter()
+            .any(|m| m.starts_with("document.interest.debtor:")),
+        "{errors:?}"
+    );
+    let errors = check(
+        json!({"debtor": "business", "rate": 5, "amount": 1}),
+        "2026-08-10",
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|m| m.starts_with("document.interest.rate:")),
+        "{errors:?}"
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|m| m.starts_with("document.interest.amount:")),
+        "{errors:?}"
+    );
+    let errors = check(
+        json!({"rate": 5, "from": "2026-01-01", "to": "2026-02-01", "amount": 1, "baseRate": 1}),
+        "2026-08-10",
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|m| m.starts_with("document.interest.baseRate:")),
+        "{errors:?}"
+    );
+    // the table ends on 2026-12-31 ...
+    let errors = check(json!({"debtor": "business"}), "2027-01-20");
+    assert!(
+        errors
+            .iter()
+            .any(|m| m.contains("not known for 2027-01-01")),
+        "{errors:?}"
+    );
+    // ... unless the caller sends the base rate
+    assert!(check(
+        json!({"debtor": "business", "baseRate": 1.77}),
+        "2027-01-20"
+    )
+    .is_empty());
+    // business interest before 2014-07-29 used 8 points: not calculated, consumers are (+5 always)
+    let errors = check(
+        json!({"debtor": "business", "from": "2014-07-01", "to": "2014-09-30"}),
+        "2026-08-10",
+    );
+    assert!(
+        errors.iter().any(|m| m.contains("premium of 8 points")),
+        "{errors:?}"
+    );
+    assert!(check(
+        json!({"debtor": "consumer", "from": "2014-07-01", "to": "2014-09-30"}),
+        "2026-08-10"
+    )
+    .is_empty());
+    assert!(check(
+        json!({"debtor": "business", "from": "2014-07-29", "to": "2014-09-30"}),
+        "2026-08-10"
+    )
+    .is_empty());
+    // a period that has not started yet costs nothing and is not an error
+    assert!(check(
+        json!({"debtor": "consumer", "from": "2026-09-01", "to": "2026-09-30"}),
+        "2026-08-10"
+    )
+    .is_empty());
+}
+
+/// The total of a dunning letter is computed in cents and also feeds the payment block (and the
+/// amount of the EPC QR code).
+#[test]
+fn dunning_payment_block_uses_the_total() {
+    let settings: Settings = serde_json::from_value(json!({
+        "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"},
+        "bank": {"iban": "DE89370400440532013000"},
+    }))
+    .unwrap();
+    let raw: Document = serde_json::from_value(json!({
+        "number": "M-1", "date": "2026-01-31", "dunningLevel": 1, "paymentDeadline": "2026-02-14",
+        "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+        "invoices": [
+            {"number": "R-1", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 100.10},
+            {"number": "R-2", "date": "2026-01-03", "dueDate": "2026-01-17", "openAmount": 0.2},
+        ],
+        "fees": [{"description": "Mahngebühr", "amount": 5}],
+        "interest": {"rate": 5, "from": "2026-01-17", "to": "2026-01-31", "amount": 0.37},
+    }))
+    .unwrap();
+    let mut errors = Errors::default();
+    let s = check_settings(&settings, &mut errors);
+    let doc = documents::check_document(Kind::Dunning, &raw, false, &mut errors);
+    assert!(errors.0.is_empty(), "{:?}", errors.0);
+    let (data, _) = documents::build(Kind::Dunning, &settings, s.data, &raw, doc, Vec::new());
+    assert_eq!(data["doc"]["dunning"]["total"], "105,67\u{a0}€");
+    assert_eq!(data["pay"]["sum"], "105,67\u{a0}€");
+    assert_eq!(data["pay"]["dueDate"], "14.02.2026");
+    assert_eq!(data["pay"]["amount"], 105.67);
+    assert_eq!(data["pay"]["qr"], true);
+    assert!(data["pay"].get("days").is_none());
+}
+
+#[test]
+fn dunning_letters_report_invalid_fields() {
+    let raw: Document = serde_json::from_value(json!({
+        "number": "M-1", "date": "2026-01-31", "dunningLevel": 0, "paymentDeadline": "soon",
+        "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+        "invoices": [],
+    }))
+    .unwrap();
+    let mut errors = Errors::default();
+    documents::check_document(Kind::Dunning, &raw, false, &mut errors);
+    for path in [
+        "document.dunningLevel:",
+        "document.invoices:",
+        "document.paymentDeadline:",
+    ] {
+        assert!(
+            errors.0.iter().any(|e| e.starts_with(path)),
+            "{path} {:?}",
+            errors.0
+        );
     }
 }
 
@@ -526,6 +808,7 @@ async fn renders_every_document_type_with_a_signature() {
             let raw: Document = serde_json::from_value(json!({
                     "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
                     "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff", "body": "Text",
+                    "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
                     "reason": "Falsche Menge", "closing": "Mit freundlichen Grüßen",
                     "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
                     "items": [{"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19}],
@@ -626,6 +909,7 @@ async fn renders_every_document_type_with_a_stamp() {
         let raw: Document = serde_json::from_value(json!({
                 "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
                 "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff",
+                "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
                 "body": "Zeile 1\nZeile 2", "reason": "Falsche Menge", "intro": "Hallo", "closing": "Gruß",
                 "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
                 "items": [{"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19}],
@@ -980,8 +1264,17 @@ async fn determinism_hashes() -> Vec<(String, String)> {
     let raw_document: Document = serde_json::from_value(json!({
         "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
         "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff", "body": "Zeile 1\nZeile 2",
+        "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
         "reason": "Falsche Menge", "intro": "Hallo", "closing": "Gruß",
         "recipient": recipient, "items": items,
+    }))
+    .unwrap();
+
+    let raw_calculated: Document = serde_json::from_value(json!({
+        "number": "M-1", "date": "2026-01-31", "dunningLevel": 2, "paymentDeadline": "2026-02-14",
+        "invoices": [{"number": "R-1", "date": "2025-06-02", "dueDate": "2025-06-16", "openAmount": 1000.5}],
+        "interest": {"debtor": "business", "to": "2026-01-31"},
+        "recipient": recipient,
     }))
     .unwrap();
 
@@ -1048,6 +1341,25 @@ async fn determinism_hashes() -> Vec<(String, String)> {
                 assert!(pdf.starts_with(b"%PDF"));
                 hashes.push((format!("{}-{label}", kind.slug()), hash(&pdf)));
             }
+
+            // Calculated default interest also writes the audit record (JSON attachment).
+            let mut errors = Errors::default();
+            let s = check_settings(&settings, &mut errors);
+            let doc = documents::check_document(Kind::Dunning, &raw_calculated, false, &mut errors);
+            assert!(errors.0.is_empty(), "{:?}", errors.0);
+            let assets = settings_assets(&s).unwrap_or_else(|e| panic!("{}", e.details));
+            let (data, assets) = documents::build(
+                Kind::Dunning,
+                &settings,
+                with_watermark(s.data.clone()),
+                &raw_calculated,
+                doc,
+                assets,
+            );
+            let pdf = render_pdf(Kind::Dunning.template(), data, assets)
+                .await
+                .unwrap_or_else(|e| panic!("dunning-calculated ({label}): {}", e.details));
+            hashes.push((format!("dunning-calculated-{label}"), hash(&pdf)));
         }
     }
     hashes

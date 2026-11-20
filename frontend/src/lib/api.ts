@@ -300,5 +300,5 @@ export function requestBulk(
 ): Promise<Blob> {
   return kind === 'invoice'
     ? requestBlob('/v1/invoices/bulk', { settings, invoices: documents }, signal)
-    : requestBlob('/v1/documents/bulk', { type: kind, settings, documents }, signal)
+    : requestBlob('/v1/documents/bulk', { type: kind, settings, documents: documents }, signal)
 }

@@ -1,10 +1,11 @@
 //! Non-invoice documents for `/v1/documents`: credit note (Stornorechnung), offer, order
-//! confirmation, delivery note and letter.
+//! confirmation, delivery note, letter and dunning letter (Mahnung, see `dunning.rs`).
 //!
 //! Same rules as `invoice.rs`: strict validation, whitelisted values, all text escaped for Typst
 //! string literals. Each type has its own template (`frontend/src/template/<type>.typ`) that is
 //! appended to the shared `layout.typ`. No e-invoice XML is produced for these types.
 
+use crate::dunning::{self, DunningFee, DunningInterest, DunningInvoice};
 use crate::einvoice::{self, describe_items, german_date};
 use crate::invoice::{
     number, one_of, text, valid_date, Errors, Invoice, Item, Recipient, Settings, MAX_ITEMS,
@@ -29,15 +30,17 @@ pub enum Kind {
     Order,
     DeliveryNote,
     Letter,
+    Dunning,
 }
 
 impl Kind {
-    pub const ALL: [Kind; 5] = [
+    pub const ALL: [Kind; 6] = [
         Kind::CreditNote,
         Kind::Offer,
         Kind::Order,
         Kind::DeliveryNote,
         Kind::Letter,
+        Kind::Dunning,
     ];
 
     pub fn parse(value: &str) -> Option<Kind> {
@@ -51,6 +54,7 @@ impl Kind {
             Kind::Order => "order",
             Kind::DeliveryNote => "delivery-note",
             Kind::Letter => "letter",
+            Kind::Dunning => "dunning",
         }
     }
 
@@ -61,6 +65,7 @@ impl Kind {
             Kind::Order => include_str!("../../frontend/src/template/order.typ"),
             Kind::DeliveryNote => include_str!("../../frontend/src/template/delivery-note.typ"),
             Kind::Letter => include_str!("../../frontend/src/template/letter.typ"),
+            Kind::Dunning => include_str!("../../frontend/src/template/dunning.typ"),
         }
     }
 
@@ -80,7 +85,7 @@ impl Kind {
     }
 
     fn has_items(self) -> bool {
-        self != Kind::Letter
+        !matches!(self, Kind::Letter | Kind::Dunning)
     }
 
     fn has_number(self) -> bool {
@@ -129,6 +134,20 @@ pub struct Document {
     pub intro: String,
     #[schema(max_length = 2000)]
     pub closing: String,
+    /// Dunning letter: level 1 (payment reminder), 2 (dunning letter) or 3 (final dunning letter).
+    #[schema(minimum = 1, maximum = 3)]
+    pub dunning_level: Option<f64>,
+    /// Dunning letter: the open invoices (1 to 100).
+    #[schema(max_items = 100)]
+    pub invoices: Vec<DunningInvoice>,
+    /// Dunning letter: fees and expenses (up to 20).
+    #[schema(max_items = 20)]
+    pub fees: Vec<DunningFee>,
+    /// Dunning letter: default interest (§ 288 BGB) for a period, amount given by the caller.
+    pub interest: Option<DunningInterest>,
+    /// Dunning letter: new payment deadline (`YYYY-MM-DD`, not before the document date).
+    #[schema(format = Date)]
+    pub payment_deadline: String,
     /// Franking mark (Internetmarke PNG) printed into the address field.
     pub postage: Option<Postage>,
 }
@@ -213,6 +232,19 @@ pub fn check_document(kind: Kind, doc: &Document, english: bool, e: &mut Errors)
         out["items"] = JsonValue::Array(checked_items);
         describe_items(english, &priced, kind == Kind::CreditNote, &mut out);
     }
+    if kind == Kind::Dunning {
+        out["dunning"] = dunning::check(
+            &dunning::Fields {
+                level: doc.dunning_level,
+                invoices: &doc.invoices,
+                fees: &doc.fees,
+                interest: doc.interest.as_ref(),
+                payment_deadline: &doc.payment_deadline,
+                date,
+            },
+            e,
+        );
+    }
     if let Some(stamp) = postage::check_optional(doc.postage.as_ref(), "document", e) {
         out["postage"] = stamp.data();
     }
@@ -257,6 +289,22 @@ pub fn build(
             }
             assets.push(("xml".to_string(), xml.bytes));
             data["einvoice"] = prepared.extra["einvoice"].clone();
+        }
+    }
+    if kind == Kind::Dunning {
+        let deadline = valid_date(doc.payment_deadline.trim()).unwrap_or((1970, 1, 1));
+        let total = data["doc"]["dunning"]["totalCents"].as_i64().unwrap_or(0);
+        data["pay"] = einvoice::payment_data(raw, doc.number.trim(), total.into(), deadline);
+        let mut audit = data["doc"]["dunning"]["audit"].take();
+        if !audit.is_null() {
+            audit["documentNumber"] = json!(doc.number.trim());
+            audit["documentDate"] = json!(doc.date.trim());
+            let bytes = serde_json::to_vec_pretty(&audit).unwrap_or_default();
+            assets.push(("audit".to_string(), bytes));
+            data["audit"] = json!({
+                "file": dunning::AUDIT_FILE,
+                "description": "Default interest calculation (machine-readable record)",
+            });
         }
     }
     (data, assets)
