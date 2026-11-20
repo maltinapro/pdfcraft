@@ -8,19 +8,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for n in $(seq 100 135); do
-            id="BBK01.SU0$n"
-            out=$(curl -sS -m 30 "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=$id&its_csvFormat=en&its_fileFormat=csv&mode=its" | sed -n '2p' | head -c 200)
-            echo "$id -> $out"
-          done
           for u in \
-            "https://api.statistiken.bundesbank.de/rest/metadata/dataflow" \
-            "https://api.statistiken.bundesbank.de/rest/metadata/dataflow/BBK01" \
-            "https://api.statistiken.bundesbank.de/rest/metadata/dataflow/BBK/BBK01" \
-            "https://api.statistiken.bundesbank.de/rest/data/BBK01/D.I.ZST.ZI.EUR.S1311.B.A604.R10XX.R.A.A._Z._Z.A" \
-            "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115?detail=serieskeysonly" \
+            "https://www.bundesbank.de/de/service/recht/basiszinssatz" \
+            "https://www.bundesbank.de/de/bundesbank/organisation/agb-und-regelungen/basiszinssatz-607820" \
+            "https://www.bundesbank.de/en/service/legal-framework/base-rate" \
+            "https://www.bundesbank.de/de/statistiken/zeitreihen-datenbanken" \
             ; do
             echo "=== $u"
-            curl -sS -L -m 30 -w '\n[HTTP %{http_code}]\n' "$u" | head -c 500
-            echo
+            curl -sS -L -m 30 -o /tmp/p.html -w '[HTTP %{http_code} %{url_effective}]\n' "$u"
+            grep -oiE '(tsId=|BBK01\.|BBSIS\.|BBEX3\.)[A-Za-z0-9._]*' /tmp/p.html | sort -u | head -20
+            grep -oiE '<title>[^<]*' /tmp/p.html | head -1
+            grep -oiE 'href="[^"]*(basiszins|base-rate)[^"]*"' /tmp/p.html | sort -u | head -10
           done
+          echo "=== search"
+          curl -sS -L -m 30 "https://www.bundesbank.de/de/suche?query=Basiszinssatz" | grep -oiE 'href="[^"]*(basiszins)[^"]*"' | sort -u | head
