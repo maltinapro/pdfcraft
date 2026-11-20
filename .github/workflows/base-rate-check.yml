@@ -1,0 +1,35 @@
+name: Base rate check
+
+# Compares backend/src/data/base-rates.json with the Bundesbank series BBK01.SU0115.
+# It is not a pull request check: a Bundesbank outage must not block merges.
+on:
+  schedule:
+    - cron: "17 6 * * 1" # every Monday
+    - cron: "17 6 1-7 1,7 *" # daily in the first week of January and July (new half-year)
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "backend/tools/check_base_rates.py"
+      - "backend/tools/test_check_base_rates.py"
+      - ".github/workflows/base-rate-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 -m unittest test_check_base_rates -v
+        working-directory: backend/tools
+
+  compare:
+    if: github.event_name != 'pull_request'
+    needs: tests
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compare the table with BBK01.SU0115
+        shell: bash # with pipefail
+        run: python3 backend/tools/check_base_rates.py | tee -a "$GITHUB_STEP_SUMMARY"
