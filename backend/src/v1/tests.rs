@@ -609,6 +609,25 @@ fn dunning_interest_calculation_reports_invalid_input() {
         "2027-01-20"
     )
     .is_empty());
+    // business interest before 2014-07-29 used 8 points: not calculated, consumers are (+5 always)
+    let errors = check(
+        json!({"debtor": "business", "from": "2014-07-01", "to": "2014-09-30"}),
+        "2026-08-10",
+    );
+    assert!(
+        errors.iter().any(|m| m.contains("premium of 8 points")),
+        "{errors:?}"
+    );
+    assert!(check(
+        json!({"debtor": "consumer", "from": "2014-07-01", "to": "2014-09-30"}),
+        "2026-08-10"
+    )
+    .is_empty());
+    assert!(check(
+        json!({"debtor": "business", "from": "2014-07-29", "to": "2014-09-30"}),
+        "2026-08-10"
+    )
+    .is_empty());
     // a period that has not started yet costs nothing and is not an error
     assert!(check(
         json!({"debtor": "consumer", "from": "2026-09-01", "to": "2026-09-30"}),

@@ -265,6 +265,15 @@ fn interest(
         if start > to_day {
             continue;
         }
+        if premium == interest::premium("business").unwrap_or_default()
+            && start < interest::days((2014, 7, 29))
+        {
+            e.add(
+                &format!("document.invoices[{i}].dueDate"),
+                "business interest before 2014-07-29 uses a premium of 8 points (§ 288 para. 2 BGB, old version) and is not calculated; send it as manual interest",
+            );
+            break;
+        }
         let segments = match interest::segments(start, to_day, base_override) {
             Ok(segments) => segments,
             Err(message) => {

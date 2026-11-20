@@ -244,6 +244,22 @@ mod tests {
     }
 
     #[test]
+    fn table_matches_the_bundesbank_history() {
+        let rate = |y, m, d| segments(days((y, m, d)), days((y, m, d)), None).unwrap()[0].base;
+        assert_eq!(rate(2002, 1, 1), 257);
+        assert_eq!(rate(2008, 1, 1), 332);
+        assert_eq!(rate(2010, 3, 1), 12);
+        assert_eq!(rate(2013, 9, 1), -38);
+        assert_eq!(rate(2016, 6, 30), -83);
+        assert_eq!(rate(2016, 7, 1), -88);
+        assert_eq!(rate(2022, 12, 31), -88);
+        assert_eq!(rate(2024, 7, 1), 337);
+        // across the change of 2016-07-01: -0.83 and -0.88
+        let (_, across) = run(100_000, (2016, 6, 20), (2016, 7, 10), 500).unwrap();
+        assert_eq!(across, vec![-83, -88]);
+    }
+
+    #[test]
     fn day_numbers_round_trip() {
         assert_eq!(days((1970, 1, 1)), 0);
         assert_eq!(days((2000, 3, 1)) - days((2000, 2, 28)), 2);
@@ -287,9 +303,9 @@ mod tests {
 
     #[test]
     fn rejects_periods_the_table_does_not_cover() {
-        assert!(run(100, (2016, 6, 30), (2016, 7, 5), 500)
+        assert!(run(100, (2001, 12, 30), (2002, 1, 5), 500)
             .unwrap_err()
-            .contains("before 2016-07-01"));
+            .contains("before 2002-01-01"));
         assert!(run(100, (2026, 12, 1), (2027, 1, 5), 500)
             .unwrap_err()
             .contains("for 2027-01-01"));
