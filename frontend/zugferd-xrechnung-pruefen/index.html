@@ -47,7 +47,7 @@
             "name": "Ist die Rechnung nach der Prüfung gültig?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Das sagt die Seite nicht. Sie prüft nur, ob Pflichtangaben vorhanden sind und ob die Summen rechnerisch zusammenpassen, und listet genau auf, was geprüft wurde. Eine vollständige Prüfung gegen das XML-Schema und die Regeln der EN 16931 und der XRechnung leistet ein offizieller Validator, zum Beispiel das KoSIT-Prüftool oder Mustang."
+              "text": "Das sagt die Seite nicht. Sie prüft Pflichtangaben, Summen und eine Auswahl der Regeln und Codelisten der EN 16931 und der XRechnung und listet genau auf, was geprüft wurde und was nicht. Eine vollständige Prüfung gegen das XML-Schema und alle Schematron-Regeln leistet ein offizieller Validator, zum Beispiel das KoSIT-Prüftool oder Mustang."
             }
           },
           {
@@ -89,7 +89,7 @@
         <ul>
           <li>Ein <strong>PDF mit eingebetteter E-Rechnung</strong> (ZUGFeRD 2 / Factur-X, XRechnung) oder eine <strong>XML-Datei</strong> (Syntax CII oder UBL) wird als lesbare Rechnung angezeigt: Absender, Empfänger, Positionen, Steuer, Summen, Zahlungsangaben.</li>
           <li>Ein Reiter mit dem <strong>rohen XML</strong>, falls du genau nachsehen willst, was im PDF steckt.</li>
-          <li>Eine <strong>Plausibilitätsprüfung</strong> mit genauer Liste dessen, was geprüft wurde: Pflichtangaben, Positionssummen, Steuerbeträge, Gesamtsummen, Zahlbetrag und die Prüfsumme der IBAN.</li>
+          <li>Eine <strong>Plausibilitätsprüfung</strong> mit genauer Liste dessen, was geprüft wurde: Pflichtangaben, Positionssummen, Steuerbeträge, Gesamtsummen, Zahlbetrag, die Prüfsumme der IBAN sowie eine Auswahl der Geschäftsregeln der EN 16931 und der XRechnung (BR-…, BR-DE-…) und Codelisten (Währung, Länder, Rechnungstyp, Steuerkategorie, Zahlungsart).</li>
           <li>Eine Druckansicht der Rechnung.</li>
         </ul>
         <p>
@@ -120,11 +120,12 @@
           <li>ob Menge × Preis den Positionsbetrag ergibt und die Positionen die Summe ergeben,</li>
           <li>ob Steuerbasis, Steuerbetrag, Gesamtsteuer, Brutto- und Zahlbetrag rechnerisch passen (1 Cent Rundungstoleranz bei Produkten),</li>
           <li>ob eine befreite Steuerkategorie einen Grund nennt,</li>
-          <li>ob Zahlungsangaben vorhanden sind, die IBAN-Prüfsumme stimmt und die Datumsangaben echte Kalendertage sind.</li>
+          <li>ob Zahlungsangaben vorhanden sind, die IBAN-Prüfsumme stimmt und die Datumsangaben echte Kalendertage sind,</li>
+          <li>eine Auswahl der Geschäftsregeln der EN 16931 und der XRechnung (z. B. BR-CO-25, BR-DE-15, jeweils mit Regel-ID) sowie Codelisten für Währung, Länder, Rechnungstyp, Steuerkategorie und Zahlungsart.</li>
         </ul>
         <p>
-          <strong>Nicht geprüft</strong> werden die Gültigkeit gegen das XML-Schema, die Geschäftsregeln der EN 16931 und
-          der XRechnung, die Codelisten, die PDF/A-3-Konformität, ob PDF und XML zusammenpassen, Signaturen
+          <strong>Nicht geprüft</strong> werden die Gültigkeit gegen das XML-Schema, die übrigen Geschäftsregeln der EN 16931 und
+          der XRechnung (Schematron), die übrigen Codelisten, die PDF/A-3-Konformität, ob PDF und XML zusammenpassen, Signaturen
           sowie die Richtigkeit von USt-IdNr., Steuersätzen und Bankverbindung. Dafür gibt es offizielle Validatoren, zum
           Beispiel das <a href="https://github.com/itplr-kosit/validator" rel="noopener noreferrer">KoSIT-Prüftool</a>
           (XRechnung) oder <a href="https://www.mustangproject.org/" rel="noopener noreferrer">Mustang</a>
@@ -152,7 +153,7 @@
         </details>
         <details>
           <summary>Ist die Rechnung nach der Prüfung gültig?</summary>
-          <p>Das sagt die Seite nicht. Sie prüft nur, ob Pflichtangaben vorhanden sind und ob die Summen rechnerisch zusammenpassen, und listet genau auf, was geprüft wurde. Eine vollständige Prüfung gegen das XML-Schema und die Regeln der EN 16931 und der XRechnung leistet ein offizieller Validator, zum Beispiel das KoSIT-Prüftool oder Mustang.</p>
+          <p>Das sagt die Seite nicht. Sie prüft Pflichtangaben, Summen und eine Auswahl der Regeln und Codelisten der EN 16931 und der XRechnung und listet genau auf, was geprüft wurde und was nicht. Eine vollständige Prüfung gegen das XML-Schema und alle Schematron-Regeln leistet ein offizieller Validator, zum Beispiel das KoSIT-Prüftool oder Mustang.</p>
         </details>
         <details>
           <summary>Was passiert, wenn mein PDF keine E-Rechnung enthält?</summary>

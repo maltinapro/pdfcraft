@@ -6,6 +6,7 @@
 
 mod check;
 mod extract;
+mod rules;
 mod view;
 mod xml;
 

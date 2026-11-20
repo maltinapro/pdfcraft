@@ -201,6 +201,37 @@ describe('plausibility check', () => {
     expect(results['amount-due']).toBe('skipped')
   })
 
+  it('finds EN 16931 rule violations, XRechnung rule violations and unknown codes', () => {
+    const view = parseEInvoice(xmlOf('xrechnung-exempt.xml'))
+    const findings = (id: string) => runChecks(view).find((r) => r.id === id)?.findings ?? []
+    expect(statuses(view)).toMatchObject({ 'en16931-rules': 'ok', 'xrechnung-rules': 'ok', 'code-lists': 'ok' })
+
+    view.buyerReference = undefined
+    view.seller.phone = '12'
+    view.seller.email = 'not-an-email'
+    view.seller.vatId = 'ZZ123456789'
+    view.items[0].id = undefined
+    view.items[0].unit = 'kg'
+    view.currency = 'XYZ'
+    view.typeCode = '777'
+    view.buyer.country = 'ZZ'
+    view.payments[0].code = '30'
+    view.payments[0].iban = undefined
+    expect(statuses(view)).toMatchObject({ 'en16931-rules': 'error', 'xrechnung-rules': 'error', 'code-lists': 'error' })
+    const rules = [...findings('en16931-rules'), ...findings('xrechnung-rules'), ...findings('code-lists')].join('\n')
+    for (const id of ['BR-21', 'BR-61', 'BR-CO-9', 'BR-DE-15', 'BR-DE-27', 'BR-DE-28', 'BR-DE-17', 'BR-CL-01', 'BR-CL-03', 'BR-CL-14', 'BR-CL-23']) {
+      expect(rules).toContain(id)
+    }
+  })
+
+  it('runs the XRechnung rules only for the XRechnung profile', () => {
+    const view = parseEInvoice(xmlOf('en16931-exempt.xml'))
+    view.seller.phone = undefined
+    expect(runChecks(view).some((r) => r.id === 'xrechnung-rules')).toBe(false)
+    view.profile = 'urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0'
+    expect(runChecks(view).find((r) => r.id === 'xrechnung-rules')!.findings.join('\n')).toContain('BR-DE-6')
+  })
+
   it('every check has a title and no check is called "valid"', () => {
     for (const r of runChecks(base())) expect(`${r.title} ${r.findings.join(' ')}`).not.toMatch(/\bvalid(e|ierung)?\b|gültig\b/i)
   })

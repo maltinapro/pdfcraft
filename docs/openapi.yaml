@@ -520,6 +520,14 @@ paths:
                       id: dates
                       status: ok
                       title: Dates are real calendar days, due date not before issue date
+                    - findings: []
+                      id: en16931-rules
+                      status: ok
+                      title: 'EN 16931 business rules (selection: BR-21, BR-27, BR-61, BR-CO-9/18/25, category rules)'
+                    - findings: []
+                      id: code-lists
+                      status: ok
+                      title: 'Code lists: currency, countries, invoice type, tax category, payment means, unit format'
                     fileName: invoice.xml
                     invoice:
                       adjustments: []
@@ -600,8 +608,8 @@ paths:
                       typeCode: '380'
                     notChecked:
                     - Validity against the XML schema (XSD)
-                    - Business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…)
-                    - Code lists (countries, units, currencies, tax categories, payment means)
+                    - The remaining business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…); only the selection named above is checked, not the Schematron rules of the KoSIT validator
+                    - 'Code lists for units (UN/ECE Rec. 20: format only) and codes outside the listed ones'
                     - PDF/A-3 conformity, XMP metadata and whether the PDF matches the XML
                     - Authenticity, signatures and whether VAT IDs, tax rates or bank details are correct
                     source: xml

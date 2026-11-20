@@ -1,0 +1,353 @@
+{
+  "view": {
+    "syntax": "cii",
+    "typeCode": "777",
+    "profile": "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0",
+    "number": "2026-001",
+    "issueDate": "2026-01-31",
+    "deliveryDate": "2026-01-31",
+    "currency": "XYZ",
+    "paymentReference": "2026-001",
+    "precedingInvoices": [],
+    "seller": {
+      "name": "Muster GmbH",
+      "street": "Musterstr. 1",
+      "postcode": "12345",
+      "country": "DE",
+      "vatId": "ZZ123456789",
+      "contactName": "Erika Muster",
+      "phone": "12",
+      "email": "no-at-sign"
+    },
+    "buyer": {
+      "name": "Kunde AG",
+      "street": "Kundenweg 5",
+      "city": "Kundenstadt",
+      "country": "ZZ",
+      "vatId": "DE987654321"
+    },
+    "notes": [],
+    "items": [
+      {
+        "name": "Beratung",
+        "quantity": 2.5,
+        "unit": "HUR",
+        "price": 80,
+        "priceBasis": 1,
+        "net": 200,
+        "hasAdjustments": false,
+        "taxCategory": "S",
+        "taxRate": 19
+      },
+      {
+        "id": "2",
+        "name": "Innergemeinschaftliche Lieferung",
+        "quantity": 12,
+        "unit": "kg",
+        "price": 3.333,
+        "priceBasis": 1,
+        "net": 40,
+        "hasAdjustments": false,
+        "taxCategory": "E",
+        "taxRate": 0
+      }
+    ],
+    "adjustments": [],
+    "taxes": [
+      {
+        "category": "S",
+        "rate": 19,
+        "basis": 200,
+        "amount": 38
+      },
+      {
+        "category": "E",
+        "rate": 0,
+        "basis": 40,
+        "amount": 0,
+        "exemptionReason": "Steuerfrei nach § 4 Nr. 1b UStG"
+      }
+    ],
+    "totals": {
+      "lineTotal": 240,
+      "allowanceTotal": null,
+      "chargeTotal": null,
+      "taxBasis": 240,
+      "taxTotal": 38,
+      "grandTotal": 278,
+      "prepaid": null,
+      "rounding": null,
+      "due": 278
+    },
+    "payments": [
+      {
+        "code": "30",
+        "bic": "COBADEFFXXX"
+      }
+    ]
+  },
+  "de": {
+    "checks": [
+      {
+        "id": "header",
+        "title": "Pflichtangaben im Kopf (Nummer, Datum, Typ, Währung, Spezifikation)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "parties",
+        "title": "Pflichtangaben zu Verkäufer und Käufer",
+        "status": "error",
+        "findings": [
+          "Ort des Verkäufers (BT-37) fehlt"
+        ]
+      },
+      {
+        "id": "lines",
+        "title": "Positionen vorhanden und vollständig",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-math",
+        "title": "Positionsbetrag = Menge × Einzelpreis (je Position, 1 Cent Rundungstoleranz)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-sum",
+        "title": "Summe der Positionen = Summe Positionsbeträge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "net-total",
+        "title": "Nettosumme = Positionen − Nachlässe + Zuschläge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-basis",
+        "title": "Steuerbasis je Kategorie und Satz = Positionen − Nachlässe + Zuschläge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-amount",
+        "title": "Steuerbetrag = Steuerbasis × Satz (je Aufschlüsselung, 1 Cent Rundungstoleranz)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-total",
+        "title": "Gesamtsteuer = Summe der Steuerbeträge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "gross-total",
+        "title": "Bruttosumme = Nettosumme + Steuer",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "amount-due",
+        "title": "Zahlbetrag = Bruttosumme − Anzahlungen + Rundung",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-category",
+        "title": "Steuerkategorien passen zum Satz, Befreiungsgrund vorhanden",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "payment",
+        "title": "Zahlungsangaben vorhanden, IBAN-Prüfsumme",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "dates",
+        "title": "Datumsangaben sind echte Kalendertage, Fälligkeit nicht vor Rechnungsdatum",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "en16931-rules",
+        "title": "Geschäftsregeln der EN 16931 (Auswahl: BR-21, BR-27, BR-61, BR-CO-9/18/25, kategoriebezogene Regeln)",
+        "status": "error",
+        "findings": [
+          "BR-21: Position 1: Positionskennung (BT-126) fehlt",
+          "BR-CO-9: USt-IdNr. des Verkäufers „ZZ123456789“ beginnt nicht mit einem Ländercode (ISO 3166-1 alpha-2)",
+          "BR-CO-25: Es ist ein Betrag offen, aber weder Fälligkeitsdatum (BT-9) noch Zahlungsbedingungen (BT-20) sind angegeben",
+          "BR-61: Bei Überweisung (Zahlungsart 30/58) fehlt die Kontonummer bzw. IBAN (BT-84)"
+        ]
+      },
+      {
+        "id": "xrechnung-rules",
+        "title": "Regeln der XRechnung (Auswahl: BR-DE-1 bis -9, -14 bis -17, -19, -26 bis -28)",
+        "status": "error",
+        "findings": [
+          "BR-DE-3: Ort des Verkäufers (BT-37) fehlt",
+          "BR-DE-27: Die Telefonnummer des Verkäufers (BT-42) braucht mindestens drei Ziffern",
+          "BR-DE-28: Die E-Mail des Verkäufers (BT-43) sieht nicht wie eine E-Mail-Adresse aus",
+          "BR-DE-9: Postleitzahl des Käufers (BT-53) fehlt",
+          "BR-DE-15: Leitweg-ID bzw. Käuferreferenz (BT-10) fehlt",
+          "BR-DE-17: Rechnungstyp „777“ ist in der XRechnung nicht zulässig (326, 380, 381, 384, 389, 875, 876, 877)"
+        ]
+      },
+      {
+        "id": "code-lists",
+        "title": "Codelisten: Währung, Länder, Rechnungstyp, Steuerkategorie, Zahlungsart, Format der Einheit",
+        "status": "error",
+        "findings": [
+          "BR-CL-03: Währung „XYZ“ steht nicht in ISO 4217",
+          "BR-CL-01: Rechnungstyp „777“ steht nicht in der Codeliste UNTDID 1001",
+          "BR-CL-14: Land des Käufers „ZZ“ steht nicht in ISO 3166-1",
+          "BR-CL-23: Position 2: Einheit „kg“ ist kein Code nach UN/ECE Rec. 20/21"
+        ]
+      }
+    ],
+    "notChecked": [
+      "Gültigkeit gegen das XML-Schema (XSD)",
+      "Die übrigen Geschäftsregeln der Norm EN 16931 (BR-…) und der XRechnung (BR-DE-…); geprüft wird nur die oben genannte Auswahl, nicht die Schematron-Regeln des KoSIT-Prüftools",
+      "Codelisten für Einheiten (UN/ECE Rec. 20: nur das Format) und Codes außerhalb der genannten Listen",
+      "PDF/A-3-Konformität, XMP-Metadaten und ob das PDF zum XML passt",
+      "Echtheit, Signaturen und ob USt-IdNr., Steuersätze oder Bankverbindung stimmen"
+    ]
+  },
+  "en": {
+    "checks": [
+      {
+        "id": "header",
+        "title": "Mandatory header fields (number, date, type, currency, specification)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "parties",
+        "title": "Mandatory seller and buyer details",
+        "status": "error",
+        "findings": [
+          "Seller city (BT-37) is missing"
+        ]
+      },
+      {
+        "id": "lines",
+        "title": "Lines present and complete",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-math",
+        "title": "Line amount = quantity × unit price (per line, 1 cent rounding tolerance)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-sum",
+        "title": "Sum of lines = line total",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "net-total",
+        "title": "Net total = lines − allowances + charges",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-basis",
+        "title": "Tax basis per category and rate = lines − allowances + charges",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-amount",
+        "title": "Tax amount = tax basis × rate (per breakdown, 1 cent rounding tolerance)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-total",
+        "title": "Total tax = sum of the tax amounts",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "gross-total",
+        "title": "Gross total = net total + tax",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "amount-due",
+        "title": "Amount due = gross total − prepayments + rounding",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-category",
+        "title": "Tax categories match the rate, exemption reason present",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "payment",
+        "title": "Payment details present, IBAN checksum",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "dates",
+        "title": "Dates are real calendar days, due date not before issue date",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "en16931-rules",
+        "title": "EN 16931 business rules (selection: BR-21, BR-27, BR-61, BR-CO-9/18/25, category rules)",
+        "status": "error",
+        "findings": [
+          "BR-21: Line 1: line identifier (BT-126) is missing",
+          "BR-CO-9: Seller VAT ID \"ZZ123456789\" does not start with a country code (ISO 3166-1 alpha-2)",
+          "BR-CO-25: An amount is due but neither due date (BT-9) nor payment terms (BT-20) are given",
+          "BR-61: For a credit transfer (payment means 30/58) the account identifier / IBAN (BT-84) is missing"
+        ]
+      },
+      {
+        "id": "xrechnung-rules",
+        "title": "XRechnung rules (selection: BR-DE-1 to -9, -14 to -17, -19, -26 to -28)",
+        "status": "error",
+        "findings": [
+          "BR-DE-3: Seller city (BT-37) is missing",
+          "BR-DE-27: The seller telephone number (BT-42) needs at least three digits",
+          "BR-DE-28: The seller email (BT-43) does not look like an email address",
+          "BR-DE-9: Buyer post code (BT-53) is missing",
+          "BR-DE-15: Buyer reference / Leitweg-ID (BT-10) is missing",
+          "BR-DE-17: Invoice type \"777\" is not allowed in XRechnung (326, 380, 381, 384, 389, 875, 876, 877)"
+        ]
+      },
+      {
+        "id": "code-lists",
+        "title": "Code lists: currency, countries, invoice type, tax category, payment means, unit format",
+        "status": "error",
+        "findings": [
+          "BR-CL-03: Currency \"XYZ\" is not in ISO 4217",
+          "BR-CL-01: Invoice type \"777\" is not in the UNTDID 1001 code list",
+          "BR-CL-14: Country of the buyer \"ZZ\" is not in ISO 3166-1",
+          "BR-CL-23: Line 2: unit \"kg\" is not a UN/ECE Rec. 20/21 code"
+        ]
+      }
+    ],
+    "notChecked": [
+      "Validity against the XML schema (XSD)",
+      "The remaining business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…); only the selection named above is checked, not the Schematron rules of the KoSIT validator",
+      "Code lists for units (UN/ECE Rec. 20: format only) and codes outside the listed ones",
+      "PDF/A-3 conformity, XMP metadata and whether the PDF matches the XML",
+      "Authenticity, signatures and whether VAT IDs, tax rates or bank details are correct"
+    ]
+  }
+}

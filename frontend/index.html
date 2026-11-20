@@ -298,6 +298,12 @@
         <p>Aktuelle Version: <strong>__APP_VERSION__</strong></p>
         <ul class="news">
           <li>
+            <strong>Mehr Regeln in der E-Rechnungs-Prüfung</strong>: Viewer und
+            <code>POST /v1/einvoices/parse</code> prüfen zusätzlich eine Auswahl der Geschäftsregeln der
+            EN&nbsp;16931 und der XRechnung (BR-…, BR-DE-…) sowie Codelisten und nennen jeweils die
+            Regel-ID. Das ersetzt weder Mustang noch das KoSIT-Prüftool (kein XSD, kein Schematron).
+          </li>
+          <li>
             <strong>E-Rechnungen per API lesen</strong>: <code>POST /v1/einvoices/parse</code> nimmt eine
             ZUGFeRD-/Factur-X-PDF oder eine XML-Datei (CII, UBL, XRechnung) entgegen und liefert die
             normalisierte Ansicht des Viewers samt Plausibilitätsprüfung als JSON – mit derselben Logik

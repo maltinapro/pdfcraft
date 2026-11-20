@@ -1,7 +1,8 @@
-//! Limited plausibility check of a received e-invoice: mandatory fields and arithmetic only, a port of
-//! `frontend/src/lib/einvoice/check.ts`. It is NOT a validation against the EN 16931 / XRechnung rules
+//! Limited plausibility check of a received e-invoice: mandatory fields, arithmetic and a selection of EN 16931 /
+//! XRechnung rules (`rules.rs`), a port of `frontend/src/lib/einvoice/check.ts`. It is NOT a validation against the EN 16931 / XRechnung rules
 //! (see [`not_checked`]); a response never calls a file "valid".
 
+use super::rules::rule_checks;
 use super::view::{InvoiceView, LineView};
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -62,7 +63,7 @@ fn cents(n: f64) -> f64 {
     js_sign(n) * rounded.abs().round()
 }
 
-fn iban_ok(raw: &str) -> bool {
+pub(super) fn iban_ok(raw: &str) -> bool {
     let iban: String = raw.split_whitespace().collect::<String>().to_uppercase();
     let b = iban.as_bytes();
     let shape = b.len() >= 15
@@ -205,12 +206,12 @@ fn plain(n: f64) -> String {
     }
 }
 
-struct Ctx {
+pub(super) struct Ctx {
     lang: Lang,
 }
 
 impl Ctx {
-    fn tr(&self, de: &str, en: &str) -> String {
+    pub(super) fn tr(&self, de: &str, en: &str) -> String {
         match self.lang {
             Lang::De => de,
             Lang::En => en,
@@ -218,7 +219,7 @@ impl Ctx {
         .to_string()
     }
 
-    fn pick(&self, de: String, en: String) -> String {
+    pub(super) fn pick(&self, de: String, en: String) -> String {
         match self.lang {
             Lang::De => de,
             Lang::En => en,
@@ -236,7 +237,7 @@ impl Ctx {
         }
     }
 
-    fn line_label(&self, line: &LineView, index: usize) -> String {
+    pub(super) fn line_label(&self, line: &LineView, index: usize) -> String {
         let id = line.id.clone().unwrap_or_else(|| (index + 1).to_string());
         self.pick(format!("Position {id}"), format!("Line {id}"))
     }
@@ -903,6 +904,8 @@ pub fn run_checks(view: &InvoiceView, lang: Lang) -> Vec<CheckResult> {
         Status::Warning,
     );
 
+    r.extend(rule_checks(&c, view));
+
     r
 }
 
@@ -915,12 +918,12 @@ pub fn not_checked(lang: Lang) -> Vec<String> {
             "Validity against the XML schema (XSD)",
         ),
         c.tr(
-            "Geschäftsregeln der Norm EN 16931 (BR-…) und der XRechnung (BR-DE-…)",
-            "Business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…)",
+            "Die übrigen Geschäftsregeln der Norm EN 16931 (BR-…) und der XRechnung (BR-DE-…); geprüft wird nur die oben genannte Auswahl, nicht die Schematron-Regeln des KoSIT-Prüftools",
+            "The remaining business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…); only the selection named above is checked, not the Schematron rules of the KoSIT validator",
         ),
         c.tr(
-            "Codelisten (Länder, Einheiten, Währungen, Steuerkategorien, Zahlungsarten)",
-            "Code lists (countries, units, currencies, tax categories, payment means)",
+            "Codelisten für Einheiten (UN/ECE Rec. 20: nur das Format) und Codes außerhalb der genannten Listen",
+            "Code lists for units (UN/ECE Rec. 20: format only) and codes outside the listed ones",
         ),
         c.tr(
             "PDF/A-3-Konformität, XMP-Metadaten und ob das PDF zum XML passt",
