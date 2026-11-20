@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeEntry } from './archive'
 import { BACKUP_VERSION, exportBackup, readBackup } from './backup'
-import { defaultDoc, defaultDrafts } from './documents'
+import { DEFAULT_SETTINGS, defaultDoc, defaultDrafts, defaultInvoice, newItem, type Recipient } from '@pdfcraft/editor'
 import {
   MASTER_DATA_VERSION,
   loadMasterData,
@@ -16,7 +16,6 @@ import {
   serializeMasterData,
   type MasterData,
 } from './masterData'
-import { DEFAULT_SETTINGS, defaultInvoice, newItem, type Recipient } from './types'
 
 const STORAGE_KEY = 'pdfcraft.masterData'
 

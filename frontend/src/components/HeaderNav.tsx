@@ -1,6 +1,5 @@
-import { tr, useLang } from '../lib/i18n'
+import { AppIcon, tr, useLang } from '@pdfcraft/editor'
 import { routeHref } from '../lib/router'
-import { AppIcon } from './icons'
 import { useHideNavOnScroll } from '../lib/useHideNavOnScroll'
 
 interface Props {

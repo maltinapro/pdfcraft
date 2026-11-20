@@ -1,15 +1,20 @@
-import { tr } from './i18n'
 import {
   DEFAULT_SETTINGS,
-  DESIGNS,
-  MAX_LOGO_BYTES,
   defaultInvoice,
-  newItem,
+  DESIGNS,
   type Invoice,
+  isObj,
   type Logo,
-  type PostageStamp,
+  MAX_LOGO_BYTES,
+  mergeObject,
+  newItem,
+  type Obj,
+  parsePostage,
   type Settings,
-} from './types'
+  tr,
+} from '@pdfcraft/editor'
+
+export { isObj, mergeObject, parsePostage, type Obj }
 
 export const SCHEMA_VERSION = 1
 const STORAGE_KEY = 'pdfcraft.config'
@@ -20,23 +25,6 @@ export interface AppConfig {
   invoice: Invoice
 }
 
-export type Obj = Record<string, unknown>
-
-export const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v)
-
-/** Copies only keys of `defaults` whose value has the same primitive type; nested objects recurse. */
-export function mergeObject<T extends Obj>(defaults: T, input: unknown): T {
-  const src = isObj(input) ? input : {}
-  const out: Obj = { ...defaults }
-  for (const key of Object.keys(defaults)) {
-    const d = defaults[key]
-    const v = src[key]
-    if (isObj(d)) out[key] = mergeObject(d, v)
-    else if (typeof v === typeof d) out[key] = v
-  }
-  return out as T
-}
-
 function parseLogo(input: unknown): Logo | null {
   if (!isObj(input)) return null
   const { fileName, base64, mimeType } = input
@@ -45,20 +33,6 @@ function parseLogo(input: unknown): Logo | null {
   return { fileName, base64, mimeType }
 }
 
-/** A stored stamp or `null`; keeps what a purchase paid for even after a reload or import. */
-export function parsePostage(input: unknown): PostageStamp | null {
-  if (!isObj(input)) return null
-  const { base64, voucherId, shopOrderId, productName, priceCents, boughtAt } = input
-  if (typeof base64 !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64) || (base64.length * 3) / 4 > 300 * 1024) return null
-  return {
-    base64,
-    voucherId: typeof voucherId === 'string' ? voucherId : '',
-    shopOrderId: typeof shopOrderId === 'string' ? shopOrderId : '',
-    productName: typeof productName === 'string' ? productName : '',
-    priceCents: typeof priceCents === 'number' ? priceCents : 0,
-    boughtAt: typeof boughtAt === 'string' ? boughtAt : '',
-  }
-}
 
 /** Validates unknown JSON and migrates older schema versions. Throws on unusable input. */
 export function parseConfig(raw: unknown): AppConfig {

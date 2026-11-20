@@ -1,10 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { DocIcon } from './icons'
+import { DocIcon, type DocKind, docSpec, FOLLOW_UPS, tr, uiLocale, useLang } from '@pdfcraft/editor'
 import { Chip, Menu, MenuItem } from './ui'
-import { FOLLOW_UPS, docSpec, type DocKind } from '../lib/documents'
 import type { ArchiveEntry } from '../lib/archive'
 import type { EntryStatus } from '../lib/archiveFilter'
-import { tr, uiLocale, useLang } from '../lib/i18n'
 
 const LONG_PRESS_MS = 500
 

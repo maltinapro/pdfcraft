@@ -1,4 +1,4 @@
-import { setLang, tr, useLang } from '../lib/i18n'
+import { setLang, tr, useLang } from '@pdfcraft/editor'
 import { SegmentedButton } from './ui'
 
 export function LangToggle() {

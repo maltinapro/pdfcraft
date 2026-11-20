@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Dialog } from './Dialog'
+import { Dialog } from '@pdfcraft/editor'
 
 interface Props {
   open: boolean

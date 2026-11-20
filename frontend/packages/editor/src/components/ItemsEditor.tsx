@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Field, TextField } from './Field'
+import { Field, TextField } from './ui/Field'
 import { errorId, useFieldIssue, useFieldPropsFor } from './FormIssues'
-import { ArticlePicker, money } from './MasterDataPickers'
+import { ArticlePicker } from './MasterDataPickers'
+import { useAdapter } from '../adapter'
+import { money } from '../lib/format'
 import { tr, useLang } from '../lib/i18n'
-import { getMasterData, saveArticleFromItem, setMasterData } from '../lib/masterData'
 import { TAX_RATES, UNITS, newItem, type InvoiceItem } from '../lib/types'
 
 interface Props {
@@ -51,12 +52,19 @@ export function ItemsEditor({ items, onChange, prices = true, negative = false, 
       )
     : null
 
-  const saveAsArticle = (item: InvoiceItem) => {
-    const { data, updated } = saveArticleFromItem(getMasterData(), item)
+  const articles = useAdapter().articles
+  const saveAsArticle = async (item: InvoiceItem) => {
+    if (!articles) return
+    let result: Awaited<ReturnType<typeof articles.save>>
+    try {
+      result = await articles.save(item)
+    } catch {
+      result = { ok: false, updated: false }
+    }
     setSaved(
-      setMasterData(data)
-        ? { id: item.id, text: updated ? tr('Artikel aktualisiert.', 'Article updated.') : tr('Artikel gespeichert.', 'Article saved.') }
-        : { id: item.id, text: tr('Speichern im Browser fehlgeschlagen (Speicher voll oder deaktiviert).', 'Saving in the browser failed (storage full or disabled).'), error: true },
+      result.ok
+        ? { id: item.id, text: result.updated ? tr('Artikel aktualisiert.', 'Article updated.') : tr('Artikel gespeichert.', 'Article saved.') }
+        : { id: item.id, text: tr('Speichern fehlgeschlagen.', 'Saving failed.'), error: true },
     )
   }
 
@@ -177,9 +185,9 @@ export function ItemsEditor({ items, onChange, prices = true, negative = false, 
               </Field>
             </div>
           )}
-          {prices && (
+          {prices && articles && (
             <div className="item-save">
-              <button type="button" className="btn btn-small" disabled={!item.description.trim()} onClick={() => saveAsArticle(item)}>
+              <button type="button" className="btn btn-small" disabled={!item.description.trim()} onClick={() => void saveAsArticle(item)}>
                 {tr('Als Artikel speichern', 'Save as article')}
               </button>
               {saved?.id === item.id && (

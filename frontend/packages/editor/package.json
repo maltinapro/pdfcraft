@@ -1,0 +1,35 @@
+{
+  "name": "@pdfcraft/editor",
+  "version": "0.1.0",
+  "description": "Paper-first document editor of PDFCraft (zone model, zone bar and panels, preview with zone overlay, mobile editor, items zone) with a replaceable data adapter.",
+  "license": "MIT",
+  "type": "module",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maltinapro/pdfcraft.git",
+    "directory": "frontend/packages/editor"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./base.css": "./src/base.css",
+    "./editor.css": "./src/editor.css"
+  },
+  "sideEffects": [
+    "**/*.css",
+    "./src/lib/i18n.ts"
+  ],
+  "peerDependencies": {
+    "pdfjs-dist": "^6.5.438",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

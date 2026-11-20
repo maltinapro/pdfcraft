@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 // Legacy build includes polyfills required by older Chrome and Android WebView versions.
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs'
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
-import { pdfErrorKind, reportClientError } from '../lib/clientErrors'
+import { useAdapter } from '../adapter'
 import { tr } from '../lib/i18n'
 import { canvasScale } from '../lib/pdfSupport'
 import type { ZoneId, ZoneRect } from '../lib/documents'
@@ -36,6 +36,9 @@ interface Props {
 
 export function PdfCanvasPreview({ blob, zones, activeZone, itemsLabel, zoom, page, onZoneSelect, onReady }: Props) {
   const container = useRef<HTMLDivElement>(null)
+  const adapter = useAdapter()
+  const adapterRef = useRef(adapter)
+  adapterRef.current = adapter
   const [pages, setPages] = useState<PageView[]>([])
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
 
@@ -82,7 +85,7 @@ export function PdfCanvasPreview({ blob, zones, activeZone, itemsLabel, zoom, pa
       .catch((e: unknown) => {
         if (cancelled) return
         console.error('PDF preview failed', e)
-        reportClientError(pdfErrorKind(e))
+        adapterRef.current.reportError?.(/worker/i.test(e instanceof Error ? `${e.name} ${e.message}` : String(e)) ? 'pdf_worker' : 'preview_render')
         setFailedUrl(URL.createObjectURL(blob))
       })
       .finally(() => void task?.destroy())

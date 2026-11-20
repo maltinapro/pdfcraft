@@ -1,6 +1,5 @@
 import type { HTMLAttributes, ReactNode } from 'react'
-import { AppIcon } from '../icons'
-import { tr } from '../../lib/i18n'
+import { AppIcon, tr } from '@pdfcraft/editor'
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   tone?: 'info' | 'warning' | 'error' | 'success'

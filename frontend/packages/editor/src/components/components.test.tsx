@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { FormIssuesContext, errorId, type FormIssuesValue } from './FormIssues'
 import { SelectField, TextField } from './ui/Field'
 import { Stepper } from './editor/Stepper'
@@ -10,20 +10,6 @@ import { ZONES } from '../lib/documents'
 import { setLang } from '../lib/i18n'
 import type { Issue } from '../lib/validate'
 
-function fakeStorage(): Storage {
-  const map = new Map<string, string>()
-  return {
-    get length() {
-      return map.size
-    },
-    clear: () => map.clear(),
-    getItem: (key) => map.get(key) ?? null,
-    key: (index) => [...map.keys()][index] ?? null,
-    removeItem: (key) => void map.delete(key),
-    setItem: (key, value) => void map.set(key, value),
-  }
-}
-
 const error: Issue = { level: 'error', field: 'recipient.name', message: 'Name fehlt', blocking: true }
 
 function withIssues(issues: Issue[], node: ReturnType<typeof createElement>) {
@@ -32,7 +18,6 @@ function withIssues(issues: Issue[], node: ReturnType<typeof createElement>) {
 }
 
 beforeEach(() => {
-  vi.stubGlobal('localStorage', fakeStorage())
   setLang('en')
 })
 

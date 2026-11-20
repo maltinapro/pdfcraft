@@ -1,4 +1,4 @@
-import { tr } from '../i18n'
+import { tr } from '@pdfcraft/editor'
 import type { InvoiceView, LineView } from './parse'
 import type { CheckResult } from './check'
 

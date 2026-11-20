@@ -1,73 +1,77 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type TouchEvent as ReactTouchEvent } from 'react'
-import { AppHeader } from './AppHeader'
-import { FreeVersionHint } from './FreeVersionHint'
+import { DocumentForm } from './DocumentForm'
+import { InvoiceForm } from './InvoiceForm'
 import { FormIssuesContext, type FormIssuesValue } from './FormIssues'
 import { SettingsForm } from './SettingsForm'
 import { AppIcon } from './icons'
 import { EditorFooter } from './editor/EditorFooter'
 import { Stepper, type ZoneState } from './editor/Stepper'
 import { ZonePanel } from './editor/ZonePanel'
-import { SegmentedButton } from './ui'
-import type { RenderedPdf } from '../lib/api'
-import { type ArchiveEntry } from '../lib/archive'
+import { SegmentedButton } from './ui/SegmentedButton'
+import { EditorProvider, type EditorAdapter } from '../adapter'
 import { downloadBlob } from '../lib/download'
-import { FOLLOW_UPS, ZONES, zoneForField, type DocKind, type ZoneId } from '../lib/documents'
+import { docSpec, ZONES, zoneForField, type Doc, type DocKind, type ZoneId } from '../lib/documents'
 import { tr, useLang } from '../lib/i18n'
-import { routeHref } from '../lib/router'
+import type { SaveState } from '../lib/saveState'
 import type { Issue } from '../lib/validate'
-import type { Settings } from '../lib/types'
+import type { Invoice, Settings } from '../lib/types'
 import { EditorSplitter, SPLIT_MAX, SPLIT_MIN } from './workspace/EditorSplitter'
 import { IssueSummary, PreviewError, PreviewPaused } from './workspace/IssueSummary'
 import { usePreview } from './workspace/usePreview'
 import { XmlDialog } from './workspace/XmlDialog'
 import { fixedZonesFor } from './workspace/zones'
-import './workspace.css'
+import '../editor.css'
 
 const PdfCanvasPreview = lazy(() => import('./PdfCanvasPreview').then((m) => ({ default: m.PdfCanvasPreview })))
 
-interface Props {
-  title: string
-  route: string
-  unsaved: number
-  kind: string
+export interface PaperEditorProps {
+  /** Everything the editor needs from the host (render callback, customers, articles, …). */
+  adapter: EditorAdapter
+  kind: DocKind
+  /** Used for the download: `<fileName>.pdf`. */
   fileName: string
   settings: Settings
   onSettingsChange: (settings: Settings) => void
-  forInvoice: boolean
-  data: unknown
-  render: (signal: AbortSignal) => Promise<RenderedPdf>
-  form: (zone: ZoneId) => ReactNode
+  /** The document being edited: an `Invoice` for `kind === 'invoice'`, otherwise a `Doc`. */
+  document: Invoice | Doc
+  onDocumentChange: (document: Invoice | Doc) => void
   issues?: Issue[]
-  onDownloaded?: () => ArchiveEntry | void
-  onFollowUp?: (entry: ArchiveEntry, target: DocKind) => void
-  onBackup?: () => void
   initialZone?: ZoneId
   saveState?: SaveState
+  /** Target of the "Back up" links in the footer; the links are hidden without it. */
+  backupHref?: string
+  /** Replaces the top bar. `downloadButton` is the "Download PDF" button (null on the last step). */
+  header?: (context: { downloadButton: ReactNode }) => ReactNode
+  /** Shown above the editor on wide screens (e.g. a hint). */
+  banner?: ReactNode
+  /** Called after the PDF was downloaded; its result is passed to `renderDownloaded`. */
+  onDownloaded?: () => unknown
+  /** Content of the "PDF created" panel; without it no panel is shown. */
+  renderDownloaded?: (issued: unknown) => ReactNode
 }
 
-export type SaveState = 'saving' | 'saved' | 'error'
-
-export function Workspace({
-  title,
-  route,
-  unsaved,
+export function PaperEditor({
+  adapter,
   kind,
   fileName,
   settings,
   onSettingsChange,
-  forInvoice,
-  data,
-  render,
-  form,
+  document: doc,
+  onDocumentChange,
   issues = [],
-  onDownloaded,
-  onFollowUp,
-  onBackup,
   initialZone = 'details',
   saveState = 'saved',
-}: Props) {
+  backupHref,
+  header,
+  banner,
+  onDownloaded,
+  renderDownloaded,
+}: PaperEditorProps) {
   useLang()
-  const documentKind = kind as DocKind
+  const documentKind = kind
+  const forInvoice = kind === 'invoice'
+  const data = useMemo(() => ({ kind, settings, document: doc }), [kind, settings, doc])
+  const render = useCallback((signal: AbortSignal) => adapter.render({ kind, settings, document: doc }, signal), [adapter, kind, settings, doc])
   const zones = ZONES[documentKind]
   const initialZoneState = zones.some((zone) => zone.id === initialZone) ? initialZone : zones[0].id
   const [activeZone, setActiveZone] = useState<ZoneId>(initialZoneState)
@@ -79,7 +83,7 @@ export function Workspace({
   const [showAll, setShowAll] = useState(false)
   const [visited, setVisited] = useState<ReadonlySet<ZoneId>>(() => new Set([initialZoneState]))
   const [downloaded, setDownloaded] = useState(false)
-  const [issuedEntry, setIssuedEntry] = useState<ArchiveEntry | null>(null)
+  const [issued, setIssued] = useState<unknown>(null)
   const [zoom, setZoom] = useState<'fit-page' | 'fit-width'>('fit-page')
   const [page, setPage] = useState(1)
   const [xml, setXml] = useState<string | null>(null)
@@ -240,7 +244,11 @@ export function Workspace({
         <SettingsForm settings={settings} onChange={onSettingsChange} forInvoice={forInvoice} zone={zone} senderSection={senderSection} />
       </>
     ) : (
-      form(zone)
+      forInvoice ? (
+        <InvoiceForm invoice={doc as Invoice} settings={settings} onChange={onDocumentChange} zone={zone} />
+      ) : (
+        <DocumentForm spec={docSpec(documentKind)!} doc={doc as Doc} zone={zone} onChange={onDocumentChange} />
+      )
     )
 
   const zonePanel = (
@@ -281,8 +289,7 @@ export function Workspace({
       return
     }
     downloadBlob(pdfBlob, `${fileName}.pdf`)
-    const entry = onDownloaded?.()
-    setIssuedEntry(entry ?? null)
+    setIssued(onDownloaded?.() ?? null)
     setDownloaded(true)
   }
 
@@ -292,11 +299,11 @@ export function Workspace({
   }
 
   const showXml = async () => {
-    if (!pdfBlob) return
+    if (!pdfBlob || !adapter.extractXml) return
     try {
-      const { extractEInvoice } = await import('../lib/einvoice/extract')
-      const found = await extractEInvoice(new Uint8Array(await pdfBlob.arrayBuffer()), `${fileName}.pdf`)
-      setXml(found.xml)
+      const found = await adapter.extractXml(pdfBlob, `${fileName}.pdf`)
+      if (found === null) throw new Error('no XML')
+      setXml(found)
       setXmlError(null)
     } catch {
       setXml(null)
@@ -311,39 +318,23 @@ export function Workspace({
 
   const onPreviewZone = (zone: ZoneId) => selectZone(zone)
 
+  const downloadButton = isLastZone ? null : (
+    <button type="button" className="btn btn-primary header-download" onClick={download} aria-label={tr('PDF herunterladen', 'Download PDF')}>
+      <AppIcon name="download" size={20} />
+      <span className="download-label">{tr('PDF herunterladen', 'Download PDF')}</span>
+    </button>
+  )
+
   return (
+    <EditorProvider adapter={adapter}>
     <div className={`app app-editor editor-zone-${activeZone}`}>
-      <AppHeader title={title} route={route} unsaved={unsaved} editor>
-        {!isLastZone && (
-          <button type="button" className="btn btn-primary header-download" onClick={download} aria-label={tr('PDF herunterladen', 'Download PDF')}>
-            <AppIcon name="download" size={20} />
-            <span className="download-label">{tr('PDF herunterladen', 'Download PDF')}</span>
-          </button>
-        )}
-      </AppHeader>
+      {header?.({ downloadButton })}
 
-      {!compact && <FreeVersionHint />}
+      {!compact && banner}
 
-      {downloaded && (
+      {downloaded && renderDownloaded && (
         <section className="download-success" role="status">
-          <div>
-            <strong>{tr('PDF erstellt und unter „Belege“ vermerkt.', 'PDF created and listed under “Documents”.')}</strong>
-            <p>{tr('Die Belege liegen nur in diesem Browser.', 'Your documents are stored only in this browser.')}</p>
-          </div>
-          <div className="download-success-actions">
-            <button type="button" className="btn btn-tonal" onClick={onBackup}>{tr('Sicherung herunterladen', 'Download backup')}</button>
-            <a className="btn btn-tonal" href={routeHref('')}>{tr('Neues Dokument', 'New document')}</a>
-            {issuedEntry && FOLLOW_UPS[documentKind].map((followUp) => (
-              <button
-                type="button"
-                className="btn btn-tonal"
-                key={followUp.to}
-                onClick={() => onFollowUp?.(issuedEntry, followUp.to)}
-              >
-                {followUp.label}
-              </button>
-            ))}
-          </div>
+          {renderDownloaded(issued)}
           <button type="button" className="notice-close" onClick={() => setDownloaded(false)} aria-label={tr('Schließen', 'Close')}>×</button>
         </section>
       )}
@@ -380,6 +371,7 @@ export function Workspace({
               active={activeZone}
               zones={zones}
               saveState={saveState}
+              backupHref={backupHref}
               onBack={() => changeZone(-1)}
               onNext={() => changeZone(1)}
               onCreate={download}
@@ -405,7 +397,7 @@ export function Workspace({
                 </div>
               )}
               <span className="preview-toolbar-spacer" />
-              {settings.zugferd && (kind === 'invoice' || kind === 'credit-note') && <button type="button" className="preview-chip" onClick={() => void showXml()} disabled={!pdfBlob}>ZUGFeRD XML</button>}
+              {adapter.extractXml && settings.zugferd && (kind === 'invoice' || kind === 'credit-note') && <button type="button" className="preview-chip" onClick={() => void showXml()} disabled={!pdfBlob}>ZUGFeRD XML</button>}
               {previewUrl && <button type="button" className="preview-chip" onClick={openPdf}>{tr('PDF öffnen', 'Open PDF')}</button>}
             </div>
             {paused && <PreviewPaused count={problems.length} onShow={revealProblems} />}
@@ -457,5 +449,6 @@ export function Workspace({
         />
       )}
     </div>
+    </EditorProvider>
   )
 }

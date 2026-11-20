@@ -1,12 +1,24 @@
-import { friendlyApiError, parseValidationDetails, unreachableMessage, type ServerIssue } from './apiErrors'
+import {
+  ApiError,
+  type Doc,
+  type DocKind,
+  friendlyApiError,
+  type Invoice,
+  parseValidationDetails,
+  type PostageStamp,
+  type RenderedPdf,
+  type Settings,
+  tr,
+  unreachableMessage,
+  ValidationError,
+  type ZoneRect,
+} from '@pdfcraft/editor'
 import { fetchWithTimeout, RequestTimeoutError, SHORT_TIMEOUT_MS } from './fetchTimeout'
 import { API_BASE_URL } from './config'
 import { reportClientError } from './clientErrors'
-import { tr } from './i18n'
-import type { Doc, DocKind, ZoneRect } from './documents'
-import type { Invoice, PostageStamp, Settings } from './types'
 
-export { API_BASE_URL }
+export { API_BASE_URL, ApiError, ValidationError }
+export type { RenderedPdf }
 
 // Development shortcut: a token created with `pdfcraft-backend tokens create-free`
 const DEV_TOKEN = import.meta.env.VITE_API_TOKEN as string | undefined
@@ -87,30 +99,6 @@ function clearToken() {
     localStorage.removeItem(TOKEN_KEY)
   } catch {
     // storage unavailable
-  }
-}
-
-/** The backend rejected the document data; `issues` point at the faulty form fields. */
-export class ValidationError extends Error {
-  readonly issues: ServerIssue[]
-
-  constructor(message: string, issues: ServerIssue[]) {
-    super(message)
-    this.name = 'ValidationError'
-    this.issues = issues
-  }
-}
-
-/** Error of the backend with its stable error code (`postage_disabled`, `validation_error`, …). */
-export class ApiError extends Error {
-  readonly code: string | undefined
-  readonly details: string | undefined
-
-  constructor(message: string, code?: string, details?: string) {
-    super(message)
-    this.name = 'ApiError'
-    this.code = code
-    this.details = details
   }
 }
 
@@ -216,11 +204,6 @@ async function request(method: string, path: string, payload?: unknown, signal?:
 
 const requestBlob = async (path: string, payload: unknown, signal?: AbortSignal): Promise<Blob> =>
   (await request('POST', path, payload, signal)).blob()
-
-export interface RenderedPdf {
-  blob: Blob
-  zones: ZoneRect[]
-}
 
 async function requestPreviewPdf(path: string, payload: unknown, signal?: AbortSignal): Promise<RenderedPdf> {
   const response = await request('POST', `${path}?zones=1`, payload, signal)

@@ -2,9 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AppHeader } from './AppHeader'
 import { Banner, Button, Card, EmptyState } from './ui'
 import { loadPaidToken, savePaidToken, type PaidToken } from '../lib/api'
-import { friendlyError } from '../lib/apiErrors'
-import { downloadBlob } from '../lib/download'
-import { tr, uiLocale, useLang } from '../lib/i18n'
+import { downloadBlob, friendlyError, tr, uiLocale, useLang } from '@pdfcraft/editor'
 import {
   cancelSubscription,
   claimToken,

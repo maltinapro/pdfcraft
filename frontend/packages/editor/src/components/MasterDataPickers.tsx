@@ -1,24 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { tr, uiLocale, useLang } from '../lib/i18n'
-import {
-  recipientOf,
-  saveRecipient,
-  searchArticles,
-  searchContacts,
-  setMasterData,
-  getMasterData,
-  sortedArticles,
-  sortedContacts,
-  useMasterData,
-  type Article,
-} from '../lib/masterData'
-import { routeHref } from '../lib/router'
-import { UNITS, newItem, type InvoiceItem, type Recipient } from '../lib/types'
+import { tr, useLang } from '../lib/i18n'
+import { useAdapter, useEntries } from '../adapter'
+import { recipientOf, searchArticles, searchContacts, sortedArticles, sortedContacts, type Article } from '../lib/catalog'
+import { money, unitLabel } from '../lib/format'
+import { newItem, type InvoiceItem, type Recipient } from '../lib/types'
 
 const SHOWN = 30
-
-export const unitLabel = (unit: string): string => UNITS.find((u) => u.value === unit)?.label ?? unit
-export const money = (n: number): string => n.toLocaleString(uiLocale(), { style: 'currency', currency: 'EUR' })
 
 interface PanelProps<T> {
   items: T[]
@@ -27,7 +14,7 @@ interface PanelProps<T> {
   keyOf: (item: T) => string
   onPick: (item: T) => void
   emptyText: string
-  manageHref: string
+  manageHref?: string
   manageLabel: string
   searchLabel: string
 }
@@ -40,7 +27,7 @@ function PickerPanel<T>({ items, search, render, keyOf, onPick, emptyText, manag
     <div className="picker-panel">
       {items.length === 0 ? (
         <p className="form-hint">
-          {emptyText} <a href={manageHref}>{manageLabel}</a>
+          {emptyText} {manageHref && <a href={manageHref}>{manageLabel}</a>}
         </p>
       ) : (
         <>
@@ -75,20 +62,27 @@ interface RecipientPickerProps {
 /** "Choose saved recipient" and "Save recipient" for the recipient section of every document form. */
 export function RecipientPicker({ recipient, onPick, autoFocus = false }: RecipientPickerProps) {
   useLang()
-  const { contacts } = useMasterData()
+  const source = useAdapter().customers
   const [open, setOpen] = useState(false)
+  const contacts = useEntries(source, open) ?? []
   const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null)
 
   // The message belongs to the recipient that was saved: drop it when the fields change
   useEffect(() => setMessage(null), [recipient])
 
-  const save = () => {
-    const { data, updated } = saveRecipient(getMasterData(), recipient)
-    const ok = setMasterData(data)
+  if (!source) return null
+
+  const save = async () => {
+    let result: Awaited<ReturnType<typeof source.save>>
+    try {
+      result = await source.save(recipient)
+    } catch {
+      result = { ok: false, updated: false }
+    }
     setMessage(
-      !ok
-        ? { text: tr('Speichern im Browser fehlgeschlagen (Speicher voll oder deaktiviert).', 'Saving in the browser failed (storage full or disabled).'), error: true }
-        : { text: updated ? tr('Empfänger aktualisiert.', 'Recipient updated.') : tr('Empfänger gespeichert.', 'Recipient saved.') },
+      !result.ok
+        ? { text: tr('Speichern fehlgeschlagen.', 'Saving failed.'), error: true }
+        : { text: result.updated ? tr('Empfänger aktualisiert.', 'Recipient updated.') : tr('Empfänger gespeichert.', 'Recipient saved.') },
     )
   }
 
@@ -98,7 +92,7 @@ export function RecipientPicker({ recipient, onPick, autoFocus = false }: Recipi
         <button type="button" className="btn btn-small btn-tonal" aria-expanded={open} autoFocus={autoFocus} onClick={() => setOpen(!open)}>
           {tr('Gespeicherten Empfänger wählen …', 'Choose saved recipient …')}
         </button>
-        <button type="button" className="btn btn-small btn-tonal" disabled={!recipient.name.trim()} onClick={save}>
+        <button type="button" className="btn btn-small btn-tonal" disabled={!recipient.name.trim()} onClick={() => void save()}>
           {tr('Empfänger speichern', 'Save recipient')}
         </button>
       </div>
@@ -123,7 +117,7 @@ export function RecipientPicker({ recipient, onPick, autoFocus = false }: Recipi
             setOpen(false)
           }}
           emptyText={tr('Noch keine Empfänger gespeichert.', 'No recipients saved yet.')}
-          manageHref={routeHref('contacts')}
+          manageHref={source.manageHref}
           manageLabel={tr('Empfänger verwalten', 'Manage recipients')}
           searchLabel={tr('Empfänger suchen …', 'Search recipients …')}
         />
@@ -142,8 +136,10 @@ interface ArticlePickerProps {
 /** "Add article" for the items section: appends a prefilled line. */
 export function ArticlePicker({ prices, onAdd }: ArticlePickerProps) {
   useLang()
-  const { articles } = useMasterData()
+  const source = useAdapter().articles
   const [open, setOpen] = useState(false)
+  const articles = useEntries(source, open) ?? []
+  if (!source) return null
 
   return (
     <>
@@ -166,7 +162,7 @@ export function ArticlePicker({ prices, onAdd }: ArticlePickerProps) {
             setOpen(false)
           }}
           emptyText={tr('Noch keine Artikel gespeichert.', 'No articles saved yet.')}
-          manageHref={routeHref('articles')}
+          manageHref={source.manageHref}
           manageLabel={tr('Artikel verwalten', 'Manage articles')}
           searchLabel={tr('Artikel suchen …', 'Search articles …')}
         />

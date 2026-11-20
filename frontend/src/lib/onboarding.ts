@@ -1,4 +1,4 @@
-import { tr } from './i18n'
+import { tr } from '@pdfcraft/editor'
 
 export type OnboardingId = 'company' | 'document' | 'backup'
 
