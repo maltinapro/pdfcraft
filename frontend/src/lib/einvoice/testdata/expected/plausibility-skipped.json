@@ -208,9 +208,15 @@
       },
       {
         "id": "en16931-rules",
-        "title": "Geschäftsregeln der EN 16931 (Auswahl: BR-21, BR-27, BR-61, BR-CO-9/18/25, kategoriebezogene Regeln)",
-        "status": "ok",
-        "findings": []
+        "title": "Geschäftsregeln der EN 16931 (Auswahl: Pflichtfelder, Nachkommastellen BR-DEC, BR-27, BR-61, BR-CO-9/18/25, kategoriebezogene Regeln)",
+        "status": "error",
+        "findings": [
+          "BR-45: S: Steuerbemessungsgrundlage (BT-116) fehlt",
+          "BR-12: Summe der Positionsbeträge (BT-106) fehlt",
+          "BR-13: Gesamtsumme ohne USt (BT-109) fehlt",
+          "BR-14: Gesamtsumme mit USt (BT-112) fehlt",
+          "BR-15: Zahlbetrag (BT-115) fehlt"
+        ]
       },
       {
         "id": "code-lists",
@@ -332,9 +338,15 @@
       },
       {
         "id": "en16931-rules",
-        "title": "EN 16931 business rules (selection: BR-21, BR-27, BR-61, BR-CO-9/18/25, category rules)",
-        "status": "ok",
-        "findings": []
+        "title": "EN 16931 business rules (selection: mandatory fields, decimal places BR-DEC, BR-27, BR-61, BR-CO-9/18/25, category rules)",
+        "status": "error",
+        "findings": [
+          "BR-45: S: VAT category taxable amount (BT-116) is missing",
+          "BR-12: Sum of invoice line net amounts (BT-106) is missing",
+          "BR-13: Invoice total amount without VAT (BT-109) is missing",
+          "BR-14: Invoice total amount with VAT (BT-112) is missing",
+          "BR-15: Amount due for payment (BT-115) is missing"
+        ]
       },
       {
         "id": "code-lists",

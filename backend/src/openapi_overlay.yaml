@@ -682,7 +682,7 @@ responseExamples:
           status: ok
           findings: []
         - id: en16931-rules
-          title: 'EN 16931 business rules (selection: BR-21, BR-27, BR-61, BR-CO-9/18/25, category rules)'
+          title: 'EN 16931 business rules (selection: mandatory fields, decimal places BR-DEC, BR-27, BR-61, BR-CO-9/18/25, category rules)'
           status: ok
           findings: []
         - id: code-lists

@@ -101,27 +101,267 @@ fn email_ok(raw: &str) -> bool {
     }
 }
 
+/// A text field that is missing or empty (JS truthiness in the TypeScript original).
+fn absent(value: &Option<String>) -> bool {
+    value.as_deref().is_none_or(str::is_empty)
+}
+
+/// More than two decimal places (BR-DEC-*); read from the parsed number, so trailing zeros do not count.
+fn too_many_decimals(value: Option<f64>) -> bool {
+    let Some(value) = value else { return false };
+    let scaled = value.abs() * 100.0;
+    (scaled - scaled.round()).abs() > (1e-6_f64).max(scaled * 1e-12)
+}
+
 pub(super) fn en16931_rules(c: &Ctx, view: &InvoiceView) -> CheckResult {
     let mut f = Findings::default();
     let t = &view.totals;
 
+    if view.items.is_empty() {
+        f.add(
+            c,
+            "BR-16",
+            "Die Rechnung braucht mindestens eine Position (BG-25)",
+            "The invoice needs at least one line (BG-25)",
+        );
+    }
     for (i, line) in view.items.iter().enumerate() {
-        let label = c.line_label(line, i);
-        if line.id.is_none() {
-            f.add_text(
+        let n = c.line_label(line, i);
+        let mut line_rule = |rule: &str, de: &str, en: &str| {
+            f.add_text(rule, c.pick(format!("{n}: {de}"), format!("{n}: {en}")));
+        };
+        if absent(&line.id) {
+            line_rule(
                 "BR-21",
-                c.pick(
-                    format!("{label}: Positionskennung (BT-126) fehlt"),
-                    format!("{label}: line identifier (BT-126) is missing"),
-                ),
+                "Positionskennung (BT-126) fehlt",
+                "line identifier (BT-126) is missing",
+            );
+        }
+        if line.quantity.is_none() {
+            line_rule(
+                "BR-22",
+                "Menge (BT-129) fehlt",
+                "quantity (BT-129) is missing",
+            );
+        }
+        if absent(&line.unit) {
+            line_rule(
+                "BR-23",
+                "Mengeneinheit (BT-130) fehlt",
+                "unit of measure (BT-130) is missing",
+            );
+        }
+        if line.net.is_none() {
+            line_rule(
+                "BR-24",
+                "Nettobetrag (BT-131) fehlt",
+                "line net amount (BT-131) is missing",
+            );
+        }
+        if absent(&line.name) {
+            line_rule(
+                "BR-25",
+                "Bezeichnung (BT-153) fehlt",
+                "item name (BT-153) is missing",
+            );
+        }
+        if line.price.is_none() {
+            line_rule(
+                "BR-26",
+                "Nettopreis (BT-146) fehlt",
+                "net price (BT-146) is missing",
             );
         }
         if line.price.is_some_and(|p| p < 0.0) {
-            f.add_text(
+            line_rule(
                 "BR-27",
+                "Der Nettopreis (BT-146) ist negativ",
+                "the net price (BT-146) is negative",
+            );
+        }
+        if absent(&line.tax_category) {
+            line_rule(
+                "BR-CO-04",
+                "Steuerkategorie (BT-151) fehlt",
+                "VAT category (BT-151) is missing",
+            );
+        }
+        if too_many_decimals(line.net) {
+            line_rule(
+                "BR-DEC-23",
+                "Nettobetrag (BT-131) hat mehr als zwei Nachkommastellen",
+                "line net amount (BT-131) has more than two decimal places",
+            );
+        }
+    }
+
+    for (i, a) in view.adjustments.iter().enumerate() {
+        let (de, en, amount_rule, category_rule, dec_rule) = if a.charge {
+            ("Zuschlag", "Charge", "BR-36", "BR-37", "BR-DEC-05")
+        } else {
+            ("Nachlass", "Allowance", "BR-31", "BR-32", "BR-DEC-01")
+        };
+        let n = i + 1;
+        if a.amount.is_none() {
+            f.add_text(
+                amount_rule,
                 c.pick(
-                    format!("{label}: Der Nettopreis (BT-146) ist negativ"),
-                    format!("{label}: the net price (BT-146) is negative"),
+                    format!("{de} {n}: Betrag fehlt"),
+                    format!("{en} {n}: amount is missing"),
+                ),
+            );
+        }
+        if absent(&a.tax_category) {
+            f.add_text(
+                category_rule,
+                c.pick(
+                    format!("{de} {n}: USt-Kategorie fehlt"),
+                    format!("{en} {n}: VAT category is missing"),
+                ),
+            );
+        }
+        if too_many_decimals(a.amount) {
+            f.add_text(
+                dec_rule,
+                c.pick(
+                    format!("{de} {n}: Betrag hat mehr als zwei Nachkommastellen"),
+                    format!("{en} {n}: amount has more than two decimal places"),
+                ),
+            );
+        }
+    }
+
+    for x in &view.taxes {
+        let label = x.category.clone().unwrap_or_else(|| "?".to_string());
+        if x.basis.is_none() {
+            f.add_text(
+                "BR-45",
+                c.pick(
+                    format!("{label}: Steuerbemessungsgrundlage (BT-116) fehlt"),
+                    format!("{label}: VAT category taxable amount (BT-116) is missing"),
+                ),
+            );
+        }
+        if x.amount.is_none() {
+            f.add_text(
+                "BR-46",
+                c.pick(
+                    format!("{label}: Steuerbetrag (BT-117) fehlt"),
+                    format!("{label}: VAT category tax amount (BT-117) is missing"),
+                ),
+            );
+        }
+        if absent(&x.category) {
+            f.add(
+                c,
+                "BR-47",
+                "Eine Steueraufschlüsselung hat keinen Kategoriecode (BT-118)",
+                "A VAT breakdown has no category code (BT-118)",
+            );
+        }
+        if x.rate.is_none() && x.category.as_deref() != Some("O") {
+            f.add_text(
+                "BR-48",
+                c.pick(
+                    format!("{label}: Steuersatz (BT-119) fehlt"),
+                    format!("{label}: VAT category rate (BT-119) is missing"),
+                ),
+            );
+        }
+        if too_many_decimals(x.basis) {
+            f.add_text("BR-DEC-19", c.pick(format!("{label}: Steuerbemessungsgrundlage (BT-116) hat mehr als zwei Nachkommastellen"), format!("{label}: VAT category taxable amount (BT-116) has more than two decimal places")));
+        }
+        if too_many_decimals(x.amount) {
+            f.add_text("BR-DEC-20", c.pick(format!("{label}: Steuerbetrag (BT-117) hat mehr als zwei Nachkommastellen"), format!("{label}: VAT category tax amount (BT-117) has more than two decimal places")));
+        }
+    }
+
+    let mandatory = [
+        (
+            t.line_total,
+            "BR-12",
+            "Summe der Positionsbeträge (BT-106)",
+            "Sum of invoice line net amounts (BT-106)",
+            "BR-DEC-09",
+        ),
+        (
+            t.tax_basis,
+            "BR-13",
+            "Gesamtsumme ohne USt (BT-109)",
+            "Invoice total amount without VAT (BT-109)",
+            "BR-DEC-12",
+        ),
+        (
+            t.grand_total,
+            "BR-14",
+            "Gesamtsumme mit USt (BT-112)",
+            "Invoice total amount with VAT (BT-112)",
+            "BR-DEC-14",
+        ),
+        (
+            t.due,
+            "BR-15",
+            "Zahlbetrag (BT-115)",
+            "Amount due for payment (BT-115)",
+            "BR-DEC-18",
+        ),
+    ];
+    for (value, rule, de, en, dec_rule) in mandatory {
+        if value.is_none() {
+            f.add_text(
+                rule,
+                c.pick(format!("{de} fehlt"), format!("{en} is missing")),
+            );
+        }
+        if too_many_decimals(value) {
+            f.add_text(
+                dec_rule,
+                c.pick(
+                    format!("{de} hat mehr als zwei Nachkommastellen"),
+                    format!("{en} has more than two decimal places"),
+                ),
+            );
+        }
+    }
+    let optional = [
+        (
+            t.allowance_total,
+            "BR-DEC-10",
+            "Summe der Nachlässe (BT-107)",
+            "Sum of allowances on document level (BT-107)",
+        ),
+        (
+            t.charge_total,
+            "BR-DEC-11",
+            "Summe der Zuschläge (BT-108)",
+            "Sum of charges on document level (BT-108)",
+        ),
+        (
+            t.tax_total,
+            "BR-DEC-13",
+            "Gesamtsumme USt (BT-110)",
+            "Invoice total VAT amount (BT-110)",
+        ),
+        (
+            t.prepaid,
+            "BR-DEC-16",
+            "Gezahlter Betrag (BT-113)",
+            "Paid amount (BT-113)",
+        ),
+        (
+            t.rounding,
+            "BR-DEC-17",
+            "Rundungsbetrag (BT-114)",
+            "Rounding amount (BT-114)",
+        ),
+    ];
+    for (value, rule, de, en) in optional {
+        if too_many_decimals(value) {
+            f.add_text(
+                rule,
+                c.pick(
+                    format!("{de} hat mehr als zwei Nachkommastellen"),
+                    format!("{en} has more than two decimal places"),
                 ),
             );
         }
@@ -254,8 +494,8 @@ pub(super) fn en16931_rules(c: &Ctx, view: &InvoiceView) -> CheckResult {
     result(
         "en16931-rules",
         c.tr(
-            "Geschäftsregeln der EN 16931 (Auswahl: BR-21, BR-27, BR-61, BR-CO-9/18/25, kategoriebezogene Regeln)",
-            "EN 16931 business rules (selection: BR-21, BR-27, BR-61, BR-CO-9/18/25, category rules)",
+            "Geschäftsregeln der EN 16931 (Auswahl: Pflichtfelder, Nachkommastellen BR-DEC, BR-27, BR-61, BR-CO-9/18/25, kategoriebezogene Regeln)",
+            "EN 16931 business rules (selection: mandatory fields, decimal places BR-DEC, BR-27, BR-61, BR-CO-9/18/25, category rules)",
         ),
         f,
     )

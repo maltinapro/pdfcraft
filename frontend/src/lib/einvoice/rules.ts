@@ -60,16 +60,72 @@ const usedCategories = (view: InvoiceView): string[] => {
   return [...new Set(all.filter((c): c is string => !!c))]
 }
 
+/** More than two decimal places (BR-DEC-*); read from the parsed number, so trailing zeros do not count. */
+const tooManyDecimals = (value: number | null): boolean => {
+  if (value === null) return false
+  const scaled = Math.abs(value) * 100
+  return Math.abs(scaled - Math.round(scaled)) > Math.max(1e-6, scaled * 1e-12)
+}
+
 const lineName = (line: LineView, index: number) => tr(`Position ${line.id ?? index + 1}`, `Line ${line.id ?? index + 1}`)
 
 export function en16931Rules(view: InvoiceView): CheckResult {
   const f = new Findings()
   const t = view.totals
 
+  if (view.items.length === 0) f.add('BR-16', 'Die Rechnung braucht mindestens eine Position (BG-25)', 'The invoice needs at least one line (BG-25)')
   view.items.forEach((line, i) => {
-    if (!line.id) f.add('BR-21', `${lineName(line, i)}: Positionskennung (BT-126) fehlt`, `${lineName(line, i)}: line identifier (BT-126) is missing`)
-    if (line.price !== null && line.price < 0) f.add('BR-27', `${lineName(line, i)}: Der Nettopreis (BT-146) ist negativ`, `${lineName(line, i)}: the net price (BT-146) is negative`)
+    const n = lineName(line, i)
+    if (!line.id) f.add('BR-21', `${n}: Positionskennung (BT-126) fehlt`, `${n}: line identifier (BT-126) is missing`)
+    if (line.quantity === null) f.add('BR-22', `${n}: Menge (BT-129) fehlt`, `${n}: quantity (BT-129) is missing`)
+    if (!line.unit) f.add('BR-23', `${n}: Mengeneinheit (BT-130) fehlt`, `${n}: unit of measure (BT-130) is missing`)
+    if (line.net === null) f.add('BR-24', `${n}: Nettobetrag (BT-131) fehlt`, `${n}: line net amount (BT-131) is missing`)
+    if (!line.name) f.add('BR-25', `${n}: Bezeichnung (BT-153) fehlt`, `${n}: item name (BT-153) is missing`)
+    if (line.price === null) f.add('BR-26', `${n}: Nettopreis (BT-146) fehlt`, `${n}: net price (BT-146) is missing`)
+    if (line.price !== null && line.price < 0) f.add('BR-27', `${n}: Der Nettopreis (BT-146) ist negativ`, `${n}: the net price (BT-146) is negative`)
+    if (!line.taxCategory) f.add('BR-CO-04', `${n}: Steuerkategorie (BT-151) fehlt`, `${n}: VAT category (BT-151) is missing`)
+    if (tooManyDecimals(line.net)) f.add('BR-DEC-23', `${n}: Nettobetrag (BT-131) hat mehr als zwei Nachkommastellen`, `${n}: line net amount (BT-131) has more than two decimal places`)
   })
+
+  view.adjustments.forEach((a, i) => {
+    const [de, en, amountRule, categoryRule, decRule] = a.charge
+      ? ['Zuschlag', 'Charge', 'BR-36', 'BR-37', 'BR-DEC-05']
+      : ['Nachlass', 'Allowance', 'BR-31', 'BR-32', 'BR-DEC-01']
+    if (a.amount === null) f.add(amountRule, `${de} ${i + 1}: Betrag fehlt`, `${en} ${i + 1}: amount is missing`)
+    if (!a.taxCategory) f.add(categoryRule, `${de} ${i + 1}: USt-Kategorie fehlt`, `${en} ${i + 1}: VAT category is missing`)
+    if (tooManyDecimals(a.amount)) f.add(decRule, `${de} ${i + 1}: Betrag hat mehr als zwei Nachkommastellen`, `${en} ${i + 1}: amount has more than two decimal places`)
+  })
+
+  view.taxes.forEach((x) => {
+    const label = x.category ?? '?'
+    if (x.basis === null) f.add('BR-45', `${label}: Steuerbemessungsgrundlage (BT-116) fehlt`, `${label}: VAT category taxable amount (BT-116) is missing`)
+    if (x.amount === null) f.add('BR-46', `${label}: Steuerbetrag (BT-117) fehlt`, `${label}: VAT category tax amount (BT-117) is missing`)
+    if (!x.category) f.add('BR-47', 'Eine Steueraufschlüsselung hat keinen Kategoriecode (BT-118)', 'A VAT breakdown has no category code (BT-118)')
+    if (x.rate === null && x.category !== 'O') f.add('BR-48', `${label}: Steuersatz (BT-119) fehlt`, `${label}: VAT category rate (BT-119) is missing`)
+    if (tooManyDecimals(x.basis)) f.add('BR-DEC-19', `${label}: Steuerbemessungsgrundlage (BT-116) hat mehr als zwei Nachkommastellen`, `${label}: VAT category taxable amount (BT-116) has more than two decimal places`)
+    if (tooManyDecimals(x.amount)) f.add('BR-DEC-20', `${label}: Steuerbetrag (BT-117) hat mehr als zwei Nachkommastellen`, `${label}: VAT category tax amount (BT-117) has more than two decimal places`)
+  })
+
+  const mandatory: [number | null, string, string, string, string][] = [
+    [t.lineTotal, 'BR-12', 'Summe der Positionsbeträge (BT-106)', 'Sum of invoice line net amounts (BT-106)', 'BR-DEC-09'],
+    [t.taxBasis, 'BR-13', 'Gesamtsumme ohne USt (BT-109)', 'Invoice total amount without VAT (BT-109)', 'BR-DEC-12'],
+    [t.grandTotal, 'BR-14', 'Gesamtsumme mit USt (BT-112)', 'Invoice total amount with VAT (BT-112)', 'BR-DEC-14'],
+    [t.due, 'BR-15', 'Zahlbetrag (BT-115)', 'Amount due for payment (BT-115)', 'BR-DEC-18'],
+  ]
+  for (const [value, rule, de, en, decRule] of mandatory) {
+    if (value === null) f.add(rule, `${de} fehlt`, `${en} is missing`)
+    if (tooManyDecimals(value)) f.add(decRule, `${de} hat mehr als zwei Nachkommastellen`, `${en} has more than two decimal places`)
+  }
+  const optional: [number | null, string, string, string][] = [
+    [t.allowanceTotal, 'BR-DEC-10', 'Summe der Nachlässe (BT-107)', 'Sum of allowances on document level (BT-107)'],
+    [t.chargeTotal, 'BR-DEC-11', 'Summe der Zuschläge (BT-108)', 'Sum of charges on document level (BT-108)'],
+    [t.taxTotal, 'BR-DEC-13', 'Gesamtsumme USt (BT-110)', 'Invoice total VAT amount (BT-110)'],
+    [t.prepaid, 'BR-DEC-16', 'Gezahlter Betrag (BT-113)', 'Paid amount (BT-113)'],
+    [t.rounding, 'BR-DEC-17', 'Rundungsbetrag (BT-114)', 'Rounding amount (BT-114)'],
+  ]
+  for (const [value, rule, de, en] of optional) {
+    if (tooManyDecimals(value)) f.add(rule, `${de} hat mehr als zwei Nachkommastellen`, `${en} has more than two decimal places`)
+  }
 
   const vatPrefix = (who: string, whoEn: string, id: string | undefined) => {
     if (!id) return
@@ -113,7 +169,7 @@ export function en16931Rules(view: InvoiceView): CheckResult {
 
   return {
     id: 'en16931-rules',
-    title: tr('Geschäftsregeln der EN 16931 (Auswahl: BR-21, BR-27, BR-61, BR-CO-9/18/25, kategoriebezogene Regeln)', 'EN 16931 business rules (selection: BR-21, BR-27, BR-61, BR-CO-9/18/25, category rules)'),
+    title: tr('Geschäftsregeln der EN 16931 (Auswahl: Pflichtfelder, Nachkommastellen BR-DEC, BR-27, BR-61, BR-CO-9/18/25, kategoriebezogene Regeln)', 'EN 16931 business rules (selection: mandatory fields, decimal places BR-DEC, BR-27, BR-61, BR-CO-9/18/25, category rules)'),
     status: f.list.length ? 'error' : 'ok',
     findings: f.list,
   }

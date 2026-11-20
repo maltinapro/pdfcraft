@@ -1,0 +1,361 @@
+{
+  "view": {
+    "syntax": "cii",
+    "typeCode": "380",
+    "profile": "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0",
+    "number": "2026-001",
+    "issueDate": "2026-01-31",
+    "dueDate": "2026-03-02",
+    "deliveryDate": "2026-01-31",
+    "currency": "EUR",
+    "buyerReference": "04011000-12345-34",
+    "paymentReference": "2026-001",
+    "precedingInvoices": [],
+    "seller": {
+      "name": "Muster GmbH",
+      "street": "Musterstr. 1",
+      "postcode": "12345",
+      "city": "Musterstadt",
+      "country": "DE",
+      "vatId": "DE123456789",
+      "taxNumber": "12/345/67890",
+      "contactName": "Erika Muster",
+      "phone": "+49 30 123456",
+      "email": "rechnung@muster.example"
+    },
+    "buyer": {
+      "name": "Kunde AG",
+      "street": "Kundenweg 5",
+      "postcode": "54321",
+      "city": "Kundenstadt",
+      "country": "DE",
+      "vatId": "DE987654321"
+    },
+    "notes": [],
+    "items": [
+      {
+        "id": "1",
+        "name": "Beratung",
+        "quantity": 8,
+        "unit": "HUR",
+        "price": 95,
+        "priceBasis": 1,
+        "net": 760,
+        "hasAdjustments": false,
+        "taxCategory": "S",
+        "taxRate": 19
+      },
+      {
+        "id": "2",
+        "name": "Fachbuch",
+        "quantity": null,
+        "price": 24.9,
+        "priceBasis": 1,
+        "net": 74.703,
+        "hasAdjustments": false,
+        "taxCategory": "S",
+        "taxRate": 7
+      },
+      {
+        "id": "3",
+        "name": "Wartungspauschale",
+        "quantity": 1,
+        "price": 149.99,
+        "priceBasis": 1,
+        "net": 149.99,
+        "hasAdjustments": false,
+        "taxCategory": "S",
+        "taxRate": 19
+      }
+    ],
+    "adjustments": [],
+    "taxes": [
+      {
+        "category": "S",
+        "rate": 19,
+        "basis": 909.99,
+        "amount": 172.9
+      },
+      {
+        "category": "S",
+        "rate": 7,
+        "basis": 74.7,
+        "amount": 5.23
+      }
+    ],
+    "totals": {
+      "lineTotal": 984.69,
+      "allowanceTotal": null,
+      "chargeTotal": null,
+      "taxBasis": 984.69,
+      "taxTotal": 178.125,
+      "grandTotal": 1162.825,
+      "prepaid": null,
+      "rounding": null,
+      "due": null
+    },
+    "payments": [
+      {
+        "code": "58",
+        "iban": "DE89370400440532013000",
+        "bic": "COBADEFFXXX"
+      }
+    ]
+  },
+  "de": {
+    "checks": [
+      {
+        "id": "header",
+        "title": "Pflichtangaben im Kopf (Nummer, Datum, Typ, Währung, Spezifikation)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "parties",
+        "title": "Pflichtangaben zu Verkäufer und Käufer",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "lines",
+        "title": "Positionen vorhanden und vollständig",
+        "status": "error",
+        "findings": [
+          "Position 2: fehlt Menge, Einheit",
+          "Position 3: fehlt Einheit"
+        ]
+      },
+      {
+        "id": "line-math",
+        "title": "Positionsbetrag = Menge × Einzelpreis (je Position, 1 Cent Rundungstoleranz)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-sum",
+        "title": "Summe der Positionen = Summe Positionsbeträge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "net-total",
+        "title": "Nettosumme = Positionen − Nachlässe + Zuschläge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-basis",
+        "title": "Steuerbasis je Kategorie und Satz = Positionen − Nachlässe + Zuschläge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-amount",
+        "title": "Steuerbetrag = Steuerbasis × Satz (je Aufschlüsselung, 1 Cent Rundungstoleranz)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-total",
+        "title": "Gesamtsteuer = Summe der Steuerbeträge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "gross-total",
+        "title": "Bruttosumme = Nettosumme + Steuer",
+        "status": "error",
+        "findings": [
+          "Ergibt 1.162,82 EUR, angegeben 1.162,83 EUR"
+        ]
+      },
+      {
+        "id": "amount-due",
+        "title": "Zahlbetrag = Bruttosumme − Anzahlungen + Rundung",
+        "status": "skipped",
+        "findings": [
+          "Nicht prüfbar: Beträge fehlen in der Datei."
+        ]
+      },
+      {
+        "id": "tax-category",
+        "title": "Steuerkategorien passen zum Satz, Befreiungsgrund vorhanden",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "payment",
+        "title": "Zahlungsangaben vorhanden, IBAN-Prüfsumme",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "dates",
+        "title": "Datumsangaben sind echte Kalendertage, Fälligkeit nicht vor Rechnungsdatum",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "en16931-rules",
+        "title": "Geschäftsregeln der EN 16931 (Auswahl: Pflichtfelder, Nachkommastellen BR-DEC, BR-27, BR-61, BR-CO-9/18/25, kategoriebezogene Regeln)",
+        "status": "error",
+        "findings": [
+          "BR-22: Position 2: Menge (BT-129) fehlt",
+          "BR-23: Position 2: Mengeneinheit (BT-130) fehlt",
+          "BR-DEC-23: Position 2: Nettobetrag (BT-131) hat mehr als zwei Nachkommastellen",
+          "BR-23: Position 3: Mengeneinheit (BT-130) fehlt",
+          "BR-DEC-14: Gesamtsumme mit USt (BT-112) hat mehr als zwei Nachkommastellen",
+          "BR-15: Zahlbetrag (BT-115) fehlt",
+          "BR-DEC-13: Gesamtsumme USt (BT-110) hat mehr als zwei Nachkommastellen"
+        ]
+      },
+      {
+        "id": "xrechnung-rules",
+        "title": "Regeln der XRechnung (Auswahl: BR-DE-1 bis -9, -14 bis -17, -19, -26 bis -28)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "code-lists",
+        "title": "Codelisten: Währung, Länder, Rechnungstyp, Steuerkategorie, Zahlungsart, Format der Einheit",
+        "status": "ok",
+        "findings": []
+      }
+    ],
+    "notChecked": [
+      "Gültigkeit gegen das XML-Schema (XSD)",
+      "Die übrigen Geschäftsregeln der Norm EN 16931 (BR-…) und der XRechnung (BR-DE-…); geprüft wird nur die oben genannte Auswahl, nicht die Schematron-Regeln des KoSIT-Prüftools",
+      "Codelisten für Einheiten (UN/ECE Rec. 20: nur das Format) und Codes außerhalb der genannten Listen",
+      "PDF/A-3-Konformität, XMP-Metadaten und ob das PDF zum XML passt",
+      "Echtheit, Signaturen und ob USt-IdNr., Steuersätze oder Bankverbindung stimmen"
+    ]
+  },
+  "en": {
+    "checks": [
+      {
+        "id": "header",
+        "title": "Mandatory header fields (number, date, type, currency, specification)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "parties",
+        "title": "Mandatory seller and buyer details",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "lines",
+        "title": "Lines present and complete",
+        "status": "error",
+        "findings": [
+          "Line 2: missing quantity, unit",
+          "Line 3: missing unit"
+        ]
+      },
+      {
+        "id": "line-math",
+        "title": "Line amount = quantity × unit price (per line, 1 cent rounding tolerance)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-sum",
+        "title": "Sum of lines = line total",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "net-total",
+        "title": "Net total = lines − allowances + charges",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-basis",
+        "title": "Tax basis per category and rate = lines − allowances + charges",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-amount",
+        "title": "Tax amount = tax basis × rate (per breakdown, 1 cent rounding tolerance)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-total",
+        "title": "Total tax = sum of the tax amounts",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "gross-total",
+        "title": "Gross total = net total + tax",
+        "status": "error",
+        "findings": [
+          "Gives 1,162.82 EUR, stated 1,162.83 EUR"
+        ]
+      },
+      {
+        "id": "amount-due",
+        "title": "Amount due = gross total − prepayments + rounding",
+        "status": "skipped",
+        "findings": [
+          "Not checked: amounts are missing in the file."
+        ]
+      },
+      {
+        "id": "tax-category",
+        "title": "Tax categories match the rate, exemption reason present",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "payment",
+        "title": "Payment details present, IBAN checksum",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "dates",
+        "title": "Dates are real calendar days, due date not before issue date",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "en16931-rules",
+        "title": "EN 16931 business rules (selection: mandatory fields, decimal places BR-DEC, BR-27, BR-61, BR-CO-9/18/25, category rules)",
+        "status": "error",
+        "findings": [
+          "BR-22: Line 2: quantity (BT-129) is missing",
+          "BR-23: Line 2: unit of measure (BT-130) is missing",
+          "BR-DEC-23: Line 2: line net amount (BT-131) has more than two decimal places",
+          "BR-23: Line 3: unit of measure (BT-130) is missing",
+          "BR-DEC-14: Invoice total amount with VAT (BT-112) has more than two decimal places",
+          "BR-15: Amount due for payment (BT-115) is missing",
+          "BR-DEC-13: Invoice total VAT amount (BT-110) has more than two decimal places"
+        ]
+      },
+      {
+        "id": "xrechnung-rules",
+        "title": "XRechnung rules (selection: BR-DE-1 to -9, -14 to -17, -19, -26 to -28)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "code-lists",
+        "title": "Code lists: currency, countries, invoice type, tax category, payment means, unit format",
+        "status": "ok",
+        "findings": []
+      }
+    ],
+    "notChecked": [
+      "Validity against the XML schema (XSD)",
+      "The remaining business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…); only the selection named above is checked, not the Schematron rules of the KoSIT validator",
+      "Code lists for units (UN/ECE Rec. 20: format only) and codes outside the listed ones",
+      "PDF/A-3 conformity, XMP metadata and whether the PDF matches the XML",
+      "Authenticity, signatures and whether VAT IDs, tax rates or bank details are correct"
+    ]
+  }
+}
