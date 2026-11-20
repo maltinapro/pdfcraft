@@ -138,7 +138,7 @@ The browser preview adds `?zones=1` to single-document requests. This optional f
 
 ## `POST /v1/documents`
 
-Credit note (Stornorechnung), offer, order confirmation, delivery note, letter and dunning letter (Mahnung). Same authentication, rate limit (one token per PDF), watermark rules and error format as `/v1/invoices`.
+Credit note (Stornorechnung), offer, order confirmation, delivery note, letter, dunning letter (Mahnung) and report (tables). Same authentication, rate limit (one token per PDF), watermark rules and error format as `/v1/invoices`.
 
 **Body:** `{ "type": "...", "settings": { ... }, "document": { ... } }`
 
@@ -150,6 +150,7 @@ Credit note (Stornorechnung), offer, order confirmation, delivery note, letter a
 | `delivery-note` | `number`, `date`, `recipient`, `items` | No prices; optional `deliveryDate`, `reference`, `intro`, `closing` |
 | `letter` | `date`, `recipient`, `subject`, `body` | Optional `reference`, `closing` (e.g. "Mit freundlichen Grüßen") |
 | `dunning` | `number`, `date`, `recipient`, `dunningLevel`, `invoices`, `paymentDeadline` | Dunning letter, see below |
+| `report` | `date`, `title`, `tables` | Tabular report, see below; no `recipient`, `number` or `items` |
 
 `recipient` is `{ name, address, city }`, items are `{ description, quantity, unit, price, taxRate }` like in invoices, dates are `YYYY-MM-DD`. Only `settings.sender`, the logo, accent color, font, locale and footer are used (and `settings.bank` for the `dunning` payment block). Unknown `type` → `400 invalid_request`.
 
@@ -200,6 +201,37 @@ curl -X POST http://localhost:3000/v1/documents \
   -H 'Authorization: ******' -H 'content-type: application/json' \
   -d '{"type":"letter","settings":{"sender":{"name":"Muster GmbH","address":"Musterstr. 1","city":"12345 Musterstadt"}},"document":{"date":"2026-11-03","recipient":{"name":"Kunde AG","address":"Kundenweg 5","city":"54321 Kundenstadt"},"subject":"Hallo","body":"Sehr geehrte Damen und Herren,\n\n...","closing":"Mit freundlichen Grüßen"}}' \
   -o letter.pdf
+```
+
+### Report (`report`)
+
+A generic document for lists and evaluations: journal, trial balance (Summen- und Saldenliste), BWA, procedure documentation or the cover sheet of an audit export. It is laid out in all three designs and in German or English (`settings.locale`), carries no e-invoice XML and no postage stamp, needs no `recipient` and no `number`. Report PDFs have no DIN 5008 address field, fold or punch marks and no zone markers. The sender is printed in the page header, the page footer shows `title · period · Seite x von y` (`Page x of y` in English) next to the optional `settings.footer`. The table header row is repeated on every page.
+
+| Field | Meaning |
+| --- | --- |
+| `title` | required, the heading of the document |
+| `period` | optional, for example `Januar bis Dezember 2026` |
+| `meta` | optional, up to 12 lines `{ label, value }` (client, chart of accounts, …) shown below the title |
+| `landscape` | optional, `true` prints on landscape A4 (default portrait) |
+| `intro`, `closing` | optional free text before the first and after the last table |
+| `tables` | 1 to 20 tables, see below |
+
+A table is `{ title?, columns, rows | groups, total?, totalLabel? }`:
+
+- `columns` (1 to 12): `{ label, type, align, width, decimals, sum }`. `type` is `text` (default), `number` or `amount`; numbers are formatted like in the other documents (`1.234,56`) and right-aligned, `align` overrides this. `decimals` (0 to 4; default 2 for `amount`, 0 for `number`) controls the digits of `number`/`amount` columns. `width` is a relative width from 1 to 100; without it the longest text column takes the remaining space. `sum: true` (number and amount columns only) sums the column.
+- `rows`: each row is an array with one cell per column (a string in a `text` column, a number in the others, `null` for an empty cell). Use either `rows` or `groups`.
+- `groups`: `{ title, rows, subtotal?, subtotalLabel? }`. The group title is a heading row; a subtotal row with the sums of all `sum` columns follows unless `subtotal` is `false`. The default label is `Zwischensumme <title>` / `Subtotal <title>`.
+- `total` (default `true` when a column has `sum`) prints a total row of all rows; `totalLabel` overrides `Gesamt` / `Total`.
+
+Sums are computed by PDFCraft in fixed point (4 decimals, rounded half away from zero per column), so printed sums always agree with the printed cells.
+
+**Limits:** at most 20 tables, 12 columns and 12 meta lines, and **10 000 rows in total** over all tables (group headings and sum rows not counted), far beyond the 500 items of an invoice. The request body is limited to 2 MB, which wide rows reach first. A maximum report of 10 000 rows renders to a PDF of more than a hundred pages in a few seconds; send very large exports in several reports (for example one per month). Every report costs one rate-limit token.
+
+```bash
+curl -X POST http://localhost:3000/v1/documents \
+  -H 'Authorization: ******' -H 'content-type: application/json' \
+  -d '{"type":"report","settings":{"sender":{"name":"Muster GmbH","address":"Musterstr. 1","city":"12345 Musterstadt"}},"document":{"date":"2026-12-31","title":"Summen- und Saldenliste","period":"2026","tables":[{"columns":[{"label":"Konto"},{"label":"Soll","type":"amount","sum":true}],"rows":[["1000",1200.5],["1200",15000]]}]}}' \
+  -o report.pdf
 ```
 
 ## `POST /v1/documents/bulk`

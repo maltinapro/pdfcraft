@@ -49,7 +49,7 @@ security:
 tags:
 - description: E-invoices (ZUGFeRD / Factur-X, XRechnung) as PDF.
   name: Invoices
-- description: Credit notes, offers, order confirmations, delivery notes, letters and dunning letters as PDF.
+- description: Credit notes, offers, order confirmations, delivery notes, letters, dunning letters and reports (tables) as PDF.
   name: Documents
 - description: Information about the calling token.
   name: Token
@@ -59,12 +59,15 @@ paths:
   /v1/documents:
     post:
       description: |-
-        Credit note (Stornorechnung), offer, order confirmation, delivery note, letter or dunning letter
-        (Mahnung); `type` selects the template. Same authentication, rate limit (one unit per PDF), watermark rules and error format as
+        Credit note (Stornorechnung), offer, order confirmation, delivery note, letter, dunning letter
+        (Mahnung) or report (tables); `type` selects the template. Same authentication, rate limit (one unit per PDF), watermark rules and error format as
         `POST /v1/invoices`. Only `settings.sender`, the logo, signature, accent color, font, locale and footer
         are used. A credit note carries an EN 16931 / XRechnung credit-note XML (TypeCode 381) when
         `settings.zugferd` is on. A dunning letter also uses `settings.bank` (account and EPC QR code of the
-        payment block) and carries no XML.
+        payment block) and carries no XML. A report is a generic document of tables (journal, trial balance,
+        evaluations): title, period, meta block and up to 20 tables with typed columns, group subtotals and
+        totals; it has no recipient, no e-invoice XML and no stamp, the table header repeats on every page and
+        the footer shows "Seite x von y". Limits: 12 columns per table and 10,000 rows in total.
 
         Required `document` fields by `type`:
 
@@ -76,6 +79,7 @@ paths:
         | `delivery-note` | `number`, `date`, `recipient`, `items` (shown without prices) | `deliveryDate`, `reference`, `intro`, `closing` |
         | `letter` | `date`, `recipient`, `subject`, `body` | `reference`, `closing` |
         | `dunning` | `number`, `date`, `recipient`, `dunningLevel` (1 payment reminder, 2 dunning letter, 3 final dunning letter), `invoices` (1 to 100: `number`, `date`, `dueDate`, `openAmount`), `paymentDeadline` | `fees` (`description`, `amount`), `interest` (`rate`, `from`, `to`, `amount`, given by the caller), `intro`, `closing` |
+        | `report` | `date`, `title`, `tables` (1 to 20, each with `columns` and `rows` or `groups`) | `number`, `period`, `meta` (`label`, `value`), `landscape`, `intro`, `closing` |
       operationId: createDocument
       parameters:
       - description: Include PDF zone geometry in `X-Pdfcraft-Zones`; only `1` enables it.
@@ -268,6 +272,52 @@ paths:
                       city: 12345 Musterstadt
                       name: Muster GmbH
                   type: order
+              report:
+                summary: Report (trial balance with group subtotals and a total)
+                value:
+                  document:
+                    date: '2026-12-31'
+                    landscape: true
+                    meta:
+                    - label: Mandant
+                      value: Muster GmbH
+                    - label: Kontenrahmen
+                      value: SKR03
+                    period: Januar bis Dezember 2026
+                    tables:
+                    - columns:
+                      - label: Konto
+                      - label: Bezeichnung
+                      - label: Soll in EUR
+                        sum: true
+                        type: amount
+                      - label: Haben in EUR
+                        sum: true
+                        type: amount
+                      groups:
+                      - rows:
+                        - - '1000'
+                          - Kasse
+                          - 1200.5
+                          - 800
+                        - - '1200'
+                          - Bank
+                          - 15000
+                          - 9800.25
+                        title: Klasse 1 Finanzkonten
+                      - rows:
+                        - - '8400'
+                          - Erlöse 19 % USt
+                          - null
+                          - 21000
+                        title: Klasse 8 Erlöse
+                    title: Summen- und Saldenliste
+                  settings:
+                    sender:
+                      address: Musterstr. 1
+                      city: 12345 Musterstadt
+                      name: Muster GmbH
+                  type: report
             schema:
               $ref: '#/components/schemas/DocumentRequest'
         required: true
@@ -571,6 +621,7 @@ paths:
                       letter: 5f8c1e4b7a0d3c6f9b2e5a8d1c4f7b0e3a6d9c2f5b8e1a4d7c0f3b6e9a2d5c8f
                       offer: 6a9d2c5f8b1e4a7d0c3f6b9e2a5d8c1f4b7e0a3d6c9f2b5e8a1d4c7f0b3e6a9d
                       order: 7b0e3a6d9c2f5b8e1a4d7c0f3b6e9a2d5c8f1b4e7a0d3c6f9b2e5a8d1c4f7b0e
+                      report: 9c2f5b8e1a4d7c0f3b6e9a2d5c8f1b4e7a0d3c6f9b2e5a8d1c4f7b0e3a6d9c2f
                     typst: 0.15.1
                     version: 1.4.0
               schema:
@@ -771,6 +822,16 @@ components:
             $ref: '#/components/schemas/Item'
           maxItems: 500
           type: array
+        landscape:
+          default: false
+          description: 'Report: print on landscape A4.'
+          type: boolean
+        meta:
+          description: 'Report: meta block, label and value pairs below the title (up to 12).'
+          items:
+            $ref: '#/components/schemas/ReportMeta'
+          maxItems: 12
+          type: array
         number:
           description: Document number (not used for letters).
           maxLength: 200
@@ -778,6 +839,10 @@ components:
         paymentDeadline:
           description: 'Dunning letter: new payment deadline (`YYYY-MM-DD`, not before the document date).'
           format: date
+          type: string
+        period:
+          description: 'Report: period as free text, for example `Januar bis Dezember 2026`.'
+          maxLength: 200
           type: string
         postage:
           $ref: '#/components/schemas/Postage'
@@ -798,6 +863,16 @@ components:
           type: string
         subject:
           description: Letter subject.
+          maxLength: 200
+          type: string
+        tables:
+          description: 'Report: 1 to 20 tables with at most 10,000 rows in total.'
+          items:
+            $ref: '#/components/schemas/ReportTable'
+          maxItems: 20
+          type: array
+        title:
+          description: 'Report: title (required).'
           maxLength: 200
           type: string
         validUntil:
@@ -850,6 +925,7 @@ components:
       - delivery-note
       - letter
       - dunning
+      - report
       type: string
     DunningFee:
       description: A dunning fee or expense, for example the dunning fee.
@@ -1144,6 +1220,134 @@ components:
       - name
       - address
       - city
+      type: object
+    ReportCell:
+      description: |-
+        A table cell: text in `text` columns, a number in `number` and `amount` columns. `null` is an
+        empty cell that adds nothing to a sum.
+      oneOf:
+      - format: double
+        type: number
+      - type: string
+    ReportColumn:
+      description: A table column.
+      properties:
+        align:
+          description: '`left`, `center` or `right`. Default: `left` for text, `right` for numbers and amounts.'
+          type: string
+        decimals:
+          description: |-
+            Decimal places (0 to 4) of numbers and amounts, values are rounded half away from zero.
+            Default: 2 for `amount`, 0 for `number`.
+          format: double
+          maximum: 4
+          minimum: 0
+          type: number
+        label:
+          description: Column heading.
+          maxLength: 200
+          type: string
+        sum:
+          default: false
+          description: Print the sum of the column in the subtotal and total rows (`number` and `amount` only).
+          type: boolean
+        type:
+          description: |-
+            `text` (default), `number` or `amount`. Numbers and amounts are formatted like the other
+            documents (`1.234,56`) and aligned to the right.
+          type: string
+        width:
+          description: |-
+            Relative width (1 to 100). Columns with a width share the space that the others leave free;
+            without any width the column with the longest text takes the free space and the others fit
+            their content.
+          format: double
+          maximum: 100
+          minimum: 1
+          type: number
+      required:
+      - label
+      type: object
+    ReportGroup:
+      description: A group of rows with an optional heading and a subtotal row.
+      properties:
+        rows:
+          description: 'The rows of the group: one array per row with one cell per column.'
+          items:
+            items:
+              oneOf:
+              - $ref: '#/components/schemas/ReportCell'
+              - type: 'null'
+            type: array
+          minItems: 1
+          type: array
+        subtotal:
+          description: 'Print a subtotal row with the sums of the group (default: true when a column has `sum`).'
+          type: boolean
+        subtotalLabel:
+          description: 'Label of the subtotal row (default: `Zwischensumme <title>` / `Subtotal <title>`).'
+          maxLength: 200
+          type: string
+        title:
+          description: Heading row above the group; without it the group has no heading row.
+          maxLength: 200
+          type: string
+      required:
+      - rows
+      type: object
+    ReportMeta:
+      description: One line of the meta block (label and value) below the title.
+      properties:
+        label:
+          description: Label, for example `Mandant`.
+          maxLength: 200
+          type: string
+        value:
+          description: Value; entries without a value are not printed.
+          maxLength: 200
+          type: string
+      required:
+      - label
+      type: object
+    ReportTable:
+      description: A table; its header is repeated on every page.
+      properties:
+        columns:
+          description: 1 to 12 columns.
+          items:
+            $ref: '#/components/schemas/ReportColumn'
+          maxItems: 12
+          minItems: 1
+          type: array
+        groups:
+          description: Groups of rows with subtotals. Use either `rows` or `groups`.
+          items:
+            $ref: '#/components/schemas/ReportGroup'
+          type: array
+        rows:
+          description: |-
+            The rows of a table without groups: one array per row with one cell per column. Use either
+            `rows` or `groups`.
+          items:
+            items:
+              oneOf:
+              - $ref: '#/components/schemas/ReportCell'
+              - type: 'null'
+            type: array
+          type: array
+        title:
+          description: Heading above the table.
+          maxLength: 200
+          type: string
+        total:
+          description: 'Print a total row with the sums of the table (default: true when a column has `sum`).'
+          type: boolean
+        totalLabel:
+          description: 'Label of the total row (default: `Gesamt` / `Total`).'
+          maxLength: 200
+          type: string
+      required:
+      - columns
       type: object
     Sender:
       description: Plain text of at most 200 characters; do not escape it, the server does.

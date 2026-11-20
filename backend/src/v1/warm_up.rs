@@ -26,6 +26,11 @@ async fn sample_document(kind: Kind) {
         "items": [{"description": "Item", "quantity": 1, "unit": "pcs", "price": 1, "taxRate": 19}],
         "dunningLevel": 1, "paymentDeadline": "2026-01-15",
         "invoices": [{"number": "0", "date": "2025-12-01", "dueDate": "2025-12-15", "openAmount": 1}],
+        "title": "Warm-up", "period": "2026",
+        "tables": [{
+            "columns": [{"label": "Text"}, {"label": "Amount", "type": "amount", "sum": true}],
+            "groups": [{"title": "Group", "rows": [["Row", 1]]}],
+        }],
     }))
     .expect("valid warm-up document");
     for design in crate::invoice::DESIGNS {

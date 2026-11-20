@@ -149,7 +149,7 @@ async fn preview_zone_geometry_renders_all_document_types() {
             "deliveryDate": "2026-02-03",
             "subject": "Betreff",
             "body": "Brieftext",
-            "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
+            "title": "Journal", "period": "2026", "tables": [{"columns": [{"label": "Text"}, {"label": "Amount", "type": "amount", "sum": true}], "rows": [["Row", 1.5]]}], "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
             "reason": "Falsche Menge",
             "intro": "Einleitung",
             "closing": "Gruß",
@@ -173,8 +173,11 @@ async fn preview_zone_geometry_renders_all_document_types() {
             .await
             .unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details));
         assert!(pdf.starts_with(b"%PDF"), "{}", kind.slug());
-        assert!(zones.iter().any(|zone| zone.zone == 3), "{}", kind.slug());
-        assert!(zones.iter().any(|zone| zone.zone == 4), "{}", kind.slug());
+        // the report has no address field or letter body zones
+        if kind != Kind::Report {
+            assert!(zones.iter().any(|zone| zone.zone == 3), "{}", kind.slug());
+            assert!(zones.iter().any(|zone| zone.zone == 4), "{}", kind.slug());
+        }
         assert!(zones.iter().all(|zone| {
             zone.page >= 1
                 && zone.x.is_finite()
@@ -355,7 +358,7 @@ async fn renders_every_document_type() {
         let raw: Document = serde_json::from_value(json!({
                 "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
                 "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff \"x\"",
-                "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
+                "title": "Journal", "period": "2026", "tables": [{"columns": [{"label": "Text"}, {"label": "Amount", "type": "amount", "sum": true}], "rows": [["Row", 1.5]]}], "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
                 "body": "Zeile 1\nZeile 2", "reason": "Falsche Menge", "intro": "Hallo", "closing": "Gruß",
                 "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
                 "items": [
@@ -808,7 +811,7 @@ async fn renders_every_document_type_with_a_signature() {
             let raw: Document = serde_json::from_value(json!({
                     "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
                     "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff", "body": "Text",
-                    "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
+                    "title": "Journal", "period": "2026", "tables": [{"columns": [{"label": "Text"}, {"label": "Amount", "type": "amount", "sum": true}], "rows": [["Row", 1.5]]}], "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
                     "reason": "Falsche Menge", "closing": "Mit freundlichen Grüßen",
                     "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
                     "items": [{"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19}],
@@ -900,7 +903,8 @@ fn rejects_signatures_that_are_not_images_or_pdfs() {
 
 #[tokio::test]
 async fn renders_every_document_type_with_a_stamp() {
-    for kind in Kind::ALL {
+    // reports have no address field: a stamp is rejected (`report_rejects_a_stamp`)
+    for kind in Kind::ALL.into_iter().filter(|k| *k != Kind::Report) {
         let settings: Settings = serde_json::from_value(json!({
                 "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt", "email": "a@b.de", "vatId": "DE123456789"},
                 "bank": {"iban": "DE89370400440532013000"},
@@ -909,7 +913,7 @@ async fn renders_every_document_type_with_a_stamp() {
         let raw: Document = serde_json::from_value(json!({
                 "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
                 "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff",
-                "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
+                "title": "Journal", "period": "2026", "tables": [{"columns": [{"label": "Text"}, {"label": "Amount", "type": "amount", "sum": true}], "rows": [["Row", 1.5]]}], "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
                 "body": "Zeile 1\nZeile 2", "reason": "Falsche Menge", "intro": "Hallo", "closing": "Gruß",
                 "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
                 "items": [{"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19}],
@@ -1225,6 +1229,221 @@ async fn renders_invoice_with_and_without_watermark() {
     }
 }
 
+// ------------------------------------------------------------ Report (tables)
+
+fn report_settings(design: &str) -> Settings {
+    serde_json::from_value(json!({
+        "design": design,
+        "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt"},
+        "footer": "Muster GmbH · Musterstr. 1",
+    }))
+    .unwrap()
+}
+
+/// A trial balance with group subtotals, a flat table and a table without sums; `rows` rows per group.
+fn report_document(rows: usize, landscape: bool) -> Document {
+    let group = |name: &str| {
+        let rows: Vec<_> = (0..rows)
+            .map(|i| {
+                json!([
+                    format!("{}", 1000 + i),
+                    format!("Konto \"{name}\" {i}"),
+                    1234.5 + i as f64,
+                    i as f64 / 3.0,
+                    null,
+                    "Bemerkung\nzweite Zeile"
+                ])
+            })
+            .collect();
+        json!({"title": name, "rows": rows})
+    };
+    serde_json::from_value(json!({
+        "date": "2026-12-31", "title": "Summen- und Saldenliste \"2026\"", "period": "Januar bis Dezember 2026",
+        "number": "SuSa-2026", "landscape": landscape, "intro": "Alle Beträge in EUR.", "closing": "Erstellt mit PDFCraft",
+        "meta": [{"label": "Mandant", "value": "Muster GmbH"}, {"label": "Leer", "value": ""}, {"label": "Konten", "value": "SKR03"}],
+        "tables": [
+            {
+                "title": "Konten",
+                "columns": [
+                    {"label": "Konto"}, {"label": "Bezeichnung"},
+                    {"label": "Soll", "type": "amount", "sum": true},
+                    {"label": "Haben", "type": "amount", "sum": true},
+                    {"label": "Menge", "type": "number", "decimals": 3, "align": "center"},
+                    {"label": "Notiz", "width": 2},
+                ],
+                "groups": [group("Klasse 1"), group("Klasse 4")],
+            },
+            {
+                "columns": [{"label": "Kennzahl"}, {"label": "Wert", "type": "number", "sum": true}],
+                "rows": [["A", 1], ["B", 2.5]],
+                "totalLabel": "Summe",
+            },
+        ],
+    }))
+    .unwrap()
+}
+
+async fn render_report(
+    design: &str,
+    english: bool,
+    watermark: bool,
+    raw: &Document,
+) -> Result<Vec<u8>, String> {
+    let settings = report_settings(design);
+    let mut errors = Errors::default();
+    let s = check_settings(&settings, &mut errors);
+    let doc = documents::check_document(Kind::Report, raw, english, &mut errors);
+    if !errors.0.is_empty() {
+        return Err(errors.0.join("; "));
+    }
+    let mut sd = s.data.clone();
+    sd["locale"] = json!(if english { "en-de" } else { "de-de" });
+    if watermark {
+        sd["watermark"] = json!("Entwurf");
+    }
+    let (data, assets) = documents::build(Kind::Report, &settings, sd, raw, doc, Vec::new());
+    render_pdf(Kind::Report.template(), data, assets)
+        .await
+        .map_err(|e| e.details)
+}
+
+/// Page count and the size of the first page in points.
+fn pdf_pages(pdf: &[u8]) -> (usize, (f32, f32)) {
+    let doc = lopdf::Document::load_mem(pdf).expect("a readable PDF");
+    let pages = doc.get_pages();
+    let first = pages.values().next().expect("a page");
+    let boxed = doc
+        .get_dictionary(*first)
+        .unwrap()
+        .get(b"MediaBox")
+        .unwrap()
+        .as_array()
+        .unwrap();
+    let number = |i: usize| boxed[i].as_float().unwrap();
+    (pages.len(), (number(2) - number(0), number(3) - number(1)))
+}
+
+/// A report in every design and language, portrait and landscape, with and without watermark:
+/// several pages, no e-invoice attachment, landscape gives a wide first page.
+#[tokio::test]
+async fn renders_reports_in_all_designs_languages_and_orientations() {
+    for design in crate::invoice::DESIGNS {
+        for english in [false, true] {
+            for landscape in [false, true] {
+                for watermark in [false, true] {
+                    let raw = report_document(40, landscape);
+                    let pdf = render_report(design, english, watermark, &raw)
+                        .await
+                        .unwrap_or_else(|e| panic!("{design} en={english}: {e}"));
+                    assert!(pdf.starts_with(b"%PDF"));
+                    for name in [&b"factur-x.xml"[..], b"xrechnung.xml", b"invoice-draft.xml"] {
+                        assert!(
+                            !pdf.windows(name.len()).any(|w| w == name),
+                            "a report carries no e-invoice XML"
+                        );
+                    }
+                    let (pages, (width, height)) = pdf_pages(&pdf);
+                    assert!(pages > 1, "{design}: 80 rows need several pages");
+                    assert_eq!(width > height, landscape, "{design} landscape={landscape}");
+                    if let Ok(dir) = std::env::var("PDF_OUT") {
+                        std::fs::write(
+                            format!(
+                                "{dir}/report-{design}-{}{}{}.pdf",
+                                if english { "en" } else { "de" },
+                                if landscape { "-landscape" } else { "" },
+                                if watermark { "-wm" } else { "" },
+                            ),
+                            pdf,
+                        )
+                        .unwrap();
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// More rows than the 500 items of an invoice: the documented maximum of 10,000 rows renders.
+#[tokio::test]
+async fn renders_a_report_with_the_maximum_number_of_rows() {
+    let raw: Document = serde_json::from_value(json!({
+        "date": "2026-12-31", "title": "Journal", "period": "2026",
+        "tables": [{
+            "columns": [
+                {"label": "Datum"}, {"label": "Beleg"}, {"label": "Text"},
+                {"label": "Soll", "type": "amount", "sum": true}, {"label": "Haben", "type": "amount", "sum": true},
+            ],
+            "rows": (0..crate::report::MAX_ROWS)
+                .map(|i| json!(["31.12.2026", format!("B-{i}"), format!("Buchungstext {i}"), i as f64 * 1.5, null]))
+                .collect::<Vec<_>>(),
+        }],
+    }))
+    .unwrap();
+    let started = std::time::Instant::now();
+    let pdf = render_report("classic", false, false, &raw)
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    println!(
+        "{} rows: {} ms",
+        crate::report::MAX_ROWS,
+        started.elapsed().as_millis()
+    );
+    let (pages, _) = pdf_pages(&pdf);
+    assert!(pages > 100, "{pages} pages");
+    if let Ok(dir) = std::env::var("PDF_OUT") {
+        std::fs::write(format!("{dir}/report-long.pdf"), pdf).unwrap();
+    }
+}
+
+#[tokio::test]
+async fn report_needs_no_recipient_or_number_and_rejects_a_stamp() {
+    let mut raw = report_document(2, false);
+    raw.number.clear();
+    render_report("classic", false, false, &raw)
+        .await
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(documents::file_name(Kind::Report, &raw), "report.pdf");
+
+    raw.postage = Some(serde_json::from_value(stamp()).unwrap());
+    let error = render_report("classic", false, false, &raw)
+        .await
+        .unwrap_err();
+    assert!(
+        error.contains("document.postage: is not supported for reports"),
+        "{error}"
+    );
+
+    let mut raw = report_document(2, false);
+    raw.title.clear();
+    raw.tables.clear();
+    let error = render_report("classic", false, false, &raw)
+        .await
+        .unwrap_err();
+    assert!(error.contains("document.title: is required"), "{error}");
+    assert!(
+        error.contains("document.tables: needs 1 to 20 tables"),
+        "{error}"
+    );
+}
+
+/// The sums of the report match the printed cells: checked on the validated template data.
+#[test]
+fn report_template_data_carries_formatted_sums() {
+    let raw = report_document(2, true);
+    let mut errors = Errors::default();
+    let doc = documents::check_document(Kind::Report, &raw, true, &mut errors);
+    assert!(errors.0.is_empty(), "{:?}", errors.0);
+    assert_eq!(doc["report"]["landscape"], true);
+    let rows = doc["report"]["tables"][0]["rows"].as_array().unwrap();
+    let total = rows.last().unwrap();
+    assert_eq!(total[0], "t");
+    assert_eq!(total[1], "Total");
+    // 2 x (1234.5 + 1235.5) booked as debit
+    assert_eq!(total[3], "4.940,00");
+    // the quotes of the account name are escaped for a Typst string
+    assert!(rows[1][2].as_str().unwrap().contains("\\\"Klasse 1\\\""));
+}
+
 // ------------------------------------------------------------ Deterministic PDF output
 
 /// SHA-256 of one PDF for every document type, design, watermark setting and e-invoice profile, labelled.
@@ -1264,7 +1483,7 @@ async fn determinism_hashes() -> Vec<(String, String)> {
     let raw_document: Document = serde_json::from_value(json!({
         "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
         "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff", "body": "Zeile 1\nZeile 2",
-        "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
+        "title": "Journal", "period": "2026", "tables": [{"columns": [{"label": "Text"}, {"label": "Amount", "type": "amount", "sum": true}], "rows": [["Row", 1.5]]}], "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}], "fees": [{"description": "Mahngebühr", "amount": 5}], "interest": {"rate": 12.27, "from": "2026-01-17", "to": "2026-01-31", "amount": 4.71},
         "reason": "Falsche Menge", "intro": "Hallo", "closing": "Gruß",
         "recipient": recipient, "items": items,
     }))
@@ -1616,6 +1835,20 @@ fn openapi_limits_match_the_validation() {
             "{schema}.{property}"
         );
     }
+    for (schema, property, limit) in [
+        ("Document", "tables", crate::report::MAX_TABLES),
+        ("Document", "meta", crate::report::MAX_META),
+        ("ReportTable", "columns", crate::report::MAX_COLUMNS),
+    ] {
+        assert_eq!(
+            schemas[schema]["properties"][property]["maxItems"], limit,
+            "{schema}.{property}"
+        );
+    }
+    assert_eq!(
+        schemas["Document"]["properties"]["title"]["maxLength"],
+        crate::invoice::MAX_SHORT
+    );
     let kinds: Vec<&str> = Kind::ALL.iter().map(|k| k.slug()).collect();
     assert_eq!(enum_values(&schemas["DocumentType"]), kinds);
 }

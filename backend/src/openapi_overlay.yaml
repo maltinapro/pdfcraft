@@ -52,7 +52,7 @@ tags:
 - name: Invoices
   description: E-invoices (ZUGFeRD / Factur-X, XRechnung) as PDF.
 - name: Documents
-  description: Credit notes, offers, order confirmations, delivery notes, letters and dunning letters as PDF.
+  description: Credit notes, offers, order confirmations, delivery notes, letters, dunning letters and reports (tables) as PDF.
 - name: Token
   description: Information about the calling token.
 - name: Version
@@ -459,6 +459,43 @@ examples:
             amount: 5
           interest:
             debtor: business
+    report:
+      summary: Report (trial balance with group subtotals and a total)
+      value:
+        type: report
+        settings:
+          sender:
+            name: Muster GmbH
+            address: Musterstr. 1
+            city: 12345 Musterstadt
+        document:
+          date: '2026-12-31'
+          title: Summen- und Saldenliste
+          period: Januar bis Dezember 2026
+          landscape: true
+          meta:
+          - label: Mandant
+            value: Muster GmbH
+          - label: Kontenrahmen
+            value: SKR03
+          tables:
+          - columns:
+            - label: Konto
+            - label: Bezeichnung
+            - label: Soll in EUR
+              type: amount
+              sum: true
+            - label: Haben in EUR
+              type: amount
+              sum: true
+            groups:
+            - title: Klasse 1 Finanzkonten
+              rows:
+              - ['1000', Kasse, 1200.5, 800]
+              - ['1200', Bank, 15000, 9800.25]
+            - title: Klasse 8 Erlöse
+              rows:
+              - ['8400', Erlöse 19 % USt, null, 21000]
   createDocumentsBulk:
     offers:
       summary: Two offers
@@ -509,6 +546,7 @@ responseExamples:
           letter: 5f8c1e4b7a0d3c6f9b2e5a8d1c4f7b0e3a6d9c2f5b8e1a4d7c0f3b6e9a2d5c8f
           offer: 6a9d2c5f8b1e4a7d0c3f6b9e2a5d8c1f4b7e0a3d6c9f2b5e8a1d4c7f0b3e6a9d
           order: 7b0e3a6d9c2f5b8e1a4d7c0f3b6e9a2d5c8f1b4e7a0d3c6f9b2e5a8d1c4f7b0e
+          report: 9c2f5b8e1a4d7c0f3b6e9a2d5c8f1b4e7a0d3c6f9b2e5a8d1c4f7b0e3a6d9c2f
   getToken:
     paid:
       summary: Purchased token
