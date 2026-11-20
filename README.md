@@ -67,6 +67,7 @@ Details: [Architecture and Extending](docs/10-architecture-and-extending.md).
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP |
 | `POST /v1/documents` | token | Credit note, offer, order confirmation, delivery note, letter, dunning letter or report with tables (API only, default interest from the base rate, § 288 BGB) → PDF |
 | `POST /v1/documents/bulk` | token | Many documents of one type → ZIP |
+| `POST /v1/einvoices/parse` | token | Read a received e-invoice (PDF or XML) → normalized view + plausibility check (stateless) |
 | `GET /v1/postage/products`, `POST /v1/postage/stamps`, `POST /v1/postage/stamps/bulk`, `POST /v1/postage/stamps/recover` | token | Deutsche Post stamps (optional, off by default) |
 | `GET /v1/version` | none | Version, commit, Typst version and template hashes (every response also has `X-Pdfcraft-Version`) |
 | `GET /health` | none | Status |

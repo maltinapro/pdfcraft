@@ -8,7 +8,11 @@ use crate::invoice::{check_invoice, check_settings, file_stem, Errors, Invoice, 
 use crate::store::{self, Client};
 use crate::{decode_assets, render_pdf, render_pdf_with_zones, ApiError, ZoneRect};
 use axum::{
-    extract::{rejection::JsonRejection, DefaultBodyLimit, Extension, Json, Query, Request},
+    body::Bytes,
+    extract::{
+        rejection::{BytesRejection, JsonRejection},
+        DefaultBodyLimit, Extension, Json, Query, Request,
+    },
     http::{header, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -65,6 +69,12 @@ pub fn router() -> Router {
         .route("/invoices/bulk", post(bulk))
         .route("/documents", post(document_single))
         .route("/documents/bulk", post(document_bulk))
+        .route(
+            "/einvoices/parse",
+            post(parse_einvoice).layer(DefaultBodyLimit::max(
+                crate::einvoice_parse::MAX_PDF_BYTES + 64 * 1024,
+            )),
+        )
         .route(
             "/postage/products",
             get(crate::internetmarke::list_products),
@@ -768,5 +778,90 @@ pub(crate) async fn bulk(
     crate::metrics::get().bulk_size.observe(pdfs.len() as f64);
     zip_response(&pdfs, names, "invoices")
 }
+
+/// Query of `POST /v1/einvoices/parse`.
+#[derive(Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
+pub(crate) struct ParseQuery {
+    /// Language of the check texts: `de` or `en` (default `en`).
+    lang: Option<String>,
+    /// Name of the uploaded XML file; echoed as `fileName` (default `invoice.xml`). Not used for PDFs, which
+    /// report the name of the attachment.
+    #[serde(rename = "fileName")]
+    file_name: Option<String>,
+}
+
+/// Read an e-invoice (PDF or XML) and check it
+///
+/// Stateless: the request body is a ZUGFeRD / Factur-X PDF (`application/pdf`) or an XML file
+/// (`application/xml`: CII or UBL, XRechnung); the type is detected from the content. The XML of a PDF is
+/// read from its attachment (`factur-x.xml`, `zugferd-invoice.xml`, `xrechnung.xml`, otherwise the first
+/// `.xml`). The response is the normalized view of the e-invoice (the same one the browser viewer shows)
+/// plus the result of a limited plausibility check (mandatory fields, sums, dates, IBAN). It is not a
+/// validation against EN 16931 or the XRechnung rules (see `notChecked`). Nothing is stored or logged:
+/// the file only lives in memory while the request runs. PDFs up to 20 MB and XML files up to 5 MB are
+/// accepted. Costs one rate-limit unit.
+#[utoipa::path(
+    post,
+    path = "/v1/einvoices/parse",
+    tag = "E-invoices",
+    operation_id = "parseEInvoice",
+    params(ParseQuery),
+    request_body(content = Vec<u8>, content_type = "application/pdf", description = "A PDF with an XML attachment, or an XML file."),
+    responses((status = 200, description = "The normalized e-invoice and the plausibility check.", body = crate::einvoice_parse::ParseResponse))
+)]
+pub(crate) async fn parse_einvoice(
+    Extension(client): Extension<Client>,
+    Query(query): Query<ParseQuery>,
+    body: Result<Bytes, BytesRejection>,
+) -> Result<Json<crate::einvoice_parse::ParseResponse>, ApiError> {
+    let lang = match query.lang.as_deref() {
+        None => crate::einvoice_parse::Lang::En,
+        Some(code) => crate::einvoice_parse::Lang::from_code(code).ok_or_else(|| {
+            ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "invalid_request",
+                "`lang` must be `de` or `en`",
+            )
+        })?,
+    };
+    let body = body.map_err(|_| {
+        ApiError::new(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "invalid_request",
+            "the file is too large (PDF: 20 MB, XML: 5 MB)",
+        )
+    })?;
+    take_tokens(&client, 1).await?;
+    let file_name: String = query
+        .file_name
+        .unwrap_or_else(|| "invoice.xml".to_string())
+        .chars()
+        .take(255)
+        .collect();
+
+    let _slot = crate::acquire_slot(std::time::Duration::from_secs(
+        config::get().compile_queue_timeout_secs,
+    ))
+    .await?;
+    let started = std::time::Instant::now();
+    let parsed = tokio::task::spawn_blocking(move || {
+        crate::einvoice_parse::parse_upload(&body, &file_name, lang)
+    })
+    .await
+    .map_err(|e| {
+        ApiError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "task_join_error",
+            e.to_string(),
+        )
+    })?;
+    // Only the outcome is logged, never the content of the file
+    tracing::info!(event = "einvoice_parsed", token_id = %client.id, ok = parsed.is_ok(), duration_ms = started.elapsed().as_millis() as u64);
+    parsed
+        .map(Json)
+        .map_err(|f| ApiError::new(f.status, f.code, f.details))
+}
+
 #[cfg(test)]
 mod tests;

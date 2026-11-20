@@ -1,0 +1,330 @@
+{
+  "view": {
+    "syntax": "cii",
+    "typeCode": "380",
+    "profile": "urn:cen.eu:en16931:2017",
+    "number": "2026-001",
+    "issueDate": "2026-01-31",
+    "dueDate": "2026-03-02",
+    "deliveryDate": "2026-01-31",
+    "buyerReference": "04011000-12345-34",
+    "paymentReference": "2026-001",
+    "precedingInvoices": [],
+    "seller": {
+      "name": "Muster GmbH",
+      "street": "Musterstr. 1",
+      "postcode": "12345",
+      "city": "Musterstadt",
+      "country": "DE",
+      "vatId": "DE123456789",
+      "taxNumber": "12/345/67890",
+      "contactName": "Erika Muster",
+      "phone": "+49 30 123456",
+      "email": "rechnung@muster.example"
+    },
+    "buyer": {
+      "name": "Kunde AG",
+      "street": "Kundenweg 5",
+      "postcode": "54321",
+      "city": "Kundenstadt",
+      "country": "DE",
+      "vatId": "DE987654321"
+    },
+    "notes": [],
+    "items": [
+      {
+        "id": "1",
+        "name": "Beratung",
+        "quantity": 8,
+        "unit": "HUR",
+        "price": 95,
+        "priceBasis": 1,
+        "net": 760,
+        "hasAdjustments": false,
+        "taxCategory": "S",
+        "taxRate": 19
+      },
+      {
+        "id": "2",
+        "name": "Fachbuch",
+        "quantity": 3,
+        "unit": "H87",
+        "price": 24.9,
+        "priceBasis": 1,
+        "net": 74.7,
+        "hasAdjustments": false,
+        "taxCategory": "S",
+        "taxRate": 7
+      },
+      {
+        "id": "3",
+        "name": "Wartungspauschale",
+        "quantity": 1,
+        "unit": "LS",
+        "price": 149.99,
+        "priceBasis": 1,
+        "net": 149.99,
+        "hasAdjustments": false,
+        "taxCategory": "S",
+        "taxRate": 19
+      }
+    ],
+    "adjustments": [],
+    "taxes": [
+      {
+        "category": "S",
+        "rate": 19,
+        "basis": null,
+        "amount": 172.9
+      },
+      {
+        "category": "S",
+        "rate": 7,
+        "basis": null,
+        "amount": 5.23
+      }
+    ],
+    "totals": {
+      "lineTotal": null,
+      "allowanceTotal": null,
+      "chargeTotal": null,
+      "taxBasis": null,
+      "taxTotal": null,
+      "grandTotal": null,
+      "prepaid": null,
+      "rounding": null,
+      "due": null
+    },
+    "payments": [
+      {
+        "code": "58",
+        "iban": "DE89370400440532013000",
+        "bic": "COBADEFFXXX"
+      }
+    ]
+  },
+  "de": {
+    "checks": [
+      {
+        "id": "header",
+        "title": "Pflichtangaben im Kopf (Nummer, Datum, Typ, Währung, Spezifikation)",
+        "status": "error",
+        "findings": [
+          "Währung (BT-5) fehlt"
+        ]
+      },
+      {
+        "id": "parties",
+        "title": "Pflichtangaben zu Verkäufer und Käufer",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "lines",
+        "title": "Positionen vorhanden und vollständig",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-math",
+        "title": "Positionsbetrag = Menge × Einzelpreis (je Position, 1 Cent Rundungstoleranz)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-sum",
+        "title": "Summe der Positionen = Summe Positionsbeträge",
+        "status": "skipped",
+        "findings": [
+          "Nicht prüfbar: Beträge fehlen in der Datei."
+        ]
+      },
+      {
+        "id": "net-total",
+        "title": "Nettosumme = Positionen − Nachlässe + Zuschläge",
+        "status": "skipped",
+        "findings": [
+          "Nicht prüfbar: Beträge fehlen in der Datei."
+        ]
+      },
+      {
+        "id": "tax-basis",
+        "title": "Steuerbasis je Kategorie und Satz = Positionen − Nachlässe + Zuschläge",
+        "status": "error",
+        "findings": [
+          "S 19 %: Steuerbasis fehlt",
+          "S 7 %: Steuerbasis fehlt"
+        ]
+      },
+      {
+        "id": "tax-amount",
+        "title": "Steuerbetrag = Steuerbasis × Satz (je Aufschlüsselung, 1 Cent Rundungstoleranz)",
+        "status": "skipped",
+        "findings": [
+          "Nicht prüfbar: Beträge fehlen in der Datei."
+        ]
+      },
+      {
+        "id": "tax-total",
+        "title": "Gesamtsteuer = Summe der Steuerbeträge",
+        "status": "skipped",
+        "findings": [
+          "Nicht prüfbar: Beträge fehlen in der Datei."
+        ]
+      },
+      {
+        "id": "gross-total",
+        "title": "Bruttosumme = Nettosumme + Steuer",
+        "status": "skipped",
+        "findings": [
+          "Nicht prüfbar: Beträge fehlen in der Datei."
+        ]
+      },
+      {
+        "id": "amount-due",
+        "title": "Zahlbetrag = Bruttosumme − Anzahlungen + Rundung",
+        "status": "skipped",
+        "findings": [
+          "Nicht prüfbar: Beträge fehlen in der Datei."
+        ]
+      },
+      {
+        "id": "tax-category",
+        "title": "Steuerkategorien passen zum Satz, Befreiungsgrund vorhanden",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "payment",
+        "title": "Zahlungsangaben vorhanden, IBAN-Prüfsumme",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "dates",
+        "title": "Datumsangaben sind echte Kalendertage, Fälligkeit nicht vor Rechnungsdatum",
+        "status": "ok",
+        "findings": []
+      }
+    ],
+    "notChecked": [
+      "Gültigkeit gegen das XML-Schema (XSD)",
+      "Geschäftsregeln der Norm EN 16931 (BR-…) und der XRechnung (BR-DE-…)",
+      "Codelisten (Länder, Einheiten, Währungen, Steuerkategorien, Zahlungsarten)",
+      "PDF/A-3-Konformität, XMP-Metadaten und ob das PDF zum XML passt",
+      "Echtheit, Signaturen und ob USt-IdNr., Steuersätze oder Bankverbindung stimmen"
+    ]
+  },
+  "en": {
+    "checks": [
+      {
+        "id": "header",
+        "title": "Mandatory header fields (number, date, type, currency, specification)",
+        "status": "error",
+        "findings": [
+          "Currency (BT-5) is missing"
+        ]
+      },
+      {
+        "id": "parties",
+        "title": "Mandatory seller and buyer details",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "lines",
+        "title": "Lines present and complete",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-math",
+        "title": "Line amount = quantity × unit price (per line, 1 cent rounding tolerance)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-sum",
+        "title": "Sum of lines = line total",
+        "status": "skipped",
+        "findings": [
+          "Not checked: amounts are missing in the file."
+        ]
+      },
+      {
+        "id": "net-total",
+        "title": "Net total = lines − allowances + charges",
+        "status": "skipped",
+        "findings": [
+          "Not checked: amounts are missing in the file."
+        ]
+      },
+      {
+        "id": "tax-basis",
+        "title": "Tax basis per category and rate = lines − allowances + charges",
+        "status": "error",
+        "findings": [
+          "S 19 %: tax basis is missing",
+          "S 7 %: tax basis is missing"
+        ]
+      },
+      {
+        "id": "tax-amount",
+        "title": "Tax amount = tax basis × rate (per breakdown, 1 cent rounding tolerance)",
+        "status": "skipped",
+        "findings": [
+          "Not checked: amounts are missing in the file."
+        ]
+      },
+      {
+        "id": "tax-total",
+        "title": "Total tax = sum of the tax amounts",
+        "status": "skipped",
+        "findings": [
+          "Not checked: amounts are missing in the file."
+        ]
+      },
+      {
+        "id": "gross-total",
+        "title": "Gross total = net total + tax",
+        "status": "skipped",
+        "findings": [
+          "Not checked: amounts are missing in the file."
+        ]
+      },
+      {
+        "id": "amount-due",
+        "title": "Amount due = gross total − prepayments + rounding",
+        "status": "skipped",
+        "findings": [
+          "Not checked: amounts are missing in the file."
+        ]
+      },
+      {
+        "id": "tax-category",
+        "title": "Tax categories match the rate, exemption reason present",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "payment",
+        "title": "Payment details present, IBAN checksum",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "dates",
+        "title": "Dates are real calendar days, due date not before issue date",
+        "status": "ok",
+        "findings": []
+      }
+    ],
+    "notChecked": [
+      "Validity against the XML schema (XSD)",
+      "Business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…)",
+      "Code lists (countries, units, currencies, tax categories, payment means)",
+      "PDF/A-3 conformity, XMP metadata and whether the PDF matches the XML",
+      "Authenticity, signatures and whether VAT IDs, tax rates or bank details are correct"
+    ]
+  }
+}

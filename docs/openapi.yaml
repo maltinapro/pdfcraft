@@ -21,7 +21,8 @@ info:
     **Errors.** Every error is JSON: `{ "error": "<code>", "details": "<text>" }`. The codes are stable; the
     texts are English and may change.
 
-    **Request size.** Request bodies are limited to 2 MB (`413` above that).
+    **Request size.** JSON request bodies are limited to 2 MB (`413` above that). `POST /v1/einvoices/parse` takes
+    the file itself as the body: PDFs up to 20 MB, XML files up to 5 MB.
 
     For the browser preview only, add `?zones=1` to `POST /v1/invoices` or `POST /v1/documents`.
     The response then includes `X-Pdfcraft-Zones`, JSON geometry for zones 3 and 4 in millimeters.
@@ -51,6 +52,8 @@ tags:
   name: Invoices
 - description: Credit notes, offers, order confirmations, delivery notes, letters, dunning letters and reports (tables) as PDF.
   name: Documents
+- description: Read and check a received e-invoice (ZUGFeRD / Factur-X PDF or CII / UBL XML) without storing it.
+  name: E-invoices
 - description: Information about the calling token.
   name: Token
 - description: Version of the backend that renders the documents.
@@ -412,6 +415,214 @@ paths:
       summary: Create many documents of one type (ZIP of PDFs)
       tags:
       - Documents
+  /v1/einvoices/parse:
+    post:
+      description: |-
+        Stateless: the request body is a ZUGFeRD / Factur-X PDF (`application/pdf`) or an XML file
+        (`application/xml`: CII or UBL, XRechnung); the type is detected from the content. The XML of a PDF is
+        read from its attachment (`factur-x.xml`, `zugferd-invoice.xml`, `xrechnung.xml`, otherwise the first
+        `.xml`). The response is the normalized view of the e-invoice (the same one the browser viewer shows)
+        plus the result of a limited plausibility check (mandatory fields, sums, dates, IBAN). It is not a
+        validation against EN 16931 or the XRechnung rules (see `notChecked`). Nothing is stored or logged:
+        the file only lives in memory while the request runs. PDFs up to 20 MB and XML files up to 5 MB are
+        accepted. Costs one rate-limit unit.
+      operationId: parseEInvoice
+      parameters:
+      - description: 'Language of the check texts: `de` or `en` (default `en`).'
+        in: query
+        name: lang
+        required: false
+        schema:
+          type: string
+      - description: |-
+          Name of the uploaded XML file; echoed as `fileName` (default `invoice.xml`). Not used for PDFs, which
+          report the name of the attachment.
+        in: query
+        name: fileName
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/pdf:
+            schema:
+              contentEncoding: binary
+              contentMediaType: application/pdf
+              type: string
+          application/xml:
+            schema:
+              contentMediaType: application/xml
+              type: string
+        description: A PDF with an XML attachment, or an XML file.
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              examples:
+                xml:
+                  summary: XRechnung / ZUGFeRD XML (CII) with two tax rates
+                  value:
+                    checks:
+                    - findings: []
+                      id: header
+                      status: ok
+                      title: Mandatory header fields (number, date, type, currency, specification)
+                    - findings: []
+                      id: parties
+                      status: ok
+                      title: Mandatory seller and buyer details
+                    - findings: []
+                      id: lines
+                      status: ok
+                      title: Lines present and complete
+                    - findings: []
+                      id: line-math
+                      status: ok
+                      title: Line amount = quantity × unit price (per line, 1 cent rounding tolerance)
+                    - findings: []
+                      id: line-sum
+                      status: ok
+                      title: Sum of lines = line total
+                    - findings: []
+                      id: net-total
+                      status: ok
+                      title: Net total = lines − allowances + charges
+                    - findings: []
+                      id: tax-basis
+                      status: ok
+                      title: Tax basis per category and rate = lines − allowances + charges
+                    - findings: []
+                      id: tax-amount
+                      status: ok
+                      title: Tax amount = tax basis × rate (per breakdown, 1 cent rounding tolerance)
+                    - findings: []
+                      id: tax-total
+                      status: ok
+                      title: Total tax = sum of the tax amounts
+                    - findings: []
+                      id: gross-total
+                      status: ok
+                      title: Gross total = net total + tax
+                    - findings: []
+                      id: amount-due
+                      status: ok
+                      title: Amount due = gross total − prepayments + rounding
+                    - findings: []
+                      id: tax-category
+                      status: ok
+                      title: Tax categories match the rate, exemption reason present
+                    - findings: []
+                      id: payment
+                      status: ok
+                      title: Payment details present, IBAN checksum
+                    - findings: []
+                      id: dates
+                      status: ok
+                      title: Dates are real calendar days, due date not before issue date
+                    fileName: invoice.xml
+                    invoice:
+                      adjustments: []
+                      buyer:
+                        city: Kundenstadt
+                        country: DE
+                        name: Kunde AG
+                        postcode: '54321'
+                        street: Kundenweg 5
+                        vatId: DE987654321
+                      buyerReference: 04011000-12345-34
+                      currency: EUR
+                      deliveryDate: '2026-01-31'
+                      dueDate: '2026-03-02'
+                      issueDate: '2026-01-31'
+                      items:
+                      - hasAdjustments: false
+                        id: '1'
+                        name: Beratung
+                        net: 200
+                        price: 80
+                        priceBasis: 1
+                        quantity: 2.5
+                        taxCategory: S
+                        taxRate: 19
+                        unit: HUR
+                      - hasAdjustments: false
+                        id: '2'
+                        name: Innergemeinschaftliche Lieferung
+                        net: 40
+                        price: 3.333
+                        priceBasis: 1
+                        quantity: 12
+                        taxCategory: E
+                        taxRate: 0
+                        unit: KGM
+                      notes: []
+                      number: 2026-001
+                      paymentReference: 2026-001
+                      payments:
+                      - bic: COBADEFFXXX
+                        code: '58'
+                        iban: DE89370400440532013000
+                      precedingInvoices: []
+                      profile: urn:cen.eu:en16931:2017
+                      seller:
+                        city: Musterstadt
+                        contactName: Erika Muster
+                        country: DE
+                        email: rechnung@muster.example
+                        name: Muster GmbH
+                        phone: +49 30 123456
+                        postcode: '12345'
+                        street: Musterstr. 1
+                        taxNumber: 12/345/67890
+                        vatId: DE123456789
+                      syntax: cii
+                      taxes:
+                      - amount: 38
+                        basis: 200
+                        category: S
+                        rate: 19
+                      - amount: 0
+                        basis: 40
+                        category: E
+                        exemptionReason: Steuerfrei nach § 4 Nr. 1b UStG
+                        rate: 0
+                      totals:
+                        allowanceTotal: null
+                        chargeTotal: null
+                        due: 278
+                        grandTotal: 278
+                        lineTotal: 240
+                        prepaid: null
+                        rounding: null
+                        taxBasis: 240
+                        taxTotal: 38
+                      typeCode: '380'
+                    notChecked:
+                    - Validity against the XML schema (XSD)
+                    - Business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…)
+                    - Code lists (countries, units, currencies, tax categories, payment means)
+                    - PDF/A-3 conformity, XMP metadata and whether the PDF matches the XML
+                    - Authenticity, signatures and whether VAT IDs, tax rates or bank details are correct
+                    source: xml
+              schema:
+                $ref: '#/components/schemas/ParseResponse'
+          description: The normalized e-invoice and the plausibility check.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+      summary: Read an e-invoice (PDF or XML) and check it
+      tags:
+      - E-invoices
   /v1/invoices:
     post:
       description: |-
@@ -664,7 +875,9 @@ components:
       description: |
         The request is invalid. `validation_error`: `details` lists all problems with their paths, separated
         by `; `. `invalid_request`: malformed JSON, unknown `type`, or an empty or too large bulk list.
-        `invalid_asset`: the logo is not valid base64 or too large.
+        `invalid_asset`: the logo is not valid base64 or too large. `POST /v1/einvoices/parse` also answers
+        `unsupported_file` (neither PDF nor XML), `invalid_xml`, `unsupported_einvoice` (not CII or UBL, or
+        ZUGFeRD 1.x), `no_xml_attachment`, `pdf_encrypted` and `pdf_unreadable`.
     Pdf:
       content:
         application/pdf:
@@ -701,7 +914,7 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-      description: The request body is larger than 2 MB (`invalid_request`).
+      description: The request body is larger than the limit (2 MB; 20 MB PDF / 5 MB XML for `POST /v1/einvoices/parse`) (`invalid_request`).
     Unauthorized:
       content:
         application/json:
@@ -759,6 +972,30 @@ components:
         X-Pdfcraft-Version:
           $ref: '#/components/headers/PdfcraftVersion'
   schemas:
+    Adjustment:
+      properties:
+        amount:
+          format: double
+          type:
+          - number
+          - 'null'
+        charge:
+          description: '`true` for a charge, `false` for an allowance.'
+          type: boolean
+        reason:
+          type: string
+        taxCategory:
+          type: string
+        taxRate:
+          format: double
+          type:
+          - number
+          - 'null'
+      required:
+      - charge
+      - amount
+      - taxRate
+      type: object
     Bank:
       properties:
         bic:
@@ -770,6 +1007,27 @@ components:
         name:
           maxLength: 200
           type: string
+      type: object
+    CheckResult:
+      properties:
+        findings:
+          description: Findings in plain language (why it failed or was skipped); empty when `ok`.
+          items:
+            type: string
+          type: array
+        id:
+          description: Stable identifier of the check, e.g. `header`, `line-math`, `gross-total`.
+          type: string
+        status:
+          $ref: '#/components/schemas/Status'
+        title:
+          description: What the check verifies, in the requested language.
+          type: string
+      required:
+      - id
+      - title
+      - status
+      - findings
       type: object
     Document:
       description: |-
@@ -1042,6 +1300,12 @@ components:
           - template_render_error
           - task_join_error
           - zip_error
+          - unsupported_file
+          - pdf_encrypted
+          - pdf_unreadable
+          - no_xml_attachment
+          - invalid_xml
+          - unsupported_einvoice
           type: string
       required:
       - error
@@ -1128,6 +1392,88 @@ components:
       - settings
       - invoice
       type: object
+    InvoiceView:
+      description: |-
+        One syntax-independent view of a received e-invoice (CII: ZUGFeRD/Factur-X/XRechnung CII, UBL: XRechnung UBL/Peppol).
+        Missing optional parts are left out of the JSON.
+      properties:
+        adjustments:
+          description: Document level allowances and charges.
+          items:
+            $ref: '#/components/schemas/Adjustment'
+          type: array
+        buyer:
+          $ref: '#/components/schemas/Party'
+        buyerReference:
+          type: string
+        contractReference:
+          type: string
+        currency:
+          type: string
+        deliveryDate:
+          description: ISO date (`YYYY-MM-DD`)
+          type: string
+        dueDate:
+          description: ISO date (`YYYY-MM-DD`)
+          type: string
+        issueDate:
+          description: ISO date (`YYYY-MM-DD`)
+          type: string
+        items:
+          items:
+            $ref: '#/components/schemas/LineView'
+          type: array
+        notes:
+          items:
+            type: string
+          type: array
+        number:
+          type: string
+        orderReference:
+          type: string
+        payee:
+          $ref: '#/components/schemas/Party'
+        paymentReference:
+          type: string
+        paymentTerms:
+          type: string
+        payments:
+          items:
+            $ref: '#/components/schemas/PaymentMeans'
+          type: array
+        precedingInvoices:
+          items:
+            $ref: '#/components/schemas/PrecedingInvoice'
+          type: array
+        profile:
+          description: Specification identifier (BT-24), e.g. `urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0`.
+          type: string
+        seller:
+          $ref: '#/components/schemas/Party'
+        syntax:
+          $ref: '#/components/schemas/Syntax'
+          description: 'Syntax of the XML: `cii` or `ubl`.'
+        taxes:
+          items:
+            $ref: '#/components/schemas/TaxView'
+          type: array
+        totals:
+          $ref: '#/components/schemas/Totals'
+        typeCode:
+          description: UNTDID 1001 code from BT-3 (`380` invoice, `381` credit note, ...).
+          type: string
+      required:
+      - syntax
+      - precedingInvoices
+      - seller
+      - buyer
+      - notes
+      - items
+      - adjustments
+      - taxes
+      - totals
+      - payments
+      type: object
     Item:
       properties:
         description:
@@ -1175,6 +1521,61 @@ components:
       - quantity
       - price
       type: object
+    LineView:
+      properties:
+        buyerItemId:
+          type: string
+        description:
+          type: string
+        hasAdjustments:
+          description: The line has its own allowances or charges, so quantity × price does not have to equal the net amount.
+          type: boolean
+        id:
+          type: string
+        name:
+          type: string
+        net:
+          description: Net line amount (BT-131).
+          format: double
+          type:
+          - number
+          - 'null'
+        note:
+          type: string
+        price:
+          description: Net unit price (BT-146).
+          format: double
+          type:
+          - number
+          - 'null'
+        priceBasis:
+          description: Quantity the price refers to (BT-149), 1 when not given.
+          format: double
+          type: number
+        quantity:
+          format: double
+          type:
+          - number
+          - 'null'
+        sellerItemId:
+          type: string
+        taxCategory:
+          type: string
+        taxRate:
+          format: double
+          type:
+          - number
+          - 'null'
+        unit:
+          type: string
+      required:
+      - quantity
+      - price
+      - priceBasis
+      - net
+      - hasAdjustments
+      - taxRate
+      type: object
     Options:
       description: Optional per-request render options.
       properties:
@@ -1184,6 +1585,83 @@ components:
             `draft` prints the diagonal "Entwurf" / "Draft" watermark (by document language) on every PDF of the
             request, for any token. Free tokens always get the watermark, with or without this option.
       type: object
+    ParseResponse:
+      description: The view of an e-invoice and the result of the limited plausibility check.
+      properties:
+        checks:
+          description: |-
+            Plausibility checks (mandatory fields, sums, dates, IBAN). This is NOT a validation against EN 16931 or
+            the XRechnung rules.
+          items:
+            $ref: '#/components/schemas/CheckResult'
+          type: array
+        fileName:
+          description: Name of the attachment the XML was read from (`pdf`) or `fileName` of the request (`xml`).
+          type: string
+        invoice:
+          $ref: '#/components/schemas/InvoiceView'
+          description: The normalized view of the e-invoice.
+        notChecked:
+          description: What the checks do not cover, in the requested language.
+          items:
+            type: string
+          type: array
+        source:
+          $ref: '#/components/schemas/Source'
+          description: '`pdf` when the XML was read from the attachment of a PDF, `xml` for an XML upload.'
+      required:
+      - source
+      - fileName
+      - invoice
+      - checks
+      - notChecked
+      type: object
+    Party:
+      properties:
+        city:
+          type: string
+        contactName:
+          type: string
+        country:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        postcode:
+          type: string
+        registration:
+          description: Legal registration (e.g. commercial register number).
+          type: string
+        street:
+          type: string
+        street2:
+          type: string
+        taxNumber:
+          type: string
+        tradeName:
+          type: string
+        vatId:
+          type: string
+      type: object
+    PaymentMeans:
+      properties:
+        accountName:
+          type: string
+        bankName:
+          type: string
+        bic:
+          type: string
+        code:
+          description: UNTDID 4461 code (`58` SEPA credit transfer, `59` SEPA direct debit, `30` credit transfer, ...).
+          type: string
+        iban:
+          type: string
+        reference:
+          type: string
+      type: object
     Postage:
       description: Franking mark (Internetmarke) printed into the address field. It is valid for one letter only.
       properties:
@@ -1192,6 +1670,16 @@ components:
           type: string
       required:
       - base64
+      type: object
+    PrecedingInvoice:
+      properties:
+        date:
+          description: ISO date
+          type: string
+        number:
+          type: string
+      required:
+      - number
       type: object
     Recipient:
       properties:
@@ -1470,6 +1958,51 @@ components:
       required:
       - sender
       type: object
+    Source:
+      enum:
+      - pdf
+      - xml
+      type: string
+    Status:
+      enum:
+      - ok
+      - warning
+      - error
+      - skipped
+      type: string
+    Syntax:
+      enum:
+      - cii
+      - ubl
+      type: string
+    TaxView:
+      properties:
+        amount:
+          format: double
+          type:
+          - number
+          - 'null'
+        basis:
+          format: double
+          type:
+          - number
+          - 'null'
+        category:
+          type: string
+        exemptionCode:
+          type: string
+        exemptionReason:
+          type: string
+        rate:
+          format: double
+          type:
+          - number
+          - 'null'
+      required:
+      - rate
+      - basis
+      - amount
+      type: object
     TokenInfo:
       description: Properties of the token that made the request.
       properties:
@@ -1513,6 +2046,68 @@ components:
       - bulkMax
       - expiresAt
       - subscription
+      type: object
+    Totals:
+      description: Amounts of the document; `null` when the file does not state them.
+      properties:
+        allowanceTotal:
+          format: double
+          type:
+          - number
+          - 'null'
+        chargeTotal:
+          format: double
+          type:
+          - number
+          - 'null'
+        due:
+          description: Amount due for payment (BT-115).
+          format: double
+          type:
+          - number
+          - 'null'
+        grandTotal:
+          description: Total with VAT (BT-112).
+          format: double
+          type:
+          - number
+          - 'null'
+        lineTotal:
+          format: double
+          type:
+          - number
+          - 'null'
+        prepaid:
+          format: double
+          type:
+          - number
+          - 'null'
+        rounding:
+          format: double
+          type:
+          - number
+          - 'null'
+        taxBasis:
+          description: Total without VAT (BT-109).
+          format: double
+          type:
+          - number
+          - 'null'
+        taxTotal:
+          format: double
+          type:
+          - number
+          - 'null'
+      required:
+      - lineTotal
+      - allowanceTotal
+      - chargeTotal
+      - taxBasis
+      - taxTotal
+      - grandTotal
+      - prepaid
+      - rounding
+      - due
       type: object
     VersionInfo:
       description: Which build rendered a document; store it next to the input of every issued document.

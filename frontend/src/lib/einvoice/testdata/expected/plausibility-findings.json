@@ -1,0 +1,340 @@
+{
+  "view": {
+    "syntax": "cii",
+    "typeCode": "380",
+    "profile": "urn:cen.eu:en16931:2017",
+    "number": "2026-001",
+    "issueDate": "2026-02-31",
+    "dueDate": "2026-03-02",
+    "deliveryDate": "2026-01-31",
+    "currency": "EUR",
+    "buyerReference": "04011000-12345-34",
+    "paymentReference": "2026-001",
+    "precedingInvoices": [],
+    "seller": {
+      "street": "Musterstr. 1",
+      "postcode": "12345",
+      "city": "Musterstadt",
+      "country": "DE",
+      "vatId": "DE123456789",
+      "taxNumber": "12/345/67890",
+      "contactName": "Erika Muster",
+      "phone": "+49 30 123456",
+      "email": "rechnung@muster.example"
+    },
+    "buyer": {
+      "name": "Kunde AG",
+      "street": "Kundenweg 5",
+      "postcode": "54321",
+      "city": "Kundenstadt",
+      "country": "DE",
+      "vatId": "DE987654321"
+    },
+    "notes": [
+      "Fehler & Auffälligkeiten <absichtlich>"
+    ],
+    "items": [
+      {
+        "id": "1",
+        "name": "Beratung",
+        "quantity": 8,
+        "unit": "HUR",
+        "price": 95,
+        "priceBasis": 1,
+        "net": 770,
+        "hasAdjustments": false,
+        "taxCategory": "S",
+        "taxRate": 19
+      },
+      {
+        "id": "2",
+        "name": "Fachbuch",
+        "quantity": 3,
+        "unit": "H87",
+        "price": 24.9,
+        "priceBasis": 1,
+        "net": 74.7,
+        "hasAdjustments": false,
+        "taxCategory": "S",
+        "taxRate": 7
+      },
+      {
+        "id": "3",
+        "name": "Wartungspauschale",
+        "quantity": 1,
+        "unit": "LS",
+        "price": 1234567.891,
+        "priceBasis": 1,
+        "net": 1234567.89,
+        "hasAdjustments": false,
+        "taxCategory": "S",
+        "taxRate": 19
+      }
+    ],
+    "adjustments": [],
+    "taxes": [
+      {
+        "category": "S",
+        "rate": 19,
+        "basis": 909.99,
+        "amount": 172.9
+      },
+      {
+        "category": "E",
+        "rate": 7,
+        "basis": 74.7,
+        "amount": 5.5
+      }
+    ],
+    "totals": {
+      "lineTotal": 984.69,
+      "allowanceTotal": null,
+      "chargeTotal": null,
+      "taxBasis": 984.69,
+      "taxTotal": 178.13,
+      "grandTotal": 1162.82,
+      "prepaid": null,
+      "rounding": null,
+      "due": 1162.82
+    },
+    "payments": [
+      {
+        "code": "58",
+        "iban": "DE89370400440532013001",
+        "bic": "COBADEFFXXX"
+      }
+    ]
+  },
+  "de": {
+    "checks": [
+      {
+        "id": "header",
+        "title": "Pflichtangaben im Kopf (Nummer, Datum, Typ, Währung, Spezifikation)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "parties",
+        "title": "Pflichtangaben zu Verkäufer und Käufer",
+        "status": "error",
+        "findings": [
+          "Name des Verkäufers (BT-27) fehlt"
+        ]
+      },
+      {
+        "id": "lines",
+        "title": "Positionen vorhanden und vollständig",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-math",
+        "title": "Positionsbetrag = Menge × Einzelpreis (je Position, 1 Cent Rundungstoleranz)",
+        "status": "error",
+        "findings": [
+          "Position 1: Menge × Preis ergibt 760,00 EUR, angegeben 770,00 EUR"
+        ]
+      },
+      {
+        "id": "line-sum",
+        "title": "Summe der Positionen = Summe Positionsbeträge",
+        "status": "error",
+        "findings": [
+          "Positionen ergeben 1.235.412,59 EUR, angegeben 984,69 EUR"
+        ]
+      },
+      {
+        "id": "net-total",
+        "title": "Nettosumme = Positionen − Nachlässe + Zuschläge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-basis",
+        "title": "Steuerbasis je Kategorie und Satz = Positionen − Nachlässe + Zuschläge",
+        "status": "error",
+        "findings": [
+          "S 19 %: Positionen ergeben 1.235.337,89 EUR, angegeben 909,99 EUR",
+          "E 7 %: Positionen ergeben 0,00 EUR, angegeben 74,70 EUR",
+          "S 7 %: Positionen vorhanden, aber keine Steueraufschlüsselung"
+        ]
+      },
+      {
+        "id": "tax-amount",
+        "title": "Steuerbetrag = Steuerbasis × Satz (je Aufschlüsselung, 1 Cent Rundungstoleranz)",
+        "status": "error",
+        "findings": [
+          "E 7 %: 74,70 EUR ergibt 5,23 EUR, angegeben 5,50 EUR"
+        ]
+      },
+      {
+        "id": "tax-total",
+        "title": "Gesamtsteuer = Summe der Steuerbeträge",
+        "status": "error",
+        "findings": [
+          "Steuerbeträge ergeben 178,40 EUR, angegeben 178,13 EUR"
+        ]
+      },
+      {
+        "id": "gross-total",
+        "title": "Bruttosumme = Nettosumme + Steuer",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "amount-due",
+        "title": "Zahlbetrag = Bruttosumme − Anzahlungen + Rundung",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-category",
+        "title": "Steuerkategorien passen zum Satz, Befreiungsgrund vorhanden",
+        "status": "error",
+        "findings": [
+          "E 7 %: Diese Kategorie verlangt 0 %",
+          "E 7 %: Grund für die fehlende Steuer fehlt"
+        ]
+      },
+      {
+        "id": "payment",
+        "title": "Zahlungsangaben vorhanden, IBAN-Prüfsumme",
+        "status": "warning",
+        "findings": [
+          "IBAN DE89370400440532013001 hat eine falsche Prüfsumme"
+        ]
+      },
+      {
+        "id": "dates",
+        "title": "Datumsangaben sind echte Kalendertage, Fälligkeit nicht vor Rechnungsdatum",
+        "status": "warning",
+        "findings": [
+          "Rechnungsdatum „2026-02-31“ ist kein existierendes Datum"
+        ]
+      }
+    ],
+    "notChecked": [
+      "Gültigkeit gegen das XML-Schema (XSD)",
+      "Geschäftsregeln der Norm EN 16931 (BR-…) und der XRechnung (BR-DE-…)",
+      "Codelisten (Länder, Einheiten, Währungen, Steuerkategorien, Zahlungsarten)",
+      "PDF/A-3-Konformität, XMP-Metadaten und ob das PDF zum XML passt",
+      "Echtheit, Signaturen und ob USt-IdNr., Steuersätze oder Bankverbindung stimmen"
+    ]
+  },
+  "en": {
+    "checks": [
+      {
+        "id": "header",
+        "title": "Mandatory header fields (number, date, type, currency, specification)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "parties",
+        "title": "Mandatory seller and buyer details",
+        "status": "error",
+        "findings": [
+          "Seller name (BT-27) is missing"
+        ]
+      },
+      {
+        "id": "lines",
+        "title": "Lines present and complete",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-math",
+        "title": "Line amount = quantity × unit price (per line, 1 cent rounding tolerance)",
+        "status": "error",
+        "findings": [
+          "Line 1: quantity × price gives 760.00 EUR, stated 770.00 EUR"
+        ]
+      },
+      {
+        "id": "line-sum",
+        "title": "Sum of lines = line total",
+        "status": "error",
+        "findings": [
+          "Lines add up to 1,235,412.59 EUR, stated 984.69 EUR"
+        ]
+      },
+      {
+        "id": "net-total",
+        "title": "Net total = lines − allowances + charges",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-basis",
+        "title": "Tax basis per category and rate = lines − allowances + charges",
+        "status": "error",
+        "findings": [
+          "S 19 %: lines give 1,235,337.89 EUR, stated 909.99 EUR",
+          "E 7 %: lines give 0.00 EUR, stated 74.70 EUR",
+          "S 7 %: lines exist but no tax breakdown"
+        ]
+      },
+      {
+        "id": "tax-amount",
+        "title": "Tax amount = tax basis × rate (per breakdown, 1 cent rounding tolerance)",
+        "status": "error",
+        "findings": [
+          "E 7 %: 74.70 EUR gives 5.23 EUR, stated 5.50 EUR"
+        ]
+      },
+      {
+        "id": "tax-total",
+        "title": "Total tax = sum of the tax amounts",
+        "status": "error",
+        "findings": [
+          "Tax amounts add up to 178.40 EUR, stated 178.13 EUR"
+        ]
+      },
+      {
+        "id": "gross-total",
+        "title": "Gross total = net total + tax",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "amount-due",
+        "title": "Amount due = gross total − prepayments + rounding",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-category",
+        "title": "Tax categories match the rate, exemption reason present",
+        "status": "error",
+        "findings": [
+          "E 7 %: this category requires 0 %",
+          "E 7 %: reason for the missing tax is absent"
+        ]
+      },
+      {
+        "id": "payment",
+        "title": "Payment details present, IBAN checksum",
+        "status": "warning",
+        "findings": [
+          "IBAN DE89370400440532013001 has a wrong checksum"
+        ]
+      },
+      {
+        "id": "dates",
+        "title": "Dates are real calendar days, due date not before issue date",
+        "status": "warning",
+        "findings": [
+          "Issue date \"2026-02-31\" is not an existing date"
+        ]
+      }
+    ],
+    "notChecked": [
+      "Validity against the XML schema (XSD)",
+      "Business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…)",
+      "Code lists (countries, units, currencies, tax categories, payment means)",
+      "PDF/A-3 conformity, XMP metadata and whether the PDF matches the XML",
+      "Authenticity, signatures and whether VAT IDs, tax rates or bank details are correct"
+    ]
+  }
+}

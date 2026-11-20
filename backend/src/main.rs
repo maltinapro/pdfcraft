@@ -3,6 +3,7 @@ mod config;
 mod documents;
 mod dunning;
 mod einvoice;
+mod einvoice_parse;
 mod facturx;
 mod free;
 mod interest;

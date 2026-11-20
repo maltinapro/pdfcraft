@@ -298,6 +298,12 @@
         <p>Aktuelle Version: <strong>__APP_VERSION__</strong></p>
         <ul class="news">
           <li>
+            <strong>E-Rechnungen per API lesen</strong>: <code>POST /v1/einvoices/parse</code> nimmt eine
+            ZUGFeRD-/Factur-X-PDF oder eine XML-Datei (CII, UBL, XRechnung) entgegen und liefert die
+            normalisierte Ansicht des Viewers samt Plausibilitätsprüfung als JSON – mit derselben Logik
+            wie der Viewer, ohne Speicherung (PDF bis 20&nbsp;MB, XML bis 5&nbsp;MB).
+          </li>
+          <li>
             <strong>Bericht</strong>: ein allgemeines Dokument für Listen und Auswertungen (Journal,
             Summen- und Saldenliste, BWA) mit Titel, Zeitraum, Kopfdaten und mehreren Tabellen samt
             Gruppen-Zwischensummen und Gesamtsumme, wiederholter Tabellenkopf, „Seite x von y“ und
