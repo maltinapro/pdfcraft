@@ -300,8 +300,8 @@
           <li>
             <strong>Mahnung</strong>: Zahlungserinnerung, Mahnung und letzte Mahnung mit offenen Rechnungen,
             Mahngebühren, neuer Zahlungsfrist und Zahlungsblock samt QR-Code, in allen drei Designs auf
-            Deutsch und Englisch – im Konfigurator (Rechnungen lassen sich aus dem Archiv übernehmen) und per
-            API (<code>POST /v1/documents</code>, Typ <code>dunning</code>). Die <strong>Verzugszinsen</strong>
+            Deutsch und Englisch – nur per API (<code>POST /v1/documents</code>, Typ <code>dunning</code>), nicht
+            im Konfigurator. Die <strong>Verzugszinsen</strong>
             nach § 288 BGB berechnet PDFCraft auf Wunsch tagesgenau aus dem Basiszinssatz (pro Rechnung und
             Zinsperiode, ausgewiesen auf dem Dokument; ohne Umsatzsteuer). Als Nachweis hängt eine
             JSON-Datei mit der Berechnung am PDF. Die Basiszinssätze vor 2026 sind noch nicht gegen die
@@ -454,7 +454,7 @@
         <ul>
           <li>
             Aktuell gibt es <strong>Rechnung, Stornorechnung, Angebot, Auftragsbestätigung,
-            Lieferschein und Brief</strong>. Dazu kommt die <strong>Mahnung</strong>;
+            Lieferschein und Brief</strong>. Per API gibt es außerdem die <strong>Mahnung</strong>;
             <strong>weitere PDF-Dokumente</strong> (etwa Berichte) können folgen.
           </li>
           <li>

@@ -34,7 +34,6 @@ interface Props {
   settings: Settings
   onSettingsChange: (settings: Settings) => void
   forInvoice: boolean
-  bank?: boolean
   data: unknown
   render: (signal: AbortSignal) => Promise<RenderedPdf>
   form: (zone: ZoneId) => ReactNode
@@ -57,7 +56,6 @@ export function Workspace({
   settings,
   onSettingsChange,
   forInvoice,
-  bank,
   data,
   render,
   form,
@@ -239,7 +237,7 @@ export function Workspace({
           ]}
           onChange={setSenderSection}
         />
-        <SettingsForm settings={settings} onChange={onSettingsChange} forInvoice={forInvoice} bank={bank} zone={zone} senderSection={senderSection} />
+        <SettingsForm settings={settings} onChange={onSettingsChange} forInvoice={forInvoice} zone={zone} senderSection={senderSection} />
       </>
     ) : (
       form(zone)

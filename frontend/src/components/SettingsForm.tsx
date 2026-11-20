@@ -20,8 +20,6 @@ interface Props {
   onChange: (settings: Settings) => void
   /** Bank details, intro/closing text and e-invoice options only apply to invoices. */
   forInvoice?: boolean
-  /** Bank details without the other invoice settings (dunning letter). */
-  bank?: boolean
   zone?: ZoneId
   senderSection?: 'company' | 'appearance'
 }
@@ -38,7 +36,7 @@ function readFileAsBase64(file: File): Promise<string> {
   })
 }
 
-export function SettingsForm({ settings, onChange, forInvoice = true, bank = false, zone = 'sender', senderSection = 'company' }: Props) {
+export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'sender', senderSection = 'company' }: Props) {
   useLang()
   const [logoError, setLogoError] = useState<string | null>(null)
   const [signatureError, setSignatureError] = useState<string | null>(null)
@@ -122,7 +120,7 @@ export function SettingsForm({ settings, onChange, forInvoice = true, bank = fal
         />
       </section>}
 
-      {(forInvoice || bank) && zone === 'sender' && senderSection === 'company' && (
+      {forInvoice && zone === 'sender' && senderSection === 'company' && (
         <section className="form-section" data-zone="sender">
           <h3>{tr('Bankverbindung', 'Bank details')}</h3>
           <TextField field="settings.bank.name" label={tr('Bank', 'Bank')} value={settings.bank.name} onChange={(v) => setBank('name', v)} />

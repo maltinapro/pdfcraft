@@ -2,7 +2,7 @@ import { tr } from './i18n'
 import { isObj, mergeObject, parsePostage, type Obj } from './storage'
 import { newItem, todayIso, type InvoiceItem, type PostageStamp, type Recipient } from './types'
 
-export type DocKind = 'invoice' | 'credit-note' | 'offer' | 'order' | 'delivery-note' | 'letter' | 'dunning'
+export type DocKind = 'invoice' | 'credit-note' | 'offer' | 'order' | 'delivery-note' | 'letter'
 export type ZoneId = 'sender' | 'recipient' | 'details' | 'items'
 
 export interface ZoneRect {
@@ -100,28 +100,6 @@ export const ZONES: Record<DocKind, readonly ZoneSpec[]> = {
     zone('details', 3, () => tr('Details', 'Details'), ['number', 'date', 'reference', 'deliveryDate', 'intro']),
     zone('items', 4, () => tr('Positionen', 'Items'), [...itemFields.filter((field) => !field.endsWith('.price') && !field.endsWith('.taxRate')), 'closing']),
   ],
-  dunning: [
-    zone('sender', 1, () => tr('Absender & Aussehen', 'Sender & look'), [...senderFields, 'settings.bank.name', 'settings.bank.iban', 'settings.bank.bic']),
-    zone('recipient', 2, () => tr('Empfänger', 'Recipient'), recipientFields),
-    zone('details', 3, () => tr('Details', 'Details'), ['number', 'date', 'dunningLevel', 'paymentDeadline', 'intro']),
-    zone('items', 4, () => tr('Offene Posten', 'Open items'), [
-      'invoices',
-      'invoices[*].number',
-      'invoices[*].date',
-      'invoices[*].dueDate',
-      'invoices[*].openAmount',
-      'fees',
-      'fees[*].description',
-      'fees[*].amount',
-      'interest.debtor',
-      'interest.rate',
-      'interest.from',
-      'interest.to',
-      'interest.amount',
-      'interest.baseRate',
-      'closing',
-    ]),
-  ],
   letter: [
     zone('sender', 1, () => tr('Absender & Aussehen', 'Sender & look'), senderFields),
     zone('recipient', 2, () => tr('Empfänger', 'Recipient'), recipientFields),
@@ -141,43 +119,6 @@ export function zoneForField(kind: DocKind, field: string): ZoneId | undefined {
   )?.id
 }
 
-export type InterestMode = 'none' | 'consumer' | 'business' | 'manual'
-
-export interface DunningInvoice {
-  id: string
-  number: string
-  /** ISO dates, `YYYY-MM-DD`. */
-  date: string
-  dueDate: string
-  /** Still open gross amount in euro. */
-  openAmount: number
-}
-
-export interface DunningFee {
-  id: string
-  description: string
-  amount: number
-}
-
-/** Dunning letter data. `consumer`/`business`: PDFCraft calculates the default interest from the base rate. */
-export interface DunningData {
-  level: 1 | 2 | 3
-  paymentDeadline: string
-  invoices: DunningInvoice[]
-  fees: DunningFee[]
-  interest: {
-    mode: InterestMode
-    /** Calculation: optional start (default: the day after each due date) and end (default: the document date). */
-    from: string
-    to: string
-    /** `manual` only: annual rate in percent and the interest amount in euro. */
-    rate: number
-    amount: number
-    /** Calculation: base rate in percent instead of the built-in table (empty = table). */
-    baseRate: string
-  }
-}
-
 /** Data of every document type except the invoice (see `Invoice` in `types.ts`). */
 export interface Doc {
   number: string
@@ -195,8 +136,6 @@ export interface Doc {
   intro: string
   closing: string
   postage?: PostageStamp | null
-  /** Only for the dunning letter. */
-  dunning?: DunningData
 }
 
 export type DocDataKind = Exclude<DocKind, 'invoice'>
@@ -225,7 +164,6 @@ export interface DocSpec {
   /** Recipient needs e-invoice data (VAT id, e-mail, buyer reference) for the ZUGFeRD / XRechnung XML. */
   einvoice?: boolean
   letter?: boolean
-  dunning?: boolean
   intro?: string
   closing?: string
 }
@@ -299,18 +237,6 @@ export const DOC_SPECS: DocSpec[] = [
     closing: 'Bitte prüfen Sie die Lieferung auf Vollständigkeit und Unversehrtheit.',
   },
   {
-    kind: 'dunning',
-    get numberLabel() { return tr('Mahnungsnummer', 'Dunning number') },
-    get label() { return tr('Mahnung', 'Dunning letter') },
-    get description() { return tr('Zahlungserinnerung oder Mahnung mit offenen Rechnungen, Mahngebühren, Verzugszinsen aus dem Basiszinssatz und neuer Zahlungsfrist.', 'Payment reminder or dunning letter with open invoices, fees, default interest from the base rate and a new payment deadline.') },
-    numberPrefix: 'M-',
-    get dateLabel() { return tr('Datum', 'Date') },
-    items: 'none',
-    dunning: true,
-    intro: '',
-    closing: '',
-  },
-  {
     kind: 'letter',
     get label() { return tr('Brief', 'Letter') },
     get description() { return tr('Geschäftsbrief nach DIN 5008 mit Absenderkopf, Adressfeld, Betreff und Freitext.', 'Business letter following DIN 5008 with sender header, address field, subject and free text.') },
@@ -325,39 +251,6 @@ export const DOC_SPECS: DocSpec[] = [
 
 export function docSpec(kind: string | undefined): DocSpec | undefined {
   return DOC_SPECS.find((spec) => spec.kind === kind)
-}
-
-const addDays = (iso: string, days: number) => {
-  const d = new Date(`${iso}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + days)
-  return d.toISOString().slice(0, 10)
-}
-
-export const newDunningInvoice = (partial: Partial<DunningInvoice> = {}): DunningInvoice => ({
-  id: newItem().id,
-  number: '',
-  date: '',
-  dueDate: '',
-  openAmount: 0,
-  ...partial,
-})
-
-export const newDunningFee = (partial: Partial<DunningFee> = {}): DunningFee => ({
-  id: newItem().id,
-  description: '',
-  amount: 0,
-  ...partial,
-})
-
-export function defaultDunning(): DunningData {
-  const today = todayIso()
-  return {
-    level: 1,
-    paymentDeadline: addDays(today, 14),
-    invoices: [newDunningInvoice({ number: `${new Date().getFullYear()}-001`, date: addDays(today, -45), dueDate: addDays(today, -31), openAmount: 1190 })],
-    fees: [],
-    interest: { mode: 'none', from: '', to: '', rate: 0, amount: 0, baseRate: '' },
-  }
 }
 
 export function defaultDoc(kind: DocDataKind): Doc {
@@ -385,7 +278,6 @@ export function defaultDoc(kind: DocDataKind): Doc {
     reason: '',
     intro: spec.letter ? '' : (spec.intro ?? ''),
     closing: spec.closing ?? '',
-    ...(spec.dunning ? { dunning: defaultDunning() } : {}),
   }
 }
 
@@ -411,57 +303,7 @@ function parseDoc(kind: DocDataKind, raw: unknown): Doc {
     return newItem(rest as Partial<typeof base>)
   })
   doc.postage = parsePostage(isObj(raw) ? raw.postage : null)
-  if (docSpec(kind)?.dunning) doc.dunning = parseDunning(isObj(raw) ? raw.dunning : null)
   return doc
-}
-
-/** A stored dunning section; anything invalid falls back to the defaults. */
-export function parseDunning(raw: unknown): DunningData {
-  const base = defaultDunning()
-  if (!isObj(raw)) return base
-  const level = raw.level === 2 || raw.level === 3 ? raw.level : 1
-  const list = (value: unknown, max: number) => (Array.isArray(value) ? value.slice(0, max).filter(isObj) : [])
-  const interest = mergeObject(base.interest as unknown as Obj, raw.interest) as unknown as DunningData['interest']
-  if (!['none', 'consumer', 'business', 'manual'].includes(interest.mode)) interest.mode = 'none'
-  return {
-    level,
-    paymentDeadline: typeof raw.paymentDeadline === 'string' ? raw.paymentDeadline : base.paymentDeadline,
-    invoices: list(raw.invoices, 100).map((row) => {
-      const { id: _id, ...rest } = mergeObject(newDunningInvoice() as unknown as Obj, row) as Obj
-      void _id
-      return newDunningInvoice(rest as Partial<DunningInvoice>)
-    }),
-    fees: list(raw.fees, 20).map((row) => {
-      const { id: _id, ...rest } = mergeObject(newDunningFee() as unknown as Obj, row) as Obj
-      void _id
-      return newDunningFee(rest as Partial<DunningFee>)
-    }),
-    interest,
-  }
-}
-
-/** The dunning fields of the `POST /v1/documents` body (the UI shape is flattened and the ids are dropped). */
-export function dunningPayload(data: DunningData | undefined): Record<string, unknown> {
-  const d = data ?? defaultDunning()
-  const { mode, from, to, rate, amount, baseRate } = d.interest
-  const interest =
-    mode === 'none'
-      ? undefined
-      : mode === 'manual'
-        ? { rate, from, to, amount }
-        : {
-            debtor: mode,
-            ...(from ? { from } : {}),
-            ...(to ? { to } : {}),
-            ...(baseRate.trim() !== '' && Number.isFinite(Number(baseRate)) ? { baseRate: Number(baseRate) } : {}),
-          }
-  return {
-    dunningLevel: d.level,
-    paymentDeadline: d.paymentDeadline,
-    invoices: d.invoices.map(({ number, date, dueDate, openAmount }) => ({ number, date, dueDate, openAmount })),
-    fees: d.fees.map(({ description, amount }) => ({ description, amount })),
-    ...(interest ? { interest } : {}),
-  }
 }
 
 /** Validates stored or imported drafts and fills missing document types with defaults. */
@@ -513,11 +355,7 @@ const followUps = (): Record<DocKind, { to: DocKind; label: string }[]> => ({
     { to: 'invoice', label: tr('Rechnung aus dieser Auftragsbestätigung', 'Invoice from this order confirmation') },
   ],
   'delivery-note': [{ to: 'invoice', label: tr('Rechnung aus diesem Lieferschein', 'Invoice from this delivery note') }],
-  invoice: [
-    { to: 'credit-note', label: tr('Stornieren', 'Issue credit note') },
-    { to: 'dunning', label: tr('Mahnung zu dieser Rechnung', 'Dunning letter for this invoice') },
-  ],
-  dunning: [],
+  invoice: [{ to: 'credit-note', label: tr('Stornieren', 'Issue credit note') }],
   'credit-note': [],
   letter: [],
 })

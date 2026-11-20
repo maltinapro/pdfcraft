@@ -16,7 +16,6 @@ const texts = () => tr('Absender & Aussehen › Texte', 'Sender & look › Texts
 const details = () => tr('Details', 'Details')
 const items = () => tr('Positionen', 'Items')
 const recipient = () => tr('Empfänger', 'Recipient')
-const openItems = () => tr('Offene Posten', 'Open items')
 const itemArea = (n: number) => tr(`Positionen › Position ${n}`, `Items › Item ${n}`)
 
 /** Labels and places exactly as the forms show them (see InvoiceForm, DocumentForm, SettingsForm). */
@@ -68,16 +67,6 @@ function documentField(rest: string, kind: string): Field | null {
     intro: () => ({ label: tr('Einleitung', 'Introduction'), area: tr('Texte', 'Texts') }),
     closing: () => ({ label: spec?.letter ? tr('Grußformel', 'Closing phrase') : tr('Schlusstext', 'Closing text'), area: tr('Texte', 'Texts') }),
     items: () => ({ label: tr('Positionen', 'Items'), area: tr('Positionen', 'Items') }),
-    dunningLevel: () => ({ label: tr('Mahnstufe', 'Dunning level'), area: details() }),
-    paymentDeadline: () => ({ label: tr('Neue Zahlungsfrist', 'New payment deadline'), area: details() }),
-    invoices: () => ({ label: tr('Offene Rechnungen', 'Open invoices'), area: openItems() }),
-    fees: () => ({ label: tr('Mahngebühren', 'Dunning fees'), area: openItems() }),
-    'interest.debtor': () => ({ label: tr('Verzugszinsen', 'Default interest'), area: openItems() }),
-    'interest.rate': () => ({ label: tr('Zinssatz', 'Rate'), area: openItems() }),
-    'interest.from': () => ({ label: tr('Zinsen ab', 'Interest from'), area: openItems() }),
-    'interest.to': () => ({ label: tr('Zinsen bis', 'Interest to'), area: openItems() }),
-    'interest.amount': () => ({ label: tr('Zinsbetrag', 'Interest amount'), area: openItems() }),
-    'interest.baseRate': () => ({ label: tr('Basiszinssatz', 'Base rate'), area: openItems() }),
     postage: () => ({ label: tr('Briefmarke', 'Postage stamp'), area: tr('Porto', 'Postage') }),
     'recipient.name': () => ({ label: tr('Name', 'Name'), area: recipient() }),
     'recipient.address': () => ({ label: tr('Straße / Hausnummer', 'Street / house number'), area: recipient() }),

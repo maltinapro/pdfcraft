@@ -1,5 +1,5 @@
 import { tr } from './i18n'
-import type { DocSpec, DunningData } from './documents'
+import type { DocSpec } from './documents'
 import { DEFAULT_SETTINGS, type Invoice, type InvoiceItem, type Settings } from './types'
 
 export interface Issue {
@@ -68,9 +68,9 @@ export function validateInvoice(settings: Settings, invoice: Invoice): Issue[] {
 
 /** Mirrors the "is required" rules of the backend (`invoice.rs`, `documents.rs`); the request would be rejected. */
 export function requiredIssues(
-  spec: Pick<DocSpec, 'kind' | 'letter' | 'items'> & { dunning?: boolean },
+  spec: Pick<DocSpec, 'kind' | 'letter' | 'items'>,
   settings: Settings,
-  doc: { number: string; date: string; serviceDate?: string; serviceDateFrom?: string; serviceDateTo?: string; dueDate?: string; reference?: string; subject?: string; body?: string; recipient: { name: string; address: string; city: string }; items: InvoiceItem[]; dunning?: DunningData },
+  doc: { number: string; date: string; serviceDate?: string; serviceDateFrom?: string; serviceDateTo?: string; dueDate?: string; reference?: string; subject?: string; body?: string; recipient: { name: string; address: string; city: string }; items: InvoiceItem[]},
 ): Issue[] {
   const issues: Issue[] = []
   const missing = (field: string, message = tr('Pflichtfeld', 'Required')) =>
@@ -98,26 +98,6 @@ export function requiredIssues(
   if (spec.letter) {
     if (blank(doc.subject)) missing('subject')
     if (blank(doc.body)) missing('body')
-  }
-  if (spec.dunning && doc.dunning) {
-    const d = doc.dunning
-    if (d.invoices.length === 0) missing('invoices', tr('Mindestens eine Rechnung nötig', 'At least one invoice is needed'))
-    d.invoices.forEach((row, i) => {
-      if (blank(row.number)) missing(`invoices[${i}].number`)
-      if (blank(row.date)) missing(`invoices[${i}].date`, tr('Bitte ein Datum angeben', 'Please enter a date'))
-      if (blank(row.dueDate)) missing(`invoices[${i}].dueDate`, tr('Bitte ein Datum angeben', 'Please enter a date'))
-      if (!(row.openAmount > 0)) missing(`invoices[${i}].openAmount`, tr('Betrag größer als 0 angeben', 'Enter an amount greater than 0'))
-    })
-    d.fees.forEach((row, i) => {
-      if (blank(row.description)) missing(`fees[${i}].description`)
-    })
-    if (blank(d.paymentDeadline)) missing('paymentDeadline', tr('Bitte ein Datum angeben', 'Please enter a date'))
-    if (d.interest.mode === 'manual') {
-      if (!(d.interest.rate > 0)) missing('interest.rate', tr('Satz größer als 0 angeben', 'Enter a rate greater than 0'))
-      if (blank(d.interest.from)) missing('interest.from', tr('Bitte ein Datum angeben', 'Please enter a date'))
-      if (blank(d.interest.to)) missing('interest.to', tr('Bitte ein Datum angeben', 'Please enter a date'))
-    }
-    if (d.interest.baseRate.trim() !== '' && !Number.isFinite(Number(d.interest.baseRate))) missing('interest.baseRate', tr('Bitte eine Zahl angeben', 'Please enter a number'))
   }
   if (spec.items !== 'none') {
     if (doc.items.length === 0) missing('items', tr('Mindestens eine Position nötig', 'At least one item is needed'))

@@ -3,7 +3,7 @@ import { fetchWithTimeout, RequestTimeoutError, SHORT_TIMEOUT_MS } from './fetch
 import { API_BASE_URL } from './config'
 import { reportClientError } from './clientErrors'
 import { tr } from './i18n'
-import { dunningPayload, type Doc, type DocKind, type ZoneRect } from './documents'
+import type { Doc, DocKind, ZoneRect } from './documents'
 import type { Invoice, PostageStamp, Settings } from './types'
 
 export { API_BASE_URL }
@@ -261,10 +261,9 @@ export async function requestJson<T>(method: 'GET' | 'POST', path: string, paylo
 }
 
 /** Only the stamp image goes to the backend; the purchase details stay in the browser. */
-function forBackend<T extends { postage?: PostageStamp | null; dunning?: Doc['dunning'] }>(document: T) {
-  const { postage, dunning, ...rest } = document
-  const body = dunning ? { ...rest, ...dunningPayload(dunning) } : rest
-  return postage ? { ...body, postage: { base64: postage.base64 } } : body
+function forBackend<T extends { postage?: PostageStamp | null }>(document: T) {
+  const { postage, ...rest } = document
+  return postage ? { ...rest, postage: { base64: postage.base64 } } : rest
 }
 
 /** Renders the invoice with `POST /v1/invoices`. */
@@ -301,5 +300,5 @@ export function requestBulk(
 ): Promise<Blob> {
   return kind === 'invoice'
     ? requestBlob('/v1/invoices/bulk', { settings, invoices: documents }, signal)
-    : requestBlob('/v1/documents/bulk', { type: kind, settings, documents: documents.map((d) => ('dunning' in d && d.dunning ? forBackend(d) : d)) }, signal)
+    : requestBlob('/v1/documents/bulk', { type: kind, settings, documents: documents }, signal)
 }

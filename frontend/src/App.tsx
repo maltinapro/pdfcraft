@@ -409,7 +409,6 @@ function AppRoutes() {
       settings={settings}
       onSettingsChange={setSettings}
       forInvoice={false}
-      bank={!!spec.dunning}
       issues={documentIssues}
       saveState={saveState}
       onDownloaded={() => issue(kind)}
@@ -420,8 +419,6 @@ function AppRoutes() {
           spec={spec}
           doc={doc}
           zone={zone}
-          archive={archive}
-          paymentDays={settings.paymentDays}
           onChange={(next) => setDrafts((current) => ({ ...current, [kind]: next }))}
         />
       )}

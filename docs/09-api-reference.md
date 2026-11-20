@@ -155,7 +155,7 @@ Credit note (Stornorechnung), offer, order confirmation, delivery note, letter a
 
 ### Dunning letter (`dunning`)
 
-References one or more open invoices and asks for payment until a new deadline. It is laid out in all three designs and in German or English (`settings.locale`) and has the payment block of the invoice (account, `Verwendungszweck` = the dunning `number`, EPC QR code with the total when `settings.bank.iban` is valid). The PDF carries no e-invoice XML.
+References one or more open invoices and asks for payment until a new deadline. It is laid out in all three designs and in German or English (`settings.locale`) and has the payment block of the invoice (account, `Verwendungszweck` = the dunning `number`, EPC QR code with the total when `settings.bank.iban` is valid). The PDF carries no e-invoice XML. The dunning letter is available through the API only; the configurator has no tile or form for it, because dunning belongs to the calling accounting system (for example FediFinance).
 
 | Field | Meaning |
 | --- | --- |
