@@ -8,26 +8,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
+          for n in $(seq 100 135); do
+            id="BBK01.SU0$n"
+            out=$(curl -sS -m 30 "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=$id&its_csvFormat=en&its_fileFormat=csv&mode=its" | sed -n '2p' | head -c 200)
+            echo "$id -> $out"
+          done
           for u in \
-            "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115" \
-            "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115?format=csv" \
-            "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115?startPeriod=2024-01" \
-            "https://api.statistiken.bundesbank.de/rest/data/BBK01" \
-            "https://api.statistiken.bundesbank.de/rest/dataflow" \
-            "https://api.statistiken.bundesbank.de/rest/dataflow/BBK/BBK01" \
+            "https://api.statistiken.bundesbank.de/rest/metadata/dataflow" \
+            "https://api.statistiken.bundesbank.de/rest/metadata/dataflow/BBK01" \
             "https://api.statistiken.bundesbank.de/rest/metadata/dataflow/BBK/BBK01" \
-            "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115.csv" \
-            "https://api.statistiken.bundesbank.de/rest/download/BBK01/SU0115" \
-            "https://api.statistiken.bundesbank.de/rest/download/BBK01/SU0115?format=csv" \
-            "https://api.statistiken.bundesbank.de/rest/download/BBK01/SU0115?format=sdmx" \
-            "https://api.statistiken.bundesbank.de/rest/download/BBK/BBK01/SU0115?format=csv" \
-            "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBK01.SU0115&its_csvFormat=de&its_fileFormat=csv&mode=its" \
-            "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBK01.SU0115&its_csvFormat=en&its_fileFormat=csv&mode=its&its_from=2002" \
-            "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBK01.SU0115&its_csvFormat=en&its_fileFormat=csv&mode=its&its_from=2002&its_to=2026" \
-            "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBK01.SU0115&its_csvFormat=en&its_fileFormat=csv&mode=its&its_from=2002&its_to=2026&its_currency=default&its_dateFormat=default&its_decimalSeparator=default&its_scaleFactor=default" \
-            "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBEX3.D.USD.EUR.BB.AC.000&its_csvFormat=en&its_fileFormat=csv&mode=its" \
+            "https://api.statistiken.bundesbank.de/rest/data/BBK01/D.I.ZST.ZI.EUR.S1311.B.A604.R10XX.R.A.A._Z._Z.A" \
+            "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115?detail=serieskeysonly" \
             ; do
             echo "=== $u"
-            curl -sS -L -m 30 -w '\n[HTTP %{http_code}]\n' "$u" | head -c 600
+            curl -sS -L -m 30 -w '\n[HTTP %{http_code}]\n' "$u" | head -c 500
             echo
           done
