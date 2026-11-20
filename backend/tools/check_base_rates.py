@@ -18,10 +18,11 @@ import sys
 import urllib.request
 
 TABLE = pathlib.Path(__file__).resolve().parents[1] / "src/data/base-rates.json"
-URL = (
-    "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115"
-    "?format=csv&lang=en"
-)
+URLS = [
+    "https://api.statistiken.bundesbank.de/rest/download/BBK01/SU0115?format=csv&lang=en",
+    "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115?detail=dataonly&format=csv",
+    "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBK01.SU0115&its_csvFormat=en&its_fileFormat=csv&mode=its",
+]
 DATE = re.compile(r"^(\d{4})-(\d{2})(?:-(\d{2}))?$|^(\d{2})\.(\d{2})\.(\d{4})$")
 
 
@@ -99,18 +100,34 @@ def compare(table, observations, today):
     return sorted(set(problems))
 
 
-def main(argv):
-    if len(argv) > 1:
-        text = pathlib.Path(argv[1]).read_text(encoding="utf-8-sig")
-    else:
-        request = urllib.request.Request(URL, headers={"User-Agent": "pdfcraft-base-rate-check"})
+def download():
+    """Tries every URL; returns the first CSV that yields enough observations."""
+    for url in URLS:
+        request = urllib.request.Request(url, headers={"User-Agent": "pdfcraft-base-rate-check"})
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
                 text = response.read().decode("utf-8-sig")
         except OSError as error:
-            print(f"could not download the series: {error}")
+            print(f"{url}: {error}")
+            continue
+        observations = parse_csv(text)
+        if len(observations) >= 20:
+            print(f"read {len(observations)} observations from {url}")
+            return text, observations
+        print(f"{url}: {len(observations)} observations; first lines: {text[:200]!r}")
+    print("could not read the series from any URL; has the Bundesbank interface changed?")
+    return None, []
+
+
+def main(argv):
+    if len(argv) > 1:
+        text = pathlib.Path(argv[1]).read_text(encoding="utf-8-sig")
+    else:
+        text, observations = download()
+        if text is None:
             return 2
-    observations = parse_csv(text)
+    if len(argv) > 1:
+        observations = parse_csv(text)
     if len(observations) < 20:
         print(f"could not read the series ({len(observations)} observations); has the CSV format changed?")
         return 2
