@@ -1,12 +1,14 @@
-// Shared layout of all PDF documents (invoice, credit note, offer, order, delivery note, letter).
+// Shared layout of all PDF documents (invoice, credit note, offer, order, delivery note, letter,
+// dunning letter, report).
 // The backend prepends this file to the template of the document type and renders both with
 // minijinja (`backend/src/v1.rs`, `backend/src/documents.rs`). Amounts, dates and display texts are
 // computed in the backend; user text is passed as Typst string literals (only `\` and `"` are
 // escaped there). The look is chosen by `settings.design`: every design is one dictionary of tokens
 // (see `designs` below) that the layout functions read, so the document types cannot drift apart.
 // DIN 5008 Form B positions are the same in every design: margins 25/20/20 mm, header up to 45 mm,
-// address field 45-92.4 mm, fold marks (105 / 210 mm) and punch mark (148.5 mm).
-{% set d = invoice or doc %}{% set intro = settings.intro if invoice else doc.intro %}{% set closing = settings.closing if invoice else doc.closing %}{% if pay and pay.qr %}#import "@preview/sepay:0.1.1": epc-qr-code
+// address field 45-92.4 mm, fold marks (105 / 210 mm) and punch mark (148.5 mm). The report has no
+// address field or marks: margins 20/15/15/20 mm, optional landscape, page numbers in the footer.
+{% set d = invoice or doc %}{% set is_report = doc and doc.kind == "report" %}{% set intro = settings.intro if invoice else doc.intro %}{% set closing = settings.closing if invoice else doc.closing %}{% if pay and pay.qr %}#import "@preview/sepay:0.1.1": epc-qr-code
 {% endif %}
 #let accent = rgb("{{ settings.accentColor }}")
 #let design = "{{ settings.design }}"
@@ -58,6 +60,8 @@
 )
 #let tokens = designs.at(design)
 
+#let margin-left = {% if is_report %}20mm{% else %}25mm{% endif %}
+#let page-width = {% if is_report and doc.report.landscape %}297mm{% else %}210mm{% endif %}
 #let number = "{{ d.number }}"
 #let date-text = "{{ d.dateText }}"
 
@@ -77,14 +81,18 @@
 }
 #set page(
   paper: "a4",
-  margin: (left: 25mm, right: 20mm, top: 15mm, bottom: 20mm),
-  {% if settings.footer %}footer: footer-text(lines("{{ settings.footer }}")),{% endif %}
+  {% if is_report %}flipped: {% if doc.report.landscape %}true{% else %}false{% endif %},
+  margin: (left: 20mm, right: 15mm, top: 15mm, bottom: 20mm),
+  footer: footer-text[{% if settings.footer %}#lines("{{ settings.footer }}") \
+    {% endif %}#"{{ doc.report.title }}"{% if doc.report.period %} · #"{{ doc.report.period }}"{% endif %} · #t[Seite][Page] #context counter(page).display() #t[von][of] #context counter(page).final().first()],
+  {% else %}margin: (left: 25mm, right: 20mm, top: 15mm, bottom: 20mm),
+  {% if settings.footer %}footer: footer-text(lines("{{ settings.footer }}")),{% endif %}{% endif %}
   background: [
-    // DIN 5008 fold marks (105 / 210 mm) and punch mark (148.5 mm)
+    {% if not is_report %}// DIN 5008 fold marks (105 / 210 mm) and punch mark (148.5 mm)
     #place(top + left, dy: 105mm, dx: 5mm, line(length: 4mm, stroke: 0.4pt + luma(120)))
     #place(top + left, dy: 210mm, dx: 5mm, line(length: 4mm, stroke: 0.4pt + luma(120)))
     #place(top + left, dy: 148.5mm, dx: 5mm, line(length: 8mm, stroke: 0.4pt + luma(120)))
-    {% if settings.watermark %}#align(center + horizon, rotate(-35deg, text(100pt, weight: "bold", fill: luma(85%), "{{ settings.watermark }}"))){% endif %}
+    {% endif %}    {% if settings.watermark %}#align(center + horizon, rotate(-35deg, text(100pt, weight: "bold", fill: luma(85%), "{{ settings.watermark }}"))){% endif %}
   ],
 )
 {% if einvoice %}#pdf.attach("/{{ einvoice.file }}", read("{{ assets.xml }}", encoding: none), relationship: "{{ einvoice.relationship }}", mime-type: "text/xml", description: "{{ einvoice.description }}")
@@ -114,7 +122,7 @@
 } else if tokens.header == "band" {
   // full-bleed accent band (0-27 mm) with the sender in on-accent color, logo on a white plate
   block(height: 30mm, width: 100%, {
-    place(top + left, dx: -25mm, dy: -15mm, rect(width: 210mm, height: 27mm, fill: accent, stroke: none))
+    place(top + left, dx: -margin-left, dy: -15mm, rect(width: page-width, height: 27mm, fill: accent, stroke: none))
     place(top + left, dy: -15mm, block(height: 27mm, width: 100%, align(horizon, grid(
       columns: (1fr, 1fr),
       align: horizon,
@@ -155,13 +163,13 @@
 
 // Small label/value pairs: a 3-column grid below the address (classic), tinted chips (contrast) or
 // the DIN information block right of the address field (modern minimal)
-#let facts-grid(entries) = grid(
-  columns: (1fr,) * 3,
+#let facts-grid(entries, columns: 3) = grid(
+  columns: (1fr,) * columns,
   row-gutter: 3mm,
   ..entries.map(e => [#small(e.at(0)) \ #e.at(1)]),
 )
-#let facts-chips(entries) = grid(
-  columns: (1fr,) * 3,
+#let facts-chips(entries, columns: 3) = grid(
+  columns: (1fr,) * columns,
   column-gutter: 3mm,
   row-gutter: 3mm,
   ..entries.map(e => block(width: 100%, fill: accent.lighten(88%), radius: 2mm, inset: (x: 3mm, y: 2mm), [#small(e.at(0)) \ #e.at(1)])),
@@ -240,11 +248,11 @@
 } else {
   strong(body)
 }
-#let styled-table(columns, align, heads, cells) = {
+#let styled-table(columns, align, heads, cells, row-count: none) = {
   let ruled = tokens.table == "ruled"
   let hairline = tokens.table == "hairline"
   let filled = tokens.table == "filled"
-  let rows = calc.quo(cells.len(), heads.len())
+  let rows = if row-count == none { calc.quo(cells.len(), heads.len()) } else { row-count }
   let zebra = if ruled { accent.lighten(85%) } else if filled { accent.lighten(92%) } else { none }
   let tbl = table(
     columns: columns,

@@ -1,11 +1,11 @@
 //! Number, date, text and bank-account helpers for the amounts, texts and XML of `einvoice`.
 
 /// A decimal number with 4 decimals, stored as an integer (value * 10_000).
-pub(super) fn fixed(v: f64) -> i128 {
+pub(crate) fn fixed(v: f64) -> i128 {
     (v * 10_000.0).round() as i128
 }
 
-pub(super) fn div_round(n: i128, d: i128) -> i128 {
+pub(crate) fn div_round(n: i128, d: i128) -> i128 {
     let half = d / 2;
     if n >= 0 {
         (n + half) / d

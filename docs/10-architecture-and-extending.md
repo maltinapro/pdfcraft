@@ -59,7 +59,7 @@ pdfcraft/
 │       │   ├── theme.ts              # Light/dark theme (system default, manual override)
 │       │   ├── validate.ts           # E-invoice issues shown in the sidebar
 │       │   └── api.ts                # free token handling + requestPdf() / requestDocument()
-│       └── template/                 # layout.typ (shared layout + design tokens) + invoice/credit-note/offer/order/delivery-note/letter/dunning.typ
+│       └── template/                 # layout.typ (shared layout + design tokens) + invoice/credit-note/offer/order/delivery-note/letter/dunning/report.typ
 │
 └── backend/                          # Rust (Axum + typst-as-lib + typst-pdf + minijinja)
     ├── Cargo.toml
@@ -69,6 +69,7 @@ pdfcraft/
     ├── src/v1/warm_up.rs             # start-up compile of sample documents (fonts, templates)
     ├── src/invoice.rs                # Validation/escaping of the /v1 input
     ├── src/documents.rs              # POST /v1/documents[/bulk]: types, validation, template assembly, credit-note XML
+    ├── src/report.rs                 # report type (`report`): typed tables, groups, subtotals, totals in fixed point, limits
     ├── src/dunning.rs                # dunning letter (`dunning` type): invoices, fees, interest, totals in cents, audit record
     ├── src/interest.rs               # § 288 BGB default interest: day-exact split over base-rate periods (table `src/data/base-rates.json`, env `BASE_RATES`)
     ├── src/internetmarke.rs          # Deutsche Post stamps (optional): /v1/postage/* (products, stamps, bulk, recover), test API for free tokens, nothing stored

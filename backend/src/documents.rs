@@ -1,5 +1,6 @@
 //! Non-invoice documents for `/v1/documents`: credit note (Stornorechnung), offer, order
-//! confirmation, delivery note, letter and dunning letter (Mahnung, see `dunning.rs`).
+//! confirmation, delivery note, letter, dunning letter (Mahnung, see `dunning.rs`) and report (tables,
+//! see `report.rs`).
 //!
 //! Same rules as `invoice.rs`: strict validation, whitelisted values, all text escaped for Typst
 //! string literals. Each type has its own template (`frontend/src/template/<type>.typ`) that is
@@ -12,6 +13,7 @@ use crate::invoice::{
     MAX_LONG, MAX_SHORT, TAX_RATES, UNITS,
 };
 use crate::postage::{self, Postage};
+use crate::report::{self, ReportMeta, ReportTable};
 use serde::Deserialize;
 use serde_json::{json, Value as JsonValue};
 use std::sync::LazyLock;
@@ -31,16 +33,18 @@ pub enum Kind {
     DeliveryNote,
     Letter,
     Dunning,
+    Report,
 }
 
 impl Kind {
-    pub const ALL: [Kind; 6] = [
+    pub const ALL: [Kind; 7] = [
         Kind::CreditNote,
         Kind::Offer,
         Kind::Order,
         Kind::DeliveryNote,
         Kind::Letter,
         Kind::Dunning,
+        Kind::Report,
     ];
 
     pub fn parse(value: &str) -> Option<Kind> {
@@ -55,6 +59,7 @@ impl Kind {
             Kind::DeliveryNote => "delivery-note",
             Kind::Letter => "letter",
             Kind::Dunning => "dunning",
+            Kind::Report => "report",
         }
     }
 
@@ -66,6 +71,7 @@ impl Kind {
             Kind::DeliveryNote => include_str!("../../frontend/src/template/delivery-note.typ"),
             Kind::Letter => include_str!("../../frontend/src/template/letter.typ"),
             Kind::Dunning => include_str!("../../frontend/src/template/dunning.typ"),
+            Kind::Report => include_str!("../../frontend/src/template/report.typ"),
         }
     }
 
@@ -85,11 +91,11 @@ impl Kind {
     }
 
     fn has_items(self) -> bool {
-        !matches!(self, Kind::Letter | Kind::Dunning)
+        !matches!(self, Kind::Letter | Kind::Dunning | Kind::Report)
     }
 
     fn has_number(self) -> bool {
-        self != Kind::Letter
+        !matches!(self, Kind::Letter | Kind::Report)
     }
 }
 
@@ -148,6 +154,20 @@ pub struct Document {
     /// Dunning letter: new payment deadline (`YYYY-MM-DD`, not before the document date).
     #[schema(format = Date)]
     pub payment_deadline: String,
+    /// Report: title (required).
+    #[schema(max_length = 200)]
+    pub title: String,
+    /// Report: period as free text, for example `Januar bis Dezember 2026`.
+    #[schema(max_length = 200)]
+    pub period: String,
+    /// Report: meta block, label and value pairs below the title (up to 12).
+    #[schema(max_items = 12)]
+    pub meta: Vec<ReportMeta>,
+    /// Report: 1 to 20 tables with at most 10,000 rows in total.
+    #[schema(max_items = 20)]
+    pub tables: Vec<ReportTable>,
+    /// Report: print on landscape A4.
+    pub landscape: bool,
     /// Franking mark (Internetmarke PNG) printed into the address field.
     pub postage: Option<Postage>,
 }
@@ -176,6 +196,7 @@ pub fn check_document(kind: Kind, doc: &Document, english: bool, e: &mut Errors)
         }
     };
     let r = &doc.recipient;
+    let has_recipient = kind != Kind::Report;
     let mut out = json!({
         "kind": kind.slug(),
         "number": text(e, "document.number", &doc.number, MAX_SHORT, kind.has_number()),
@@ -184,9 +205,9 @@ pub fn check_document(kind: Kind, doc: &Document, english: bool, e: &mut Errors)
         "day": date.2,
         "dateText": german_date(date),
         "recipient": {
-            "name": text(e, "document.recipient.name", &r.name, MAX_SHORT, true),
-            "address": text(e, "document.recipient.address", &r.address, MAX_SHORT, true),
-            "city": text(e, "document.recipient.city", &r.city, MAX_SHORT, true),
+            "name": text(e, "document.recipient.name", &r.name, MAX_SHORT, has_recipient),
+            "address": text(e, "document.recipient.address", &r.address, MAX_SHORT, has_recipient),
+            "city": text(e, "document.recipient.city", &r.city, MAX_SHORT, has_recipient),
         },
         "reference": text(e, "document.reference", &doc.reference, MAX_SHORT, kind == Kind::CreditNote),
         "referenceDateText": optional_date(e, "document.referenceDate", &doc.reference_date),
@@ -245,7 +266,22 @@ pub fn check_document(kind: Kind, doc: &Document, english: bool, e: &mut Errors)
             e,
         );
     }
-    if let Some(stamp) = postage::check_optional(doc.postage.as_ref(), "document", e) {
+    if kind == Kind::Report {
+        out["report"] = report::check(
+            &report::Fields {
+                title: &doc.title,
+                period: &doc.period,
+                meta: &doc.meta,
+                tables: &doc.tables,
+                landscape: doc.landscape,
+            },
+            english,
+            e,
+        );
+        if doc.postage.is_some() {
+            e.add("document.postage", "is not supported for reports");
+        }
+    } else if let Some(stamp) = postage::check_optional(doc.postage.as_ref(), "document", e) {
         out["postage"] = stamp.data();
     }
     out
@@ -263,7 +299,9 @@ pub fn build(
     mut assets: Vec<(String, Vec<u8>)>,
 ) -> (JsonValue, Vec<(String, Vec<u8>)>) {
     let mut data = json!({ "settings": settings, "doc": checked });
-    postage::attach(doc.postage.as_ref(), &mut assets);
+    if kind != Kind::Report {
+        postage::attach(doc.postage.as_ref(), &mut assets);
+    }
     if kind == Kind::CreditNote {
         let invoice = Invoice {
             number: doc.number.clone(),

@@ -298,6 +298,13 @@
         <p>Aktuelle Version: <strong>__APP_VERSION__</strong></p>
         <ul class="news">
           <li>
+            <strong>Bericht</strong>: ein allgemeines Dokument für Listen und Auswertungen (Journal,
+            Summen- und Saldenliste, BWA) mit Titel, Zeitraum, Kopfdaten und mehreren Tabellen samt
+            Gruppen-Zwischensummen und Gesamtsumme, wiederholter Tabellenkopf, „Seite x von y“ und
+            optional Querformat – in allen drei Designs auf Deutsch und Englisch, bis zu 10&nbsp;000 Zeilen,
+            nur per API (<code>POST /v1/documents</code>, Typ <code>report</code>), ohne E-Rechnungs-XML.
+          </li>
+          <li>
             <strong>Mahnung</strong>: Zahlungserinnerung, Mahnung und letzte Mahnung mit offenen Rechnungen,
             Mahngebühren, neuer Zahlungsfrist und Zahlungsblock samt QR-Code, in allen drei Designs auf
             Deutsch und Englisch – nur per API (<code>POST /v1/documents</code>, Typ <code>dunning</code>), nicht
@@ -453,8 +460,8 @@
         <ul>
           <li>
             Aktuell gibt es <strong>Rechnung, Stornorechnung, Angebot, Auftragsbestätigung,
-            Lieferschein und Brief</strong>. Per API gibt es außerdem die <strong>Mahnung</strong>;
-            <strong>weitere PDF-Dokumente</strong> (etwa Berichte) können folgen.
+            Lieferschein und Brief</strong>. Per API gibt es außerdem die <strong>Mahnung</strong> und den
+            <strong>Bericht</strong> mit Tabellen; <strong>weitere PDF-Dokumente</strong> können folgen.
           </li>
           <li>
             Bei Bedarf können <strong>individuelle PDF-Vorlagen</strong> für dich erstellt werden.

@@ -12,6 +12,7 @@ mod metrics;
 mod mollie;
 mod openapi;
 mod postage;
+mod report;
 mod service_tokens;
 mod signature;
 mod store;
