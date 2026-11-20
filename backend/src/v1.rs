@@ -208,9 +208,12 @@ pub(crate) async fn take_tokens(client: &Client, cost: usize) -> Result<(), ApiE
             ),
         ));
     }
-    // Service tokens keep an in-process bucket when there is no Valkey connection (not configured, or the
-    // store is not connected, e.g. in unit tests that run with `VALKEY_URL` set)
-    let taken = if client.kind == store::Kind::Service && !store::is_configured() {
+    // Service tokens keep an in-process bucket when there is no Valkey. Unit tests always use it: the
+    // Valkey test connects a process-wide store whose connection dies with that test's runtime, so other
+    // tests must not depend on it (CI runs them with `VALKEY_URL` set).
+    let taken = if client.kind == store::Kind::Service
+        && (cfg!(test) || config::get().valkey_url.is_none())
+    {
         Ok(crate::service_tokens::take(client, cost as u32))
     } else {
         store::take(client, cost as u32).await
