@@ -21,6 +21,7 @@ const OVERLAY: &str = include_str!("openapi_overlay.yaml");
         crate::v1::bulk,
         crate::v1::document_single,
         crate::v1::document_bulk,
+        crate::v1::parse_einvoice,
         crate::mollie::token_info,
         crate::version::info
     ),
@@ -35,6 +36,15 @@ const POST_ERRORS: [(&str, &str); 8] = [
     ("413", "TooLarge"),
     ("415", "UnsupportedMediaType"),
     ("422", "Unprocessable"),
+    ("429", "RateLimited"),
+    ("500", "ServerError"),
+    ("503", "Unavailable"),
+];
+/// Error responses of `POST /v1/einvoices/parse` (no JSON body, so no 415/422).
+const PARSE_ERRORS: [(&str, &str); 6] = [
+    ("400", "BadRequest"),
+    ("401", "Unauthorized"),
+    ("413", "TooLarge"),
     ("429", "RateLimited"),
     ("500", "ServerError"),
     ("503", "Unavailable"),
@@ -186,6 +196,21 @@ fn complete_operations(spec: &mut Value, overlay: &mut Value) {
                 operation["security"] = json!([]);
                 operation["responses"]["200"]["content"]["application/json"]["examples"] =
                     overlay["responseExamples"][&id].take();
+                continue;
+            }
+            if id == "parseEInvoice" {
+                // The body is the file itself: a PDF or an XML document
+                operation["requestBody"]["content"] = json!({
+                    "application/pdf": { "schema": { "type": "string", "contentMediaType": "application/pdf", "contentEncoding": "binary" } },
+                    "application/xml": { "schema": { "type": "string", "contentMediaType": "application/xml" } },
+                });
+                operation["requestBody"]["required"] = json!(true);
+                operation["responses"]["200"]["content"]["application/json"]["examples"] =
+                    overlay["responseExamples"][&id].take();
+                let responses = object(&mut operation["responses"], "responses");
+                for (status, name) in PARSE_ERRORS {
+                    responses.insert(status.into(), reference(name));
+                }
                 continue;
             }
             if !is_get {

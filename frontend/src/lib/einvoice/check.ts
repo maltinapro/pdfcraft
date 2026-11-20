@@ -1,8 +1,9 @@
 import { tr, uiLocale } from '../i18n'
 import type { InvoiceView, LineView } from './parse'
+import { ruleChecks } from './rules'
 
 /**
- * Limited plausibility check of a received e-invoice: mandatory fields and arithmetic only.
+ * Limited plausibility check of a received e-invoice: mandatory fields, arithmetic and a selection of EN 16931 / XRechnung rules (see `rules.ts`).
  * It is NOT a validation against the EN 16931 / XRechnung rules (see `NOT_CHECKED`); the UI never calls a file "valid".
  */
 export interface CheckResult {
@@ -245,14 +246,16 @@ export function runChecks(view: InvoiceView): CheckResult[] {
   }
   add('dates', tr('Datumsangaben sind echte Kalendertage, Fälligkeit nicht vor Rechnungsdatum', 'Dates are real calendar days, due date not before issue date'), dates, 'warning')
 
+  results.push(...ruleChecks(view))
+
   return results
 }
 
 /** What this check explicitly does NOT cover; shown on the page next to the link to the official validator. */
 export const NOT_CHECKED = (): string[] => [
   tr('Gültigkeit gegen das XML-Schema (XSD)', 'Validity against the XML schema (XSD)'),
-  tr('Geschäftsregeln der Norm EN 16931 (BR-…) und der XRechnung (BR-DE-…)', 'Business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…)'),
-  tr('Codelisten (Länder, Einheiten, Währungen, Steuerkategorien, Zahlungsarten)', 'Code lists (countries, units, currencies, tax categories, payment means)'),
+  tr('Die übrigen Geschäftsregeln der Norm EN 16931 (BR-…) und der XRechnung (BR-DE-…); geprüft wird nur die oben genannte Auswahl, nicht die Schematron-Regeln des KoSIT-Prüftools', 'The remaining business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…); only the selection named above is checked, not the Schematron rules of the KoSIT validator'),
+  tr('Codelisten für Einheiten (UN/ECE Rec. 20: nur das Format) und Codes außerhalb der genannten Listen', 'Code lists for units (UN/ECE Rec. 20: format only) and codes outside the listed ones'),
   tr('PDF/A-3-Konformität, XMP-Metadaten und ob das PDF zum XML passt', 'PDF/A-3 conformity, XMP metadata and whether the PDF matches the XML'),
   tr('Echtheit, Signaturen und ob USt-IdNr., Steuersätze oder Bankverbindung stimmen', 'Authenticity, signatures and whether VAT IDs, tax rates or bank details are correct'),
 ]

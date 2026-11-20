@@ -27,6 +27,7 @@ See also: [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md) for key man
 | `POST /v1/invoices` | token | One invoice → PDF |
 | `POST /v1/invoices/bulk` | token | Many invoices → ZIP of PDFs |
 | `POST /v1/documents/bulk` | token | Many documents of one type → ZIP of PDFs |
+| `POST /v1/einvoices/parse` | token | Read a received e-invoice (ZUGFeRD / Factur-X PDF or CII / UBL XML) → normalized view + plausibility check, see [Reading e-invoices](#post-v1einvoicesparse) |
 | `GET /v1/postage/products` | token | Deutsche Post products and prices (optional feature, see [guide 14](14-internetmarke-integration.md)) |
 | `POST /v1/postage/stamps`, `/stamps/bulk` | token | Buy one or up to 25 stamps with the user's own Portokasse login (free tokens may use test stamps) |
 | `POST /v1/postage/stamps/recover` | token | Fetch a paid but undelivered stamp again, no new charge |
@@ -233,6 +234,32 @@ curl -X POST http://localhost:3000/v1/documents \
   -d '{"type":"report","settings":{"sender":{"name":"Muster GmbH","address":"Musterstr. 1","city":"12345 Musterstadt"}},"document":{"date":"2026-12-31","title":"Summen- und Saldenliste","period":"2026","tables":[{"columns":[{"label":"Konto"},{"label":"Soll","type":"amount","sum":true}],"rows":[["1000",1200.5],["1200",15000]]}]}}' \
   -o report.pdf
 ```
+
+## `POST /v1/einvoices/parse`
+
+Stateless reading of a **received** e-invoice with the same logic as the viewer in the app (`#/viewer`, `frontend/src/lib/einvoice/`, ported to `backend/src/einvoice_parse/`). The body is the file itself, not JSON:
+
+- a **PDF** (ZUGFeRD / Factur-X / XRechnung PDF, up to 20 MB): the XML is read from the attachment (`factur-x.xml`, `zugferd-invoice.xml`, `xrechnung.xml`, otherwise the first `*.xml`); or
+- an **XML** file (CII `CrossIndustryInvoice`, UBL `Invoice` / `CreditNote`, up to 5 MB).
+
+The type is detected from the content, so `Content-Type` does not matter (use `application/pdf` or `application/xml`). Query parameters: `lang=de|en` (language of the check texts, default `en`) and `fileName` (echoed as `fileName` for XML uploads; for PDFs the name of the attachment is returned).
+
+```bash
+curl -X POST 'http://localhost:3000/v1/einvoices/parse?lang=de' \
+  -H 'Authorization: ******' -H 'content-type: application/pdf' \
+  --data-binary @rechnung.pdf
+```
+
+The response (`200`) is `{ "source": "pdf"|"xml", "fileName", "invoice", "checks", "notChecked" }`:
+
+- `invoice`: normalized view model: `syntax` (`cii`/`ubl`), `typeCode`, `profile`, `number`, dates, `currency`, references, `seller`/`buyer`/`payee`, `notes`, `items`, document-level `adjustments`, `taxes` (breakdown), `totals`, `payments` (payment means), `paymentTerms` and `precedingInvoices`. Amounts are numbers, dates are ISO dates, fields the file does not state are missing or `null`.
+- `checks`: the limited plausibility check (`id`, `title`, `status` = `ok`/`warning`/`error`/`skipped`, `findings`): mandatory fields, line and tax sums in cents, tax categories, IBAN checksum, dates, plus a native **selection** of EN 16931 business rules (`en16931-rules`: the mandatory fields of lines, VAT breakdowns, totals and document level allowances/charges (BR-12 to -16, BR-21 to -27, BR-31/32, BR-36/37, BR-45 to -48, BR-CO-04), the decimal places rules BR-DEC-01/05/09 to -14/16 to -20/23 (at most two decimals, read from the parsed number, so trailing zeros are tolerated), BR-61, BR-CO-9/18/25 and the category rules BR-S/Z/E/G/IC/AE/O-02), of the XRechnung rules (`xrechnung-rules`, only for the XRechnung profile: BR-DE-1 to -9, -14 to -17, -19, -26 to -28) and of the code lists (`code-lists`: currency, countries, invoice type, tax category, payment means, unit format). Every finding starts with the rule id. It never says "valid". `notChecked` lists what is **not** checked: the XML schema (XSD), the remaining Schematron rules of EN 16931 / XRechnung, unit codes beyond their format, PDF/A-3, XMP and PDF-vs-XML, signatures. This is not a replacement for the KoSIT validator or Mustang; use them for a full check.
+
+Errors: `400 unsupported_file` (neither PDF nor XML), `400 invalid_xml`, `400 unsupported_einvoice` (other XML or ZUGFeRD 1.x), `400 no_xml_attachment`, `400 pdf_encrypted`, `400 pdf_unreadable`, `400 invalid_request` (empty body, bad `lang`), `413 invalid_request` (above 20 MB / 5 MB), plus the usual `401`/`429`/`503`. One call costs one rate-limit unit and a compile slot (the work is CPU bound, so it shares `MAX_CONCURRENT_COMPILES`).
+
+**No data retention:** the file lives in memory while the request runs. Nothing is written to disk or Valkey, and only the outcome (token id, success, duration) is logged, never the content. The server sets no limit other than the sizes above, so a reverse proxy in front of `/v1/einvoices/parse` must allow 20 MB bodies (`deploy/compose/edge.conf`: `client_max_body_size 21m`; Traefik has no default limit).
+
+Parity with the viewer is tested by shared golden files: `frontend/src/lib/einvoice/testdata/expected/*.json` is written by the TypeScript implementation (`cd frontend && npx vitest run golden -u` after an intended change) and the Rust tests (`cargo test einvoice_parse`) must produce the same view and check results (German and English) for every XML in `testdata/` (the E01 corpus plus UBL and plausibility cases). Change `check.ts`/`parse.ts` and the Rust port together.
 
 ## `POST /v1/documents/bulk`
 

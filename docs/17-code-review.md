@@ -63,7 +63,7 @@ D-06 is done (dependency table in `docs/10`), as are the client-errors docs (`do
 | `assets/pdf-*.js` (lazy: preview, viewer) | 500.13 | 152.68 | fail above +10 % (550.1 kB) |
 | `assets/pdf.worker.min-*.js` (lazy) | 1,327.59 | – | not budgeted (vendor file) |
 | `assets/swaggerReference-*.js` + `.css` (lazy, `/api/`) | 1,507.82 + 191.88 | 423.22 + 27.83 | not budgeted (loaded on click) |
-| `assets/ViewerPage-*.js` / `.css` (lazy) | 40.13 / 9.65 | 13.27 / 2.77 | fail above +10 % |
+| `assets/ViewerPage-*.js` / `.css` (lazy) | 40.13 / 9.65 | 13.27 / 2.77 | fail above +10 %; the JS limit is 55.3 kB since the rule and code-list checks (`rules.ts`, 50.2 kB) |
 
 ### File sizes
 

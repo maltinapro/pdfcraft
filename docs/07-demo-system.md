@@ -103,6 +103,7 @@ server {
   client_max_body_size 2m;
 
   location /v1/ {
+    client_max_body_size 21m;   # POST /v1/einvoices/parse takes PDFs up to 20 MB
     limit_req zone=pdf burst=10 nodelay;
     proxy_read_timeout 60s;
     proxy_pass http://demo-backend:3000;

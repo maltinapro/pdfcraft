@@ -1,0 +1,288 @@
+{
+  "view": {
+    "syntax": "ubl",
+    "typeCode": "381",
+    "profile": "urn:cen.eu:en16931:2017",
+    "number": "GS-7",
+    "issueDate": "2026-04-01",
+    "currency": "EUR",
+    "precedingInvoices": [
+      {
+        "number": "RE-2026-0042",
+        "date": "2026-03-15"
+      }
+    ],
+    "seller": {
+      "name": "Lieferant Handel GmbH",
+      "city": "Hamburg",
+      "country": "DE",
+      "vatId": "DE123456789"
+    },
+    "buyer": {
+      "name": "Kunde GmbH",
+      "city": "Wien",
+      "country": "AT"
+    },
+    "notes": [],
+    "items": [
+      {
+        "id": "1",
+        "name": "Rückgabe Ware",
+        "quantity": 20,
+        "unit": "KGM",
+        "price": 5,
+        "priceBasis": 1,
+        "net": 100,
+        "hasAdjustments": false,
+        "taxCategory": "K",
+        "taxRate": 0
+      }
+    ],
+    "adjustments": [],
+    "taxes": [
+      {
+        "category": "K",
+        "rate": 0,
+        "basis": 100,
+        "amount": 0,
+        "exemptionReason": "Innergemeinschaftliche Lieferung"
+      }
+    ],
+    "totals": {
+      "lineTotal": 100,
+      "allowanceTotal": null,
+      "chargeTotal": null,
+      "taxBasis": 100,
+      "taxTotal": 0,
+      "grandTotal": 100,
+      "prepaid": null,
+      "rounding": null,
+      "due": 100
+    },
+    "payments": []
+  },
+  "de": {
+    "checks": [
+      {
+        "id": "header",
+        "title": "Pflichtangaben im Kopf (Nummer, Datum, Typ, Währung, Spezifikation)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "parties",
+        "title": "Pflichtangaben zu Verkäufer und Käufer",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "lines",
+        "title": "Positionen vorhanden und vollständig",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-math",
+        "title": "Positionsbetrag = Menge × Einzelpreis (je Position, 1 Cent Rundungstoleranz)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-sum",
+        "title": "Summe der Positionen = Summe Positionsbeträge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "net-total",
+        "title": "Nettosumme = Positionen − Nachlässe + Zuschläge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-basis",
+        "title": "Steuerbasis je Kategorie und Satz = Positionen − Nachlässe + Zuschläge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-amount",
+        "title": "Steuerbetrag = Steuerbasis × Satz (je Aufschlüsselung, 1 Cent Rundungstoleranz)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-total",
+        "title": "Gesamtsteuer = Summe der Steuerbeträge",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "gross-total",
+        "title": "Bruttosumme = Nettosumme + Steuer",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "amount-due",
+        "title": "Zahlbetrag = Bruttosumme − Anzahlungen + Rundung",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-category",
+        "title": "Steuerkategorien passen zum Satz, Befreiungsgrund vorhanden",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "payment",
+        "title": "Zahlungsangaben vorhanden, IBAN-Prüfsumme",
+        "status": "warning",
+        "findings": [
+          "Keine Zahlungsangaben (BG-16) trotz offenem Betrag"
+        ]
+      },
+      {
+        "id": "dates",
+        "title": "Datumsangaben sind echte Kalendertage, Fälligkeit nicht vor Rechnungsdatum",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "en16931-rules",
+        "title": "Geschäftsregeln der EN 16931 (Auswahl: Pflichtfelder, Nachkommastellen BR-DEC, BR-27, BR-61, BR-CO-9/18/25, kategoriebezogene Regeln)",
+        "status": "error",
+        "findings": [
+          "BR-CO-25: Es ist ein Betrag offen, aber weder Fälligkeitsdatum (BT-9) noch Zahlungsbedingungen (BT-20) sind angegeben",
+          "BR-IC-02: Kategorie K: USt-IdNr. des Käufers fehlt"
+        ]
+      },
+      {
+        "id": "code-lists",
+        "title": "Codelisten: Währung, Länder, Rechnungstyp, Steuerkategorie, Zahlungsart, Format der Einheit",
+        "status": "ok",
+        "findings": []
+      }
+    ],
+    "notChecked": [
+      "Gültigkeit gegen das XML-Schema (XSD)",
+      "Die übrigen Geschäftsregeln der Norm EN 16931 (BR-…) und der XRechnung (BR-DE-…); geprüft wird nur die oben genannte Auswahl, nicht die Schematron-Regeln des KoSIT-Prüftools",
+      "Codelisten für Einheiten (UN/ECE Rec. 20: nur das Format) und Codes außerhalb der genannten Listen",
+      "PDF/A-3-Konformität, XMP-Metadaten und ob das PDF zum XML passt",
+      "Echtheit, Signaturen und ob USt-IdNr., Steuersätze oder Bankverbindung stimmen"
+    ]
+  },
+  "en": {
+    "checks": [
+      {
+        "id": "header",
+        "title": "Mandatory header fields (number, date, type, currency, specification)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "parties",
+        "title": "Mandatory seller and buyer details",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "lines",
+        "title": "Lines present and complete",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-math",
+        "title": "Line amount = quantity × unit price (per line, 1 cent rounding tolerance)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "line-sum",
+        "title": "Sum of lines = line total",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "net-total",
+        "title": "Net total = lines − allowances + charges",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-basis",
+        "title": "Tax basis per category and rate = lines − allowances + charges",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-amount",
+        "title": "Tax amount = tax basis × rate (per breakdown, 1 cent rounding tolerance)",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-total",
+        "title": "Total tax = sum of the tax amounts",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "gross-total",
+        "title": "Gross total = net total + tax",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "amount-due",
+        "title": "Amount due = gross total − prepayments + rounding",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "tax-category",
+        "title": "Tax categories match the rate, exemption reason present",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "payment",
+        "title": "Payment details present, IBAN checksum",
+        "status": "warning",
+        "findings": [
+          "No payment details (BG-16) although an amount is due"
+        ]
+      },
+      {
+        "id": "dates",
+        "title": "Dates are real calendar days, due date not before issue date",
+        "status": "ok",
+        "findings": []
+      },
+      {
+        "id": "en16931-rules",
+        "title": "EN 16931 business rules (selection: mandatory fields, decimal places BR-DEC, BR-27, BR-61, BR-CO-9/18/25, category rules)",
+        "status": "error",
+        "findings": [
+          "BR-CO-25: An amount is due but neither due date (BT-9) nor payment terms (BT-20) are given",
+          "BR-IC-02: Category K: buyer VAT ID is missing"
+        ]
+      },
+      {
+        "id": "code-lists",
+        "title": "Code lists: currency, countries, invoice type, tax category, payment means, unit format",
+        "status": "ok",
+        "findings": []
+      }
+    ],
+    "notChecked": [
+      "Validity against the XML schema (XSD)",
+      "The remaining business rules of EN 16931 (BR-…) and XRechnung (BR-DE-…); only the selection named above is checked, not the Schematron rules of the KoSIT validator",
+      "Code lists for units (UN/ECE Rec. 20: format only) and codes outside the listed ones",
+      "PDF/A-3 conformity, XMP metadata and whether the PDF matches the XML",
+      "Authenticity, signatures and whether VAT IDs, tax rates or bank details are correct"
+    ]
+  }
+}

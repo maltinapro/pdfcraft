@@ -102,7 +102,7 @@ ingress:
   tls: true
   annotations:
     nginx.ingress.kubernetes.io/limit-rpm: "60"
-    nginx.ingress.kubernetes.io/proxy-body-size: 2m
+    nginx.ingress.kubernetes.io/proxy-body-size: 21m   # POST /v1/einvoices/parse takes PDFs up to 20 MB
 ```
 
 ## Open design points

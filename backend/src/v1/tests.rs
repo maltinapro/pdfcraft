@@ -1859,10 +1859,19 @@ fn openapi_lists_every_error_code() {
     let spec = spec();
     let documented = enum_values(&spec["components"]["schemas"]["Error"]["properties"]["error"]);
     let mut used = std::collections::BTreeSet::new();
-    for source in [include_str!("../main.rs"), include_str!("../v1.rs")] {
+    for source in [
+        include_str!("../main.rs"),
+        include_str!("../v1.rs"),
+        include_str!("../einvoice_parse.rs"),
+    ] {
         // `ApiError::new(StatusCode::X, "code", ...)`, possibly spread over several lines.
         let production_code = source.split("#[cfg(test)]").next().unwrap_or(source);
-        for call in production_code.split("ApiError::new(").skip(1) {
+        // `failure(StatusCode::X, "code", ...)` builds the errors of the e-invoice parser
+        for call in production_code
+            .split("ApiError::new(")
+            .chain(production_code.split("failure("))
+            .filter(|call| call.trim_start().starts_with("StatusCode::"))
+        {
             if let Some(code) = call.split('"').nth(1) {
                 used.insert(code.to_string());
             }
@@ -1875,4 +1884,120 @@ fn openapi_lists_every_error_code() {
             "error code {code} is missing in openapi_overlay.yaml (errorCodes)"
         );
     }
+}
+
+/// The in-process bucket is keyed by the token id, so every test uses its own.
+fn parse_client(id: &str, limit: u32) -> Client {
+    Client {
+        id: id.into(),
+        kind: store::Kind::Service,
+        plan: "test".into(),
+        limit,
+        created: None,
+    }
+}
+
+async fn call_parse(
+    client: Client,
+    query: &str,
+    body: Vec<u8>,
+) -> Result<Json<crate::einvoice_parse::ParseResponse>, ApiError> {
+    let query: ParseQuery = serde_json::from_value(json!(query
+        .split('&')
+        .filter_map(|pair| pair.split_once('='))
+        .collect::<std::collections::HashMap<_, _>>()))
+    .unwrap();
+    parse_einvoice(Extension(client), Query(query), Ok(Bytes::from(body))).await
+}
+
+/// A PDF made by the invoice endpoint is read back: the attached e-invoice XML is found, the view matches
+/// the input and the check finds nothing to complain about. Nothing is kept between the calls.
+#[tokio::test]
+async fn parse_endpoint_reads_back_a_rendered_invoice() {
+    let settings: Settings = serde_json::from_value(json!({
+        "sender": {"name": "Muster GmbH", "address": "Musterstr. 1", "city": "12345 Musterstadt",
+                   "email": "rechnung@muster.example", "phone": "+49 30 123456", "contactName": "Erika Muster",
+                   "vatId": "DE123456789", "taxNr": "12/345/67890"},
+        "bank": {"name": "Musterbank", "iban": "DE89370400440532013000", "bic": "COBADEFFXXX"},
+        "einvoiceProfile": "xrechnung", "paymentDays": 30, "locale": "de-de",
+        "exemptionReason": "Steuerfrei nach § 4 Nr. 1b UStG",
+    }))
+    .unwrap();
+    let raw: Invoice = serde_json::from_value(json!({
+        "number": "2026-077", "date": "2026-01-31",
+        "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt",
+                      "vatId": "DE987654321", "email": "einkauf@kunde.example", "buyerReference": "04011000-12345-34"},
+        "items": [{"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19}],
+    }))
+    .unwrap();
+    let mut errors = Errors::default();
+    let s = check_settings(&settings, &mut errors);
+    let invoice = check_invoice(&raw, "invoice", &mut errors);
+    assert!(errors.0.is_empty(), "{:?}", errors.0);
+    let (data, assets) = invoice_data(&settings, s.data, &raw, invoice, Vec::new());
+    let pdf = render_pdf(INVOICE_TEMPLATE, data, assets)
+        .await
+        .unwrap_or_else(|e| panic!("{}", e.details));
+
+    let Json(response) = call_parse(parse_client("parse-roundtrip", 60), "lang=de", pdf.clone())
+        .await
+        .unwrap_or_else(|e| panic!("{}", e.details));
+    let view = serde_json::to_value(&response).unwrap();
+    assert_eq!(view["source"], "pdf");
+    assert_eq!(view["fileName"], "xrechnung.xml");
+    assert_eq!(view["invoice"]["number"], "2026-077");
+    assert_eq!(view["invoice"]["seller"]["name"], "Muster GmbH");
+    assert_eq!(view["invoice"]["totals"]["grandTotal"], 904.4);
+    assert_eq!(view["invoice"]["items"].as_array().unwrap().len(), 1);
+    assert!(view["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|c| c["status"] == "ok"));
+    // the check texts follow `lang`
+    let Json(english) = call_parse(parse_client("parse-roundtrip", 60), "", pdf)
+        .await
+        .ok()
+        .unwrap();
+    assert_ne!(english.not_checked, response.not_checked);
+}
+
+#[tokio::test]
+async fn parse_endpoint_validates_the_request_and_counts_every_call() {
+    let status = |r: Result<Json<_>, ApiError>| {
+        let e = r.expect_err("the request is rejected");
+        (e.status.as_u16(), e.code)
+    };
+    let xml = std::fs::read(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../frontend/src/lib/einvoice/testdata/en16931-exempt.xml"),
+    )
+    .unwrap();
+
+    assert_eq!(
+        status(call_parse(parse_client("parse-request", 60), "lang=fr", xml.clone()).await),
+        (400, "invalid_request")
+    );
+    assert_eq!(
+        status(call_parse(parse_client("parse-request", 60), "", b"nope".to_vec()).await),
+        (400, "unsupported_file")
+    );
+    let Json(named) = call_parse(
+        parse_client("parse-request", 60),
+        "fileName=eingang.xml",
+        xml.clone(),
+    )
+    .await
+    .ok()
+    .unwrap();
+    assert_eq!(named.file_name, "eingang.xml");
+
+    // the in-process bucket of a service token: one unit per call
+    let limited = parse_client("parse-limit", 2);
+    assert!(call_parse(limited.clone(), "", xml.clone()).await.is_ok());
+    assert!(call_parse(limited.clone(), "", xml.clone()).await.is_ok());
+    assert_eq!(
+        status(call_parse(limited, "", xml).await),
+        (429, "rate_limited")
+    );
 }
