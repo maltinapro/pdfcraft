@@ -8,17 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for u in \
-            "https://www.bundesbank.de/de/service/recht/basiszinssatz" \
-            "https://www.bundesbank.de/de/bundesbank/organisation/agb-und-regelungen/basiszinssatz-607820" \
-            "https://www.bundesbank.de/en/service/legal-framework/base-rate" \
-            "https://www.bundesbank.de/de/statistiken/zeitreihen-datenbanken" \
-            ; do
-            echo "=== $u"
-            curl -sS -L -m 30 -o /tmp/p.html -w '[HTTP %{http_code} %{url_effective}]\n' "$u"
-            grep -oiE '(tsId=|BBK01\.|BBSIS\.|BBEX3\.)[A-Za-z0-9._]*' /tmp/p.html | sort -u | head -20
-            grep -oiE '<title>[^<]*' /tmp/p.html | head -1
-            grep -oiE 'href="[^"]*(basiszins|base-rate)[^"]*"' /tmp/p.html | sort -u | head -10
-          done
-          echo "=== search"
-          curl -sS -L -m 30 "https://www.bundesbank.de/de/suche?query=Basiszinssatz" | grep -oiE 'href="[^"]*(basiszins)[^"]*"' | sort -u | head
+          curl -sS -L -m 30 -o /tmp/p.html "https://www.bundesbank.de/de/bundesbank/organisation/agb-und-regelungen/basiszinssatz-607820"
+          wc -c /tmp/p.html
+          grep -oE 'href="[^"]*"' /tmp/p.html | grep -iE 'statist|zeitreih|csv|download|tsid|SU0|rmi|api' | sort -u | head -40
+          echo ---- text
+          sed -e 's/<script.*<\/script>//g' -e 's/<[^>]*>/ /g' /tmp/p.html | tr -s ' \n' | grep -iE 'zeitreihe|SU0|BBK|statist' | head -20
