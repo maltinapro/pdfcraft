@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compares backend/src/data/base-rates.json with the Bundesbank series BBK01.SU0115.
+"""Compares backend/src/data/base-rates.json with the Bundesbank series BBIN1.M.DE.BBK.BBKBAS2.EUR.ME (SU0115).
 
 The series is the base rate of § 247 BGB. The check never changes the table: it reports
 differences (exit 1), a table that does not cover today (exit 1) and a CSV it cannot read
@@ -18,10 +18,11 @@ import sys
 import urllib.request
 
 TABLE = pathlib.Path(__file__).resolve().parents[1] / "src/data/base-rates.json"
+BASE = "https://api.statistiken.bundesbank.de/rest/data/BBIN1/M.DE.BBK.BBKBAS2.EUR.ME"
 URLS = [
-    "https://api.statistiken.bundesbank.de/rest/download/BBK01/SU0115?format=csv&lang=en",
-    "https://api.statistiken.bundesbank.de/rest/data/BBK01/SU0115?detail=dataonly&format=csv",
-    "https://www.bundesbank.de/statistic-rmi/StatisticDownload?tsId=BBK01.SU0115&its_csvFormat=en&its_fileFormat=csv&mode=its",
+    BASE + "?format=bbk_csv&detail=dataonly",
+    BASE + "?format=sdmx_csv&detail=dataonly",
+    BASE + "?format=bbk_csv",
 ]
 DATE = re.compile(r"^(\d{4})-(\d{2})(?:-(\d{2}))?$|^(\d{2})\.(\d{2})\.(\d{4})$")
 
@@ -134,11 +135,11 @@ def main(argv):
     table = json.loads(TABLE.read_text(encoding="utf-8"))
     problems = compare(table, observations, dt.date.today())
     if problems:
-        print("base-rates.json and the Bundesbank series BBK01.SU0115 differ:")
+        print("base-rates.json and the Bundesbank series BBIN1.M.DE.BBK.BBKBAS2.EUR.ME (SU0115) differ:")
         for problem in problems:
             print(f"  - {problem}")
         return 1
-    print(f"base-rates.json matches BBK01.SU0115 ({len(observations)} observations)")
+    print(f"base-rates.json matches BBIN1.M.DE.BBK.BBKBAS2.EUR.ME (SU0115) ({len(observations)} observations)")
     return 0
 
 
