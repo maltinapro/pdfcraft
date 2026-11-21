@@ -20,7 +20,7 @@ GitHub issues are created **phase by phase** (epic issue + one sub-issue per tas
 | [E08](epics/E08-paper-first-editor.md) | Paper-first editor | 4 | E07 | in progress |
 | [E09](epics/E09-dashboard-app-pages.md) | Dashboard and app pages | 4 | E07 | done |
 | [E10](epics/E10-landing-static-pages.md) | Landing and static pages | 4 | E07-01 | done |
-| [E11](epics/E11-distinct-pdf-designs.md) | Distinct PDF designs | 4 | – | in progress (E11-01…04 done, E11-05 open) |
+| [E11](epics/E11-distinct-pdf-designs.md) | Distinct PDF designs | 4 | – | done (E11-01…05) |
 | [E12](epics/E12-code-review.md) | Code review and maintenance | 4 | – (E12-06 after E08, E09) | in progress (E12-01 report done: [docs/17](17-code-review.md)) |
 
 Phase 1 = small, independent quick wins. Phase 2 = new user-facing features. Phase 3 = only when users ask for it. Phase 4 = UI/UX redesign and clearly different PDF designs, following the [design guide](16-design-guide.md), plus a code review (E12).

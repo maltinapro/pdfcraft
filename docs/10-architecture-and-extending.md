@@ -124,7 +124,7 @@ The invoice template no longer uses invoice-pro/loom (they cost ~65 ms per PDF);
 The invoice is a single Typst file: `frontend/src/template/invoice.typ` (the backend embeds it with `include_str!` in `backend/src/v1.rs`; there is no copy in `backend/`). It is rendered with minijinja, then compiled by Typst. Rebuild the backend after editing it.
 
 **Data available in the template** (see `backend/src/einvoice.rs::prepare` and `v1.rs::invoice_data`):
-- `settings.*` (checked settings: `accentColor`, `font`, `locale`, `footer`, `intro`, `closing`, `watermark`, sender data ...) and `invoice.*` (number, recipient, items).
+- `settings.*` (checked settings: `accentColor`, `font`, `locale`, `footer`, `footerMode`, `intro`, `closing`, `watermark`, sender data ...) and `invoice.*` (number, recipient, items).
 - Ready-made display strings from Rust: `invoice.items[*].pos/qty/price/tax/net`, `invoice.dateText`, `invoice.totals` (`net`, `gross`, `taxes[]`, `exempt`).
 - `pay.*` (`sum`, `days`, `iban`, `bic`, `qr`, `amount`, `place`), `einvoice.*` (`file`, `relationship`, `description`) and the assets `assets.logo`, `assets.signature` (only set when a signature was sent; always guard with `{% if assets and assets.signature %}`) and `assets.xml`. `backend/src/signature.rs` turns a signature PDF into a cropped SVG before it becomes `assets.signature`.
 

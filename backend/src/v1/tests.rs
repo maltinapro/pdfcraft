@@ -415,6 +415,190 @@ async fn renders_every_document_type() {
     }
 }
 
+/// The sender data of a company with all legal details (structured footer).
+fn legal_settings(design: &str, locale: &str, footer_mode: Option<&str>) -> Settings {
+    let mut settings = json!({
+        "design": design,
+        "locale": locale,
+        "footer": "Free text that the structured footer replaces",
+        "sender": {
+            "name": "Muster Beteiligungs AG", "address": "Musterstr. 1", "city": "12345 Musterstadt",
+            "email": "rechnung@muster.example", "phone": "+49 30 123456", "taxNr": "12/345/67890", "vatId": "DE123456789",
+            "legalForm": "Aktiengesellschaft", "registeredOffice": "Musterstadt",
+            "registerCourt": "Amtsgericht Musterstadt", "registerNumber": "HRB 123456 B",
+            "managingDirectors": "Erika Muster, Max Mustermann, Dr. Susanne Beispiel-Musterfrau",
+            "supervisoryBoardChair": "Prof. Dr. Hans Vorsitz",
+        },
+        "bank": {"name": "Musterbank", "iban": "DE89370400440532013000", "bic": "COBADEFFXXX"},
+    });
+    if let Some(mode) = footer_mode {
+        settings["footerMode"] = json!(mode);
+    }
+    serde_json::from_value(settings).unwrap()
+}
+
+/// `footerMode` is allow-listed and defaults to the free footer; the legal details are checked like the other sender fields.
+#[test]
+fn footer_mode_is_allow_listed_and_defaults_to_free() {
+    let mut errors = Errors::default();
+    let checked = check_settings(&legal_settings("classic", "de-de", None), &mut errors);
+    assert!(errors.0.is_empty(), "{:?}", errors.0);
+    assert_eq!(checked.data["footerMode"], "free");
+    assert_eq!(
+        checked.data["sender"]["registerCourt"],
+        "Amtsgericht Musterstadt"
+    );
+
+    let mut errors = Errors::default();
+    let checked = check_settings(
+        &legal_settings("classic", "de-de", Some("structured")),
+        &mut errors,
+    );
+    assert!(errors.0.is_empty(), "{:?}", errors.0);
+    assert_eq!(checked.data["footerMode"], "structured");
+
+    let mut errors = Errors::default();
+    check_settings(
+        &legal_settings("classic", "de-de", Some("fancy")),
+        &mut errors,
+    );
+    assert!(errors
+        .0
+        .iter()
+        .any(|e| e.starts_with("settings.footerMode:")));
+
+    let mut settings = legal_settings("classic", "de-de", None);
+    settings.sender.register_court = "x".repeat(201);
+    settings.sender.managing_directors = "y\"\\".into();
+    let mut errors = Errors::default();
+    let checked = check_settings(&settings, &mut errors);
+    assert!(errors
+        .0
+        .iter()
+        .any(|e| e.starts_with("settings.sender.registerCourt:")));
+    assert_eq!(checked.data["sender"]["managingDirectors"], "y\\\"\\\\");
+}
+
+/// The structured footer renders for every document type, design and language, is opt-in (the free
+/// footer stays byte-identical) and replaces the free footer text.
+#[tokio::test]
+async fn renders_the_structured_footer_for_every_document_type() {
+    let raw: Document = serde_json::from_value(json!({
+        "number": "2026-001", "date": "2026-01-31", "reference": "R-2026-007", "referenceDate": "2026-01-02",
+        "validUntil": "2026-02-28", "deliveryDate": "2026-02-03", "subject": "Betreff",
+        "title": "Journal", "period": "2026", "tables": [{"columns": [{"label": "Text"}, {"label": "Amount", "type": "amount", "sum": true}], "rows": [["Row", 1.5]]}],
+        "dunningLevel": 2, "paymentDeadline": "2026-02-14", "invoices": [{"number": "R-2026-007", "date": "2026-01-02", "dueDate": "2026-01-16", "openAmount": 1000.5}],
+        "body": "Zeile 1", "reason": "Falsche Menge", "intro": "Hallo", "closing": "Gruß",
+        "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+        "items": [{"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19}],
+    }))
+    .unwrap();
+    let render = |kind: Kind, settings: Settings| {
+        let raw = &raw;
+        async move {
+            let mut errors = Errors::default();
+            let s = check_settings(&settings, &mut errors);
+            let doc = documents::check_document(kind, raw, false, &mut errors);
+            assert!(errors.0.is_empty(), "{:?}", errors.0);
+            let (data, assets) =
+                documents::build(kind, &settings, s.data.clone(), raw, doc, Vec::new());
+            render_pdf(kind.template(), data, assets)
+                .await
+                .unwrap_or_else(|e| panic!("{}: {}", kind.slug(), e.details))
+        }
+    };
+    let invoice_raw: Invoice = serde_json::from_value(json!({
+        "number": "2026-001", "date": "2026-01-31", "deliveryDate": "2026-01-30", "dueDate": "2026-02-14",
+        "recipient": {"name": "Kunde AG", "address": "Kundenweg 5", "city": "54321 Kundenstadt"},
+        "items": [{"description": "Beratung", "quantity": 8, "unit": "h", "price": 95, "taxRate": 19}],
+    }))
+    .unwrap();
+    let render_invoice = |settings: Settings| {
+        let invoice_raw = &invoice_raw;
+        async move {
+            let mut errors = Errors::default();
+            let s = check_settings(&settings, &mut errors);
+            let invoice = check_invoice(invoice_raw, "invoice", &mut errors);
+            assert!(errors.0.is_empty(), "{:?}", errors.0);
+            let assets = settings_assets(&s).unwrap_or_else(|e| panic!("{}", e.details));
+            let (data, assets) =
+                invoice_data(&settings, s.data.clone(), invoice_raw, invoice, assets);
+            render_pdf(INVOICE_TEMPLATE, data, assets)
+                .await
+                .unwrap_or_else(|e| panic!("invoice: {}", e.details))
+        }
+    };
+    for design in crate::invoice::DESIGNS {
+        let default = render_invoice(legal_settings(design, "de-de", None)).await;
+        let free = render_invoice(legal_settings(design, "de-de", Some("free"))).await;
+        assert!(
+            default == free,
+            "invoice ({design}): footerMode free must not change the PDF"
+        );
+        for locale in ["de-de", "en-de"] {
+            let structured =
+                render_invoice(legal_settings(design, locale, Some("structured"))).await;
+            assert!(structured.starts_with(b"%PDF"));
+            assert_ne!(
+                structured,
+                render_invoice(legal_settings(design, locale, Some("free"))).await
+            );
+            if let Ok(dir) = std::env::var("PDF_OUT") {
+                std::fs::write(
+                    format!("{dir}/invoice-{design}-{locale}-footer.pdf"),
+                    structured,
+                )
+                .unwrap();
+            }
+        }
+    }
+    // Maximum lengths still render; the text shrinks to fit the footer area.
+    for design in crate::invoice::DESIGNS {
+        let mut settings = legal_settings(design, "de-de", Some("structured"));
+        let long = "Lorem ipsum dolor sit amet consectetur ".repeat(6);
+        let long = long[..200].to_string();
+        settings.sender.legal_form = long.clone();
+        settings.sender.registered_office = long.clone();
+        settings.sender.register_court = long.clone();
+        settings.sender.register_number = long.clone();
+        settings.sender.managing_directors = long.clone();
+        settings.sender.supervisory_board_chair = long;
+        let pdf = render_invoice(settings).await;
+        if let Ok(dir) = std::env::var("PDF_OUT") {
+            std::fs::write(format!("{dir}/invoice-{design}-maximum-footer.pdf"), pdf).unwrap();
+        }
+    }
+    for kind in Kind::ALL {
+        for design in crate::invoice::DESIGNS {
+            let default = render(kind, legal_settings(design, "de-de", None)).await;
+            let free = render(kind, legal_settings(design, "de-de", Some("free"))).await;
+            assert!(
+                default == free,
+                "{} ({design}): footerMode free must not change the PDF",
+                kind.slug()
+            );
+            for locale in ["de-de", "en-de"] {
+                let structured =
+                    render(kind, legal_settings(design, locale, Some("structured"))).await;
+                assert!(structured.starts_with(b"%PDF"));
+                assert_ne!(
+                    structured,
+                    render(kind, legal_settings(design, locale, Some("free"))).await,
+                    "{} ({design}, {locale}): the structured footer changes the PDF",
+                    kind.slug()
+                );
+                if let Ok(dir) = std::env::var("PDF_OUT") {
+                    std::fs::write(
+                        format!("{dir}/{}-{design}-{locale}-footer.pdf", kind.slug()),
+                        structured,
+                    )
+                    .unwrap();
+                }
+            }
+        }
+    }
+}
+
 /// Dunning letters: every level, design and language, with several pages of invoices, without fees
 /// and interest, and without a bank account. The payment block carries the total and no XML is attached.
 #[tokio::test]
