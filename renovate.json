@@ -1,7 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":dependencyDashboard", ":semanticCommitsDisabled"],
-  "dependencyDashboardTitle": "Dependency Dashboard",
+  "dependencyDashboard": {
+    "title": "Dependency Dashboard"
+  },
   "timezone": "Europe/Berlin",
   "schedule": ["before 6am on monday"],
   "prConcurrentLimit": 5,
