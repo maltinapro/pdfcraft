@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { tr } from '@pdfcraft/editor'
-import { applyTheme, storedTheme, type Theme } from '../lib/theme'
-import { SegmentedButton } from './ui'
+import { applyTheme, SegmentedButton, storedTheme, type Theme } from '@pdfcraft/design'
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(() => storedTheme() ?? 'system')

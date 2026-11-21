@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { AppIcon, tr } from '@pdfcraft/editor'
+import { tr } from '@pdfcraft/editor'
+import { AppIcon } from '@pdfcraft/design'
 import { routeHref } from '../lib/router'
 import { HeaderNav } from './HeaderNav'
 import { LangToggle } from './LangToggle'

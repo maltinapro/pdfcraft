@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
-import { AppIcon } from '@pdfcraft/editor'
+import { AppIcon } from '../icons'
 
 interface Props {
   label: string

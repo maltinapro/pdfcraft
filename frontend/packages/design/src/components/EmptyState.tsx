@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { AppIcon, type AppIconName } from '@pdfcraft/editor'
+import { AppIcon, type AppIconName } from '../icons'
 
 interface Props {
   /** `empty` (nothing here yet), `error` (something failed) or `loading` (work in progress). */

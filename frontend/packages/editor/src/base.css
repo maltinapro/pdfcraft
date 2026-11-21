@@ -177,13 +177,6 @@ a.btn { text-decoration: none; }
 
 .btn svg { width: 20px; height: 20px; flex: none; }
 
-.ui-segmented { display: inline-flex; min-height: 48px; padding: 4px; gap: 4px; background: var(--color-surface-container-high); border-radius: var(--radius-full); }
-
-.ui-segment { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 0 12px; border: 0; border-radius: var(--radius-full); background: transparent; color: var(--color-on-surface-variant); font: inherit; line-height: 1.2; cursor: pointer; }
-
-.ui-segment[aria-pressed='true'] { background: var(--color-primary-container); color: var(--color-on-primary-container); }
-
-.ui-dialog { width: min(560px, calc(100% - 32px)); max-height: 85dvh; margin: auto; padding: 24px; border: 1px solid var(--color-outline-variant); border-radius: var(--radius-xl); background: var(--color-surface-container-high); color: var(--color-on-surface); }
-
-.ui-dialog::backdrop { background: var(--color-scrim); }
-
+@media (prefers-contrast: more) {
+  .field input, .field select, .field textarea { border-width: 1px; }
+}

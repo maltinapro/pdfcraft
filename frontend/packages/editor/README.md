@@ -64,7 +64,7 @@ export function InvoiceEditor() {
 ### Host requirements
 
 * **Design tokens and base layout.** The editor is styled with the CSS custom properties of PDFCraft's design guide
-  (`docs/16-design-guide.md`); the host must define them (PDFCraft: `frontend/src/styles/tokens.css`), set the body
+  (`docs/16-design-guide.md`); the host must define them (`import '@pdfcraft/design/tokens.css'`, see [`@pdfcraft/design`](../design/README.md); the editor depends on that package for its buttons, icons, dialog and segmented control), set the body
   font and give `#root`/`.app` the usual full-height flex layout. The package imports its own `base.css` (buttons,
   fields, dialog; eager) and `editor.css` (editor; loaded with the lazy `PaperEditor` chunk) itself.
 * **Language.** The UI language lives in memory (`getLang`, `setLang`, `subscribeLang`, `useLang`, `tr(de, en)`).
@@ -132,8 +132,9 @@ customers/articles live in the browser's master data, XML is read with the viewe
 The barrel also exports the document model and helpers a host needs around the editor: types and defaults
 (`Settings`, `Invoice`, `Doc`, `DEFAULT_SETTINGS`, `defaultInvoice`, `defaultDoc`, `DOC_SPECS`, `ZONES`, …), parsing of
 stored data (`parse*`), validation (`validateInvoice`, `requiredIssues`), `ValidationError`/`ApiError`,
-`friendlyError` and the translation of backend error codes, formatting, `downloadBlob`, the building blocks
-`Field`/`TextField`/`SelectField`/`TextAreaField`, `Dialog`, `SegmentedButton` and the icons.
+`friendlyError` and the translation of backend error codes, formatting, `downloadBlob` and the form fields
+`Field`/`TextField`/`SelectField`/`TextAreaField`. Since 0.2.0 `Dialog`, `SegmentedButton` and the icons (`AppIcon`,
+`DocIcon`, `StatusIcon`) are no longer re-exported: import them from `@pdfcraft/design`.
 
 ## Development and tests
 
@@ -146,7 +147,7 @@ npm run build
 ```
 
 `src/boundary.test.ts` keeps the package independent of the app: no imports outside `src/` except the peer
-dependencies, no `localStorage`/`sessionStorage`/`indexedDB`/`fetch`.
+dependencies (and `@pdfcraft/design`), no `localStorage`/`sessionStorage`/`indexedDB`/`fetch`.
 
 ## Releases
 
@@ -154,7 +155,7 @@ Versions follow SemVer in `package.json`. To release: bump `version`, merge, the
 (for example `git tag editor-v0.2.0 && git push origin editor-v0.2.0`). The workflow
 `.github/workflows/release-editor-package.yml` checks that the tag matches the version, runs lint/tests/build and
 publishes to GitHub Packages (`https://npm.pkg.github.com`). The package must be set to public once in the GitHub
-package settings. Breaking changes of the adapter interface bump the minor version while the major version is 0.
+package settings. The editor depends on `@pdfcraft/design`: release that package first when the editor needs a new version of it. Breaking changes of the adapter interface bump the minor version while the major version is 0.
 
 ## License
 
