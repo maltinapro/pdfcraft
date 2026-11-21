@@ -44,6 +44,7 @@ pdfcraft/
 │   ├── public/                       # Logo (logo.svg), favicons, icons, og-image, robots.txt, sitemap.xml
 │   ├── partials/site-{header,footer}.html  # Header and footer shared by all static pages (`<!-- site-header -->`, `<!-- site-footer -->`; `.en.html` variants)
 │   ├── <slug>/index.html             # Static SEO pages (zugferd-rechnung-erstellen, xrechnung-generator, stornorechnung-gutschrift-e-rechnung, e-rechnungspflicht, zugferd-xrechnung-pruefen)
+│   ├── packages/design/              # @pdfcraft/design (npm workspace, MIT): tokens.css, ui.css, components (Button, Card, Banner, Menu, ...), icons, theme; see its README + CHANGELOG
 │   ├── packages/editor/              # @pdfcraft/editor (npm workspace, MIT): PaperEditor, zone model, forms, preview, adapter interface; see its README
 │   │   └── src/{adapter.tsx,index.ts,base.css,editor.css,components/,lib/}  # lib/: types, documents (DOC_SPECS, ZONES), validate, apiErrors, i18n, catalog, parse, ...
 │   └── src/
@@ -57,7 +58,6 @@ pdfcraft/
 │       │   ├── backup.ts             # Complete backup file (`BACKUP_VERSION` 2: config + drafts + archive + master data), last-backup reminder
 │       │   ├── masterData.ts         # Saved recipients and articles (`localStorage` key `pdfcraft.masterData`, `masterDataVersion` 1), strict parser, merge/seed helpers
 │       │   ├── einvoice/             # E-invoice viewer: extract.ts (PDF/XML -> XML), xml.ts, parse.ts (CII + UBL -> view model), check.ts (plausibility checks), format.ts, testdata/
-│       │   ├── theme.ts              # Light/dark theme (system default, manual override)
 │       │   └── api.ts                # free token handling + requestPdf() / requestDocument()
 │       └── template/                 # layout.typ (shared layout + design tokens) + invoice/credit-note/offer/order/delivery-note/letter/dunning/report.typ
 │
@@ -86,10 +86,20 @@ The paper-first editor is its own package, `@pdfcraft/editor` (`frontend/package
 
 - `PaperEditor` (lazy, its own chunk) gets the controlled `settings` and `document`, an `EditorAdapter` and optional slots (`header`, `banner`, `renderDownloaded`). The package keeps **no storage and calls no API itself**; everything comes through the adapter: `render` (required; PDF + zone rectangles), `customers`/`articles` (list/subscribe/save), `postage`, `extractXml`, `reportError`. The app's adapter is `frontend/src/lib/editorAdapter.ts`; the interface is documented in `frontend/packages/editor/README.md` and typed in `adapter.tsx`.
 - The package reads the document model (types, `DOC_SPECS`, `ZONES`, validation, `apiErrors`) from its own `lib/`; the app imports them from `@pdfcraft/editor`. The UI language is held in memory by the package (`setLang`/`useLang`/`tr`), the app persists it (`lib/language.ts`).
-- CSS: the host supplies the design tokens (`frontend/src/styles/tokens.css`) and the base layout; the package ships `base.css` (eager) and `editor.css` (with the lazy editor).
+- CSS: the host supplies the design tokens (`@pdfcraft/design/tokens.css`) and the base layout; the package ships `base.css` (eager) and `editor.css` (with the lazy editor).
 - `src/boundary.test.ts` fails when the package imports from outside `src/` (other than `react`, `react-dom`, `pdfjs-dist`) or uses `localStorage`/`sessionStorage`/`indexedDB`/`fetch`. `npm run budget` limits the `PaperEditor-*` chunk.
-- The Dockerfile copies `packages/editor/package.json` before `npm ci` (the workspace is linked into `node_modules`).
+- The Dockerfile copies `packages/design/package.json` and `packages/editor/package.json` before `npm ci` (the workspaces are linked into `node_modules`).
 - New form fields, zones or validation rules go into the package (`frontend/packages/editor/src/`); new data sources for the editor become optional adapter members, never storage access inside the package. A release is a version bump in the package's `package.json` plus the tag.
+
+## Design package
+
+The design system is the package `@pdfcraft/design` (`frontend/packages/design`, an npm workspace; MIT; versioned by git tags `design-vX.Y.Z` and published to GitHub Packages by `.github/workflows/release-design-package.yml`; changes are listed in its `CHANGELOG.md`). The app and `@pdfcraft/editor` consume it like any other host would (FediFinance uses the same package instead of a copy with a drift check):
+
+- `tokens.css` (Material Design 3 roles, light/dark, high contrast, forced colors; `@import '@pdfcraft/design/tokens.css'` in `App.css`, `site.css`, `viewer.css`), `ui.css` (the `.ui-*` styles; loaded by the package barrel) and the components `Banner`, `BottomSheet`, `Button`, `ButtonLink`, `Card`, `Chip`/`FilterChip`, `Dialog`, `EmptyState`, `Menu`/`MenuItem`, `SegmentedButton`, `Snackbar`, `AppIcon`/`DocIcon`/`StatusIcon` and the theme preference (`applyTheme`, `storedTheme`, `systemTheme`).
+- The package has no i18n (texts such as `Banner`'s `dismissLabel` are passed in by the caller) and no dependency on the app or on the editor; `src/boundary.test.ts` allows only `react`/`react-dom` imports and `localStorage` only in `theme.ts`.
+- Tests: `tokens.test.mjs` is the **contrast test** (AA text contrast and UI boundaries for light, dark and both high-contrast variants), `theme.test.mjs`, `components.test.tsx`. Run `cd frontend && npm test`.
+- Visual check after a change: `npm run build` and `npm run screenshots -- --production`; `npm run budget` limits the design CSS chunk (`src-*.css`, named after the package's `src/` folder).
+- A change to a token, a component or an icon needs an entry in `frontend/packages/design/CHANGELOG.md`; a release is a version bump in the package's `package.json` plus the tag.
 
 ## E-invoice viewer and checker
 

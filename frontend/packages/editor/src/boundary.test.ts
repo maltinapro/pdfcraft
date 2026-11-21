@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 // The package must not depend on the host app: relative imports stay inside `src/`, bare imports are limited to
-// the declared peer dependencies, and the browser storage and the network belong to the host (adapter), not to the editor.
-const PEERS = ['react', 'react-dom', 'pdfjs-dist']
+// the declared dependencies, and the browser storage and the network belong to the host (adapter), not to the editor.
+const PEERS = ['react', 'react-dom', 'pdfjs-dist', '@pdfcraft/design']
 
 const sources = import.meta.glob<string>(['./**/*.{ts,tsx}', '!./**/*.test.{ts,tsx}'], { query: '?raw', import: 'default', eager: true })
 

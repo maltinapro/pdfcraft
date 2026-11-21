@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner } from './ui'
+import { Banner } from '@pdfcraft/design'
 import { hasActivePaidToken } from '../lib/api'
 import { tr, useLang } from '@pdfcraft/editor'
 import { useOffers } from '../lib/purchase'

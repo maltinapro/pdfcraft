@@ -1,7 +1,9 @@
 export type Theme = 'system' | 'light' | 'dark'
 type ResolvedTheme = Exclude<Theme, 'system'>
 
-const KEY = 'pdfcraft.theme'
+/** localStorage key of the stored preference (`light` or `dark`; none means System). */
+export const THEME_STORAGE_KEY = 'pdfcraft.theme'
+const KEY = THEME_STORAGE_KEY
 
 export function systemTheme(): ResolvedTheme {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'

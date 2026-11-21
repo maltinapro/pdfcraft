@@ -1,6 +1,7 @@
-import type { DocKind } from '../lib/documents'
+/** The document types that have an icon (the same names as the editor's `DocKind`). */
+export type DocIconKind = 'invoice' | 'credit-note' | 'offer' | 'order' | 'delivery-note' | 'letter'
 
-const PATHS: Record<DocKind, string[]> = {
+const PATHS: Record<DocIconKind, string[]> = {
   invoice: ['M6 3h12v18l-3-2-3 2-3-2-3 2V3z', 'M9 8h6', 'M9 12h6', 'M9 16h3'],
   'credit-note': ['M6 3h12v18l-3-2-3 2-3-2-3 2V3z', 'M9 11h6', 'M10 7L8 9l2 2'],
   offer: ['M3 12V4h8l10 10-8 8L3 12z', 'M7.5 8.5h.01'],
@@ -63,6 +64,6 @@ export function StatusIcon({ status }: { status: 'ok' | 'warning' | 'error' | 's
   return <Svg paths={paths} size={16} />
 }
 
-export function DocIcon({ kind, size = 24 }: { kind: DocKind; size?: number }) {
+export function DocIcon({ kind, size = 24 }: { kind: DocIconKind; size?: number }) {
   return <Svg paths={PATHS[kind]} size={size} />
 }

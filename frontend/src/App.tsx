@@ -47,7 +47,6 @@ import { handlePaymentReturn, useOffers } from './lib/purchase'
 import { routeHref, useRoute } from './lib/router'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
 import './App.css'
-import './components/ui/ui.css'
 import './components/pages.css'
 
 // Every page except the dashboard is its own chunk, so the start page does not load the editor,

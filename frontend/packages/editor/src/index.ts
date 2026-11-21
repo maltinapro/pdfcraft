@@ -21,6 +21,3 @@ export { downloadBlob } from './lib/download'
 
 // Building blocks the host app can reuse
 export { Field, SelectField, TextAreaField, TextField } from './components/ui/Field'
-export { Dialog } from './components/ui/Dialog'
-export { SegmentedButton } from './components/ui/SegmentedButton'
-export { AppIcon, DocIcon, StatusIcon, type AppIconName } from './components/icons'

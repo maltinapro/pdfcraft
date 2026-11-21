@@ -3,6 +3,7 @@ FROM --platform=$BUILDPLATFORM node:26-slim AS build
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json ./
 # The workspace package must be known to `npm ci` (it is linked into node_modules)
+COPY frontend/packages/design/package.json packages/design/package.json
 COPY frontend/packages/editor/package.json packages/editor/package.json
 RUN npm ci
 COPY frontend/ .

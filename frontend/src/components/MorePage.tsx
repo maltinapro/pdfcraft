@@ -1,6 +1,6 @@
 import { AppHeader } from './AppHeader'
-import { AppIcon, tr, useLang } from '@pdfcraft/editor'
-import { Card, Chip } from './ui'
+import { tr, useLang } from '@pdfcraft/editor'
+import { AppIcon, Card, Chip } from '@pdfcraft/design'
 import { LangToggle } from './LangToggle'
 import { ThemeToggle } from './ThemeToggle'
 import { useOffers } from '../lib/purchase'
