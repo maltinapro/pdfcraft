@@ -1,0 +1,17 @@
+{{- if .Values.backend.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "pdfcraft.fullname" . }}-backend
+  labels: {{- include "pdfcraft.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.backend.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.backend.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  minAvailable: {{ .Values.backend.podDisruptionBudget.minAvailable }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "pdfcraft.labels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+{{- end }}

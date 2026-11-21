@@ -9,7 +9,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ $.Release.Name }}-dashboard-{{ base $path | trimSuffix ".json" | trimPrefix "pdfcraft-" }}
+  name: {{ include "pdfcraft.fullname" $ }}-dashboard-{{ base $path | trimSuffix ".json" | trimPrefix "pdfcraft-" }}
   labels:
     {{- include "pdfcraft.labels" $ | nindent 4 }}
     {{ $.Values.grafana.dashboards.sidecar.label }}: {{ $.Values.grafana.dashboards.sidecar.labelValue | quote }}
@@ -26,7 +26,7 @@ data:
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: {{ $.Release.Name }}-{{ base $path | trimSuffix ".json" | trimPrefix "pdfcraft-" }}
+  name: {{ include "pdfcraft.fullname" $ }}-{{ base $path | trimSuffix ".json" | trimPrefix "pdfcraft-" }}
   labels:
     {{- include "pdfcraft.labels" $ | nindent 4 }}
     {{- with $.Values.grafana.dashboards.labels }}

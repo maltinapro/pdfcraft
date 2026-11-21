@@ -1,7 +1,8 @@
+{{- if .Values.frontend.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-frontend
+  name: {{ include "pdfcraft.fullname" . }}-frontend
   labels: {{- include "pdfcraft.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
@@ -40,7 +41,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-frontend
+  name: {{ include "pdfcraft.fullname" . }}-frontend
   labels: {{- include "pdfcraft.labels" . | nindent 4 }}
 spec:
   selector:
@@ -49,3 +50,4 @@ spec:
   ports:
     - port: 80
       targetPort: 8080
+{{- end }}

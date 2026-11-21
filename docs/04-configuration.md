@@ -5,7 +5,7 @@
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `BIND_ADDR` | `0.0.0.0:3000` | Listen address |
-| `VALKEY_URL` | – | Valkey connection (`redis://host:6379`). Holds tokens and rate limits. Unset or unreachable: `/v1` answers `503`. With authentication: `redis://:PASSWORD@host:6379` (user: `redis://user:PASSWORD@host:6379`), TLS: `rediss://` |
+| `VALKEY_URL` | – | Valkey connection (`redis://host:6379`). Holds tokens and rate limits. Unset or unreachable: `/v1` answers `503`. With authentication: `redis://:PASSWORD@host:6379` (user: `redis://user:PASSWORD@host:6379`); `rediss://` (TLS) is not supported because the `redis` crate is built without a TLS feature, so use a private network |
 | `VALKEY_MODE` | `auto` | `auto` asks the server (`INFO cluster`) and switches to the cluster client for sharded Valkey (e.g. the official Valkey operator); `standalone` / `cluster` force a mode. Standalone, primary/replica behind one address and cluster all work |
 | `SERVICE_TOKENS` | empty | Static service tokens without expiry, as hashed entries `<id>:<sha256 hex of the token>:<plan or invoices per minute>` separated by commas or newlines. They work without Valkey ([guide](05-tokens-and-rate-limiting.md#static-service-tokens)) |
 | `SERVICE_TOKENS_FILE` | empty | Path of a file with the same entries (one per line, `#` comments), e.g. a mounted secret. Used in addition to `SERVICE_TOKENS`; read at start-up |

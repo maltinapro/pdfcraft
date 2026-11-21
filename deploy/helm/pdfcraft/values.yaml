@@ -1,3 +1,7 @@
+# Prefix of all resource names (default: the release name). Set it when this chart is a dependency of
+# another chart whose resources would otherwise get the same names (<release>-backend, ...).
+fullnameOverride: ""
+
 image:
   registry: ghcr.io/maltinapro
   # Empty = the chart's appVersion (set to the image tag when the chart is released)
@@ -31,7 +35,7 @@ backend:
   # Optional keys INTERNETMARKE_SANDBOX_USERNAME/_PASSWORD: shared test Portokasse login for free tokens
   # (together with backend.env.INTERNETMARKE_SANDBOX_SHIPPING_URL).
   internetmarkeSecret: ""
-  # Name of a Secret with the key VALKEY_URL (e.g. redis://:PASSWORD@host:6379, rediss:// for TLS).
+  # Name of a Secret with the key VALKEY_URL (e.g. redis://:PASSWORD@host:6379; rediss:// is not supported by the backend build).
   # Use with valkey.enabled=false when an operator-managed Valkey requires authentication.
   valkeySecret: ""
   # Name of a Secret with the key `service-tokens`: static service tokens without expiry, one
@@ -44,6 +48,43 @@ backend:
   resources:
     requests: { cpu: 250m, memory: 256Mi }
     limits: { cpu: "1", memory: 512Mi }
+  # Horizontal Pod Autoscaler (CPU; the utilization is relative to resources.requests.cpu). When enabled,
+  # replicaCount is ignored. Compilation is CPU bound, so CPU is the signal to scale on.
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    # Optional HPA `behavior` (e.g. a scale-down stabilization window)
+    behavior: {}
+  # Keeps pods available during node drains. minAvailable 1 blocks draining a node with a single replica:
+  # use it with replicaCount >= 2 (or autoscaling.minReplicas >= 2). `maxUnavailable` wins when set.
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+    maxUnavailable: ""
+  # Prefer different nodes for the replicas (soft constraint, never blocks scheduling)
+  spreadAcrossNodes: false
+
+# Restricts traffic to the backend pods (and, with valkey.enabled, to the chart's Valkey). Needs a CNI that
+# enforces NetworkPolicy. Off by default.
+networkPolicy:
+  enabled: false
+  # Peers allowed to reach the API port 3000, as NetworkPolicyPeer list, e.g. the ingress controller:
+  #   - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } }
+  # or the pods of a calling application. Empty = any pod that can reach the Service.
+  ingressFrom: []
+  # Peers allowed to scrape the metrics port (only with metrics.podMonitor / metrics.serviceMonitor), e.g.
+  #   - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } }
+  # Empty = any pod.
+  metricsFrom: []
+  egress:
+    # true: the backend may only reach DNS, the chart's Valkey and the rules in `extra`
+    restrict: true
+    # Additional NetworkPolicyEgressRule entries, e.g. an external Valkey:
+    #   - to: [{ ipBlock: { cidr: 10.0.0.0/24 } }]
+    #     ports: [{ port: 6379, protocol: TCP }]
+    extra: []
 
 # Tokens and rate limits. Single replica with a persistent volume (append-only file).
 # For HA use a Valkey operator instead: set enabled=false and backend.env.VALKEY_URL.
@@ -97,6 +138,14 @@ metrics:
   prometheusRule:
     enabled: false
     labels: {}
+  # Alternative to podMonitor (do not enable both): a ServiceMonitor scrapes a dedicated ClusterIP Service
+  # `<release>-backend-metrics` that only carries the metrics port (the API Service and the Ingress still
+  # never expose it).
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
 
 # Grafana dashboards (dashboards/*.json in this chart). Optional.
 # mode "operator": GrafanaDashboard resources (grafana.integreatly.org/v1beta1, needs the operator's CRDs)
@@ -121,6 +170,8 @@ grafana:
     labels: {}
 
 frontend:
+  # false for an API-only install (no frontend, no Anubis, no landing page); see values-production.yaml
+  enabled: true
   replicaCount: 1
   nodeSelector: {}
   resources:

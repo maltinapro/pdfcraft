@@ -41,8 +41,8 @@ BIND_ADDR=0.0.0.0:3000
 
 ### Infrastructure
 
-- **Valkey**: a single instance with append-only persistence on a volume is enough (the Helm chart and Compose do this). It holds the purchased tokens, so back up the volume (or use a Valkey operator with replicas). Protect it with a password (`redis://:password@host:6379`) and a private network.
-- **Backend sizing**: a compile is CPU-bound and single-threaded (about 50–200 ms). Plan roughly one CPU core per 5–10 invoices per second. Memory is modest (hundreds of MB). Scale horizontally by adding instances.
+- **Valkey**: a single instance with append-only persistence on a volume is enough (the Helm chart and Compose do this). It holds the purchased tokens, so back up the volume (or use a Valkey operator with replicas). The Helm production values use an external Valkey (`backend.valkeySecret`) or only static service tokens ([Kubernetes / Helm](08-kubernetes-helm-outlook.md)). Protect it with a password (`redis://:password@host:6379`) and a private network.
+- **Backend sizing**: a compile is CPU-bound and single-threaded (about 50–200 ms). Plan roughly one CPU core per 5–10 invoices per second. Memory is modest (hundreds of MB). Scale horizontally by adding instances (the production Helm values add an autoscaler on CPU).
 - **Health checks**: `GET /health` on port 3000 for liveness and readiness. The backend does a warm-up compile at start, so allow a few seconds after start.
 - **Secrets**: provide `VALKEY_URL` through your secret store, not in images or the repository.
 - **Packages**: the image bundles `vendor/typst-packages`; no outbound network is required at runtime.

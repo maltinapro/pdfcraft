@@ -1,0 +1,92 @@
+# Production values: the /v1 API only. No frontend, no Anubis, no free tokens, no in-chart Valkey.
+#
+#   helm upgrade --install pdfcraft oci://ghcr.io/maltinapro/charts/pdfcraft --version X.Y.Z \
+#     -n pdfcraft --create-namespace -f values-production.yaml
+#
+# Create the Secrets first (the chart never creates or stores token material):
+#   kubectl -n pdfcraft create secret generic pdfcraft-valkey --from-literal=VALKEY_URL='redis://:PASSWORD@valkey.example:6379'
+#   kubectl -n pdfcraft create secret generic pdfcraft-service-tokens --from-file=service-tokens=./service-tokens.txt
+# (`pdfcraft-backend tokens create-service <id> --limit <n>` prints a token and its entry for service-tokens.txt;
+# see docs/05-tokens-and-rate-limiting.md.)
+
+image:
+  # Chart and images share one version: the tag defaults to the chart's appVersion. Pin it for rollouts.
+  pullPolicy: IfNotPresent
+
+frontend:
+  enabled: false
+anubis:
+  enabled: false
+valkey:
+  # External Valkey (or an operator-managed one) via backend.valkeySecret; set true to run the chart's
+  # single persistent Valkey instead (then drop backend.valkeySecret)
+  enabled: false
+
+backend:
+  replicaCount: 2
+  # Secret with the key VALKEY_URL: shared rate-limit buckets and purchased tokens
+  valkeySecret: pdfcraft-valkey
+  # Secret with the key `service-tokens`: one static token per tenant/application (hashes only)
+  serviceTokensSecret: pdfcraft-service-tokens
+  spreadAcrossNodes: true
+  # Set MAX_CONCURRENT_COMPILES close to the CPU limit
+  env:
+    MAX_CONCURRENT_COMPILES: "2"
+    BULK_MAX_INVOICES: "100"
+  resources:
+    requests: { cpu: 500m, memory: 256Mi }
+    limits: { cpu: "2", memory: 768Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+networkPolicy:
+  enabled: true
+  # Only the calling application may reach the API, for example the pods of the same release/namespace:
+  #   ingressFrom:
+  #     - podSelector: { matchLabels: { app.kubernetes.io/name: fedi-finance } }
+  ingressFrom: []
+  # Your Prometheus namespace
+  metricsFrom:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+  egress:
+    restrict: true
+    # Allow the external Valkey (adjust to its address/port). The backend has no TLS support for Valkey (plain redis://), so keep Valkey on a private network
+    extra:
+      - to:
+          - ipBlock: { cidr: 10.0.0.0/8 }
+        ports:
+          - { port: 6379, protocol: TCP }
+
+metrics:
+  serviceMonitor:
+    enabled: true
+    # Match your Prometheus's serviceMonitorSelector, e.g. release: kube-prometheus-stack
+    labels: {}
+  prometheusRule:
+    enabled: true
+
+# Calling applications in the cluster use http://<release>-backend:3000 (set fullnameOverride when the chart
+# is a dependency). Enable the Ingress only to reach the API from outside; /health and the metrics port are
+# never routed through it.
+ingress:
+  enabled: false
+  className: nginx
+  host: api.example.com
+  tls:
+    enabled: true
+    secretName: pdfcraft-api-tls
+  clusterIssuer: letsencrypt-prod
+  annotations:
+    # POST /v1/einvoices/parse takes PDFs up to 20 MB
+    nginx.ingress.kubernetes.io/proxy-body-size: 21m

@@ -1,0 +1,83 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $monitoring := or .Values.metrics.podMonitor.enabled .Values.metrics.serviceMonitor.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "pdfcraft.fullname" . }}-backend
+  labels: {{- include "pdfcraft.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "pdfcraft.labels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  policyTypes:
+    - Ingress
+    {{- if .Values.networkPolicy.egress.restrict }}
+    - Egress
+    {{- end }}
+  ingress:
+    # API port: only the listed peers (empty = every pod that can reach the Service)
+    - ports:
+        - { port: 3000, protocol: TCP }
+      {{- with .Values.networkPolicy.ingressFrom }}
+      from: {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- if $monitoring }}
+    # Metrics port: only for the scraper (empty = any pod; set it to your Prometheus)
+    - ports:
+        - { port: {{ .Values.metrics.port }}, protocol: TCP }
+      {{- with .Values.networkPolicy.metricsFrom }}
+      from: {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- end }}
+  {{- if .Values.networkPolicy.egress.restrict }}
+  egress:
+    # DNS
+    - ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    {{- if .Values.valkey.enabled }}
+    # The chart's Valkey
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "pdfcraft.labels" . | nindent 14 }}
+              app.kubernetes.io/component: valkey
+      ports:
+        - { port: 6379, protocol: TCP }
+    {{- end }}
+    {{- with .Values.networkPolicy.egress.extra }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+{{- if .Values.valkey.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "pdfcraft.fullname" . }}-valkey
+  labels: {{- include "pdfcraft.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "pdfcraft.labels" . | nindent 6 }}
+      app.kubernetes.io/component: valkey
+  policyTypes:
+    - Ingress
+  ingress:
+    # Only the backend (and Anubis, which keeps its challenges here) may talk to Valkey
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "pdfcraft.labels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+        {{- if .Values.anubis.enabled }}
+        - podSelector:
+            matchLabels:
+              {{- include "pdfcraft.labels" . | nindent 14 }}
+              app.kubernetes.io/component: anubis
+        {{- end }}
+      ports:
+        - { port: 6379, protocol: TCP }
+{{- end }}
+{{- end }}
