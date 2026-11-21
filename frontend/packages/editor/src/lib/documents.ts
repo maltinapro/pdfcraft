@@ -32,10 +32,17 @@ const senderFields = [
   'settings.sender.email',
   'settings.sender.phone',
   'settings.sender.contactName',
+  'settings.sender.legalForm',
+  'settings.sender.registeredOffice',
+  'settings.sender.registerCourt',
+  'settings.sender.registerNumber',
+  'settings.sender.managingDirectors',
+  'settings.sender.supervisoryBoardChair',
   'settings.design',
   'settings.accentColor',
   'settings.font',
   'settings.locale',
+  'settings.footerMode',
   'settings.footer',
 ] as const
 const invoiceSettingsFields = [

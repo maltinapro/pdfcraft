@@ -9,6 +9,13 @@ export interface Sender {
   email: string
   phone: string
   contactName: string
+  /** Legal details for the structured footer (§ 37a HGB, § 35a GmbHG, § 80 AktG). */
+  legalForm: string
+  registeredOffice: string
+  registerCourt: string
+  registerNumber: string
+  managingDirectors: string
+  supervisoryBoardChair: string
 }
 
 export interface Bank {
@@ -18,6 +25,9 @@ export interface Bank {
 }
 
 export type Design = 'classic' | 'modern-minimal' | 'contrast'
+
+/** `free` prints `settings.footer`; `structured` builds contact, legal, bank and tax columns from the sender data. */
+export type FooterMode = 'free' | 'structured'
 
 export interface Logo {
   fileName: string
@@ -36,6 +46,7 @@ export interface Settings {
   font: string
   locale: string
   footer: string
+  footerMode: FooterMode
   intro: string
   closing: string
   paymentDays: number
@@ -165,12 +176,19 @@ export const DEFAULT_SETTINGS: Settings = {
     email: 'info@muster.example',
     phone: '',
     contactName: '',
+    legalForm: '',
+    registeredOffice: '',
+    registerCourt: '',
+    registerNumber: '',
+    managingDirectors: '',
+    supervisoryBoardChair: '',
   },
   design: 'classic',
   accentColor: '#1d4ed8',
   font: 'Liberation Sans',
   locale: 'de-de',
   footer: '',
+  footerMode: 'free',
   intro: '',
   closing: 'Vielen Dank für Ihren Auftrag.',
   paymentDays: 14,

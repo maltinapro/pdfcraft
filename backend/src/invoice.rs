@@ -29,6 +29,7 @@ pub(crate) const UNITS: &[&str] = &[
 ];
 pub(crate) const PROFILES: &[&str] = &["en16931", "xrechnung"];
 pub(crate) const DESIGNS: &[&str] = &["classic", "modern-minimal", "contrast"];
+pub(crate) const FOOTER_MODES: &[&str] = &["free", "structured"];
 pub(crate) const TAX_RATES: &[i64] = &[19, 7, 0];
 
 const MAX_NUMBER: f64 = 1e9;
@@ -56,6 +57,24 @@ pub struct Sender {
     pub phone: String,
     #[schema(max_length = 200)]
     pub contact_name: String,
+    /// Legal form, for example `GmbH`. Printed in the structured footer (`settings.footerMode`).
+    #[schema(max_length = 200)]
+    pub legal_form: String,
+    /// Registered office (Sitz), for example `Berlin`. Printed in the structured footer.
+    #[schema(max_length = 200)]
+    pub registered_office: String,
+    /// Register court, for example `Amtsgericht Berlin (Charlottenburg)`. Printed in the structured footer.
+    #[schema(max_length = 200)]
+    pub register_court: String,
+    /// Register number, for example `HRB 123456 B`. Printed in the structured footer.
+    #[schema(max_length = 200)]
+    pub register_number: String,
+    /// Managing directors or board members, comma separated. Printed in the structured footer.
+    #[schema(max_length = 200)]
+    pub managing_directors: String,
+    /// Chair of the supervisory board (optional). Printed in the structured footer.
+    #[schema(max_length = 200)]
+    pub supervisory_board_chair: String,
 }
 
 #[derive(Deserialize, Serialize, Default, ToSchema)]
@@ -99,8 +118,14 @@ pub struct Settings {
     /// Language of the document texts.
     #[schema(default = "de-de")]
     pub locale: Option<String>,
+    /// Free footer text. Ignored when `footerMode` is `structured`.
     #[schema(max_length = 2000)]
     pub footer: String,
+    /// `free` (default) prints `footer`; `structured` replaces it with columns built from the sender data:
+    /// contact, legal details (legal form, registered office, register court and number, managing
+    /// directors, chair of the supervisory board), bank and tax data. Empty details are left out.
+    #[schema(default = "free")]
+    pub footer_mode: Option<String>,
     /// Text above the items.
     #[schema(max_length = 2000)]
     pub intro: String,
@@ -359,6 +384,7 @@ pub fn check_settings(s: &Settings, e: &mut Errors) -> CheckedSettings {
         "zugferd": s.zugferd.unwrap_or(true),
         "einvoiceProfile": one_of(e, "settings.einvoiceProfile", s.einvoice_profile.as_ref(), PROFILES, PROFILES[0]),
         "design": one_of(e, "settings.design", s.design.as_ref(), DESIGNS, DESIGNS[0]),
+        "footerMode": one_of(e, "settings.footerMode", s.footer_mode.as_ref(), FOOTER_MODES, FOOTER_MODES[0]),
         "footer": text(e, "settings.footer", &s.footer, MAX_LONG, false),
         "intro": text(e, "settings.intro", &s.intro, MAX_LONG, false),
         "closing": text(e, "settings.closing", &s.closing, MAX_LONG, false),
@@ -379,6 +405,12 @@ pub fn check_settings(s: &Settings, e: &mut Errors) -> CheckedSettings {
             "email": text(e, "settings.sender.email", &sender.email, MAX_SHORT, false),
             "phone": text(e, "settings.sender.phone", &sender.phone, MAX_SHORT, false),
             "contactName": text(e, "settings.sender.contactName", &sender.contact_name, MAX_SHORT, false),
+            "legalForm": text(e, "settings.sender.legalForm", &sender.legal_form, MAX_SHORT, false),
+            "registeredOffice": text(e, "settings.sender.registeredOffice", &sender.registered_office, MAX_SHORT, false),
+            "registerCourt": text(e, "settings.sender.registerCourt", &sender.register_court, MAX_SHORT, false),
+            "registerNumber": text(e, "settings.sender.registerNumber", &sender.register_number, MAX_SHORT, false),
+            "managingDirectors": text(e, "settings.sender.managingDirectors", &sender.managing_directors, MAX_SHORT, false),
+            "supervisoryBoardChair": text(e, "settings.sender.supervisoryBoardChair", &sender.supervisory_board_chair, MAX_SHORT, false),
         },
         "bank": {
             "name": text(e, "settings.bank.name", &bank.name, MAX_SHORT, false),

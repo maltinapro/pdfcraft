@@ -79,14 +79,79 @@
 } else {
   align(center, text(8pt, fill: luma(90), body))
 }
-#set page(
+{% if settings.footerMode == "structured" %}// Structured footer (`settings.footerMode`): contact, legal details, bank and tax data as columns built
+// from the sender data; empty details are left out. The text shrinks until the columns fit into the
+// footer area below the body (bottom margin 20 mm), so the footer never runs into the content.
+#let foot-label(body) = if design == "contrast" { text(fill: accent-ink, body) } else { body }
+#let foot-line(label, value) = [#foot-label(label) #value]
+#let foot-column(lines) = lines.join(linebreak())
+#let footer-columns = {
+  let columns = ()
+  let widths = ()
+  columns.push(foot-column((
+    [*#"{{ settings.sender.name }}"*], [#"{{ settings.sender.address }}"], [#"{{ settings.sender.city }}"],
+    {% if settings.sender.phone %}foot-line(t[Tel:][Phone:], "{{ settings.sender.phone }}"),{% endif %}
+    {% if settings.sender.email %}[#"{{ settings.sender.email }}"],{% endif %}
+  )))
+  widths.push(1fr)
+  let legal = ()
+  {% if settings.sender.legalForm or settings.sender.registeredOffice %}legal.push([{% if settings.sender.legalForm %}#"{{ settings.sender.legalForm }}"{% endif %}{% if settings.sender.legalForm and settings.sender.registeredOffice %} · {% endif %}{% if settings.sender.registeredOffice %}#foot-label(t[Sitz:][Registered office:]) #"{{ settings.sender.registeredOffice }}"{% endif %}])
+  {% endif %}{% if settings.sender.registerCourt or settings.sender.registerNumber %}legal.push([{% if settings.sender.registerCourt %}#"{{ settings.sender.registerCourt }}"{% endif %}{% if settings.sender.registerCourt and settings.sender.registerNumber %}, {% endif %}{% if settings.sender.registerNumber %}#"{{ settings.sender.registerNumber }}"{% endif %}])
+  {% endif %}{% if settings.sender.managingDirectors %}legal.push(foot-line(t[Geschäftsführer/Vorstand:][Directors:], "{{ settings.sender.managingDirectors }}"))
+  {% endif %}{% if settings.sender.supervisoryBoardChair %}legal.push(foot-line(t[Vorsitzender des Aufsichtsrats:][Chair of the supervisory board:], "{{ settings.sender.supervisoryBoardChair }}"))
+  {% endif %}if legal.len() > 0 {
+    columns.push(foot-column(legal))
+    widths.push(1.3fr)
+  }
+  let payment = ()
+  {% if settings.bank.name %}payment.push([#"{{ settings.bank.name }}"])
+  {% endif %}{% if settings.bank.iban %}payment.push(foot-line([IBAN:], "{{ settings.bank.iban }}"))
+  {% endif %}{% if settings.bank.bic %}payment.push(foot-line([BIC:], "{{ settings.bank.bic }}"))
+  {% endif %}{% if settings.sender.taxNr %}payment.push(foot-line(t[Steuernr.:][Tax no.:], "{{ settings.sender.taxNr }}"))
+  {% endif %}{% if settings.sender.vatId %}payment.push(foot-line(t[USt-IdNr.:][VAT ID:], "{{ settings.sender.vatId }}"))
+  {% endif %}if payment.len() > 0 {
+    columns.push(foot-column(payment))
+    widths.push(1fr)
+  }
+  (columns: columns, widths: widths)
+}
+#let structured-footer(extra) = layout(size => {
+  let build(size-pt) = {
+    set text(size-pt, fill: if tokens.footer == "ruled" { luma(90) } else { muted })
+    set par(leading: 0.4em, spacing: 0.4em)
+    let body = {
+      set align(if tokens.footer == "centered" { center } else { left })
+      grid(columns: footer-columns.widths, column-gutter: 4mm, ..footer-columns.columns)
+      if extra != none { v(0.3em); extra }
+    }
+    if tokens.footer == "ruled" {
+      block(width: 100%, stroke: (top: 0.8pt + accent-ink), inset: (top: 3pt), body)
+    } else {
+      body
+    }
+  }
+  let chosen = 5.5pt
+  for candidate in (7pt, 6.5pt, 6pt) {
+    if measure(width: size.width, build(candidate)).height <= size.height {
+      chosen = candidate
+      break
+    }
+  }
+  align(bottom, build(chosen))
+})
+{% endif %}{% if is_report %}#let report-line = [#"{{ doc.report.title }}"{% if doc.report.period %} · #"{{ doc.report.period }}"{% endif %} · #t[Seite][Page] #context counter(page).display() #t[von][of] #context counter(page).final().first()]
+{% endif %}#set page(
   paper: "a4",
   {% if is_report %}flipped: {% if doc.report.landscape %}true{% else %}false{% endif %},
   margin: (left: 20mm, right: 15mm, top: 15mm, bottom: 20mm),
-  footer: footer-text[{% if settings.footer %}#lines("{{ settings.footer }}") \
-    {% endif %}#"{{ doc.report.title }}"{% if doc.report.period %} · #"{{ doc.report.period }}"{% endif %} · #t[Seite][Page] #context counter(page).display() #t[von][of] #context counter(page).final().first()],
-  {% else %}margin: (left: 25mm, right: 20mm, top: 15mm, bottom: 20mm),
-  {% if settings.footer %}footer: footer-text(lines("{{ settings.footer }}")),{% endif %}{% endif %}
+  {% if settings.footerMode == "structured" %}footer-descent: 4mm,
+  footer: structured-footer(report-line),
+  {% else %}footer: footer-text[{% if settings.footer %}#lines("{{ settings.footer }}") \
+    {% endif %}#report-line],
+  {% endif %}{% else %}margin: (left: 25mm, right: 20mm, top: 15mm, bottom: 20mm),
+  {% if settings.footerMode == "structured" %}footer-descent: 4mm,
+  footer: structured-footer(none),
+  {% elif settings.footer %}footer: footer-text(lines("{{ settings.footer }}")),{% endif %}{% endif %}
   background: [
     {% if not is_report %}// DIN 5008 fold marks (105 / 210 mm) and punch mark (148.5 mm)
     #place(top + left, dy: 105mm, dx: 5mm, line(length: 4mm, stroke: 0.4pt + luma(120)))

@@ -12,7 +12,7 @@ const budgets = [
   { pattern: /^src-.*\.css$/, limitKb: 7.5 },
   { pattern: /^landing-.*\.css$/, limitKb: 25.3 },
   { pattern: /^pdf-.*\.js$/, limitKb: 550.1 },
-  { pattern: /^PaperEditor-.*\.js$/, limitKb: 53.3 },
+  { pattern: /^PaperEditor-.*\.js$/, limitKb: 59 },
   { pattern: /^PaperEditor-.*\.css$/, limitKb: 30 },
   { pattern: /^ViewerPage-.*\.js$/, limitKb: 55.3 },
   { pattern: /^ViewerPage-.*\.css$/, limitKb: 10.6 },

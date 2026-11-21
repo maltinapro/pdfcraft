@@ -1860,10 +1860,34 @@ components:
         email:
           maxLength: 200
           type: string
+        legalForm:
+          description: Legal form, for example `GmbH`. Printed in the structured footer (`settings.footerMode`).
+          maxLength: 200
+          type: string
+        managingDirectors:
+          description: Managing directors or board members, comma separated. Printed in the structured footer.
+          maxLength: 200
+          type: string
         name:
           maxLength: 200
           type: string
         phone:
+          maxLength: 200
+          type: string
+        registerCourt:
+          description: Register court, for example `Amtsgericht Berlin (Charlottenburg)`. Printed in the structured footer.
+          maxLength: 200
+          type: string
+        registerNumber:
+          description: Register number, for example `HRB 123456 B`. Printed in the structured footer.
+          maxLength: 200
+          type: string
+        registeredOffice:
+          description: Registered office (Sitz), for example `Berlin`. Printed in the structured footer.
+          maxLength: 200
+          type: string
+        supervisoryBoardChair:
+          description: Chair of the supervisory board (optional). Printed in the structured footer.
           maxLength: 200
           type: string
         taxNr:
@@ -1929,7 +1953,18 @@ components:
           - DejaVu Sans Mono
           type: string
         footer:
+          description: Free footer text. Ignored when `footerMode` is `structured`.
           maxLength: 2000
+          type: string
+        footerMode:
+          default: free
+          description: |-
+            `free` (default) prints `footer`; `structured` replaces it with columns built from the sender data:
+            contact, legal details (legal form, registered office, register court and number, managing
+            directors, chair of the supervisory board), bank and tax data. Empty details are left out.
+          enum:
+          - free
+          - structured
           type: string
         intro:
           description: Text above the items.

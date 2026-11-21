@@ -161,6 +161,10 @@ fn inject_allowed_values(schemas: &mut Value, error_codes: &Value) {
         json!(invoice::DESIGNS),
     );
     set_enum(
+        &mut schemas["Settings"]["properties"]["footerMode"],
+        json!(invoice::FOOTER_MODES),
+    );
+    set_enum(
         &mut schemas["Item"]["properties"]["unit"],
         json!(invoice::UNITS),
     );

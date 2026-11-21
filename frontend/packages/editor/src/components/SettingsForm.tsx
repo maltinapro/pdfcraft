@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Field, TextAreaField, TextField } from './ui/Field'
+import { Field, SelectField, TextAreaField, TextField } from './ui/Field'
 import { useFieldProps } from './FormIssues'
 import { tr, useLang } from '../lib/i18n'
 import {
@@ -9,6 +9,7 @@ import {
   LOCALES,
   MAX_LOGO_BYTES,
   type Bank,
+  type FooterMode,
   type Logo,
   type Sender,
   type Settings,
@@ -118,6 +119,22 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
           onChange={(v) => setSender('vatId', v)}
           hint={tr('Beginnt mit „DE“, falls Sie eine haben.', 'Starts with “DE” if you have one.')}
         />
+      </section>}
+
+      {zone === 'sender' && senderSection === 'company' && <section className="form-section" data-zone="sender">
+        <h3>{tr('Rechtliche Angaben', 'Legal details')}</h3>
+        <p className="field-hint">
+          {tr(
+            'Pflichtangaben auf Geschäftsbriefen und Rechnungen. Sie erscheinen in der Fußzeile, wenn dort „Strukturiert“ gewählt ist.',
+            'Details required on business letters and invoices. They appear in the footer when “Structured” is chosen there.',
+          )}
+        </p>
+        <TextField field="settings.sender.legalForm" label={tr('Rechtsform', 'Legal form')} value={settings.sender.legalForm} onChange={(v) => setSender('legalForm', v)} />
+        <TextField field="settings.sender.registeredOffice" label={tr('Sitz', 'Registered office')} value={settings.sender.registeredOffice} onChange={(v) => setSender('registeredOffice', v)} />
+        <TextField field="settings.sender.registerCourt" label={tr('Registergericht', 'Register court')} value={settings.sender.registerCourt} onChange={(v) => setSender('registerCourt', v)} />
+        <TextField field="settings.sender.registerNumber" label={tr('Registernummer', 'Register number')} value={settings.sender.registerNumber} onChange={(v) => setSender('registerNumber', v)} />
+        <TextField field="settings.sender.managingDirectors" label={tr('Geschäftsführung / Vorstand', 'Managing directors / board')} value={settings.sender.managingDirectors} onChange={(v) => setSender('managingDirectors', v)} />
+        <TextField field="settings.sender.supervisoryBoardChair" label={tr('Vorsitz des Aufsichtsrats', 'Chair of the supervisory board')} value={settings.sender.supervisoryBoardChair} onChange={(v) => setSender('supervisoryBoardChair', v)} />
       </section>}
 
       {forInvoice && zone === 'sender' && senderSection === 'company' && (
@@ -279,7 +296,23 @@ export function SettingsForm({ settings, onChange, forInvoice = true, zone = 'se
             <TextAreaField field="settings.closing" label={tr('Schlusstext', 'Closing text')} value={settings.closing} onChange={(v) => set('closing', v)} />
           </>
         )}
-        <TextAreaField field="settings.footer" label={tr('Fußzeile', 'Footer')} value={settings.footer} onChange={(v) => set('footer', v)} rows={2} />
+        <SelectField
+          field="settings.footerMode"
+          label={tr('Fußzeile', 'Footer')}
+          value={settings.footerMode}
+          onChange={(v) => set('footerMode', v as FooterMode)}
+          options={[
+            { value: 'free', label: tr('Freier Text', 'Free text') },
+            { value: 'structured', label: tr('Strukturiert', 'Structured') },
+          ]}
+          hint={tr(
+            'Strukturiert setzt Kontakt, Rechtliches, Bank und Steuerdaten in Spalten (aus den Absenderdaten).',
+            'Structured sets contact, legal, bank and tax data in columns (from the sender data).',
+          )}
+        />
+        {settings.footerMode === 'free' && (
+          <TextAreaField field="settings.footer" label={tr('Fußzeilentext', 'Footer text')} value={settings.footer} onChange={(v) => set('footer', v)} rows={2} />
+        )}
       </section>}
 
       {forInvoice && zone === 'sender' && senderSection === 'appearance' && (

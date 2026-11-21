@@ -294,7 +294,7 @@ Before E11 the two designs (*Classic*, *Modern Minimal*) differed only in title 
 | Totals | ruled grid, right 58 % | no rules; "Amount due" in 20 pt accent | accent-filled box with on-accent total |
 | Payment block | text + EPC QR | two quiet columns (bank / QR) under a hairline | tinted card with QR |
 | Footer | centered free text | left-aligned, small, muted | accent hairline above the footer |
-| Structured footer (option, all designs) | three columns (contact / bank / tax data) built from the sender data, shown only when the free footer text is empty and the user turns it on | same, muted | same, accent labels |
+| Structured footer (option, all designs) | three columns (contact / legal details / bank and tax data) built from the sender data, shown only when `settings.footerMode` is `structured` (it then replaces the free footer text; default `free`); legal details are legal form, registered office, register court and number, managing directors and the optional chair of the supervisory board | same, muted | same, accent labels |
 
 Content fixes for all designs, found when comparing the rendered PDF (15 Nov 2026): the tax category letter ("19 % S", "(S)") means nothing to readers and is shown only when a document mixes categories (with a legend); the Classic zebra row reads like a selection highlight and becomes a neutral tint; "Leistungszeitraum" currently repeats the invoice date and shows the real service date once E08-08 exists.
 

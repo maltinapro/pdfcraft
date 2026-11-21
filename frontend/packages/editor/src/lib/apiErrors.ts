@@ -10,6 +10,7 @@ interface Field {
 }
 
 const sender = () => tr('Absender & Aussehen', 'Sender & look')
+const legal = () => tr('Absender & Aussehen › Rechtliche Angaben', 'Sender & look › Legal details')
 const bank = () => tr('Absender & Aussehen › Bankverbindung', 'Sender & look › Bank details')
 const design = () => tr('Absender & Aussehen › Design', 'Sender & look › Design')
 const texts = () => tr('Absender & Aussehen › Texte', 'Sender & look › Texts')
@@ -27,6 +28,12 @@ function settingsField(path: string): Field | null {
     'settings.sender.email': () => ({ label: tr('E-Mail', 'E-mail'), area: sender() }),
     'settings.sender.contactName': () => ({ label: tr('Ansprechpartner', 'Contact person'), area: sender() }),
     'settings.sender.phone': () => ({ label: tr('Telefon', 'Phone'), area: sender() }),
+    'settings.sender.legalForm': () => ({ label: tr('Rechtsform', 'Legal form'), area: legal() }),
+    'settings.sender.registeredOffice': () => ({ label: tr('Sitz', 'Registered office'), area: legal() }),
+    'settings.sender.registerCourt': () => ({ label: tr('Registergericht', 'Register court'), area: legal() }),
+    'settings.sender.registerNumber': () => ({ label: tr('Registernummer', 'Register number'), area: legal() }),
+    'settings.sender.managingDirectors': () => ({ label: tr('Geschäftsführung / Vorstand', 'Managing directors / board'), area: legal() }),
+    'settings.sender.supervisoryBoardChair': () => ({ label: tr('Vorsitz des Aufsichtsrats', 'Chair of the supervisory board'), area: legal() }),
     'settings.sender.taxNr': () => ({ label: tr('Steuernummer', 'Tax number'), area: sender() }),
     'settings.sender.vatId': () => ({ label: tr('USt-IdNr.', 'VAT ID'), area: sender() }),
     'settings.bank.name': () => ({ label: tr('Bank', 'Bank'), area: bank() }),
@@ -42,6 +49,7 @@ function settingsField(path: string): Field | null {
     'settings.intro': () => ({ label: tr('Einleitung', 'Introduction'), area: texts() }),
     'settings.closing': () => ({ label: tr('Schlusstext', 'Closing text'), area: texts() }),
     'settings.footer': () => ({ label: tr('Fußzeile', 'Footer'), area: texts() }),
+    'settings.footerMode': () => ({ label: tr('Fußzeile', 'Footer'), area: texts() }),
   }
   return map[path]?.() ?? null
 }

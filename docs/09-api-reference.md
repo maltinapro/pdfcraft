@@ -126,6 +126,7 @@ For external customers. The template lives on the server (the same `invoice.typ`
 - Do **not** escape text yourself.
 - The logo is `settings.logo.base64` (max 1 MB decoded).
 - The optional handwritten signature is `settings.signature.base64` (PNG, JPEG, SVG or PDF recognised by content, max 300 KB decoded; invalid files give `400 validation_error` for `settings.signature`). It is printed below the closing text of every document type (letters: between closing and sender name). A PDF is converted to SVG (first page) and cropped to its visible content, because Typst cannot embed PDFs in PDF/A exports. It is an image, not a cryptographic signature.
+- The footer is the free text `settings.footer` by default. With `settings.footerMode: "structured"` the footer is built from the sender data instead (the free text is ignored): contact (name, address, e-mail, phone), legal details (`legalForm`, `registeredOffice`, `registerCourt`, `registerNumber`, `managingDirectors`, optional `supervisoryBoardChair`) and bank and tax data (`bank.name`, IBAN, BIC, `taxNr`, `vatId`). All of these fields are optional (max 200 characters each), empty ones are left out; labels follow `settings.locale`. It is available in all three designs on every document type and fits the bottom margin; the text shrinks (down to 5.5 pt) when many long details are set, so keep the values short. PDFCraft does not check the legal content: which details are mandatory (§ 14 UStG, § 37a HGB, § 35a GmbHG, § 80 AktG) is up to the caller. Without `footerMode` (or `"free"`) the PDFs are byte-identical to before.
 
 ```bash
 curl -X POST http://localhost:3000/v1/invoices \
@@ -153,7 +154,7 @@ Credit note (Stornorechnung), offer, order confirmation, delivery note, letter, 
 | `dunning` | `number`, `date`, `recipient`, `dunningLevel`, `invoices`, `paymentDeadline` | Dunning letter, see below |
 | `report` | `date`, `title`, `tables` | Tabular report, see below; no `recipient`, `number` or `items` |
 
-`recipient` is `{ name, address, city }`, items are `{ description, quantity, unit, price, taxRate }` like in invoices, dates are `YYYY-MM-DD`. Only `settings.sender`, the logo, accent color, font, locale and footer are used (and `settings.bank` for the `dunning` payment block). Unknown `type` → `400 invalid_request`.
+`recipient` is `{ name, address, city }`, items are `{ description, quantity, unit, price, taxRate }` like in invoices, dates are `YYYY-MM-DD`. Only `settings.sender`, the logo, accent color, font, locale and footer (free text or structured, see below) are used (and `settings.bank` for the `dunning` payment block). Unknown `type` → `400 invalid_request`.
 
 ### Dunning letter (`dunning`)
 
@@ -206,7 +207,7 @@ curl -X POST http://localhost:3000/v1/documents \
 
 ### Report (`report`)
 
-A generic document for lists and evaluations: journal, trial balance (Summen- und Saldenliste), BWA, procedure documentation or the cover sheet of an audit export. It is laid out in all three designs and in German or English (`settings.locale`), carries no e-invoice XML and no postage stamp, needs no `recipient` and no `number`. Report PDFs have no DIN 5008 address field, fold or punch marks and no zone markers. The sender is printed in the page header, the page footer shows `title · period · Seite x von y` (`Page x of y` in English) next to the optional `settings.footer`. The table header row is repeated on every page.
+A generic document for lists and evaluations: journal, trial balance (Summen- und Saldenliste), BWA, procedure documentation or the cover sheet of an audit export. It is laid out in all three designs and in German or English (`settings.locale`), carries no e-invoice XML and no postage stamp, needs no `recipient` and no `number`. Report PDFs have no DIN 5008 address field, fold or punch marks and no zone markers. The sender is printed in the page header, the page footer shows `title · period · Seite x von y` (`Page x of y` in English) next to the optional footer (`settings.footer`, or the structured footer with `settings.footerMode: "structured"`). The table header row is repeated on every page.
 
 | Field | Meaning |
 | --- | --- |
