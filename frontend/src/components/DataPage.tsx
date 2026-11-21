@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { AppHeader } from './AppHeader'
-import { AppIcon, tr, uiLocale, useLang } from '@pdfcraft/editor'
-import { Banner, Button, Card } from './ui'
+import { tr, uiLocale, useLang } from '@pdfcraft/editor'
+import { AppIcon, Banner, Button, Card } from '@pdfcraft/design'
 
 interface Props {
   notice: string | null
@@ -27,7 +27,7 @@ export function DataPage({ notice, onDismissNotice, lastBackup, unsaved, onBacku
       <AppHeader title={tr('Daten & Sicherung', 'Data & backup')} route="data" unsaved={unsaved} />
 
       <main className="page page-narrow">
-        {notice && <Banner onDismiss={onDismissNotice}>{notice}</Banner>}
+        {notice && <Banner dismissLabel={tr('Schließen', 'Close')} onDismiss={onDismissNotice}>{notice}</Banner>}
 
         <h1>{tr('Daten & Sicherung', 'Data & backup')}</h1>
         <p className="page-lead">

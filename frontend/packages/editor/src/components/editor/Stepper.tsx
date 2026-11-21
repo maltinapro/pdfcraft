@@ -1,4 +1,4 @@
-import { AppIcon } from '../icons'
+import { AppIcon } from '@pdfcraft/design'
 import type { ZoneSpec } from '../../lib/documents'
 import { tr } from '../../lib/i18n'
 

@@ -1,5 +1,5 @@
 import { setLang, tr, useLang } from '@pdfcraft/editor'
-import { SegmentedButton } from './ui'
+import { SegmentedButton } from '@pdfcraft/design'
 
 export function LangToggle() {
   const lang = useLang()

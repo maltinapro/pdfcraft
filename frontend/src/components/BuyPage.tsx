@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppHeader } from './AppHeader'
-import { Banner, Button, Card, EmptyState } from './ui'
+import { Banner, Button, Card, EmptyState } from '@pdfcraft/design'
 import { loadPaidToken, savePaidToken, type PaidToken } from '../lib/api'
 import { downloadBlob, friendlyError, tr, uiLocale, useLang } from '@pdfcraft/editor'
 import {
@@ -252,7 +252,7 @@ export function BuyPage({ unsaved }: Props) {
           )}
         </p>
 
-        {message && <Banner onDismiss={() => setMessage(null)}>{message}</Banner>}
+        {message && <Banner dismissLabel={tr('Schließen', 'Close')} onDismiss={() => setMessage(null)}>{message}</Banner>}
 
         {collecting === 'waiting' && (
           <Card tone="primary">

@@ -1,4 +1,4 @@
-import { Dialog } from '../ui/Dialog'
+import { Dialog } from '@pdfcraft/design'
 import { tr } from '../../lib/i18n'
 import { formatXml, tokenizeXml } from '../../lib/xmlDisplay'
 

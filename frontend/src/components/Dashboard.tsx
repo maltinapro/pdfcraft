@@ -1,8 +1,8 @@
 import { AppHeader } from './AppHeader'
 import { ArchiveList } from './ArchiveList'
 import { FreeVersionHint } from './FreeVersionHint'
-import { AppIcon, DOC_SPECS, DocIcon, type DocKind, docSpec, tr, useLang } from '@pdfcraft/editor'
-import { Banner, Card, EmptyState } from './ui'
+import { DOC_SPECS, type DocKind, docSpec, tr, useLang } from '@pdfcraft/editor'
+import { AppIcon, DocIcon, Banner, Card, EmptyState } from '@pdfcraft/design'
 import type { ArchiveEntry } from '../lib/archive'
 import type { EntryStatus } from '../lib/archiveFilter'
 import { onboardingOpen, onboardingSteps } from '../lib/onboarding'
@@ -34,7 +34,7 @@ export function Dashboard({ notice, onDismissNotice, archive, statuses, onFollow
       <AppHeader route="" unsaved={unsaved} />
 
       <main className="page">
-        {notice && <Banner onDismiss={onDismissNotice}>{notice}</Banner>}
+        {notice && <Banner dismissLabel={tr('Schließen', 'Close')} onDismiss={onDismissNotice}>{notice}</Banner>}
 
         <h1>{tr('Was möchten Sie erstellen?', 'What would you like to create?')}</h1>
 

@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { AppHeader } from './AppHeader'
 import { ArchiveList } from './ArchiveList'
-import { AppIcon, DOC_SPECS, type DocKind, friendlyError, tr, useLang } from '@pdfcraft/editor'
-import { Banner, Button, ButtonLink, EmptyState, FilterChip } from './ui'
+import { DOC_SPECS, type DocKind, friendlyError, tr, useLang } from '@pdfcraft/editor'
+import { AppIcon, Banner, Button, ButtonLink, EmptyState, FilterChip } from '@pdfcraft/design'
 import type { ArchiveEntry } from '../lib/archive'
 import { NO_FILTER, filterEntries, isFiltered, type ArchiveFilter, type EntryStatus } from '../lib/archiveFilter'
 import { routeHref } from '../lib/router'
@@ -78,7 +78,7 @@ export function DocumentsPage({ notice, onDismissNotice, archive, statuses, onFo
       <AppHeader title={tr('Belege', 'Documents')} route="documents" unsaved={unsaved} />
 
       <main className="page page-documents">
-        {notice && <Banner onDismiss={onDismissNotice}>{notice}</Banner>}
+        {notice && <Banner dismissLabel={tr('Schließen', 'Close')} onDismiss={onDismissNotice}>{notice}</Banner>}
 
         {archive.length === 0 ? (
           <EmptyState
@@ -136,7 +136,7 @@ export function DocumentsPage({ notice, onDismissNotice, archive, statuses, onFo
               </p>
             </details>
 
-            {error && <Banner tone="error" onDismiss={() => setError(null)}>{tr('Fehler', 'Error')}: {error}</Banner>}
+            {error && <Banner tone="error" dismissLabel={tr('Schließen', 'Close')} onDismiss={() => setError(null)}>{tr('Fehler', 'Error')}: {error}</Banner>}
 
             {visible.length === 0 ? (
               <EmptyState icon="search" title={tr('Keine Treffer', 'No matches')} text={tr('Passen Sie Suche oder Filter an.', 'Adjust the search or the filters.')}>

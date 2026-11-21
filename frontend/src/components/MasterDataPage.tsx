@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { AppHeader } from './AppHeader'
-import { AppIcon, Field, money, TAX_RATES, TextField, tr, unitLabel, UNITS, useLang } from '@pdfcraft/editor'
-import { Banner, Button, EmptyState, Menu, MenuItem, SegmentedButton } from './ui'
+import { Field, money, TAX_RATES, TextField, tr, unitLabel, UNITS, useLang } from '@pdfcraft/editor'
+import { AppIcon, Banner, Button, EmptyState, Menu, MenuItem, SegmentedButton } from '@pdfcraft/design'
 import type { ArchiveEntry } from '../lib/archive'
 import {
   MAX_ARTICLES,
@@ -109,7 +109,7 @@ export function MasterDataPage({ tab, notice, onDismissNotice, archive, unsaved,
       <AppHeader title={tr('Kunden', 'Customers')} route={tab} unsaved={unsaved} />
 
       <main className="page page-narrow">
-        {notice && <Banner onDismiss={onDismissNotice}>{notice}</Banner>}
+        {notice && <Banner dismissLabel={tr('Schließen', 'Close')} onDismiss={onDismissNotice}>{notice}</Banner>}
 
         <h1>{tr('Kunden & Artikel', 'Customers & articles')}</h1>
         <p className="page-lead">

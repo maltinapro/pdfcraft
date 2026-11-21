@@ -1,0 +1,36 @@
+{
+  "name": "@pdfcraft/design",
+  "version": "0.1.0",
+  "description": "Design system of PDFCraft: Material Design 3 tokens (light, dark, high contrast), UI components, icons and the theme preference.",
+  "license": "MIT",
+  "type": "module",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maltinapro/pdfcraft.git",
+    "directory": "frontend/packages/design"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "files": [
+    "src",
+    "!src/**/*.test.*",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens.css": "./src/tokens.css",
+    "./ui.css": "./src/ui.css"
+  },
+  "sideEffects": [
+    "**/*.css",
+    "./src/index.ts"
+  ],
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
