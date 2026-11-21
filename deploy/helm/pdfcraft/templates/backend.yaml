@@ -1,10 +1,15 @@
+{{- if and (not .Values.valkey.enabled) (not .Values.backend.valkeySecret) (not .Values.backend.serviceTokensSecret) (not .Values.backend.env.VALKEY_URL) (not .Values.backend.env.SERVICE_TOKENS) (not .Values.backend.env.SERVICE_TOKENS_FILE) }}
+{{- fail "no token source: enable valkey.enabled, or set backend.valkeySecret (external Valkey) or backend.serviceTokensSecret (static service tokens)" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-backend
+  name: {{ include "pdfcraft.fullname" . }}-backend
   labels: {{- include "pdfcraft.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.backend.autoscaling.enabled }}
   replicas: {{ .Values.backend.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "pdfcraft.labels" . | nindent 6 }}
@@ -15,6 +20,18 @@ spec:
         {{- include "pdfcraft.labels" . | nindent 8 }}
         app.kubernetes.io/component: backend
     spec:
+      # The backend never talks to the Kubernetes API
+      automountServiceAccountToken: false
+      {{- if .Values.backend.spreadAcrossNodes }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "pdfcraft.labels" . | nindent 14 }}
+              app.kubernetes.io/component: backend
+      {{- end }}
       {{- with (.Values.backend.nodeSelector | default .Values.nodeSelector) }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -40,13 +57,13 @@ spec:
                   key: VALKEY_URL
             {{- else if .Values.valkey.enabled }}
             - name: VALKEY_URL
-              value: redis://{{ .Release.Name }}-valkey:6379
+              value: redis://{{ include "pdfcraft.fullname" . }}-valkey:6379
             {{- end }}
             {{- if .Values.anubis.enabled }}
             - name: ANUBIS_PUBLIC_KEY_HEX
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.anubis.existingSecret | default (printf "%s-anubis" .Release.Name) }}
+                  name: {{ .Values.anubis.existingSecret | default (printf "%s-anubis" (include "pdfcraft.fullname" .)) }}
                   key: ANUBIS_PUBLIC_KEY_HEX
             {{- end }}
             {{- if .Values.backend.mollieSecret }}
@@ -114,7 +131,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-backend
+  name: {{ include "pdfcraft.fullname" . }}-backend
   labels: {{- include "pdfcraft.labels" . | nindent 4 }}
 spec:
   selector:

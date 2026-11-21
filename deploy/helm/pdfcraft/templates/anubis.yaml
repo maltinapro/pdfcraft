@@ -1,6 +1,9 @@
 {{- if .Values.anubis.enabled }}
+{{- if not .Values.frontend.enabled }}
+{{- fail "anubis.enabled=true protects the frontend: set frontend.enabled=true or anubis.enabled=false" }}
+{{- end }}
 {{- /* Challenges live in Valkey so that every Anubis pod (and restarts) can verify them */}}
-{{- $storeUrl := .Values.anubis.storeUrl | default (ternary (printf "redis://%s-valkey:6379/0" .Release.Name) "" .Values.valkey.enabled) }}
+{{- $storeUrl := .Values.anubis.storeUrl | default (ternary (printf "redis://%s-valkey:6379/0" (include "pdfcraft.fullname" .)) "" .Values.valkey.enabled) }}
 {{- if and (gt (int .Values.anubis.replicaCount) 1) (not $storeUrl) }}
 {{- fail "anubis.replicaCount > 1 needs a shared store: set anubis.storeUrl (valkey.enabled=false)" }}
 {{- end }}
@@ -8,7 +11,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ .Release.Name }}-anubis
+  name: {{ include "pdfcraft.fullname" . }}-anubis
   labels: {{- include "pdfcraft.labels" . | nindent 4 }}
 type: Opaque
 stringData:
@@ -19,7 +22,7 @@ stringData:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ .Release.Name }}-anubis-policy
+  name: {{ include "pdfcraft.fullname" . }}-anubis-policy
   labels: {{- include "pdfcraft.labels" . | nindent 4 }}
 type: Opaque
 stringData:
@@ -38,7 +41,7 @@ stringData:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-anubis
+  name: {{ include "pdfcraft.fullname" . }}-anubis
   labels: {{- include "pdfcraft.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.anubis.replicaCount }}
@@ -74,7 +77,7 @@ spec:
               value: ":8923"
             # The frontend Service port (80), not the container port (8080)
             - name: TARGET
-              value: http://{{ .Release.Name }}-frontend:80
+              value: http://{{ include "pdfcraft.fullname" . }}-frontend:80
             - name: DIFFICULTY
               value: {{ .Values.anubis.difficulty | quote }}
             - name: POLICY_FNAME
@@ -89,7 +92,7 @@ spec:
             - name: ED25519_PRIVATE_KEY_HEX
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.anubis.existingSecret | default (printf "%s-anubis" .Release.Name) }}
+                  name: {{ .Values.anubis.existingSecret | default (printf "%s-anubis" (include "pdfcraft.fullname" .)) }}
                   key: ED25519_PRIVATE_KEY_HEX
           volumeMounts:
             - { name: policy, mountPath: /etc/anubis, readOnly: true }
@@ -97,12 +100,12 @@ spec:
       volumes:
         - name: policy
           secret:
-            secretName: {{ .Release.Name }}-anubis-policy
+            secretName: {{ include "pdfcraft.fullname" . }}-anubis-policy
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-anubis
+  name: {{ include "pdfcraft.fullname" . }}-anubis
   labels: {{- include "pdfcraft.labels" . | nindent 4 }}
 spec:
   selector:

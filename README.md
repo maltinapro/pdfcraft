@@ -93,7 +93,7 @@ Full reference: [API Reference](docs/09-api-reference.md). The machine-readable 
 | [Tokens and Rate Limiting](docs/05-tokens-and-rate-limiting.md) | Issue and manage customer keys |
 | [Production](docs/06-production.md) | Deploying the `/v1` API |
 | [Demo System](docs/07-demo-system.md) | Showing the configurator to prospects |
-| [Kubernetes / Helm](docs/08-kubernetes-helm-outlook.md) | Demo chart in `deploy/helm/pdfcraft`; production chart planned |
+| [Kubernetes / Helm](docs/08-kubernetes-helm-outlook.md) | Helm chart in `deploy/helm/pdfcraft` (production `/v1` API and demo), published as OCI chart |
 | [API Reference](docs/09-api-reference.md) | Endpoints, bodies, examples; [OpenAPI spec](docs/openapi.yaml) |
 | [Architecture and Extending](docs/10-architecture-and-extending.md) | Structure, how it works, adding fields |
 | [Free Token and Anubis](docs/11-free-token-and-anubis.md) | Free tokens, Anubis, watermark |

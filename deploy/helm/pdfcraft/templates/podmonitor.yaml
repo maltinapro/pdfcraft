@@ -2,7 +2,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: {{ .Release.Name }}-backend
+  name: {{ include "pdfcraft.fullname" . }}-backend
   labels:
     {{- include "pdfcraft.labels" . | nindent 4 }}
     {{- with .Values.metrics.podMonitor.labels }}
@@ -23,7 +23,7 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: {{ .Release.Name }}-anubis
+  name: {{ include "pdfcraft.fullname" . }}-anubis
   labels:
     {{- include "pdfcraft.labels" . | nindent 4 }}
     {{- with .Values.metrics.podMonitor.labels }}

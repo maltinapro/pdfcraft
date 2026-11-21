@@ -50,7 +50,7 @@ sum(count_over_time({app_kubernetes_io_component="frontend"} | json | path="/app
 
 ## Metrics
 
-The backend exposes Prometheus metrics in the **OpenMetrics text format** (`application/openmetrics-text; version=1.0.0`) on `GET /metrics` of a **separate listener** (`METRICS_ADDR`, default `0.0.0.0:9090`). It is not part of the public API port (`/metrics` on port 3000 is a 404) and the chart's Service and Ingress do not expose it; Prometheus scrapes the pod directly (see the Helm section once enabled). For local runs: `curl localhost:9090/metrics`. Docker Compose does not publish the port.
+The backend exposes Prometheus metrics in the **OpenMetrics text format** (`application/openmetrics-text; version=1.0.0`) on `GET /metrics` of a **separate listener** (`METRICS_ADDR`, default `0.0.0.0:9090`). It is not part of the public API port (`/metrics` on port 3000 is a 404) and the chart's API Service and Ingress do not expose it (the optional `ServiceMonitor` uses a separate metrics-only Service); Prometheus scrapes the pod directly (see the Helm section once enabled). For local runs: `curl localhost:9090/metrics`. Docker Compose does not publish the port.
 
 ### Cardinality policy
 
@@ -115,6 +115,7 @@ metrics:
 ```
 
 - `PodMonitor` scrapes the backend (`metrics` port, `/metrics`) and, if enabled, Anubis (`METRICS_BIND`, funnel metrics such as challenges issued/validated). The chart adds no Service/Ingress port for metrics, so they stay cluster-internal.
+- With `metrics.serviceMonitor.enabled` (instead of `podMonitor`; enable only one) the chart creates a `ServiceMonitor` and a dedicated ClusterIP Service `<release>-backend-metrics` that carries only the metrics port; the API Service and the Ingress still never expose it. Combine it with `networkPolicy.metricsFrom` to let only Prometheus scrape the port.
 - `PrometheusRule` ships alerts: `PDFCraftBackendDown`, `PDFCraftHighErrorRate`, `PDFCraftSlowPdfGeneration`, `PDFCraftCompileSlotsSaturated`, `PDFCraftStoreErrors`.
 - Prometheus adds `namespace`, `pod` and `job` labels; queries in the dashboards/rules work across replicas via `sum`/`max`.
 

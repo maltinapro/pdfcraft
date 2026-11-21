@@ -2,10 +2,10 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ .Release.Name }}-valkey
+  name: {{ include "pdfcraft.fullname" . }}-valkey
   labels: {{- include "pdfcraft.labels" . | nindent 4 }}
 spec:
-  serviceName: {{ .Release.Name }}-valkey
+  serviceName: {{ include "pdfcraft.fullname" . }}-valkey
   replicas: 1
   selector:
     matchLabels:
@@ -52,7 +52,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-valkey
+  name: {{ include "pdfcraft.fullname" . }}-valkey
   labels: {{- include "pdfcraft.labels" . | nindent 4 }}
 spec:
   clusterIP: None

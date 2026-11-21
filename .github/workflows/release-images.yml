@@ -212,6 +212,8 @@ jobs:
         run: |
           OWNER="${GITHUB_REPOSITORY_OWNER,,}"
           helm lint deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-demo.yaml
+          helm lint deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-production.yaml
+          helm template pdfcraft deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-production.yaml > /dev/null
           helm package deploy/helm/pdfcraft --version "$CHART_VERSION" --app-version "$TAG" -d /tmp/chart
           echo "$GH_TOKEN" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
           helm push "/tmp/chart/pdfcraft-${CHART_VERSION}.tgz" "oci://ghcr.io/${OWNER}/charts"

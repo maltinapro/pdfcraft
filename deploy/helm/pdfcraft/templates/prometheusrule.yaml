@@ -2,7 +2,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ include "pdfcraft.fullname" . }}
   labels:
     {{- include "pdfcraft.labels" . | nindent 4 }}
     {{- with .Values.metrics.prometheusRule.labels }}

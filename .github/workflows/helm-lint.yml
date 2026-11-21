@@ -17,3 +17,20 @@ jobs:
       - uses: azure/setup-helm@v5
       - run: helm lint deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-demo.yaml $KEYS
       - run: helm template pdfcraft deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-demo.yaml $KEYS
+      # Production values: /v1 only (no frontend, Anubis or free tokens), HPA, PDB, NetworkPolicy, ServiceMonitor
+      - run: helm lint deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-production.yaml
+      - run: helm template pdfcraft deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-production.yaml
+      - name: Production values with the Ingress and the chart's own Valkey
+        run: |
+          helm template pdfcraft deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-production.yaml \
+            --set ingress.enabled=true --set valkey.enabled=true --set backend.valkeySecret= > /tmp/production-valkey.yaml
+          grep -q 'name: pdfcraft-valkey' /tmp/production-valkey.yaml
+      - name: Production values as a dependency (fullnameOverride)
+        run: |
+          helm template pdfcraft deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-production.yaml \
+            --set fullnameOverride=fedi-pdfcraft > /tmp/production-override.yaml
+          ! grep -q 'name: pdfcraft-backend' /tmp/production-override.yaml
+      - name: An install without any token source is rejected
+        run: |
+          ! helm template pdfcraft deploy/helm/pdfcraft -f deploy/helm/pdfcraft/values-production.yaml \
+            --set backend.valkeySecret= --set backend.serviceTokensSecret=

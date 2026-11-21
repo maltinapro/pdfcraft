@@ -1,0 +1,39 @@
+{{- if .Values.metrics.serviceMonitor.enabled }}
+{{- /* A ServiceMonitor needs a Service port. The metrics port gets its own ClusterIP Service so that the
+API Service and the Ingress still never expose it (use metrics.podMonitor instead if you prefer pods). */}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pdfcraft.fullname" . }}-backend-metrics
+  labels:
+    {{- include "pdfcraft.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend-metrics
+spec:
+  selector:
+    {{- include "pdfcraft.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+  ports:
+    - name: metrics
+      port: {{ .Values.metrics.port }}
+      targetPort: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "pdfcraft.fullname" . }}-backend
+  labels:
+    {{- include "pdfcraft.labels" . | nindent 4 }}
+    {{- with .Values.metrics.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "pdfcraft.labels" . | nindent 6 }}
+      app.kubernetes.io/component: backend-metrics
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.metrics.serviceMonitor.scrapeTimeout }}
+{{- end }}

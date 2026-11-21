@@ -1,6 +1,22 @@
-# PDFCraft Helm chart (demo system)
+# PDFCraft Helm chart
 
-Minimal chart for the **demo system** on a k3s cluster: frontend (nginx), backend, and one Ingress (Traefik) with a cert-manager certificate. It also deploys **Valkey** (StatefulSet with a persistent volume, append-only file) for tokens and rate limits; `/v1` works with tokens created via `tokens create-free` / `tokens create` (`kubectl exec` into the backend pod). See [Demo System](../../../docs/07-demo-system.md).
+One chart for two setups: the **production API** (`values-production.yaml`: `/v1` only) and the **demo system** (`values-demo.yaml`). Details: [Kubernetes / Helm](../../../docs/08-kubernetes-helm-outlook.md).
+
+## Production API (`values-production.yaml`)
+
+The backend only: no frontend, Anubis or free tokens. The values enable an HPA, a PodDisruptionBudget, a NetworkPolicy, a ServiceMonitor, the hardened `securityContext`, and read tokens/Valkey from **existing Secrets** (`backend.serviceTokensSecret` with the key `service-tokens`, `backend.valkeySecret` with the key `VALKEY_URL`; use `valkey.enabled=true` instead for the chart's own single Valkey). The Ingress is off by default because the calling application (for example FediFinance) reaches `http://<release>-backend:3000` inside the cluster.
+
+```bash
+helm pull oci://ghcr.io/maltinapro/charts/pdfcraft --version 0.1.0 --untar
+helm upgrade --install pdfcraft oci://ghcr.io/maltinapro/charts/pdfcraft \
+  --version 0.1.0 -n pdfcraft --create-namespace -f pdfcraft/values-production.yaml
+```
+
+As a dependency of another chart, set `fullnameOverride` so the resource names do not clash with the parent's. CI runs `helm lint` and `helm template` for both values files (`.github/workflows/helm-lint.yml`), and the release workflow publishes the chart as an OCI chart with the release version (see "Releasing").
+
+## Demo system
+
+Chart for the **demo system** on a k3s cluster: frontend (nginx), backend, and one Ingress (Traefik) with a cert-manager certificate. It also deploys **Valkey** (StatefulSet with a persistent volume, append-only file) for tokens and rate limits; `/v1` works with tokens created via `tokens create-free` / `tokens create` (`kubectl exec` into the backend pod). See [Demo System](../../../docs/07-demo-system.md).
 
 Routing on one host (same origin, no CORS):
 
@@ -125,7 +141,7 @@ Then open `https://pdfcraft.vorneweg.org/` (landing page) and `/app/` and check 
 
 ## Values
 
-See `values.yaml`: image registry/tag (empty tag = the chart's `appVersion`), replicas and resources, `backend.env` (default `MAX_CONCURRENT_COMPILES=2`), ingress host, class, TLS secret and ClusterIssuer, `backend.serviceTokensSecret` (a Secret with the key `service-tokens` holding hashed static service tokens, see [Tokens and Rate Limiting](../../../docs/05-tokens-and-rate-limiting.md#static-service-tokens)), and `nodeSelector` (global, e.g. `kubernetes.io/arch: arm64`; `backend.nodeSelector`, `frontend.nodeSelector`, `anubis.nodeSelector` and `valkey.nodeSelector` override it per component).
+See `values.yaml`: image registry/tag (empty tag = the chart's `appVersion`), `fullnameOverride`, replicas and resources, `frontend.enabled`, `backend.autoscaling`, `backend.podDisruptionBudget`, `backend.spreadAcrossNodes`, `networkPolicy`, `backend.env` (default `MAX_CONCURRENT_COMPILES=2`), ingress host, class, TLS secret and ClusterIssuer, `backend.serviceTokensSecret` (a Secret with the key `service-tokens` holding hashed static service tokens, see [Tokens and Rate Limiting](../../../docs/05-tokens-and-rate-limiting.md#static-service-tokens)), and `nodeSelector` (global, e.g. `kubernetes.io/arch: arm64`; `backend.nodeSelector`, `frontend.nodeSelector`, `anubis.nodeSelector` and `valkey.nodeSelector` override it per component).
 
 ## Monitoring (optional)
 
@@ -134,6 +150,7 @@ Both resources need the Prometheus Operator CRDs and are **off by default**:
 | Value | Creates |
 | --- | --- |
 | `metrics.podMonitor.enabled` | `PodMonitor`s for the backend (`/metrics` on port `metrics.port`, default 9090) and Anubis (`metrics.anubisPort`) |
+| `metrics.serviceMonitor.enabled` | `ServiceMonitor` plus a metrics-only ClusterIP Service `<release>-backend-metrics` (alternative to the `PodMonitor`; enable only one) |
 | `metrics.prometheusRule.enabled` | `PrometheusRule` with alerts (backend down, 5xx rate, slow PDFs, saturated compile slots, Valkey errors) |
 
 | `grafana.dashboards.enabled` | one `GrafanaDashboard` (Grafana Operator, `grafana.integreatly.org/v1beta1`) per file in `dashboards/*.json`: Business, Technical, Logs |
@@ -145,5 +162,5 @@ Both resources need the Prometheus Operator CRDs and are **off by default**:
 - **Valkey operator / HA**: the chart runs one Valkey pod with a PVC (`valkey.persistence.size`, `valkey.persistence.storageClass`). That is enough for the demo: a few KB of tokens, restarts keep the data. For HA, snapshots and backups use an external Valkey or a Valkey operator: set `valkey.enabled=false` and `backend.env.VALKEY_URL`. See [Production](../../../docs/06-production.md).
 - **Per-IP rate limit** for `/v1/free-token` and `/v1/invoices`: recommended at the edge (Cloudflare rate-limiting rule), see [Demo System](../../../docs/07-demo-system.md#where-to-rate-limit-application-vs-edge); optionally a Traefik `Middleware` as a second layer. Currently only the compile limit and pod resource limits protect the demo.
 - Pinned image tags and automatic deployment from GitHub Actions (would need a kubeconfig secret).
-- Non-root images, NetworkPolicy, autoscaling.
+- A NetworkPolicy for the demo's frontend and Anubis pods (the backend and Valkey have one with `networkPolicy.enabled`).
 - Image pull secrets for private registries.
