@@ -45,7 +45,7 @@ The workflow `.github/workflows/release-images.yml` builds and publishes both im
 | `ghcr.io/maltinapro/pdfcraft-backend` and `-frontend` | `0.1.0`, `0.1` and the short commit SHA; `latest` as well unless the release is marked *pre-release* (`0.1` is not set for `-rc` versions) |
 | `oci://ghcr.io/maltinapro/charts/pdfcraft` | chart `version` and `appVersion` = `0.1.0` |
 
-Chart and images share one version, so `--version 0.1.0` installs exactly the images of release `v0.1.0`. The `version` in `Chart.yaml` in the repository is only a placeholder; the workflow overwrites it.
+Chart and images share one version, so `--version 0.1.0` installs exactly the images of release `v0.1.0`. Release notes and the checklist for the npm packages are in [`docs/release-notes/`](../../../docs/release-notes/0.33.0.md) (one file per release). The `version` in `Chart.yaml` in the repository is only a placeholder; the workflow overwrites it.
 
 ### 2. Manual run (tests, intermediate builds)
 
