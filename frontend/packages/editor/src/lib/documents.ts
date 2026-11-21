@@ -1,5 +1,5 @@
 import { tr } from './i18n'
-import { isObj, mergeObject, parsePostage, type Obj } from './storage'
+import { isObj, mergeObject, parsePostage, type Obj } from './parse'
 import { newItem, todayIso, type InvoiceItem, type PostageStamp, type Recipient } from './types'
 
 export type DocKind = 'invoice' | 'credit-note' | 'offer' | 'order' | 'delivery-note' | 'letter'
@@ -289,7 +289,6 @@ export function defaultDrafts(): DocDrafts {
   ) as DocDrafts
 }
 
-const STORAGE_KEY = 'pdfcraft.documents'
 const DRAFT_SCHEMA_VERSION = 1
 
 function parseDoc(kind: DocDataKind, raw: unknown): Doc {
@@ -318,31 +317,6 @@ export function parseDrafts(parsed: unknown): DocDrafts {
 }
 
 export const serializeDrafts = (drafts: DocDrafts) => ({ schemaVersion: DRAFT_SCHEMA_VERSION, documents: drafts })
-
-export function loadDrafts(): DocDrafts {
-  try {
-    return parseDrafts(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null'))
-  } catch {
-    return defaultDrafts()
-  }
-}
-
-export function saveDrafts(drafts: DocDrafts): boolean {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeDrafts(drafts)))
-    return true
-  } catch {
-    return false
-  }
-}
-
-export function clearDrafts(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    // ignore
-  }
-}
 
 /** Documents that can be created from an issued document (the document chain). */
 const followUps = (): Record<DocKind, { to: DocKind; label: string }[]> => ({

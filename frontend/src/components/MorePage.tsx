@@ -1,9 +1,8 @@
 import { AppHeader } from './AppHeader'
-import { AppIcon } from './icons'
+import { AppIcon, tr, useLang } from '@pdfcraft/editor'
 import { Card, Chip } from './ui'
 import { LangToggle } from './LangToggle'
 import { ThemeToggle } from './ThemeToggle'
-import { tr, useLang } from '../lib/i18n'
 import { useOffers } from '../lib/purchase'
 import { routeHref } from '../lib/router'
 

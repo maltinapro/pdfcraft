@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { tr } from '../lib/i18n'
+import { tr } from '@pdfcraft/editor'
 import { applyTheme, storedTheme, type Theme } from '../lib/theme'
 import { SegmentedButton } from './ui'
 

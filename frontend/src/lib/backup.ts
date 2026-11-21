@@ -1,9 +1,7 @@
-import { tr } from './i18n'
+import { type DocDrafts, type Invoice, parseDrafts, serializeDrafts, type Settings, tr } from '@pdfcraft/editor'
 import { validEntries, type ArchiveEntry } from './archive'
-import { parseDrafts, serializeDrafts, type DocDrafts } from './documents'
 import { parseMasterData, serializeMasterData, type MasterData } from './masterData'
 import { isObj, parseConfig, SCHEMA_VERSION, type AppConfig } from './storage'
-import type { Invoice, Settings } from './types'
 
 /**
  * Complete backup (`pdfcraft-backup.json`): sender/design, drafts, issued documents and master data in one file.

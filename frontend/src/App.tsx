@@ -1,6 +1,31 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AppHeader } from './components/AppHeader'
 import { Dashboard } from './components/Dashboard'
-import { downloadBlob } from './lib/download'
+import { FreeVersionHint } from './components/FreeVersionHint'
+import {
+  DEFAULT_SETTINGS,
+  defaultInvoice,
+  type DocDataKind,
+  type DocDrafts,
+  type DocKind,
+  docSpec,
+  downloadBlob,
+  FOLLOW_UPS,
+  PaperEditor,
+  exampleDataIssues,
+  friendlyError,
+  hasExampleSender,
+  type Doc,
+  type Invoice,
+  requiredIssues,
+  type Settings,
+  tr,
+  useAutosave,
+  useLang,
+  validateInvoice,
+  zoneForField,
+  ZONES,
+} from '@pdfcraft/editor'
 import { RateLimitedError, fetchBulkMax, requestBulk, requestDocument, requestPdf } from './lib/api'
 import {
   duplicateNumberIssue,
@@ -13,28 +38,14 @@ import {
   saveArchive,
   type ArchiveEntry,
 } from './lib/archive'
-import {
-  clearDrafts,
-  docSpec,
-  loadDrafts,
-  saveDrafts,
-  ZONES,
-  zoneForField,
-  type DocDataKind,
-  type DocDrafts,
-  type DocKind,
-} from './lib/documents'
 import { clearLastBackup, exportBackup, loadLastBackup, readBackup, saveLastBackup, unsavedCount } from './lib/backup'
-import { friendlyError } from './lib/apiErrors'
+import { clearDrafts, loadDrafts, saveDrafts } from './lib/drafts'
+import { editorAdapter } from './lib/editorAdapter'
 import { entryStatuses } from './lib/archiveFilter'
-import { tr, useLang } from './lib/i18n'
 import { getMasterData, masterDataFromArchive, mergeMasterData, resetMasterData, setMasterData, useMasterData } from './lib/masterData'
 import { handlePaymentReturn, useOffers } from './lib/purchase'
 import { routeHref, useRoute } from './lib/router'
 import { clearConfig, exportConfig, importConfig, loadConfig, saveConfig } from './lib/storage'
-import { exampleDataIssues, hasExampleSender, requiredIssues, validateInvoice } from './lib/validate'
-import { DEFAULT_SETTINGS, defaultInvoice, type Invoice, type Settings } from './lib/types'
-import type { SaveState } from './components/Workspace'
 import './App.css'
 import './components/ui/ui.css'
 import './components/pages.css'
@@ -47,14 +58,6 @@ const DocumentsPage = lazy(() => import('./components/DocumentsPage').then((m) =
 const MasterDataPage = lazy(() => import('./components/MasterDataPage').then((m) => ({ default: m.MasterDataPage })))
 const MorePage = lazy(() => import('./components/MorePage').then((m) => ({ default: m.MorePage })))
 const ViewerPage = lazy(() => import('./components/ViewerPage').then((m) => ({ default: m.ViewerPage })))
-const InvoiceForm = lazy(() => import('./components/InvoiceForm').then((m) => ({ default: m.InvoiceForm })))
-const DocumentForm = lazy(() => import('./components/DocumentForm').then((m) => ({ default: m.DocumentForm })))
-// The editor loads its forms in parallel instead of one after the other
-const Workspace = lazy(() =>
-  Promise.all([import('./components/Workspace'), import('./components/InvoiceForm'), import('./components/DocumentForm')]).then(
-    ([m]) => ({ default: m.Workspace }),
-  ),
-)
 
 const fileStem = (value: string, fallback: string) => value.replace(/[^\w.-]+/g, '_') || fallback
 
@@ -70,7 +73,6 @@ function AppRoutes() {
   const [drafts, setDrafts] = useState<DocDrafts>(loadDrafts)
   const [archive, setArchive] = useState<ArchiveEntry[]>(loadArchive)
   const [notice, setNotice] = useState<string | null>(null)
-  const [saveState, setSaveState] = useState<SaveState>('saved')
   const [lastBackup, setLastBackup] = useState<string | null>(loadLastBackup)
   const masterData = useMasterData()
 
@@ -165,17 +167,13 @@ function AppRoutes() {
     [settings],
   )
 
-  useEffect(() => {
-    setSaveState('saving')
-    const timer = window.setTimeout(() => {
-      const ok = saveConfig(settings, invoice) && saveDrafts(drafts)
-      setSaveState(ok ? 'saved' : 'error')
-      if (!ok) {
-        setNotice(tr('Speichern im Browser fehlgeschlagen (Speicher voll oder deaktiviert).', 'Saving in the browser failed (storage full or disabled).'))
-      }
-    }, 400)
-    return () => window.clearTimeout(timer)
-  }, [settings, invoice, drafts])
+  const saveState = useAutosave([settings, invoice, drafts], () => {
+    const ok = saveConfig(settings, invoice) && saveDrafts(drafts)
+    if (!ok) {
+      setNotice(tr('Speichern im Browser fehlgeschlagen (Speicher voll oder deaktiviert).', 'Saving in the browser failed (storage full or disabled).'))
+    }
+    return ok
+  })
 
   const backup = useCallback(() => {
     downloadBlob(exportBackup(settings, invoice, drafts, archive, masterData), `pdfcraft-backup-${new Date().toISOString().slice(0, 10)}.json`)
@@ -370,60 +368,51 @@ function AppRoutes() {
           ),
         )?.id ?? 'recipient'
 
-  if (spec.kind === 'invoice') {
-    return (
-      <Workspace
-        key={onSender ? 'sender' : 'invoice'}
-        route={route}
-        unsaved={unsaved}
-        initialZone={initialEditorZone}
-        saveState={saveState}
-        kind="invoice"
-        title={spec.label}
-        fileName={`${tr('rechnung', 'invoice')}-${fileStem(invoice.number, tr('neu', 'new'))}`}
-        settings={settings}
-        onSettingsChange={setSettings}
-        forInvoice
-        data={{ settings, invoice }}
-        render={(signal) => requestPdf(settings, invoice, signal)}
-        form={(zone) => <InvoiceForm invoice={invoice} settings={settings} onChange={setInvoice} zone={zone} />}
-        issues={documentIssues}
-        onDownloaded={() => issue('invoice')}
-        onFollowUp={followUp}
-        onBackup={backup}
-      />
-    )
-  }
-
-  const kind = spec.kind as DocDataKind
-  const doc = drafts[kind]
+  const kind = spec.kind
+  const isInvoice = kind === 'invoice'
+  const doc = isInvoice ? invoice : drafts[kind as DocDataKind]
   return (
-    <Workspace
-      key={kind}
-      route={route}
-      unsaved={unsaved}
+    <PaperEditor
+      key={onSender ? 'sender' : kind}
+      adapter={editorAdapter}
       kind={kind}
-      title={spec.label}
       initialZone={initialEditorZone}
-      fileName={`${kind}-${fileStem(doc.number, tr('neu', 'new'))}`}
+      saveState={saveState}
+      fileName={`${isInvoice ? tr('rechnung', 'invoice') : kind}-${fileStem(doc.number, tr('neu', 'new'))}`}
       settings={settings}
       onSettingsChange={setSettings}
-      forInvoice={false}
+      document={doc}
+      onDocumentChange={(next) =>
+        isInvoice ? setInvoice(next as Invoice) : setDrafts((current) => ({ ...current, [kind]: next as Doc }))
+      }
       issues={documentIssues}
-      saveState={saveState}
-      onDownloaded={() => issue(kind)}
-      data={{ kind, settings, doc }}
-      render={(signal) => requestDocument(kind, settings, doc, signal)}
-      form={(zone) => (
-        <DocumentForm
-          spec={spec}
-          doc={doc}
-          zone={zone}
-          onChange={(next) => setDrafts((current) => ({ ...current, [kind]: next }))}
-        />
+      backupHref={routeHref('data')}
+      header={({ downloadButton }) => (
+        <AppHeader title={spec.label} route={route} unsaved={unsaved} editor>
+          {downloadButton}
+        </AppHeader>
       )}
-      onFollowUp={followUp}
-      onBackup={backup}
+      banner={<FreeVersionHint />}
+      onDownloaded={() => issue(kind)}
+      renderDownloaded={(issued) => (
+        <>
+          <div>
+            <strong>{tr('PDF erstellt und unter „Belege“ vermerkt.', 'PDF created and listed under “Documents”.')}</strong>
+            <p>{tr('Die Belege liegen nur in diesem Browser.', 'Your documents are stored only in this browser.')}</p>
+          </div>
+          <div className="download-success-actions">
+            <button type="button" className="btn btn-tonal" onClick={backup}>{tr('Sicherung herunterladen', 'Download backup')}</button>
+            <a className="btn btn-tonal" href={routeHref('')}>{tr('Neues Dokument', 'New document')}</a>
+            {issued
+              ? FOLLOW_UPS[kind].map((next) => (
+                  <button type="button" className="btn btn-tonal" key={next.to} onClick={() => followUp(issued as ArchiveEntry, next.to)}>
+                    {next.label}
+                  </button>
+                ))
+              : null}
+          </div>
+        </>
+      )}
     />
   )
 }

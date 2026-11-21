@@ -1,9 +1,17 @@
 import { useSyncExternalStore } from 'react'
-import { tr } from './i18n'
+import {
+  type Article,
+  type Contact,
+  docSpec,
+  type InvoiceItem,
+  normalizeText as normalize,
+  type Recipient,
+  TAX_RATES,
+  tr,
+  UNITS,
+} from '@pdfcraft/editor'
 import { isObj, type Obj } from './storage'
-import { TAX_RATES, UNITS, type InvoiceItem, type Recipient } from './types'
 import type { ArchiveEntry } from './archive'
-import { docSpec } from './documents'
 
 /**
  * Customer and article master data. It lives only in this browser (`localStorage`, own key),
@@ -19,22 +27,6 @@ const MAX_NUMBER = 1e9
 export const MAX_CONTACTS = 1000
 export const MAX_ARTICLES = 1000
 
-export interface Contact extends Recipient {
-  id: string
-}
-
-/** A standard service or product: what a document line is prefilled with. */
-export interface Article {
-  id: string
-  description: string
-  /** One of `UNITS` (the e-invoice unit code mapping depends on it). */
-  unit: string
-  /** Net unit price in euro. */
-  price: number
-  /** One of `TAX_RATES`. */
-  taxRate: number
-}
-
 export interface MasterData {
   contacts: Contact[]
   articles: Article[]
@@ -44,23 +36,12 @@ export const EMPTY_MASTER_DATA: MasterData = { contacts: [], articles: [] }
 
 export const newMasterId = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
-const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase()
-
 /** Identity of a recipient: the same customer is stored once. */
 export const contactKey = (c: Recipient) => [c.name, c.address, c.city].map(normalize).join('|')
 
 /** Identity of an article: the price is an attribute that can be updated. */
 export const articleKey = (a: Pick<Article, 'description' | 'unit' | 'taxRate'>) =>
   `${normalize(a.description)}|${a.unit}|${a.taxRate}`
-
-export const recipientOf = (c: Contact): Recipient => ({
-  name: c.name,
-  address: c.address,
-  city: c.city,
-  vatId: c.vatId,
-  email: c.email,
-  buyerReference: c.buyerReference,
-})
 
 const invalid = () => new Error(tr('Die Stammdaten sind ungültig.', 'The master data is invalid.'))
 
@@ -186,14 +167,13 @@ export function resetMasterData(): void {
   listeners.forEach((l) => l())
 }
 
+export function subscribeMasterData(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
 export function useMasterData(): MasterData {
-  return useSyncExternalStore(
-    (cb) => {
-      listeners.add(cb)
-      return () => listeners.delete(cb)
-    },
-    () => current,
-  )
+  return useSyncExternalStore(subscribeMasterData, () => current)
 }
 
 // --- operations (pure) ---
@@ -333,20 +313,5 @@ export function masterDataFromArchive(archive: ArchiveEntry[]): MasterData {
   return { contacts, articles }
 }
 
-const matches = (haystack: string, query: string) => {
-  const terms = normalize(query).split(' ').filter(Boolean)
-  const hay = normalize(haystack)
-  return terms.every((t) => hay.includes(t))
-}
-
-export const searchContacts = (contacts: Contact[], query: string): Contact[] =>
-  contacts.filter((c) => matches([c.name, c.address, c.city, c.vatId, c.email, c.buyerReference].join(' '), query))
-
-export const searchArticles = (articles: Article[], query: string): Article[] =>
-  articles.filter((a) => matches(a.description, query))
-
-export const sortedContacts = (contacts: Contact[]): Contact[] =>
-  [...contacts].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
-
-export const sortedArticles = (articles: Article[]): Article[] =>
-  [...articles].sort((a, b) => a.description.localeCompare(b.description, undefined, { sensitivity: 'base' }))
+export { recipientOf, searchArticles, searchContacts, sortedArticles, sortedContacts } from '@pdfcraft/editor'
+export type { Article, Contact } from '@pdfcraft/editor'

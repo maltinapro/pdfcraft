@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ValidationError, type RenderedPdf } from '../../lib/api'
+import type { RenderedPdf } from '../../adapter'
 import { friendlyError } from '../../lib/apiErrors'
+import { ValidationError } from '../../lib/errors'
 import type { ZoneRect } from '../../lib/documents'
 import type { Issue } from '../../lib/validate'
 

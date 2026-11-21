@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultInvoice, DEFAULT_SETTINGS } from './types'
+import { DEFAULT_SETTINGS, defaultInvoice } from '@pdfcraft/editor'
 import { parseConfig } from './storage'
 
 describe('parseConfig', () => {

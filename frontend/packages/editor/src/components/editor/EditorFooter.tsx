@@ -1,19 +1,20 @@
 import { AppIcon, StatusIcon } from '../icons'
 import type { ZoneId, ZoneSpec } from '../../lib/documents'
-import type { SaveState } from '../Workspace'
-import { routeHref } from '../../lib/router'
+import type { SaveState } from '../../lib/saveState'
 import { tr } from '../../lib/i18n'
 
 interface Props {
   active: ZoneId
   zones: readonly ZoneSpec[]
   saveState: SaveState
+  /** Where the user can back up the data; the "Back up" links are hidden without it. */
+  backupHref?: string
   onBack: () => void
   onNext: () => void
   onCreate: () => void
 }
 
-export function EditorFooter({ active, zones, saveState, onBack, onNext, onCreate }: Props) {
+export function EditorFooter({ active, zones, saveState, backupHref, onBack, onNext, onCreate }: Props) {
   const index = zones.findIndex((zone) => zone.id === active)
   const last = index === zones.length - 1
 
@@ -25,12 +26,12 @@ export function EditorFooter({ active, zones, saveState, onBack, onNext, onCreat
         ) : saveState === 'saved' ? (
           <>
             <StatusIcon status="ok" /> {tr('Lokal gespeichert · ', 'Saved locally · ')}
-            <a href={routeHref('data')}>{tr('Sichern', 'Back up')}</a>
+            {backupHref && <a href={backupHref}>{tr('Sichern', 'Back up')}</a>}
           </>
         ) : (
           <>
             <StatusIcon status="warning" /> {tr('Speichern fehlgeschlagen · ', 'Saving failed · ')}
-            <a href={routeHref('data')}>{tr('Daten sichern', 'Back up data')}</a>
+            {backupHref && <a href={backupHref}>{tr('Daten sichern', 'Back up data')}</a>}
           </>
         )}
       </div>

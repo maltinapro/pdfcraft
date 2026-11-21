@@ -1,13 +1,10 @@
 import { useMemo, useState } from 'react'
 import { AppHeader } from './AppHeader'
 import { ArchiveList } from './ArchiveList'
-import { AppIcon } from './icons'
+import { AppIcon, DOC_SPECS, type DocKind, friendlyError, tr, useLang } from '@pdfcraft/editor'
 import { Banner, Button, ButtonLink, EmptyState, FilterChip } from './ui'
-import { DOC_SPECS, type DocKind } from '../lib/documents'
 import type { ArchiveEntry } from '../lib/archive'
 import { NO_FILTER, filterEntries, isFiltered, type ArchiveFilter, type EntryStatus } from '../lib/archiveFilter'
-import { friendlyError } from '../lib/apiErrors'
-import { tr, useLang } from '../lib/i18n'
 import { routeHref } from '../lib/router'
 
 interface Props {

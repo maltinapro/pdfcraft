@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
-import { tr } from '../lib/i18n'
+import { AppIcon, tr } from '@pdfcraft/editor'
 import { routeHref } from '../lib/router'
-import { AppIcon } from './icons'
 import { HeaderNav } from './HeaderNav'
 import { LangToggle } from './LangToggle'
 import { ThemeToggle } from './ThemeToggle'

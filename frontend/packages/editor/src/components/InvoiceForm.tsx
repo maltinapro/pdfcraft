@@ -1,4 +1,4 @@
-import { SelectField, TextField } from './Field'
+import { SelectField, TextField } from './ui/Field'
 import { ItemsEditor } from './ItemsEditor'
 import { RecipientPicker } from './MasterDataPickers'
 import { PostageSection } from './PostageSection'

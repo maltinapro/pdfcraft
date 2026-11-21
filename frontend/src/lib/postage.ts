@@ -1,14 +1,8 @@
 import { ApiError, requestJson } from './api'
-import type { PostageStamp } from './types'
+import type { PostageAdapter, PostageProduct, ProductList, Products, Purchase } from '@pdfcraft/editor'
 
 // Internetmarke (Deutsche Post): the stamp is bought with the user's own Portokasse account.
 // The login is only held in the form while it is sent; it is never stored, neither here nor on the server.
-
-export interface PostageProduct {
-  productCode: number
-  name: string
-  priceCents: number
-}
 
 interface PurchaseResponse {
   png: string
@@ -18,21 +12,6 @@ interface PurchaseResponse {
   priceCents: number
   walletBalanceCents: number | null
 }
-
-export interface Purchase {
-  stamp: PostageStamp
-  walletBalanceCents: number | null
-}
-
-export interface ProductList {
-  products: PostageProduct[]
-  /** Test stamps from the Deutsche Post test API (free tokens): not valid for postage, no real money. */
-  sandbox: boolean
-  /** `false` when the server uses a shared test login, so the user needs no Portokasse. */
-  loginRequired: boolean
-}
-
-type Products = ProductList | 'disabled'
 
 const CACHE_MS = 10 * 60 * 1000
 let cache: { at: number; result: Promise<Products> } | null = null
@@ -108,3 +87,6 @@ export async function recoverStamp(
     },
   }
 }
+
+/** The postage part of the editor adapter. */
+export const postageAdapter: PostageAdapter = { loadProducts, forgetProducts, buyStamp, recoverStamp }

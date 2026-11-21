@@ -1,4 +1,4 @@
-import { tr, uiLocale } from '../i18n'
+import { tr, uiLocale } from '@pdfcraft/editor'
 import type { InvoiceView, LineView } from './parse'
 import { ruleChecks } from './rules'
 

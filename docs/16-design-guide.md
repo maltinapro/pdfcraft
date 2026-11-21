@@ -33,7 +33,7 @@ A document is divided into four **zones**. Each zone has a number, an icon, a co
 | 3 | **Details** (`details`) | number, date, service date or period and due date (new fields, E08-08), references, subject, intro | reference line, title row | amber `#8D4E00` / `#FFB778` |
 | 4 | **Items** (`items`) | line items, articles, totals, closing text | table, totals, closing | green `#006C50` / `#82D7B5` |
 
-Per document type: the letter has **Text** (subject, body) instead of Items; the delivery note shows items without prices; credit notes add the reference to the invoice in Details. The mapping lives in one place (`ZONES` next to `DOC_SPECS` in `frontend/src/lib/documents.ts`) and is unit-tested.
+Per document type: the letter has **Text** (subject, body) instead of Items; the delivery note shows items without prices; credit notes add the reference to the invoice in Details. The mapping lives in one place (`ZONES` next to `DOC_SPECS` in `frontend/packages/editor/src/lib/documents.ts`) and is unit-tested.
 
 Zone 1 holds settings that apply to **all** documents. Its panel says so ("Applies to all documents") and shows the same data for every type.
 
@@ -42,7 +42,7 @@ Zone 1 holds settings that apply to **all** documents. Its panel says so ("Appli
 - **First run** (sender still has the example data): the editor starts at zone 1 and guides linearly: *Back* / *Next* in a sticky footer.
 - **Returning user** (zone 1 complete): zone 1 shows a check in the stepper (no separate summary chip, so "Sender & look" is never shown twice) and the editor opens at the **first incomplete zone**, normally *Recipient* with the saved-recipient picker focused.
 - Zones can be visited in any order: zone bar, preview tap, issue list. "Next" is a suggestion, not a gate.
-- Each zone in the **stepper** (four circles joined by lines with a short label underneath, e.g. Sender, Recipient, Details, Items) shows its state: number (untouched or selected), check (complete), "!" (errors), warning icon (warnings only). Each step has its zone color (violet, coral, amber, emerald); the circle, the "Step n of 4" kicker, the focus indicator and the primary button use it. The state comes from the existing issue model (`requiredIssues`, `validateInvoice`, backend `ValidationError`, see `Workspace.tsx`).
+- Each zone in the **stepper** (four circles joined by lines with a short label underneath, e.g. Sender, Recipient, Details, Items) shows its state: number (untouched or selected), check (complete), "!" (errors), warning icon (warnings only). Each step has its zone color (violet, coral, amber, emerald); the circle, the "Step n of 4" kicker, the focus indicator and the primary button use it. The state comes from the existing issue model (`requiredIssues`, `validateInvoice`, backend `ValidationError`, see `PaperEditor.tsx` in `frontend/packages/editor`).
 - The last zone's footer button is the primary action: **Create PDF**; on that step the app bar's download button is hidden so there is only one primary action. Notes (warnings) are listed only on the step where they can be fixed; errors stay visible on every step. Step 1 is split by a segmented button into *Company & bank* and *Logo & look* (design, logo, signature, texts, e-invoice). After the download a success panel offers the next steps (back up, new document, follow-up document) instead of a dismissible notice.
 
 ### 2.3 Preview with zone overlay

@@ -1,8 +1,7 @@
 import { useRef } from 'react'
 import { AppHeader } from './AppHeader'
-import { AppIcon } from './icons'
+import { AppIcon, tr, uiLocale, useLang } from '@pdfcraft/editor'
 import { Banner, Button, Card } from './ui'
-import { tr, uiLocale, useLang } from '../lib/i18n'
 
 interface Props {
   notice: string | null

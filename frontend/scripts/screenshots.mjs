@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { createServer } from 'vite'
+import { createServer, preview } from 'vite'
 import { chromium } from 'playwright'
 
 const option = (name, fallback) => {
@@ -107,11 +107,17 @@ const mockFetch = `
 `
 
 await mkdir(output, { recursive: true })
-const server = await createServer({ server: { host: '127.0.0.1', port: 0, strictPort: false }, clearScreen: false })
+// --production serves the built `dist/` (run `npm run build` first). The dev server orders and
+// tree-shakes CSS differently, so only the built output shows missing or reordered stylesheets.
+const production = process.argv.includes('--production')
+const serverOptions = { host: '127.0.0.1', port: 0, strictPort: false }
+const server = production
+  ? await preview({ preview: serverOptions })
+  : await createServer({ server: serverOptions, clearScreen: false })
 let browser
 
 try {
-  await server.listen()
+  if (!production) await server.listen()
   const address = server.httpServer.address()
   if (!address || typeof address === 'string') throw new Error('Vite did not provide a local HTTP address')
   const baseUrl = `http://127.0.0.1:${address.port}`

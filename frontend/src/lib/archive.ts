@@ -1,8 +1,18 @@
 import { isObj } from './storage'
-import { tr } from './i18n'
-import type { Issue } from './validate'
-import { docSpec, type Doc, type DocDataKind, type DocKind } from './documents'
-import { DESIGNS, newItem, type Invoice, type InvoiceItem, type Settings, type StampInfo } from './types'
+import {
+  DESIGNS,
+  type Doc,
+  type DocDataKind,
+  type DocKind,
+  docSpec,
+  type Invoice,
+  type InvoiceItem,
+  type Issue,
+  newItem,
+  type Settings,
+  type StampInfo,
+  tr,
+} from '@pdfcraft/editor'
 
 /** A document that was downloaded. Issued documents are final: they are never edited, only cancelled or copied. */
 export interface ArchiveEntry {

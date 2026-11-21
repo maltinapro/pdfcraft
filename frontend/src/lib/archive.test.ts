@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { groupBySettings, makeEntry } from './archive'
-import { defaultDoc } from './documents'
-import { DEFAULT_SETTINGS, defaultInvoice } from './types'
+import { DEFAULT_SETTINGS, defaultDoc, defaultInvoice } from '@pdfcraft/editor'
 
 describe('archive designs', () => {
   it('stores the selected design in the issue-time snapshot', () => {

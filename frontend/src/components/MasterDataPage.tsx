@@ -1,11 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { AppHeader } from './AppHeader'
-import { Field, TextField } from './Field'
-import { AppIcon } from './icons'
+import { AppIcon, Field, money, TAX_RATES, TextField, tr, unitLabel, UNITS, useLang } from '@pdfcraft/editor'
 import { Banner, Button, EmptyState, Menu, MenuItem, SegmentedButton } from './ui'
-import { money, unitLabel } from './MasterDataPickers'
 import type { ArchiveEntry } from '../lib/archive'
-import { tr, useLang } from '../lib/i18n'
 import {
   MAX_ARTICLES,
   MAX_CONTACTS,
@@ -25,7 +22,6 @@ import {
   type Contact,
 } from '../lib/masterData'
 import { routeHref } from '../lib/router'
-import { TAX_RATES, UNITS } from '../lib/types'
 
 interface Props {
   tab: 'contacts' | 'articles'

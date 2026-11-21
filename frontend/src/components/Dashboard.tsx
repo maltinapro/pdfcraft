@@ -1,13 +1,11 @@
 import { AppHeader } from './AppHeader'
 import { ArchiveList } from './ArchiveList'
 import { FreeVersionHint } from './FreeVersionHint'
-import { AppIcon, DocIcon } from './icons'
+import { AppIcon, DOC_SPECS, DocIcon, type DocKind, docSpec, tr, useLang } from '@pdfcraft/editor'
 import { Banner, Card, EmptyState } from './ui'
-import { DOC_SPECS, docSpec, type DocKind } from '../lib/documents'
 import type { ArchiveEntry } from '../lib/archive'
 import type { EntryStatus } from '../lib/archiveFilter'
 import { onboardingOpen, onboardingSteps } from '../lib/onboarding'
-import { tr, useLang } from '../lib/i18n'
 import { routeHref } from '../lib/router'
 
 const RECENT = 3

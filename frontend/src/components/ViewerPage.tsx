@@ -7,7 +7,7 @@ import { runChecks } from '../lib/einvoice/check'
 import { ExtractError, MAX_PDF_BYTES, extractEInvoice, type Extracted } from '../lib/einvoice/extract'
 import { prettyXml } from '../lib/einvoice/format'
 import { EInvoiceParseError, parseEInvoice, type InvoiceView } from '../lib/einvoice/parse'
-import { tr, useLang } from '../lib/i18n'
+import { tr, useLang } from '@pdfcraft/editor'
 import '../viewer.css'
 
 type Tab = 'invoice' | 'check' | 'xml'

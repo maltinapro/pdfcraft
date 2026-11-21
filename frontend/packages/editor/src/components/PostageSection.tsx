@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Field } from './Field'
+import { Field } from './ui/Field'
 import { tr, uiLocale, useLang } from '../lib/i18n'
-import { ApiError } from '../lib/api'
+import { useAdapter, type PostageProduct } from '../adapter'
 import { friendlyError } from '../lib/apiErrors'
-import { buyStamp, forgetProducts, loadProducts, recoverStamp, type PostageProduct } from '../lib/postage'
+import { ApiError } from '../lib/errors'
 import type { PostageStamp } from '../lib/types'
 
 interface Props {
@@ -19,6 +19,7 @@ const euro = (cents: number) => (cents / 100).toLocaleString(uiLocale(), { style
  */
 export function PostageSection({ postage, onChange }: Props) {
   useLang()
+  const postageAdapter = useAdapter().postage
   const [products, setProducts] = useState<PostageProduct[] | 'disabled' | null>(null)
   const [sandbox, setSandbox] = useState(false)
   const [loginRequired, setLoginRequired] = useState(true)
@@ -32,8 +33,9 @@ export function PostageSection({ postage, onChange }: Props) {
   const [lostOrder, setLostOrder] = useState<string | null>(null)
 
   const load = () => {
+    if (!postageAdapter) return
     setLoadError(null)
-    loadProducts()
+    postageAdapter.loadProducts()
       .then((list) => {
         if (list === 'disabled') {
           setProducts('disabled')
@@ -47,10 +49,10 @@ export function PostageSection({ postage, onChange }: Props) {
       .catch((e: unknown) => setLoadError(friendlyError(e)))
   }
 
-  useEffect(load, [])
+  useEffect(load, [postageAdapter])
 
-  // Without a Deutsche Post connection on the server there is nothing to offer
-  if (products === 'disabled') return null
+  // Without a Deutsche Post connection there is nothing to offer
+  if (!postageAdapter || products === 'disabled') return null
 
   const product = Array.isArray(products) ? products.find((p) => p.productCode === productCode) : undefined
 
@@ -72,7 +74,7 @@ export function PostageSection({ postage, onChange }: Props) {
     setError(null)
     setLostOrder(null)
     try {
-      const purchase = await buyStamp(product, username, password)
+      const purchase = await postageAdapter.buyStamp(product, username, password)
       onChange(purchase.stamp)
       setBalance(purchase.walletBalanceCents)
       setPassword('')
@@ -82,7 +84,7 @@ export function PostageSection({ postage, onChange }: Props) {
         setLostOrder(/order (\S+)/.exec(e.details ?? '')?.[1] ?? null)
       }
       if (e instanceof Error && /price has changed|Preis hat sich/.test(e.message)) {
-        forgetProducts()
+        postageAdapter.forgetProducts?.()
         load()
       }
     } finally {
@@ -95,7 +97,7 @@ export function PostageSection({ postage, onChange }: Props) {
     setBuying(true)
     setError(null)
     try {
-      const purchase = await recoverStamp(lostOrder, product, username, password)
+      const purchase = await postageAdapter.recoverStamp(lostOrder, product, username, password)
       onChange(purchase.stamp)
       setLostOrder(null)
       setPassword('')

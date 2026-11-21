@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Banner } from './ui'
 import { hasActivePaidToken } from '../lib/api'
-import { tr, useLang } from '../lib/i18n'
+import { tr, useLang } from '@pdfcraft/editor'
 import { useOffers } from '../lib/purchase'
 import { routeHref } from '../lib/router'
 
