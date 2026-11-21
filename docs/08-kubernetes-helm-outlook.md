@@ -15,10 +15,12 @@ The chart is published as an OCI chart on every GitHub release: `oci://ghcr.io/m
 
    ```bash
    kubectl -n pdfcraft create secret generic pdfcraft-valkey \
-     --from-literal=VALKEY_URL='rediss://:PASSWORD@valkey.example:6379'
+     --from-literal=VALKEY_URL='redis://:PASSWORD@valkey.example:6379'
    kubectl -n pdfcraft create secret generic pdfcraft-service-tokens \
      --from-file=service-tokens=./service-tokens.txt
    ```
+
+   The backend connects to Valkey without TLS (`redis://`; `rediss://` is not supported), so run it on a private network and keep the NetworkPolicy's `egress.extra` narrow.
 
    `service-tokens.txt` holds one `<id>:<sha256 hex>:<plan or limit>` line per tenant/application, created with `pdfcraft-backend tokens create-service` (see [Tokens and Rate Limiting](05-tokens-and-rate-limiting.md#static-service-tokens)). Only hashes are stored. Service tokens work without Valkey; with `backend.valkeySecret` the rate limit is shared by all replicas (without it, each pod has its own bucket).
 

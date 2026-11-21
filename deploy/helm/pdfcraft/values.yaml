@@ -35,7 +35,7 @@ backend:
   # Optional keys INTERNETMARKE_SANDBOX_USERNAME/_PASSWORD: shared test Portokasse login for free tokens
   # (together with backend.env.INTERNETMARKE_SANDBOX_SHIPPING_URL).
   internetmarkeSecret: ""
-  # Name of a Secret with the key VALKEY_URL (e.g. redis://:PASSWORD@host:6379, rediss:// for TLS).
+  # Name of a Secret with the key VALKEY_URL (e.g. redis://:PASSWORD@host:6379; rediss:// is not supported by the backend build).
   # Use with valkey.enabled=false when an operator-managed Valkey requires authentication.
   valkeySecret: ""
   # Name of a Secret with the key `service-tokens`: static service tokens without expiry, one

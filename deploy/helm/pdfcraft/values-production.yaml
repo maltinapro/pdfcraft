@@ -4,7 +4,7 @@
 #     -n pdfcraft --create-namespace -f values-production.yaml
 #
 # Create the Secrets first (the chart never creates or stores token material):
-#   kubectl -n pdfcraft create secret generic pdfcraft-valkey --from-literal=VALKEY_URL='rediss://:PASSWORD@valkey.example:6379'
+#   kubectl -n pdfcraft create secret generic pdfcraft-valkey --from-literal=VALKEY_URL='redis://:PASSWORD@valkey.example:6379'
 #   kubectl -n pdfcraft create secret generic pdfcraft-service-tokens --from-file=service-tokens=./service-tokens.txt
 # (`pdfcraft-backend tokens create-service <id> --limit <n>` prints a token and its entry for service-tokens.txt;
 # see docs/05-tokens-and-rate-limiting.md.)
@@ -61,7 +61,7 @@ networkPolicy:
           kubernetes.io/metadata.name: monitoring
   egress:
     restrict: true
-    # Allow the external Valkey (adjust to its address/port; rediss:// usually runs on 6379 or 6380)
+    # Allow the external Valkey (adjust to its address/port). The backend has no TLS support for Valkey (plain redis://), so keep Valkey on a private network
     extra:
       - to:
           - ipBlock: { cidr: 10.0.0.0/8 }
