@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Banner } from '@maltinapro/design'
+import { Banner } from '@maltinapro/pdfcraft-design'
 import { hasActivePaidToken } from '../lib/api'
-import { tr, useLang } from '@maltinapro/editor'
+import { tr, useLang } from '@maltinapro/pdfcraft-editor'
 import { useOffers } from '../lib/purchase'
 import { routeHref } from '../lib/router'
 

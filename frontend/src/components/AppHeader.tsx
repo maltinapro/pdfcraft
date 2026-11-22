@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { tr } from '@maltinapro/editor'
-import { AppIcon } from '@maltinapro/design'
+import { tr } from '@maltinapro/pdfcraft-editor'
+import { AppIcon } from '@maltinapro/pdfcraft-design'
 import { routeHref } from '../lib/router'
 import { HeaderNav } from './HeaderNav'
 import { LangToggle } from './LangToggle'

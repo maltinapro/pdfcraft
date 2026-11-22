@@ -1,6 +1,6 @@
 name: Release design package
 
-# Publishes @maltinapro/design to GitHub Packages when a tag design-vX.Y.Z is pushed
+# Publishes @maltinapro/pdfcraft-design to GitHub Packages when a tag design-vX.Y.Z is pushed
 # (the version must match frontend/packages/design/package.json) or manually from a tag/branch.
 on:
   push:

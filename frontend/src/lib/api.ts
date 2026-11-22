@@ -12,7 +12,7 @@ import {
   unreachableMessage,
   ValidationError,
   type ZoneRect,
-} from '@maltinapro/editor'
+} from '@maltinapro/pdfcraft-editor'
 import { fetchWithTimeout, RequestTimeoutError, SHORT_TIMEOUT_MS } from './fetchTimeout'
 import { API_BASE_URL } from './config'
 import { reportClientError } from './clientErrors'

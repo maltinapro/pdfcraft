@@ -1,4 +1,4 @@
-import { Dialog } from '@maltinapro/design'
+import { Dialog } from '@maltinapro/pdfcraft-design'
 import { tr } from '../../lib/i18n'
 import { formatXml, tokenizeXml } from '../../lib/xmlDisplay'
 

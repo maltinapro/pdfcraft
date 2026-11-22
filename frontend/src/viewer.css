@@ -1,4 +1,4 @@
-@import '@maltinapro/design/tokens.css';
+@import '@maltinapro/pdfcraft-design/tokens.css';
 
 .viewer-page { max-width: 1000px; }
 .viewer-drop { display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-8) var(--space-5); border: 2px dashed var(--color-outline); border-radius: var(--radius-l); background: var(--color-surface-container-low); text-align: center; transition: border-color var(--motion-state), background var(--motion-state); }

@@ -9,7 +9,7 @@ import {
   TAX_RATES,
   tr,
   UNITS,
-} from '@maltinapro/editor'
+} from '@maltinapro/pdfcraft-editor'
 import { isObj, type Obj } from './storage'
 import type { ArchiveEntry } from './archive'
 
@@ -313,5 +313,5 @@ export function masterDataFromArchive(archive: ArchiveEntry[]): MasterData {
   return { contacts, articles }
 }
 
-export { recipientOf, searchArticles, searchContacts, sortedArticles, sortedContacts } from '@maltinapro/editor'
-export type { Article, Contact } from '@maltinapro/editor'
+export { recipientOf, searchArticles, searchContacts, sortedArticles, sortedContacts } from '@maltinapro/pdfcraft-editor'
+export type { Article, Contact } from '@maltinapro/pdfcraft-editor'

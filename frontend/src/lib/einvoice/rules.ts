@@ -1,4 +1,4 @@
-import { tr } from '@maltinapro/editor'
+import { tr } from '@maltinapro/pdfcraft-editor'
 import type { InvoiceView, LineView } from './parse'
 import type { CheckResult } from './check'
 

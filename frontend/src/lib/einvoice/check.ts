@@ -1,4 +1,4 @@
-import { tr, uiLocale } from '@maltinapro/editor'
+import { tr, uiLocale } from '@maltinapro/pdfcraft-editor'
 import type { InvoiceView, LineView } from './parse'
 import { ruleChecks } from './rules'
 

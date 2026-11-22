@@ -1,4 +1,4 @@
-import type { Contact, Doc, EditorAdapter, Invoice, RenderRequest, SaveResult } from '@maltinapro/editor'
+import type { Contact, Doc, EditorAdapter, Invoice, RenderRequest, SaveResult } from '@maltinapro/pdfcraft-editor'
 import { requestDocument, requestPdf } from './api'
 import { reportClientError } from './clientErrors'
 import { extractEInvoice } from './einvoice/extract'
@@ -11,7 +11,7 @@ const saved = (result: { data: Parameters<typeof setMasterData>[0]; updated: boo
   updated: result.updated,
 })
 
-/** Connects the paper-first editor (`@maltinapro/editor`) to this app: `/v1` for rendering, the browser storage for master data. */
+/** Connects the paper-first editor (`@maltinapro/pdfcraft-editor`) to this app: `/v1` for rendering, the browser storage for master data. */
 export const editorAdapter: EditorAdapter = {
   render: ({ kind, settings, document }: RenderRequest, signal) =>
     kind === 'invoice' ? requestPdf(settings, document as Invoice, signal) : requestDocument(kind, settings, document as Doc, signal),

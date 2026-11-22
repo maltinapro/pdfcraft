@@ -12,7 +12,7 @@ import {
   type Settings,
   type StampInfo,
   tr,
-} from '@maltinapro/editor'
+} from '@maltinapro/pdfcraft-editor'
 
 /** A document that was downloaded. Issued documents are final: they are never edited, only cancelled or copied. */
 export interface ArchiveEntry {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { makeEntry, type ArchiveEntry } from './archive'
 import { entryStatuses, filterEntries, isFiltered, NO_FILTER } from './archiveFilter'
-import { DEFAULT_SETTINGS, defaultDoc, defaultInvoice, newItem } from '@maltinapro/editor'
+import { DEFAULT_SETTINGS, defaultDoc, defaultInvoice, newItem } from '@maltinapro/pdfcraft-editor'
 
 const invoice = (number: string, date: string, recipient: string, price = 100): ArchiveEntry => {
   const source = defaultInvoice()

@@ -1,6 +1,6 @@
 name: Release editor package
 
-# Publishes @maltinapro/editor to GitHub Packages when a tag editor-vX.Y.Z is pushed
+# Publishes @maltinapro/pdfcraft-editor to GitHub Packages when a tag editor-vX.Y.Z is pushed
 # (the version must match frontend/packages/editor/package.json) or manually from a tag/branch.
 on:
   push:

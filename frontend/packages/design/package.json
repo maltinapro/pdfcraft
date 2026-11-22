@@ -1,5 +1,5 @@
 {
-  "name": "@maltinapro/design",
+  "name": "@maltinapro/pdfcraft-design",
   "version": "0.1.0",
   "description": "Design system of PDFCraft: Material Design 3 tokens (light, dark, high contrast), UI components, icons and the theme preference.",
   "license": "MIT",

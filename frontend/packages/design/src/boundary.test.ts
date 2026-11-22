@@ -13,7 +13,7 @@ function resolveInside(file: string, specifier: string): string | null {
   return parts[0] === '.' ? parts.join('/') : null
 }
 
-describe('@maltinapro/design package boundary', () => {
+describe('@maltinapro/pdfcraft-design package boundary', () => {
   it('finds the package sources', () => {
     expect(Object.keys(sources).length).toBeGreaterThan(10)
   })

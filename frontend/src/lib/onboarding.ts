@@ -1,4 +1,4 @@
-import { tr } from '@maltinapro/editor'
+import { tr } from '@maltinapro/pdfcraft-editor'
 
 export type OnboardingId = 'company' | 'document' | 'backup'
 

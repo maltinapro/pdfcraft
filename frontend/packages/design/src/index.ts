@@ -1,6 +1,6 @@
 import './ui.css'
-// Public API of @maltinapro/design: components, icons and the theme preference.
-// The design tokens are a separate stylesheet: import '@maltinapro/design/tokens.css'.
+// Public API of @maltinapro/pdfcraft-design: components, icons and the theme preference.
+// The design tokens are a separate stylesheet: import '@maltinapro/pdfcraft-design/tokens.css'.
 
 export { Banner } from './components/Banner'
 export { BottomSheet } from './components/BottomSheet'
