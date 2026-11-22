@@ -1,4 +1,4 @@
-import { type DocDrafts, type Invoice, parseDrafts, serializeDrafts, type Settings, tr } from '@pdfcraft/editor'
+import { type DocDrafts, type Invoice, parseDrafts, serializeDrafts, type Settings, tr } from '@maltinapro/editor'
 import { validEntries, type ArchiveEntry } from './archive'
 import { parseMasterData, serializeMasterData, type MasterData } from './masterData'
 import { isObj, parseConfig, SCHEMA_VERSION, type AppConfig } from './storage'

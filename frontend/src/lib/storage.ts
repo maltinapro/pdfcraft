@@ -12,7 +12,7 @@ import {
   parsePostage,
   type Settings,
   tr,
-} from '@pdfcraft/editor'
+} from '@maltinapro/editor'
 
 export { isObj, mergeObject, parsePostage, type Obj }
 

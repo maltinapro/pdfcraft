@@ -8,7 +8,7 @@ const assets = join(import.meta.dirname, '..', 'dist', 'assets')
 const budgets = [
   { pattern: /^app-.*\.js$/, limitKb: 280 },
   { pattern: /^app-.*\.css$/, limitKb: 47 },
-  // components of @pdfcraft/design (ui.css; Vite names the chunk after the package's `src/` folder)
+  // components of @maltinapro/design (ui.css; Vite names the chunk after the package's `src/` folder)
   { pattern: /^src-.*\.css$/, limitKb: 7.5 },
   { pattern: /^landing-.*\.css$/, limitKb: 25.3 },
   { pattern: /^pdf-.*\.js$/, limitKb: 550.1 },

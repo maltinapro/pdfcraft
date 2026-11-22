@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { AppHeader } from './AppHeader'
-import { tr, uiLocale, useLang } from '@pdfcraft/editor'
-import { AppIcon, Banner, Button, Card } from '@pdfcraft/design'
+import { tr, uiLocale, useLang } from '@maltinapro/editor'
+import { AppIcon, Banner, Button, Card } from '@maltinapro/design'
 
 interface Props {
   notice: string | null

@@ -1,4 +1,4 @@
-# @pdfcraft/editor
+# @maltinapro/editor
 
 The paper-first document editor of [PDFCraft](https://github.com/maltinapro/pdfcraft) as a React package: the zone
 model (sender, recipient, details, items, totals, …), the zone bar and panels, the clickable PDF preview with zone
@@ -12,16 +12,16 @@ License: MIT. Releases: git tags `editor-vX.Y.Z` (see [Releases](#releases)).
 
 ## Install
 
-The package is published to GitHub Packages. Point the `@pdfcraft` scope at it (`.npmrc`, needs a token with
+The package is published to GitHub Packages. Point the `@maltinapro` scope at it (`.npmrc`, needs a token with
 `read:packages`):
 
 ```
-@pdfcraft:registry=https://npm.pkg.github.com
+@maltinapro:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
 ```bash
-npm install @pdfcraft/editor
+npm install @maltinapro/editor
 ```
 
 Peer dependencies: `react` and `react-dom` 19, `pdfjs-dist` 6 (the editor imports the legacy build
@@ -32,7 +32,7 @@ The package ships TypeScript sources (`exports` point at `src/`), so a bundler t
 
 ```tsx
 import { useState } from 'react'
-import { PaperEditor, defaultInvoice, DEFAULT_SETTINGS, type EditorAdapter, type Invoice } from '@pdfcraft/editor'
+import { PaperEditor, defaultInvoice, DEFAULT_SETTINGS, type EditorAdapter, type Invoice } from '@maltinapro/editor'
 
 const adapter: EditorAdapter = {
   // The only required member: render the PDF and tell where the zones are.
@@ -64,7 +64,7 @@ export function InvoiceEditor() {
 ### Host requirements
 
 * **Design tokens and base layout.** The editor is styled with the CSS custom properties of PDFCraft's design guide
-  (`docs/16-design-guide.md`); the host must define them (`import '@pdfcraft/design/tokens.css'`, see [`@pdfcraft/design`](../design/README.md); the editor depends on that package for its buttons, icons, dialog and segmented control), set the body
+  (`docs/16-design-guide.md`); the host must define them (`import '@maltinapro/design/tokens.css'`, see [`@maltinapro/design`](../design/README.md); the editor depends on that package for its buttons, icons, dialog and segmented control), set the body
   font and give `#root`/`.app` the usual full-height flex layout. The package imports its own `base.css` (buttons,
   fields, dialog; eager) and `editor.css` (editor; loaded with the lazy `PaperEditor` chunk) itself.
 * **Language.** The UI language lives in memory (`getLang`, `setLang`, `subscribeLang`, `useLang`, `tr(de, en)`).
@@ -134,7 +134,7 @@ The barrel also exports the document model and helpers a host needs around the e
 stored data (`parse*`), validation (`validateInvoice`, `requiredIssues`), `ValidationError`/`ApiError`,
 `friendlyError` and the translation of backend error codes, formatting, `downloadBlob` and the form fields
 `Field`/`TextField`/`SelectField`/`TextAreaField`. Since 0.2.0 `Dialog`, `SegmentedButton` and the icons (`AppIcon`,
-`DocIcon`, `StatusIcon`) are no longer re-exported: import them from `@pdfcraft/design`.
+`DocIcon`, `StatusIcon`) are no longer re-exported: import them from `@maltinapro/design`.
 
 ## Development and tests
 
@@ -147,7 +147,7 @@ npm run build
 ```
 
 `src/boundary.test.ts` keeps the package independent of the app: no imports outside `src/` except the peer
-dependencies (and `@pdfcraft/design`), no `localStorage`/`sessionStorage`/`indexedDB`/`fetch`.
+dependencies (and `@maltinapro/design`), no `localStorage`/`sessionStorage`/`indexedDB`/`fetch`.
 
 ## Releases
 
@@ -155,7 +155,7 @@ Versions follow SemVer in `package.json`. To release: bump `version`, merge, the
 (for example `git tag editor-v0.2.0 && git push origin editor-v0.2.0`). The workflow
 `.github/workflows/release-editor-package.yml` checks that the tag matches the version, runs lint/tests/build and
 publishes to GitHub Packages (`https://npm.pkg.github.com`). The package must be set to public once in the GitHub
-package settings. The editor depends on `@pdfcraft/design`: release that package first when the editor needs a new version of it. Breaking changes of the adapter interface bump the minor version while the major version is 0.
+package settings. The editor depends on `@maltinapro/design`: release that package first when the editor needs a new version of it. Breaking changes of the adapter interface bump the minor version while the major version is 0.
 
 ## License
 

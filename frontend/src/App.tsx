@@ -25,7 +25,7 @@ import {
   validateInvoice,
   zoneForField,
   ZONES,
-} from '@pdfcraft/editor'
+} from '@maltinapro/editor'
 import { RateLimitedError, fetchBulkMax, requestBulk, requestDocument, requestPdf } from './lib/api'
 import {
   duplicateNumberIssue,

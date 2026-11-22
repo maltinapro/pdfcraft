@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { money } from '../lib/einvoice/check'
 import { categoryLabel, formatDate, formatNumber, formatPercent, groupIban, meansLabel, typeLabel, unitLabel } from '../lib/einvoice/format'
 import type { InvoiceView, Party } from '../lib/einvoice/parse'
-import { tr, useLang } from '@pdfcraft/editor'
+import { tr, useLang } from '@maltinapro/editor'
 
 const Row = ({ label, value }: { label: string; value: ReactNode }) =>
   value ? (

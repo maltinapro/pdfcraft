@@ -1,6 +1,6 @@
 import { AppHeader } from './AppHeader'
-import { tr, useLang } from '@pdfcraft/editor'
-import { AppIcon, Card, Chip } from '@pdfcraft/design'
+import { tr, useLang } from '@maltinapro/editor'
+import { AppIcon, Card, Chip } from '@maltinapro/design'
 import { LangToggle } from './LangToggle'
 import { ThemeToggle } from './ThemeToggle'
 import { useOffers } from '../lib/purchase'

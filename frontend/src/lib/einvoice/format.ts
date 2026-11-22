@@ -1,4 +1,4 @@
-import { tr, uiLocale } from '@pdfcraft/editor'
+import { tr, uiLocale } from '@maltinapro/editor'
 
 export const formatDate = (iso: string | undefined): string => {
   if (!iso) return '–'
