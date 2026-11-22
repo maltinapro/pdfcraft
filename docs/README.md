@@ -21,6 +21,7 @@ Detailed guides for running, testing and deploying PDFCraft. The top-level [READ
 | 15 | [PDF Signatures](15-pdf-signatures.md) | signature image on documents (implemented) and what a digital PDF signature needs (research: TLS/domain certificates do not work) |
 | 16 | [Design Guide](16-design-guide.md) | binding UI and PDF design rules: paper-first editor concept, app shell and navigation, tokens, components, accessibility (incl. high contrast), PDF design axes, usability review, glossary, device test matrix, implementation playbook (phase 4) |
 | 17 | [Code Review](17-code-review.md) | E12-01 review report: measured baseline, every finding with severity and the issue that resolves it, bundle and CI budgets, performance baseline |
+| – | [Release notes](release-notes/0.33.0.md) | see what a release contains and the release checklist (images, OCI chart, npm packages) |
 | – | [Roadmap and Epics](roadmap.md) | see the planned product work (phases, epics, sub-issues) derived from the business plan, including the code review epic E12; conventions in [epics/README.md](epics/README.md) |
 
 ## Status legend
