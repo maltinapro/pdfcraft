@@ -1,6 +1,6 @@
 name: Release design package
 
-# Publishes @pdfcraft/design to GitHub Packages when a tag design-vX.Y.Z is pushed
+# Publishes @maltinapro/design to GitHub Packages when a tag design-vX.Y.Z is pushed
 # (the version must match frontend/packages/design/package.json) or manually from a tag/branch.
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
           registry-url: https://npm.pkg.github.com
-          scope: "@pdfcraft"
+          scope: "@maltinapro"
       - run: npm ci
       - run: npm run lint
       - run: npm test

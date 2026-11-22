@@ -1,4 +1,4 @@
-import { AppIcon } from '@pdfcraft/design'
+import { AppIcon } from '@maltinapro/design'
 import type { ZoneSpec } from '../../lib/documents'
 import { tr } from '../../lib/i18n'
 

@@ -1,5 +1,5 @@
-import { setLang, tr, useLang } from '@pdfcraft/editor'
-import { SegmentedButton } from '@pdfcraft/design'
+import { setLang, tr, useLang } from '@maltinapro/editor'
+import { SegmentedButton } from '@maltinapro/design'
 
 export function LangToggle() {
   const lang = useLang()

@@ -9,7 +9,7 @@ import {
 } from './api'
 import { useSyncExternalStore } from 'react'
 import { fetchWithTimeout, SHORT_TIMEOUT_MS } from './fetchTimeout'
-import { tr } from '@pdfcraft/editor'
+import { tr } from '@maltinapro/editor'
 
 export interface Offer {
   plan: string

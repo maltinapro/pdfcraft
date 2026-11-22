@@ -1,5 +1,5 @@
 import type { ArchiveEntry } from './archive'
-import { type DocKind, docSpec } from '@pdfcraft/editor'
+import { type DocKind, docSpec } from '@maltinapro/editor'
 
 /** `cancelled`: credit notes cover the invoice; `credited`: a credit note exists, but not for the whole amount (or the amounts are unknown). */
 export type EntryStatus = 'cancelled' | 'credited' | null

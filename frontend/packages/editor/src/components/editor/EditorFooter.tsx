@@ -1,4 +1,4 @@
-import { AppIcon, StatusIcon } from '@pdfcraft/design'
+import { AppIcon, StatusIcon } from '@maltinapro/design'
 import type { ZoneId, ZoneSpec } from '../../lib/documents'
 import type { SaveState } from '../../lib/saveState'
 import { tr } from '../../lib/i18n'

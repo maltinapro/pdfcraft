@@ -1,15 +1,19 @@
 # Changelog
 
-All notable changes to `@pdfcraft/design` are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/),
+All notable changes to `@maltinapro/design` are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/),
 versions follow [SemVer](https://semver.org/) (while the major version is 0, a changed token, component API or icon is
 at least a minor version).
 
 ## Unreleased
 
+### Changed
+
+- Publish under `@maltinapro/design` to match the GitHub Packages owner.
+
 ## 0.1.0
 
 First release. The files were part of the PDFCraft app (`src/styles/tokens.css`, `src/components/ui/`,
-`src/lib/theme.ts`) and of `@pdfcraft/editor` (`icons.tsx`, `Dialog`, `SegmentedButton`) before.
+`src/lib/theme.ts`) and of `@maltinapro/editor` (`icons.tsx`, `Dialog`, `SegmentedButton`) before.
 
 ### Added
 

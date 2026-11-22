@@ -1,5 +1,5 @@
 import './base.css'
-// Public API of @pdfcraft/editor. Everything else is internal.
+// Public API of @maltinapro/editor. Everything else is internal.
 
 // Editor and its adapter
 export { PaperEditor } from './components/PaperEditorLazy'

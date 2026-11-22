@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { runChecks, NOT_CHECKED } from './check'
 import { parseEInvoice } from './parse'
-import { setLang } from '@pdfcraft/editor'
+import { setLang } from '@maltinapro/editor'
 
 // Golden files shared with the backend (`backend/src/einvoice_parse/tests.rs`, `POST /v1/einvoices/parse`):
 // both implementations must produce exactly these views and plausibility checks for the same file.
