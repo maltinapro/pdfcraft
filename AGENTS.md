@@ -18,6 +18,7 @@ PDFCraft is a full-stack PDF template builder:
 - `frontend/` — configurator UI, free-token handling (`lib/api.ts`), static template `src/template/invoice.typ`
 - `frontend/packages/design/` — `@maltinapro/pdfcraft-design` (npm workspace, MIT): `tokens.css`, `ui.css`, UI components (`Button`, `Card`, `Banner`, `Menu`, `SegmentedButton`, `Dialog`, ...), icons, theme; used by the app and the editor, with `CHANGELOG.md` and a contrast test
 - `frontend/packages/editor/` — `@maltinapro/pdfcraft-editor` (npm workspace, MIT): the paper-first editor (zone model, forms, preview, `EditorAdapter`); the app uses it through `src/lib/editorAdapter.ts`
+- Package registry: `@maltinapro/pdfcraft-design` and `@maltinapro/pdfcraft-editor` are published to GitHub Packages (`https://npm.pkg.github.com`; the scope must equal the repository owner `maltinapro`). Consumers set `@maltinapro:registry=https://npm.pkg.github.com` in `.npmrc` and need a token with `read:packages` (`NODE_AUTH_TOKEN`), even for public packages; details in `docs/10-architecture-and-extending.md` "Package registry"
 - `backend/` — API server (`/v1/invoices`, `/v1/invoices/bulk`, `/v1/free-token`, `/health`; metrics on a separate listener)
 - `deploy/helm/pdfcraft/` — Helm chart (optional PodMonitor/PrometheusRule, Grafana dashboards in `dashboards/`)
 - `README.md` — product overview and setup

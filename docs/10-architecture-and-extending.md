@@ -80,6 +80,17 @@ pdfcraft/
     └── vendor/typst-packages/        # Vendored @preview packages (sepay, ibanator, rustycure)
 ```
 
+## Package registry
+
+`@maltinapro/pdfcraft-design` and `@maltinapro/pdfcraft-editor` are published to GitHub Packages (`https://npm.pkg.github.com`). GitHub Packages maps the npm scope to the owning account, so the scope is `@maltinapro` (the owner of this repository) and the release workflows can publish with the repository's `GITHUB_TOKEN`; the editor resolves its dependency on the design package from the same registry. Consumers point the scope at the registry in `.npmrc` and need a personal access token (classic) with `read:packages`, even for public packages (set both packages to public once in the GitHub package settings):
+
+```
+@maltinapro:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
+Then `npm install @maltinapro/pdfcraft-design @maltinapro/pdfcraft-editor`. CI of a consumer needs the token as a secret (`NODE_AUTH_TOKEN`).
+
 ## Editor package
 
 The paper-first editor is its own package, `@maltinapro/pdfcraft-editor` (`frontend/packages/editor`, an npm workspace; MIT; versioned by git tags `editor-vX.Y.Z` and published to GitHub Packages by `.github/workflows/release-editor-package.yml`). The app uses it like any other host:
