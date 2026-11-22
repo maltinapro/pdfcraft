@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { type DocKind, docSpec, FOLLOW_UPS, tr, uiLocale, useLang } from '@pdfcraft/editor'
-import { DocIcon, Chip, Menu, MenuItem } from '@pdfcraft/design'
+import { type DocKind, docSpec, FOLLOW_UPS, tr, uiLocale, useLang } from '@maltinapro/pdfcraft-editor'
+import { DocIcon, Chip, Menu, MenuItem } from '@maltinapro/pdfcraft-design'
 import type { ArchiveEntry } from '../lib/archive'
 import type { EntryStatus } from '../lib/archiveFilter'
 

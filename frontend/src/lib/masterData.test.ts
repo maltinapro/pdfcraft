@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { makeEntry } from './archive'
 import { BACKUP_VERSION, exportBackup, readBackup } from './backup'
-import { DEFAULT_SETTINGS, defaultDoc, defaultDrafts, defaultInvoice, newItem, type Recipient } from '@pdfcraft/editor'
+import { DEFAULT_SETTINGS, defaultDoc, defaultDrafts, defaultInvoice, newItem, type Recipient } from '@maltinapro/pdfcraft-editor'
 import {
   MASTER_DATA_VERSION,
   loadMasterData,

@@ -1,6 +1,6 @@
 import { NOT_CHECKED, type CheckResult } from '../lib/einvoice/check'
-import { tr, useLang } from '@pdfcraft/editor'
-import { StatusIcon } from '@pdfcraft/design'
+import { tr, useLang } from '@maltinapro/pdfcraft-editor'
+import { StatusIcon } from '@maltinapro/pdfcraft-design'
 
 export const KOSIT_VALIDATOR_URL = 'https://github.com/itplr-kosit/validator'
 export const MUSTANG_URL = 'https://www.mustangproject.org/'

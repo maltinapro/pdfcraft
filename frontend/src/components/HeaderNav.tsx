@@ -1,5 +1,5 @@
-import { tr, useLang } from '@pdfcraft/editor'
-import { AppIcon } from '@pdfcraft/design'
+import { tr, useLang } from '@maltinapro/pdfcraft-editor'
+import { AppIcon } from '@maltinapro/pdfcraft-design'
 import { routeHref } from '../lib/router'
 import { useHideNavOnScroll } from '../lib/useHideNavOnScroll'
 

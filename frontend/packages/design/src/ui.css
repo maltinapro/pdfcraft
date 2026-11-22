@@ -1,4 +1,4 @@
-/* Components of @pdfcraft/design (.ui-*): built on the tokens in tokens.css only. */
+/* Components of @maltinapro/pdfcraft-design (.ui-*): built on the tokens in tokens.css only. */
 
 .ui-segmented { display: inline-flex; min-height: 48px; padding: 4px; gap: 4px; background: var(--color-surface-container-high); border-radius: var(--radius-full); }
 

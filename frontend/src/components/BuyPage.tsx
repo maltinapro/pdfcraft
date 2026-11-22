@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppHeader } from './AppHeader'
-import { Banner, Button, Card, EmptyState } from '@pdfcraft/design'
+import { Banner, Button, Card, EmptyState } from '@maltinapro/pdfcraft-design'
 import { loadPaidToken, savePaidToken, type PaidToken } from '../lib/api'
-import { downloadBlob, friendlyError, tr, uiLocale, useLang } from '@pdfcraft/editor'
+import { downloadBlob, friendlyError, tr, uiLocale, useLang } from '@maltinapro/pdfcraft-editor'
 import {
   cancelSubscription,
   claimToken,

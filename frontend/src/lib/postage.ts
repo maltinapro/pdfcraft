@@ -1,5 +1,5 @@
 import { ApiError, requestJson } from './api'
-import type { PostageAdapter, PostageProduct, ProductList, Products, Purchase } from '@pdfcraft/editor'
+import type { PostageAdapter, PostageProduct, ProductList, Products, Purchase } from '@maltinapro/pdfcraft-editor'
 
 // Internetmarke (Deutsche Post): the stamp is bought with the user's own Portokasse account.
 // The login is only held in the form while it is sent; it is never stored, neither here nor on the server.

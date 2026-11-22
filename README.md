@@ -28,8 +28,8 @@ A full-stack **PDF Template Builder** that combines simple form-based configurat
 - ⚡ **Fast PDFs** — a lean Typst template and a Rust-generated Factur-X/XRechnung XML render an invoice in under 10 ms
 - 📦 **Vendored Typst packages** — the few packages used (EPC QR code) ship in the repo; no network access at runtime
 - ✉️ **Deutsche Post stamps (optional)** — buy an Internetmarke with your own Portokasse account and print the franking mark into the address field; stateless, nothing is stored on the server (off by default, see [guide](docs/14-internetmarke-integration.md))
-- 🧩 **Editor package** — the paper-first editor is its own npm package, [`@pdfcraft/editor`](frontend/packages/editor/README.md) (MIT), with a replaceable adapter for rendering, customers, articles and postage instead of direct storage access; the app uses it itself
-- 🎨 **Design package** — tokens, UI components, icons and the theme preference are the npm package [`@pdfcraft/design`](frontend/packages/design/README.md) (MIT, with changelog and contrast test) that the app and the editor use
+- 🧩 **Editor package** — the paper-first editor is its own npm package, [`@maltinapro/pdfcraft-editor`](frontend/packages/editor/README.md) (MIT), with a replaceable adapter for rendering, customers, articles and postage instead of direct storage access; the app uses it itself
+- 🎨 **Design package** — tokens, UI components, icons and the theme preference are the npm package [`@maltinapro/pdfcraft-design`](frontend/packages/design/README.md) (MIT, with changelog and contrast test) that the app and the editor use
 - 🔎 **SEO pages** — static German pages next to the landing page ([ZUGFeRD](https://digitalrechnung.jetzt/zugferd-rechnung-erstellen/), [XRechnung](https://digitalrechnung.jetzt/xrechnung-generator/), [credit notes as e-invoice](https://digitalrechnung.jetzt/stornorechnung-gutschrift-e-rechnung/), [e-invoice deadlines](https://digitalrechnung.jetzt/e-rechnungspflicht/)) that link into the matching form; how to add one: [docs/07](docs/07-demo-system.md)
 - 🧾 **ZUGFeRD / Factur-X and XRechnung** — PDF/A-3b output with embedded EN 16931 or XRechnung XML (a fixed corpus of invoices and credit notes is validated with Mustang in CI), plus a sidebar that flags missing mandatory data
 
@@ -100,8 +100,8 @@ Full reference: [API Reference](docs/09-api-reference.md). The machine-readable 
 | [Purchased Tokens (Mollie)](docs/12-paid-tokens-mollie.md) | Feature flag, purchase page, checkout, Mollie webhook, renewal, cancelling |
 | [Observability](docs/13-observability.md) | JSON logs for Loki, Prometheus metrics, Grafana dashboards |
 | [Internetmarke](docs/14-internetmarke-integration.md) | Buying Deutsche Post stamps and printing them onto PDFs |
-| [Editor package](frontend/packages/editor/README.md) | `@pdfcraft/editor`: usage, adapter interface, releases |
-| [Design package](frontend/packages/design/README.md) | `@pdfcraft/design`: tokens, components, icons, theme, changelog, releases |
+| [Editor package](frontend/packages/editor/README.md) | `@maltinapro/pdfcraft-editor`: usage, adapter interface, releases |
+| [Design package](frontend/packages/design/README.md) | `@maltinapro/pdfcraft-design`: tokens, components, icons, theme, changelog, releases |
 | [Design Guide](docs/16-design-guide.md) | UI and PDF design rules, editor concept, usability review |
 | [Code Review](docs/17-code-review.md) | Review report (E12-01): measured baseline, findings with severity, budgets |
 | [Roadmap and Epics](docs/roadmap.md) | Planned code changes derived from the business plan (epics, phases) and what is deliberately not planned |

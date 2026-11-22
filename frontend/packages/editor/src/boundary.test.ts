@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 // The package must not depend on the host app: relative imports stay inside `src/`, bare imports are limited to
 // the declared dependencies, and the browser storage and the network belong to the host (adapter), not to the editor.
-const PEERS = ['react', 'react-dom', 'pdfjs-dist', '@pdfcraft/design']
+const PEERS = ['react', 'react-dom', 'pdfjs-dist', '@maltinapro/pdfcraft-design']
 
 const sources = import.meta.glob<string>(['./**/*.{ts,tsx}', '!./**/*.test.{ts,tsx}'], { query: '?raw', import: 'default', eager: true })
 
@@ -16,7 +16,7 @@ function resolveInside(file: string, specifier: string): string | null {
   return parts[0] === '.' ? parts.join('/') : null
 }
 
-describe('@pdfcraft/editor package boundary', () => {
+describe('@maltinapro/pdfcraft-editor package boundary', () => {
   it('finds the package sources', () => {
     expect(Object.keys(sources).length).toBeGreaterThan(20)
   })

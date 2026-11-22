@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { AppHeader } from './AppHeader'
-import { Field, money, TAX_RATES, TextField, tr, unitLabel, UNITS, useLang } from '@pdfcraft/editor'
-import { AppIcon, Banner, Button, EmptyState, Menu, MenuItem, SegmentedButton } from '@pdfcraft/design'
+import { Field, money, TAX_RATES, TextField, tr, unitLabel, UNITS, useLang } from '@maltinapro/pdfcraft-editor'
+import { AppIcon, Banner, Button, EmptyState, Menu, MenuItem, SegmentedButton } from '@maltinapro/pdfcraft-design'
 import type { ArchiveEntry } from '../lib/archive'
 import {
   MAX_ARTICLES,

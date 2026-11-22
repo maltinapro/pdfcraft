@@ -1,4 +1,4 @@
-import { type DocDrafts, defaultDrafts, parseDrafts, serializeDrafts } from '@pdfcraft/editor'
+import { type DocDrafts, defaultDrafts, parseDrafts, serializeDrafts } from '@maltinapro/pdfcraft-editor'
 
 // Drafts of the other document types live in this browser only (`localStorage`).
 const STORAGE_KEY = 'pdfcraft.documents'

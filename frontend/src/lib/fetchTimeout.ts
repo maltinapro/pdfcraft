@@ -1,4 +1,4 @@
-import { tr } from '@pdfcraft/editor'
+import { tr } from '@maltinapro/pdfcraft-editor'
 
 /** Upper bound for the time until the server starts answering (a dead connection never does). */
 export const REQUEST_TIMEOUT_MS = 120_000

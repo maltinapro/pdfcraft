@@ -1,8 +1,8 @@
-# @pdfcraft/design
+# @maltinapro/pdfcraft-design
 
 The design system of [PDFCraft](https://github.com/maltinapro/pdfcraft) as a React package: Material Design 3 tokens
 (light, dark, high contrast, forced colors), the UI components, the icon set and the theme preference. PDFCraft's own
-app and the `@pdfcraft/editor` package use it; other products (for example FediFinance) can use it instead of copying
+app and the `@maltinapro/pdfcraft-editor` package use it; other products (for example FediFinance) can use it instead of copying
 the files.
 
 The package has no dependency on the PDFCraft app or editor, calls no API and holds no texts of its own (everything
@@ -12,16 +12,16 @@ License: MIT. Changes: [CHANGELOG.md](./CHANGELOG.md). Releases: git tags `desig
 
 ## Install
 
-The package is published to GitHub Packages. Point the `@pdfcraft` scope at it (`.npmrc`, needs a token with
+The package is published to GitHub Packages. Point the `@maltinapro` scope at it (`.npmrc`, needs a token with
 `read:packages`):
 
 ```
-@pdfcraft:registry=https://npm.pkg.github.com
+@maltinapro:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
 ```bash
-npm install @pdfcraft/design
+npm install @maltinapro/pdfcraft-design
 ```
 
 Peer dependencies: `react` and `react-dom` 19. The package ships TypeScript and CSS sources (`exports` point at
@@ -31,11 +31,11 @@ Peer dependencies: `react` and `react-dom` 19. The package ships TypeScript and 
 
 ```css
 /* once, in the host's global stylesheet */
-@import '@pdfcraft/design/tokens.css';
+@import '@maltinapro/pdfcraft-design/tokens.css';
 ```
 
 ```tsx
-import { Button, Card, Banner, EmptyState, AppIcon, applyTheme } from '@pdfcraft/design'
+import { Button, Card, Banner, EmptyState, AppIcon, applyTheme } from '@maltinapro/pdfcraft-design'
 
 applyTheme('system') // sets <html data-theme="light|dark">; use storedTheme() for the saved choice
 
@@ -56,7 +56,7 @@ separate stylesheet because the host decides where they are loaded (static pages
 
 | Export | Description |
 | --- | --- |
-| `@pdfcraft/design/tokens.css` | CSS custom properties: color roles (light, dark, `prefers-contrast: more`, forced colors), zone colors, type scale, spacing, radii, motion. Components use roles only, never hex values. |
+| `@maltinapro/pdfcraft-design/tokens.css` | CSS custom properties: color roles (light, dark, `prefers-contrast: more`, forced colors), zone colors, type scale, spacing, radii, motion. Components use roles only, never hex values. |
 | `Button`, `ButtonLink` | `filled`, `tonal`, `text`, `icon`, `danger`; the link looks like a button. |
 | `Card`, `Banner`, `EmptyState`, `Snackbar` | Grouped content (`default`/`primary`/`danger`), inline messages (`info`/`warning`/`error`/`success`, `dismissLabel` names the close button), empty/error/loading pattern, transient message. |
 | `Chip`, `FilterChip`, `SegmentedButton` | Assist/status chips, toggleable filter chip, segmented choice. |
@@ -65,7 +65,7 @@ separate stylesheet because the host decides where they are loaded (static pages
 | `AppIcon`, `DocIcon`, `StatusIcon` | Inline SVG outline icons (24 px grid, 1.75 px stroke). |
 | `applyTheme`, `storedTheme`, `systemTheme`, `THEME_STORAGE_KEY` | System/Light/Dark preference; `light`/`dark` is stored in `localStorage` key `pdfcraft.theme`, System removes it. |
 
-The form fields with issue handling (`TextField`, `SelectField`, ...) belong to `@pdfcraft/editor`.
+The form fields with issue handling (`TextField`, `SelectField`, ...) belong to `@maltinapro/pdfcraft-editor`.
 
 ## Development and tests
 

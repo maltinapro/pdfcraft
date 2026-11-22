@@ -4,7 +4,7 @@
 
 ```
 Browser
-  └─ PaperEditor from @pdfcraft/editor (six document types, four guided zones; the app supplies the adapter)
+  └─ PaperEditor from @maltinapro/pdfcraft-editor (six document types, four guided zones; the app supplies the adapter)
        │  free token (Anubis → POST /v1/free-token), kept in localStorage
        │
        ▼  POST /v1/invoices  { settings, invoice }  + Bearer token
@@ -22,7 +22,7 @@ The request arrow illustrates the invoice path; the other document types use `PO
 
 ## How it works
 
-1. **Configure**: `PaperEditor` (package `@pdfcraft/editor`, see [Editor package](#editor-package)) edits the selected document through four guided zones. Invoice and document forms update their typed models (`InvoiceSettings`, `Invoice`, or the corresponding document type); the app stores the drafts in browser storage (the package itself touches no storage).
+1. **Configure**: `PaperEditor` (package `@maltinapro/pdfcraft-editor`, see [Editor package](#editor-package)) edits the selected document through four guided zones. Invoice and document forms update their typed models (`InvoiceSettings`, `Invoice`, or the corresponding document type); the app stores the drafts in browser storage (the package itself touches no storage).
 2. **Request**: `api.ts` sends invoice or document data with the free token. Preview requests add `?zones=1`; the flag affects only preview geometry and does not change the ordinary API contract. The backend allow-lists supported values and escapes `\` and `"` (all user data goes into Typst string literals).
 3. **Prepare**: `backend/src/einvoice.rs` computes amounts (fixed-point, cents, half away from zero) and display texts, and generates the Factur-X / XRechnung XML (CII, EN 16931). Any problem (missing VAT id, invalid IBAN, XRechnung gaps ...) turns the attachment into `invoice-draft.xml`.
 4. **Render**: the backend renders its embedded template with minijinja, using the prepared data; the logo is `assets.logo`, the XML is `assets.xml`.
@@ -44,8 +44,8 @@ pdfcraft/
 │   ├── public/                       # Logo (logo.svg), favicons, icons, og-image, robots.txt, sitemap.xml
 │   ├── partials/site-{header,footer}.html  # Header and footer shared by all static pages (`<!-- site-header -->`, `<!-- site-footer -->`; `.en.html` variants)
 │   ├── <slug>/index.html             # Static SEO pages (zugferd-rechnung-erstellen, xrechnung-generator, stornorechnung-gutschrift-e-rechnung, e-rechnungspflicht, zugferd-xrechnung-pruefen)
-│   ├── packages/design/              # @pdfcraft/design (npm workspace, MIT): tokens.css, ui.css, components (Button, Card, Banner, Menu, ...), icons, theme; see its README + CHANGELOG
-│   ├── packages/editor/              # @pdfcraft/editor (npm workspace, MIT): PaperEditor, zone model, forms, preview, adapter interface; see its README
+│   ├── packages/design/              # @maltinapro/pdfcraft-design (npm workspace, MIT): tokens.css, ui.css, components (Button, Card, Banner, Menu, ...), icons, theme; see its README + CHANGELOG
+│   ├── packages/editor/              # @maltinapro/pdfcraft-editor (npm workspace, MIT): PaperEditor, zone model, forms, preview, adapter interface; see its README
 │   │   └── src/{adapter.tsx,index.ts,base.css,editor.css,components/,lib/}  # lib/: types, documents (DOC_SPECS, ZONES), validate, apiErrors, i18n, catalog, parse, ...
 │   └── src/
 │       ├── App.tsx                   # Hash routes (`#/`, `#/offer`, `#/documents`, `#/contacts` / `#/articles`, `#/data`, `#/sender` = invoice with the sender zone open, ...), shared settings, drafts
@@ -82,20 +82,20 @@ pdfcraft/
 
 ## Editor package
 
-The paper-first editor is its own package, `@pdfcraft/editor` (`frontend/packages/editor`, an npm workspace; MIT; versioned by git tags `editor-vX.Y.Z` and published to GitHub Packages by `.github/workflows/release-editor-package.yml`). The app uses it like any other host:
+The paper-first editor is its own package, `@maltinapro/pdfcraft-editor` (`frontend/packages/editor`, an npm workspace; MIT; versioned by git tags `editor-vX.Y.Z` and published to GitHub Packages by `.github/workflows/release-editor-package.yml`). The app uses it like any other host:
 
 - `PaperEditor` (lazy, its own chunk) gets the controlled `settings` and `document`, an `EditorAdapter` and optional slots (`header`, `banner`, `renderDownloaded`). The package keeps **no storage and calls no API itself**; everything comes through the adapter: `render` (required; PDF + zone rectangles), `customers`/`articles` (list/subscribe/save), `postage`, `extractXml`, `reportError`. The app's adapter is `frontend/src/lib/editorAdapter.ts`; the interface is documented in `frontend/packages/editor/README.md` and typed in `adapter.tsx`.
-- The package reads the document model (types, `DOC_SPECS`, `ZONES`, validation, `apiErrors`) from its own `lib/`; the app imports them from `@pdfcraft/editor`. The UI language is held in memory by the package (`setLang`/`useLang`/`tr`), the app persists it (`lib/language.ts`).
-- CSS: the host supplies the design tokens (`@pdfcraft/design/tokens.css`) and the base layout; the package ships `base.css` (eager) and `editor.css` (with the lazy editor).
+- The package reads the document model (types, `DOC_SPECS`, `ZONES`, validation, `apiErrors`) from its own `lib/`; the app imports them from `@maltinapro/pdfcraft-editor`. The UI language is held in memory by the package (`setLang`/`useLang`/`tr`), the app persists it (`lib/language.ts`).
+- CSS: the host supplies the design tokens (`@maltinapro/pdfcraft-design/tokens.css`) and the base layout; the package ships `base.css` (eager) and `editor.css` (with the lazy editor).
 - `src/boundary.test.ts` fails when the package imports from outside `src/` (other than `react`, `react-dom`, `pdfjs-dist`) or uses `localStorage`/`sessionStorage`/`indexedDB`/`fetch`. `npm run budget` limits the `PaperEditor-*` chunk.
 - The Dockerfile copies `packages/design/package.json` and `packages/editor/package.json` before `npm ci` (the workspaces are linked into `node_modules`).
 - New form fields, zones or validation rules go into the package (`frontend/packages/editor/src/`); new data sources for the editor become optional adapter members, never storage access inside the package. A release is a version bump in the package's `package.json` plus the tag.
 
 ## Design package
 
-The design system is the package `@pdfcraft/design` (`frontend/packages/design`, an npm workspace; MIT; versioned by git tags `design-vX.Y.Z` and published to GitHub Packages by `.github/workflows/release-design-package.yml`; changes are listed in its `CHANGELOG.md`). The app and `@pdfcraft/editor` consume it like any other host would (FediFinance uses the same package instead of a copy with a drift check):
+The design system is the package `@maltinapro/pdfcraft-design` (`frontend/packages/design`, an npm workspace; MIT; versioned by git tags `design-vX.Y.Z` and published to GitHub Packages by `.github/workflows/release-design-package.yml`; changes are listed in its `CHANGELOG.md`). The app and `@maltinapro/pdfcraft-editor` consume it like any other host would (FediFinance uses the same package instead of a copy with a drift check):
 
-- `tokens.css` (Material Design 3 roles, light/dark, high contrast, forced colors; `@import '@pdfcraft/design/tokens.css'` in `App.css`, `site.css`, `viewer.css`), `ui.css` (the `.ui-*` styles; loaded by the package barrel) and the components `Banner`, `BottomSheet`, `Button`, `ButtonLink`, `Card`, `Chip`/`FilterChip`, `Dialog`, `EmptyState`, `Menu`/`MenuItem`, `SegmentedButton`, `Snackbar`, `AppIcon`/`DocIcon`/`StatusIcon` and the theme preference (`applyTheme`, `storedTheme`, `systemTheme`).
+- `tokens.css` (Material Design 3 roles, light/dark, high contrast, forced colors; `@import '@maltinapro/pdfcraft-design/tokens.css'` in `App.css`, `site.css`, `viewer.css`), `ui.css` (the `.ui-*` styles; loaded by the package barrel) and the components `Banner`, `BottomSheet`, `Button`, `ButtonLink`, `Card`, `Chip`/`FilterChip`, `Dialog`, `EmptyState`, `Menu`/`MenuItem`, `SegmentedButton`, `Snackbar`, `AppIcon`/`DocIcon`/`StatusIcon` and the theme preference (`applyTheme`, `storedTheme`, `systemTheme`).
 - The package has no i18n (texts such as `Banner`'s `dismissLabel` are passed in by the caller) and no dependency on the app or on the editor; `src/boundary.test.ts` allows only `react`/`react-dom` imports and `localStorage` only in `theme.ts`.
 - Tests: `tokens.test.mjs` is the **contrast test** (AA text contrast and UI boundaries for light, dark and both high-contrast variants), `theme.test.mjs`, `components.test.tsx`. Run `cd frontend && npm test`.
 - Visual check after a change: `npm run build` and `npm run screenshots -- --production`; `npm run budget` limits the design CSS chunk (`src-*.css`, named after the package's `src/` folder).

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { tr } from '@pdfcraft/editor'
-import { applyTheme, SegmentedButton, storedTheme, type Theme } from '@pdfcraft/design'
+import { tr } from '@maltinapro/pdfcraft-editor'
+import { applyTheme, SegmentedButton, storedTheme, type Theme } from '@maltinapro/pdfcraft-design'
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(() => storedTheme() ?? 'system')

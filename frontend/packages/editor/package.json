@@ -1,5 +1,5 @@
 {
-  "name": "@pdfcraft/editor",
+  "name": "@maltinapro/pdfcraft-editor",
   "version": "0.2.0",
   "description": "Paper-first document editor of PDFCraft (zone model, zone bar and panels, preview with zone overlay, mobile editor, items zone) with a replaceable data adapter.",
   "license": "MIT",
@@ -29,7 +29,7 @@
     "./src/lib/i18n.ts"
   ],
   "dependencies": {
-    "@pdfcraft/design": "^0.1.0"
+    "@maltinapro/pdfcraft-design": "^0.1.0"
   },
   "peerDependencies": {
     "pdfjs-dist": "^6.5.438",

@@ -1,4 +1,4 @@
-import { getLang, setLang, subscribeLang } from '@pdfcraft/editor'
+import { getLang, setLang, subscribeLang } from '@maltinapro/pdfcraft-editor'
 
 // The editor package keeps the language in memory; this app persists it and sets `<html lang>`.
 const KEY = 'pdfcraft.lang'

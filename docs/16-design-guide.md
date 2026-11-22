@@ -90,7 +90,7 @@ Top-level destinations get **one-word labels** (≤ 10 characters) and an icon:
 
 ### 4.1 Color roles
 
-Defined once as CSS custom properties (`frontend/packages/design/src/tokens.css`, package `@pdfcraft/design`), light and dark. Components only use roles, never hex values. The values below are **final**: copy them as they are.
+Defined once as CSS custom properties (`frontend/packages/design/src/tokens.css`, package `@maltinapro/pdfcraft-design`), light and dark. Components only use roles, never hex values. The values below are **final**: copy them as they are.
 
 **Harmony with the logo (checked with Material's HCT color model, `@material/material-color-utilities`):**
 
@@ -184,7 +184,7 @@ One outline icon set (24 px grid, 1.75 px stroke, round caps), Lucide-style shap
 
 ## 5. Components
 
-All components live in the package `@pdfcraft/design` (`frontend/packages/design/src/components/`, styles in `ui.css`) and only use tokens; the form fields with issue handling (`Field.tsx`) belong to `@pdfcraft/editor`. Existing behavior is preserved: the `field` keys, `data-field`, touched/revealed issue logic (`Field.tsx`, `FormIssues.tsx`) and `tr()` texts.
+All components live in the package `@maltinapro/pdfcraft-design` (`frontend/packages/design/src/components/`, styles in `ui.css`) and only use tokens; the form fields with issue handling (`Field.tsx`) belong to `@maltinapro/pdfcraft-editor`. Existing behavior is preserved: the `field` keys, `data-field`, touched/revealed issue logic (`Field.tsx`, `FormIssues.tsx`) and `tr()` texts.
 
 - **Filled text field** (default input): 56 px high, `surface-container-highest`, top corners `radius-m`, no outline; bottom indicator 1 px `outline` → 2 px zone color on focus. Floating label (`label-m`) inside the field; supporting text below (12/16). Optional fields say "optional" in the label (`Leitweg-ID (optional)`) instead of marking required ones with `*`. States: error (indicator, label and supporting text in `error`, icon at the end), warning (example data, `warning`), disabled (38 % opacity). Suffixes (€, %, unit) inside the field.
 - **Filled select:** same frame plus a chevron; native `<select>` for accessibility and mobile pickers.
@@ -224,7 +224,7 @@ All components live in the package `@pdfcraft/design` (`frontend/packages/design
 
 ### 8.1 Theme, high contrast and forced colors
 
-- **Theme setting** has three states, *System* (default), *Light*, *Dark*, as a segmented button in *Mehr* (today a single toggle that forgets "system" after the first click). `theme.ts` (in `@pdfcraft/design`) stores `light`/`dark` in `pdfcraft.theme`; *System* removes the key and follows `prefers-color-scheme` live. `<html data-theme>` is set before first paint (inline script in `app/index.html`, as today) so there is no flash.
+- **Theme setting** has three states, *System* (default), *Light*, *Dark*, as a segmented button in *Mehr* (today a single toggle that forgets "system" after the first click). `theme.ts` (in `@maltinapro/pdfcraft-design`) stores `light`/`dark` in `pdfcraft.theme`; *System* removes the key and follows `prefers-color-scheme` live. `<html data-theme>` is set before first paint (inline script in `app/index.html`, as today) so there is no flash.
 - **`prefers-contrast: more`** (user asked the OS for more contrast): tokens switch to the high-contrast values of the same scheme (`SchemeFidelity`, contrast level 1): light `on-surface-variant` `#000000`, `outline` `#2D2A38`, `primary` `#2C008F`; dark `on-surface-variant` `#FFFFFF`, `outline` `#F3EDFF`, `primary` `#F3EDFF`. Filled fields additionally get a 1 px `outline` border; disabled content uses 60 % instead of 38 % opacity.
 - **`forced-colors: active`** (Windows contrast themes): the browser replaces all colors. Rules: every field, button, chip, card and the zone bar has a `1px solid transparent` border in normal mode so it becomes visible; focus uses `outline` (not `box-shadow`); selected states use `Highlight`/`HighlightText`; zone tints in the preview become outlines (`CanvasText`); icons use `currentColor`. `forced-color-adjust: none` only for the PDF canvas, logo/signature images and color swatches of the accent picker.
 - AC for E07: screenshots with Chrome DevTools "Emulate CSS media feature `forced-colors: active`" and `prefers-contrast: more` on Start and in the editor show every control and its boundary.
@@ -354,9 +354,9 @@ For E08, automated screenshots cover 320/390/768/1440 px in DE/EN and light/dark
 
 ## 12. Implementation rules
 
-- Tokens in `frontend/packages/design/src/tokens.css` (`@import '@pdfcraft/design/tokens.css'`), imported by `App.css`, `landing.css`, `viewer.css` and `apiReference.css`. No hex values in components.
+- Tokens in `frontend/packages/design/src/tokens.css` (`@import '@maltinapro/pdfcraft-design/tokens.css'`), imported by `App.css`, `landing.css`, `viewer.css` and `apiReference.css`. No hex values in components.
 - Plain CSS with custom properties; no Tailwind, no CSS-in-JS, no new UI library. New runtime dependencies need a reason in the PR.
-- Components in `@pdfcraft/design` (`frontend/packages/design/`); pages compose them. A design change is a change to that package: update its `CHANGELOG.md` and, for a release, the version (see its README).
+- Components in `@maltinapro/pdfcraft-design` (`frontend/packages/design/`); pages compose them. A design change is a change to that package: update its `CHANGELOG.md` and, for a release, the version (see its README).
 - Migrate page by page; old and new styles may coexist during phase 4, but one page never mixes them.
 - Visual verification (mandatory, see `AGENTS.md`): screenshots in DE and EN, light and dark, at 390 px and 1440 px (plus 320 px for navigation changes); PDFs rendered with `PDF_OUT=<dir> cargo test v1::tests`, rasterized and viewed for every design.
 - User-visible changes get a short entry in "Neuigkeiten" (`frontend/index.html`).
@@ -403,7 +403,7 @@ Written so that a contributor or a small AI model can follow it step by step wit
 1. **Read** the issue in `docs/epics/EXX-*.md`, this guide's sections named in the issue, and `AGENTS.md`. Note the files listed under *Files*.
 2. **Branch** from the latest `main`: `feat/<epic>-<short-name>`.
 3. **Screenshots before:** `cd frontend && npm run dev`, then `node scripts/screenshots.mjs --out /tmp/before` (script added by E07-05; it covers every app page in DE/EN, light/dark, 390/1440 px and mocks the API when no backend runs).
-4. **Implement** with tokens and `@pdfcraft/design` components only. Keep every `field` key, `data-field` attribute, `tr()` call and localStorage key unchanged unless the issue says otherwise.
+4. **Implement** with tokens and `@maltinapro/pdfcraft-design` components only. Keep every `field` key, `data-field` attribute, `tr()` call and localStorage key unchanged unless the issue says otherwise.
 5. **Check:** `cd frontend && npm test && npm run build`; for backend changes `cd backend && cargo check && cargo test`; for template changes also `PDF_OUT=/tmp/pdf cargo test v1::tests` and look at the rasterized pages.
 6. **Screenshots after** into `/tmp/after`; compare page by page. Checklist per screenshot: nothing wraps in the top bar/navigation; no hex color outside `tokens.css` (`grep -rn "#[0-9a-fA-F]\{3,6\}" src --include=*.tsx --include=*.css` only hits `tokens.css`); text readable in dark mode; focus ring visible (Tab through the page); touch targets ≥ 48 px; terms match the glossary.
 7. **Docs:** tick the issue, update `docs/roadmap.md`, the epic file, `README.md`/`docs/` if behavior changed, "Neuigkeiten", `AGENTS.md`.
