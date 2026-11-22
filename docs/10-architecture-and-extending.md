@@ -91,6 +91,8 @@ pdfcraft/
 
 Then `npm install @maltinapro/pdfcraft-design @maltinapro/pdfcraft-editor`. CI of a consumer needs the token as a secret (`NODE_AUTH_TOKEN`).
 
+Both packages ship TypeScript sources; test files (`src/**/*.test.*`) are excluded from the tarballs through `files` in each `package.json`. Later package releases go through the tags `design-vX.Y.Z` and `editor-vX.Y.Z`, which also lets the workflows check the tag against the version and lets consumers map a version to a commit. The first versions (`@maltinapro/pdfcraft-design` 0.1.0 and `@maltinapro/pdfcraft-editor` 0.2.0) were published by hand with *Run workflow* (`workflow_dispatch`) on the tag `v0.34.0`, so that check was skipped; the tags `design-v0.1.0` and `editor-v0.2.0` therefore point at the `v0.34.0` commit (`git tag design-v0.1.0 v0.34.0` and `git tag editor-v0.2.0 v0.34.0`, then push them; pushing a tag publishes again, so the workflows will fail with a "version already exists" error that can be ignored, or the tags can be created in the GitHub UI). The editor tarball of 0.2.0 still contains its test files; the exclusion ships with the next editor release.
+
 ## Editor package
 
 The paper-first editor is its own package, `@maltinapro/pdfcraft-editor` (`frontend/packages/editor`, an npm workspace; MIT; versioned by git tags `editor-vX.Y.Z` and published to GitHub Packages by `.github/workflows/release-editor-package.yml`). The app uses it like any other host:
